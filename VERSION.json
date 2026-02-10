@@ -1,0 +1,30 @@
+{
+  "name": "storytree",
+  "version": "1.0.0",
+  "codename": "M1-Seed",
+  "stage": "MVP",
+  "buildDate": "2025-02-10T00:00:00.000Z",
+  "commitHash": "initial",
+  "branch": "main",
+  "repository": "storytree",
+  "description": "分支式AI协作小说创作平台",
+  "features": [
+    "故事创建与管理",
+    "AI智能续写（3种风格）",
+    "分支式创作结构",
+    "章节评分系统",
+    "多人协作创作"
+  ],
+  "changelog": {
+    "1.0.0": {
+      "date": "2025-02-10",
+      "changes": [
+        "初始化项目",
+        "完成MVP核心功能",
+        "实现AI续写",
+        "实现分支创作",
+        "添加评分系统"
+      ]
+    }
+  }
+}

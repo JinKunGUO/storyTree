@@ -1,0 +1,20 @@
+#!/bin/bash
+# Post-commit hook: Update Git info after each commit
+
+echo "📝 Post-commit hooks..."
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+cd "$REPO_ROOT"
+
+# Update commit hash and branch in VERSION.json
+if [ -f "scripts/version-manager.js" ]; then
+  node scripts/version-manager.js update
+  echo "✅ Version info updated"
+fi
+
+# Show current version
+if [ -f "VERSION.json" ]; then
+  echo ""
+  cat VERSION.json | grep -E '"version"|"stage"|"codename"' | head -3
+  echo ""
+fi

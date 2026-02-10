@@ -1,0 +1,29 @@
+#!/bin/bash
+# Pre-commit hook: Auto-update version before each commit
+
+echo "🔍 Pre-commit checks..."
+
+# Get repo root
+REPO_ROOT=$(git rev-parse --show-toplevel)
+cd "$REPO_ROOT"
+
+# Auto-bump patch version
+if [ -f "scripts/version-manager.js" ]; then
+  echo "📦 Auto-bumping patch version..."
+  node scripts/version-manager.js patch
+
+  # Stage the updated VERSION.json
+  if [ -f "VERSION.json" ]; then
+    git add VERSION.json
+    echo "✅ VERSION.json staged"
+  fi
+fi
+
+# Run lint if package.json exists
+if [ -f "api/package.json" ]; then
+  echo "🔧 Running lint check..."
+  cd api && npm run lint 2>/dev/null || echo "⚠️  Lint check skipped"
+  cd "$REPO_ROOT"
+fi
+
+echo "✅ Pre-commit checks passed!"

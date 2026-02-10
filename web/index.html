@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StoryTree - AI协作小说创作</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
+
+    /* 导航栏 */
+    .navbar {
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-brand { font-size: 20px; font-weight: bold; color: #2c3e50; }
+    .nav-links { display: flex; gap: 10px; }
+    .nav-links button {
+      padding: 8px 16px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    .nav-links button:hover { background: #f0f0f0; }
+    .nav-links button.active { background: #3498db; color: white; }
+    .nav-user { display: flex; align-items: center; gap: 10px; }
+
+    /* 主内容 */
+    .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+
+    /* 故事卡片 */
+    .story-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .story-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+    .story-card h3 { color: #2c3e50; margin-bottom: 8px; }
+    .story-card .meta { color: #666; font-size: 14px; }
+    .story-card .stats { display: flex; gap: 16px; margin-top: 12px; font-size: 13px; color: #999; }
+
+    /* 按钮 */
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: #3498db; color: white; }
+    .btn-primary:hover { background: #2980b9; }
+    .btn-secondary { background: #ecf0f1; color: #2c3e50; }
+    .btn-secondary:hover { background: #bdc3c7; }
+    .btn-success { background: #27ae60; color: white; }
+    .btn-success:hover { background: #229954; }
+    .btn-ai { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+    .btn-ai:hover { opacity: 0.9; }
+
+    /* 表单 */
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; margin-bottom: 6px; font-weight: 500; color: #2c3e50; }
+    .form-group input, .form-group textarea {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .form-group textarea { min-height: 200px; resize: vertical; }
+    .form-group input:focus, .form-group textarea:focus {
+      outline: none;
+      border-color: #3498db;
+    }
+
+    /* 阅读页面 */
+    .node-content {
+      background: #fff;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .node-content h1 { margin-bottom: 20px; color: #2c3e50; }
+    .node-content .content {
+      line-height: 1.8;
+      color: #333;
+      font-size: 16px;
+      white-space: pre-wrap;
+    }
+    .node-meta { color: #999; font-size: 13px; margin-bottom: 20px; }
+    .ai-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      margin-left: 10px;
+    }
+
+    /* 分支选择 */
+    .branches-section { margin-top: 30px; }
+    .branches-section h3 { margin-bottom: 16px; color: #2c3e50; }
+    .branch-card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .branch-card:hover { border-color: #3498db; }
+    .branch-card .title { font-weight: 600; color: #2c3e50; margin-bottom: 6px; }
+    .branch-card .preview { color: #666; font-size: 13px; margin-bottom: 10px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .branch-card .stats { display: flex; gap: 16px; font-size: 12px; color: #999; }
+    .branch-card .rating { color: #f39c12; }
+
+    /* 评分 */
+    .rating-display { display: flex; align-items: center; gap: 10px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; }
+    .stars { display: flex; gap: 4px; }
+    .star { cursor: pointer; font-size: 24px; color: #ddd; transition: color 0.2s; }
+    .star:hover, .star.active { color: #f39c12; }
+
+    /* 弹窗 */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal-content {
+      background: #fff;
+      border-radius: 12px;
+      padding: 30px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .modal-content h3 { margin-bottom: 20px; }
+    .modal-content input { margin-bottom: 16px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+    /* AI选项弹窗 */
+    .ai-options { max-width: 700px; }
+    .ai-option {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 16px;
+      border-left: 4px solid #667eea;
+    }
+    .ai-option h4 { color: #667eea; margin-bottom: 8px; }
+    .ai-option .title { font-weight: 600; margin-bottom: 10px; }
+    .ai-option .content-preview { color: #666; font-size: 14px; line-height: 1.6; margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+
+    /* 加载动画 */
+    .loading {
+      text-align: center;
+      padding: 40px;
+    }
+    .loading:after {
+      content: '';
+      display: inline-block;
+      width: 30px;
+      height: 30px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #3498db;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* 返回按钮 */
+    .back-btn {
+      margin-bottom: 20px;
+      color: #3498db;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* 面包屑 */
+    .breadcrumb { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; font-size: 14px; color: #666; }
+    .breadcrumb a { color: #3498db; cursor: pointer; }
+    .breadcrumb a:hover { text-decoration: underline; }
+
+    /* 隐藏 */
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <!-- 导航栏 -->
+  <nav class="navbar">
+    <div class="nav-brand">🌳 StoryTree</div>
+    <div class="nav-links">
+      <button onclick="router.go('home')" id="nav-home">首页</button>
+      <button onclick="router.go('create')" id="nav-create">创作</button>
+    </div>
+    <div class="nav-user">
+      <span id="username">未登录</span>
+      <button class="btn btn-primary" id="loginBtn" onclick="showLoginModal()">登录</button>
+    </div>
+  </nav>
+
+  <!-- 主内容 -->
+  <div class="container" id="app">
+    <!-- 动态内容 -->
+  </div>
+
+  <!-- 登录弹窗 -->
+  <div id="loginModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>快速登录</h3>
+      <div class="form-group">
+        <label>用户名</label>
+        <input type="text" id="loginUsername" placeholder="输入用户名">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="hideLoginModal()">取消</button>
+        <button class="btn btn-primary" onclick="handleLogin()">进入</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI生成弹窗 -->
+  <div id="aiModal" class="modal hidden">
+    <div class="modal-content ai-options">
+      <h3>🤖 AI续写选项</h3>
+      <div id="aiLoading" class="loading hidden"></div>
+      <div id="aiOptions"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="hideAiModal()">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 配置
+    const API_BASE = 'http://localhost:3001/api';
+
+    // 状态管理
+    const store = {
+      user: null,
+      currentStory: null,
+      currentNode: null,
+      stories: [],
+      currentAiParentId: null
+    };
+
+    // API 调用
+    const api = {
+      async request(method, path, body) {
+        const options = {
+          method,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        };
+        if (store.user) {
+          options.headers['X-User-Id'] = store.user.id;
+        }
+        if (body) {
+          options.body = JSON.stringify(body);
+        }
+        const res = await fetch(`${API_BASE}${path}`, options);
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || '请求失败');
+        }
+        return res.json();
+      },
+      get(path) { return this.request('GET', path); },
+      post(path, body) { return this.request('POST', path, body); }
+    };
+
+    // 路由
+    const router = {
+      currentPage: 'home',
+      go(page, params = {}) {
+        this.currentPage = page;
+        document.querySelectorAll('.nav-links button').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`nav-${page}`)?.classList.add('active');
+
+        switch(page) {
+          case 'home': renderHome(); break;
+          case 'create': renderCreate(); break;
+          case 'story': renderStory(params.id); break;
+          case 'node': renderNode(params.id); break;
+        }
+      }
+    };
+
+    // 登录功能
+    function showLoginModal() {
+      document.getElementById('loginModal').classList.remove('hidden');
+    }
+    function hideLoginModal() {
+      document.getElementById('loginModal').classList.add('hidden');
+    }
+    async function handleLogin() {
+      const username = document.getElementById('loginUsername').value.trim();
+      if (!username) return alert('请输入用户名');
+
+      try {
+        const res = await api.post('/auth/dev-login', { username, email: `${username}@test.com` });
+        store.user = res.user;
+        updateNav();
+        hideLoginModal();
+        router.go('home');
+      } catch (e) {
+        alert('登录失败: ' + e.message);
+      }
+    }
+    function updateNav() {
+      document.getElementById('username').textContent = store.user ? store.user.username : '未登录';
+      document.getElementById('loginBtn').textContent = store.user ? '退出' : '登录';
+      document.getElementById('loginBtn').onclick = store.user ? handleLogout : showLoginModal;
+    }
+    function handleLogout() {
+      store.user = null;
+      updateNav();
+      router.go('home');
+    }
+
+    // 渲染首页
+    async function renderHome() {
+      const app = document.getElementById('app');
+      app.innerHTML = '<div class="loading"></div>';
+
+      try {
+        const res = await api.get('/stories');
+        store.stories = res.stories;
+
+        app.innerHTML = `
+          <h2 style="margin-bottom: 20px;">📚 发现故事</h2>
+          ${res.stories.length === 0 ? '<p>还没有故事，快来创建第一个吧！</p>' : ''}
+          ${res.stories.map(story => `
+            <div class="story-card" onclick="router.go('node', {id: ${story.nodes[0]?.id || story.rootNodeId}})">
+              <h3>${story.title}</h3>
+              <p class="meta">${story.description || '暂无简介'}</p>
+              <div class="stats">
+                <span>👤 ${story.author.username}</span>
+                <span>⭐ ${story.nodes[0]?.ratingAvg?.toFixed(1) || '0.0'} (${story.nodes[0]?.ratingCount || 0}评分)</span>
+                <span>📖 ${story.nodes[0]?.readCount || 0}阅读</span>
+              </div>
+            </div>
+          `).join('')}
+        `;
+      } catch (e) {
+        app.innerHTML = `<p>加载失败: ${e.message}</p><p>请确保后端服务已启动</p>`;
+      }
+    }
+
+    // 渲染创建页面
+    function renderCreate() {
+      document.getElementById('app').innerHTML = `
+        <h2 style="margin-bottom: 20px;">✨ 创建新故事</h2>
+        <div class="node-content">
+          <div class="form-group">
+            <label>故事标题</label>
+            <input type="text" id="storyTitle" placeholder="给你的故事起个名字">
+          </div>
+          <div class="form-group">
+            <label>第一章标题</label>
+            <input type="text" id="nodeTitle" placeholder="第一章">
+          </div>
+          <div class="form-group">
+            <label>内容</label>
+            <textarea id="nodeContent" placeholder="开始你的创作..."></textarea>
+          </div>
+          <button class="btn btn-primary" onclick="handleCreateStory()">创建故事</button>
+        </div>
+      `;
+    }
+
+    async function handleCreateStory() {
+      if (!store.user) return alert('请先登录');
+
+      const title = document.getElementById('storyTitle').value.trim();
+      const firstNodeTitle = document.getElementById('nodeTitle').value.trim() || '第一章';
+      const firstNodeContent = document.getElementById('nodeContent').value.trim();
+
+      if (!title || !firstNodeContent) return alert('请填写完整信息');
+
+      try {
+        const res = await api.post('/stories', {
+          title,
+          firstNodeTitle,
+          firstNodeContent
+        });
+        router.go('node', { id: res.story.rootNodeId });
+      } catch (e) {
+        alert('创建失败: ' + e.message);
+      }
+    }
+
+    // 渲染阅读页面
+    async function renderNode(nodeId) {
+      const app = document.getElementById('app');
+      app.innerHTML = '<div class="loading"></div>';
+
+      try {
+        const res = await api.get(`/nodes/${nodeId}`);
+        const { node, branches, parent, userRating } = res;
+        store.currentNode = node;
+
+        app.innerHTML = `
+          <div class="breadcrumb">
+            <a onclick="router.go('home')">首页</a>
+            <span>/</span>
+            <span>${node.story.title}</span>
+          </div>
+
+          <div class="node-content">
+            <h1>${node.title} ${node.aiGenerated ? '<span class="ai-badge">AI生成</span>' : ''}</h1>
+            <div class="node-meta">
+              <span>👤 ${node.author.username}</span>
+              <span>•</span>
+              <span>📖 ${node.readCount}阅读</span>
+              <span>•</span>
+              <span>⭐ ${node.ratingAvg.toFixed(1)} (${node.ratingCount}评分)</span>
+            </div>
+            <div class="content">${node.content}</div>
+
+            <div class="rating-display">
+              <span>给这一章评分：</span>
+              <div class="stars">
+                ${[1,2,3,4,5].map(n => `<span class="star ${userRating >= n ? 'active' : ''}" onclick="handleRate(${node.id}, ${n})">★</span>`).join('')}
+              </div>
+              <span>${userRating ? `已评分: ${userRating}星` : '点击星星评分'}</span>
+            </div>
+          </div>
+
+          <div class="branches-section">
+            <h3>🌿 续写分支 (${branches.length})</h3>
+
+            ${branches.length === 0 ? '<p style="color: #999;">还没有续写，快来添加第一个分支吧！</p>' : ''}
+
+            ${branches.map(branch => `
+              <div class="branch-card" onclick="router.go('node', {id: ${branch.id}})">
+                <div class="title">${branch.title} ${branch.aiGenerated ? '<span class="ai-badge">AI生成</span>' : ''}</div>
+                <div class="preview">${branch.content.substring(0, 100)}...</div>
+                <div class="stats">
+                  <span>👤 ${branch.author.username}</span>
+                  <span class="rating">⭐ ${branch.ratingAvg.toFixed(1)}</span>
+                  <span>📖 ${branch.readCount}</span>
+                </div>
+              </div>
+            `).join('')}
+
+            <div style="margin-top: 20px; display: flex; gap: 10px;">
+              <button class="btn btn-success" onclick="showCreateBranch(${node.id})">✍️ 我来续写</button>
+              <button class="btn btn-ai" onclick="showAiModal(${node.id})">🤖 邀请AI续写</button>
+            </div>
+          </div>
+        `;
+      } catch (e) {
+        app.innerHTML = `<p>加载失败: ${e.message}</p>`;
+      }
+    }
+
+    async function handleRate(nodeId, score) {
+      if (!store.user) return alert('请先登录');
+      try {
+        await api.post(`/nodes/${nodeId}/rate`, { score });
+        renderNode(nodeId);
+      } catch (e) {
+        alert('评分失败: ' + e.message);
+      }
+    }
+
+    // 创建分支
+    function showCreateBranch(parentId) {
+      if (!store.user) return alert('请先登录');
+      store.currentBranchParentId = parentId;
+
+      document.getElementById('app').innerHTML += `
+        <div id="branchModal" class="modal">
+          <div class="modal-content">
+            <h3>续写新分支</h3>
+            <div class="form-group">
+              <label>标题</label>
+              <input type="text" id="branchTitle" placeholder="章节标题">
+            </div>
+            <div class="form-group">
+              <label>内容</label>
+              <textarea id="branchContent" placeholder="继续你的故事..."></textarea>
+            </div>
+            <div class="modal-actions">
+              <button class="btn btn-secondary" onclick="hideBranchModal()">取消</button>
+              <button class="btn btn-primary" onclick="submitBranch()">发布</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function hideBranchModal() {
+      document.getElementById('branchModal')?.remove();
+    }
+
+    async function submitBranch() {
+      const title = document.getElementById('branchTitle').value.trim();
+      const content = document.getElementById('branchContent').value.trim();
+      if (!title || !content) return alert('请填写完整信息');
+
+      try {
+        const res = await api.post(`/nodes/${store.currentBranchParentId}/branches`, { title, content });
+        hideBranchModal();
+        router.go('node', { id: res.node.id });
+      } catch (e) {
+        alert('创建失败: ' + e.message);
+      }
+    }
+
+    // AI 续写
+    function showAiModal(parentId) {
+      if (!store.user) return alert('请先登录');
+      store.currentAiParentId = parentId;
+      document.getElementById('aiModal').classList.remove('hidden');
+      document.getElementById('aiLoading').classList.remove('hidden');
+      document.getElementById('aiOptions').innerHTML = '';
+
+      generateAiOptions(parentId);
+    }
+
+    function hideAiModal() {
+      document.getElementById('aiModal').classList.add('hidden');
+    }
+
+    async function generateAiOptions(nodeId) {
+      try {
+        const res = await api.post('/ai/generate', { nodeId, count: 3 });
+        store.aiOptions = res.options;
+
+        document.getElementById('aiLoading').classList.add('hidden');
+        document.getElementById('aiOptions').innerHTML = res.options.map((opt, idx) => `
+          <div class="ai-option">
+            <h4>${opt.style}</h4>
+            <div class="title">${opt.title}</div>
+            <div class="content-preview">${opt.content}</div>
+            <button class="btn btn-ai" onclick="acceptAiOption(${idx})">使用这个续写</button>
+          </div>
+        `).join('');
+      } catch (e) {
+        document.getElementById('aiLoading').classList.add('hidden');
+        document.getElementById('aiOptions').innerHTML = `<p style="color: red;">生成失败: ${e.message}</p>`;
+      }
+    }
+
+    async function acceptAiOption(idx) {
+      const option = store.aiOptions[idx];
+      if (!option) return;
+
+      try {
+        const res = await api.post('/ai/accept', {
+          parentNodeId: store.currentAiParentId,
+          title: option.title,
+          content: option.content
+        });
+        hideAiModal();
+        router.go('node', { id: res.node.id });
+      } catch (e) {
+        alert('保存失败: ' + e.message);
+      }
+    }
+
+    // 版本信息
+    async function loadVersion() {
+      try {
+        const res = await api.get('/version');
+        store.version = res;
+        // 在导航栏显示版本
+        const versionBadge = document.createElement('span');
+        versionBadge.style.cssText = 'font-size: 11px; color: #999; margin-left: 8px;';
+        versionBadge.textContent = `v${res.version}`;
+        document.querySelector('.nav-brand').appendChild(versionBadge);
+      } catch (e) {
+        console.log('Version info not available');
+      }
+    }
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', () => {
+      updateNav();
+      loadVersion();
+      router.go('home');
+    });
+  </script>
+</body>
+</html>
