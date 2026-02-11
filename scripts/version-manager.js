@@ -74,7 +74,7 @@ function bumpVersion(type) {
       break;
     case 'patch':
     default:
-      newVersion = `${major}.${minor}.${patch + 1`;
+      newVersion = `${major}.${minor}.${patch + 1}`;
       break;
   }
 

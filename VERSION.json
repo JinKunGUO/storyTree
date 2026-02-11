@@ -1,9 +1,9 @@
 {
   "name": "storytree",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "codename": "M1-Seed",
   "stage": "MVP",
-  "buildDate": "2025-02-10T00:00:00.000Z",
+  "buildDate": "2026-02-11T08:49:56.209Z",
   "commitHash": "initial",
   "branch": "main",
   "repository": "storytree",
@@ -24,6 +24,12 @@
         "实现AI续写",
         "实现分支创作",
         "添加评分系统"
+      ]
+    },
+    "1.0.1": {
+      "date": "2026-02-11",
+      "changes": [
+        "版本更新"
       ]
     }
   }
