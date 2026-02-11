@@ -13,12 +13,20 @@ model User {
   email     String   @unique
   password  String
   avatar    String?
+  bio       String?  // 个人简介
+  isAdmin   Boolean  @default(false) @map("is_admin") // 是否为管理员
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   stories  Story[]
   nodes    Node[]
   ratings  Rating[]
+  reports  Report[] // 用户发起的举报
+  notifications Notification[] // 用户的通知
+
+  // 关注关系
+  following Follow[] @relation("UserFollowing") // 我关注的人
+  followers Follow[] @relation("UserFollowers") // 关注我的人
 
   @@map("users")
 }
@@ -27,6 +35,7 @@ model Story {
   id          Int      @id @default(autoincrement())
   title       String
   description String?
+  coverImage  String?  @map("cover_image") // 故事封面图片
   authorId    Int      @map("author_id")
   rootNodeId  Int?     @map("root_node_id")
   createdAt   DateTime @default(now()) @map("created_at")
@@ -38,6 +47,12 @@ model Story {
   @@map("stories")
 }
 
+// 审核状态说明（使用字符串）：
+// PENDING    - 待审核（新用户或疑似违规）
+// APPROVED   - 已通过
+// REJECTED   - 已驳回
+// HIDDEN     - 被举报下架
+
 model Node {
   id          Int    @id @default(autoincrement())
   storyId     Int    @map("story_id")
@@ -45,6 +60,7 @@ model Node {
   authorId    Int    @map("author_id")
   title       String
   content     String
+  image       String? // 章节配图
   path        String
   aiGenerated Boolean @default(false) @map("ai_generated")
 
@@ -52,6 +68,14 @@ model Node {
   ratingAvg   Float   @default(0) @map("rating_avg")
   ratingCount Int     @default(0) @map("rating_count")
   readCount   Int     @default(0) @map("read_count")
+
+  // 审核相关字段：PENDING, APPROVED, REJECTED, HIDDEN
+  reviewStatus   String @default("APPROVED") @map("review_status")
+  reportCount    Int          @default(0) @map("report_count")
+  reportReasons  String?      @map("report_reasons") // JSON存储举报原因
+  reviewedBy     Int?         @map("reviewed_by")    // 审核员ID
+  reviewedAt     DateTime?    @map("reviewed_at")
+  reviewNote     String?      @map("review_note")    // 审核备注
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -61,10 +85,12 @@ model Node {
   parent   Node?    @relation("NodeBranches", fields: [parentId], references: [id])
   branches Node[]   @relation("NodeBranches")
   ratings  Rating[]
+  reports  Report[] // 该节点收到的举报
 
   @@index([storyId])
   @@index([parentId])
   @@index([path])
+  @@index([reviewStatus])
   @@map("nodes")
 }
 
@@ -80,4 +106,58 @@ model Rating {
 
   @@unique([nodeId, userId])
   @@map("ratings")
+}
+
+// 举报表
+model Report {
+  id          Int      @id @default(autoincrement())
+  nodeId      Int      @map("node_id")
+  reporterId  Int      @map("reporter_id")
+  reason      String   // spam, illegal, porn, violence, copyright, other
+  description String?  // 详细说明
+  status      String   @default("pending") @map("status") // pending, resolved, dismissed
+  createdAt   DateTime @default(now()) @map("created_at")
+  resolvedAt  DateTime? @map("resolved_at")
+  resolvedBy  Int?      @map("resolved_by")
+
+  node     Node @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([nodeId])
+  @@index([reporterId])
+  @@map("reports")
+}
+
+// 关注关系表
+model Follow {
+  id          Int      @id @default(autoincrement())
+  followerId  Int      @map("follower_id")   // 关注者
+  followingId Int      @map("following_id")  // 被关注者
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  follower  User @relation("UserFollowing", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId]) // 不能重复关注
+  @@index([followerId])
+  @@index([followingId])
+  @@map("follows")
+}
+
+// 通知表
+model Notification {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")       // 接收通知的用户
+  type       String                          // follow, review, story_update, etc.
+  title      String                          // 通知标题
+  content    String                          // 通知内容
+  link       String?                         // 相关链接（如节点ID）
+  isRead     Boolean  @default(false) @map("is_read")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
 }

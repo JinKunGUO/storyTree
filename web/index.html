@@ -211,6 +211,49 @@
 
     /* 隐藏 */
     .hidden { display: none !important; }
+
+    /* 搜索页面 */
+    .search-box { margin-bottom: 30px; }
+    .search-box input { width: 100%; padding: 14px 20px; border: 2px solid #3498db; border-radius: 8px; font-size: 16px; }
+    .search-results h3 { margin: 30px 0 16px; color: #2c3e50; }
+    .search-empty { text-align: center; padding: 40px; color: #999; }
+
+    /* 用户资料页 */
+    .user-profile { background: #fff; border-radius: 12px; padding: 30px; margin-bottom: 20px; }
+    .user-header { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; }
+    .user-avatar { width: 80px; height: 80px; border-radius: 50%; background: #3498db; color: white; display: flex; align-items: center; justify-content: center; font-size: 32px; }
+    .user-info h2 { margin-bottom: 8px; }
+    .user-stats { display: flex; gap: 20px; margin-top: 16px; }
+    .user-stats span { color: #666; }
+    .user-bio { color: #666; margin-top: 16px; line-height: 1.6; }
+    .user-actions { display: flex; gap: 10px; margin-top: 16px; }
+
+    /* 通知列表 */
+    .notification-item { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s; border-left: 4px solid transparent; }
+    .notification-item:hover { background: #f8f9fa; }
+    .notification-item.unread { border-left-color: #3498db; background: #f0f8ff; }
+    .notification-item .title { font-weight: 600; margin-bottom: 6px; color: #2c3e50; }
+    .notification-item .content { color: #666; font-size: 14px; margin-bottom: 8px; }
+    .notification-item .time { color: #999; font-size: 12px; }
+
+    /* 图片上传 */
+    .image-upload { margin-top: 16px; }
+    .image-preview { max-width: 100%; max-height: 300px; border-radius: 8px; margin-top: 10px; }
+    .upload-btn { display: inline-block; padding: 8px 16px; background: #ecf0f1; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
+    .upload-btn:hover { background: #bdc3c7; }
+    .upload-btn input[type="file"] { display: none; }
+
+    /* 动态流 */
+    .feed-item { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    .feed-item .header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .feed-item .avatar { width: 40px; height: 40px; border-radius: 50%; background: #3498db; color: white; display: flex; align-items: center; justify-content: center; }
+    .feed-item .info { flex: 1; }
+    .feed-item .username { font-weight: 600; color: #2c3e50; }
+    .feed-item .time { color: #999; font-size: 12px; }
+    .feed-item .story-link { color: #3498db; font-size: 14px; margin-bottom: 8px; cursor: pointer; }
+    .feed-item .story-link:hover { text-decoration: underline; }
+    .feed-item .node-title { font-weight: 600; margin-bottom: 8px; color: #2c3e50; }
+    .feed-item .node-preview { color: #666; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   </style>
 </head>
 <body>
@@ -219,10 +262,16 @@
     <div class="nav-brand">🌳 StoryTree</div>
     <div class="nav-links">
       <button onclick="router.go('home')" id="nav-home">首页</button>
+      <button onclick="router.go('feed')" id="nav-feed">动态</button>
       <button onclick="router.go('create')" id="nav-create">创作</button>
+      <button onclick="router.go('search')" id="nav-search">🔍 搜索</button>
     </div>
     <div class="nav-user">
-      <span id="username">未登录</span>
+      <button class="btn btn-secondary" id="notificationBtn" onclick="router.go('notifications')" style="position: relative; display: none;">
+        🔔
+        <span id="unreadBadge" style="position: absolute; top: -5px; right: -5px; background: #e74c3c; color: white; border-radius: 10px; padding: 2px 6px; font-size: 11px; display: none;"></span>
+      </button>
+      <span id="username" onclick="store.user && router.go('user', {id: store.user.id})" style="cursor: pointer;">未登录</span>
       <button class="btn btn-primary" id="loginBtn" onclick="showLoginModal()">登录</button>
     </div>
   </nav>
@@ -255,6 +304,33 @@
       <div id="aiOptions"></div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="hideAiModal()">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 举报弹窗 -->
+  <div id="reportModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>🚨 举报内容</h3>
+      <p style="color: #666; font-size: 14px; margin-bottom: 16px;">请选择举报原因：</p>
+      <div class="form-group">
+        <select id="reportReason" style="width: 100%; padding: 10px;">
+          <option value="">请选择...</option>
+          <option value="spam">垃圾广告</option>
+          <option value="illegal">违法违规</option>
+          <option value="porn">色情低俗</option>
+          <option value="violence">暴力恐怖</option>
+          <option value="copyright">侵权抄袭</option>
+          <option value="other">其他</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>详细说明（可选）</label>
+        <textarea id="reportDescription" placeholder="请简要描述违规内容..." style="min-height: 80px;"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="hideReportModal()">取消</button>
+        <button class="btn btn-primary" onclick="submitReport()">提交举报</button>
       </div>
     </div>
   </div>
@@ -304,13 +380,18 @@
       go(page, params = {}) {
         this.currentPage = page;
         document.querySelectorAll('.nav-links button').forEach(btn => btn.classList.remove('active'));
-        document.getElementById(`nav-${page}`)?.classList.add('active');
+        const navBtn = document.getElementById(`nav-${page}`);
+        if (navBtn) navBtn.classList.add('active');
 
         switch(page) {
           case 'home': renderHome(); break;
+          case 'feed': renderFeed(); break;
           case 'create': renderCreate(); break;
           case 'story': renderStory(params.id); break;
           case 'node': renderNode(params.id); break;
+          case 'user': renderUser(params.id); break;
+          case 'search': renderSearch(); break;
+          case 'notifications': renderNotifications(); break;
         }
       }
     };
@@ -340,9 +421,21 @@
       document.getElementById('username').textContent = store.user ? store.user.username : '未登录';
       document.getElementById('loginBtn').textContent = store.user ? '退出' : '登录';
       document.getElementById('loginBtn').onclick = store.user ? handleLogout : showLoginModal;
+      
+      // 显示/隐藏通知按钮
+      const notificationBtn = document.getElementById('notificationBtn');
+      if (store.user) {
+        notificationBtn.style.display = 'block';
+        loadNotifications();
+      } else {
+        notificationBtn.style.display = 'none';
+      }
     }
     function handleLogout() {
       store.user = null;
+      store.stories = [];
+      store.currentStory = null;
+      store.currentNode = null;
       updateNav();
       router.go('home');
     }
@@ -350,30 +443,66 @@
     // 渲染首页
     async function renderHome() {
       const app = document.getElementById('app');
+
+      // 未登录状态：只显示欢迎页
+      if (!store.user) {
+        app.innerHTML = `
+          <div style="text-align: center; padding: 60px 20px;">
+            <h1 style="font-size: 48px; margin-bottom: 20px;">🌳</h1>
+            <h2 style="font-size: 32px; color: #2c3e50; margin-bottom: 16px;">StoryTree</h2>
+            <p style="font-size: 18px; color: #666; margin-bottom: 40px; max-width: 400px; margin-left: auto; margin-right: auto;">
+              分支式AI协作小说创作平台<br>
+              在这里，你和AI共同创造无限可能的故事
+            </p>
+            <button class="btn btn-primary" onclick="showLoginModal()" style="font-size: 16px; padding: 12px 32px;">
+              登录开始创作
+            </button>
+            <p style="margin-top: 30px; color: #999; font-size: 14px;">
+              登录后可浏览故事、创作内容、与AI协作续写
+            </p>
+          </div>
+        `;
+        return;
+      }
+
+      // 已登录状态：显示故事列表
       app.innerHTML = '<div class="loading"></div>';
 
       try {
         const res = await api.get('/stories');
         store.stories = res.stories;
 
+        // 分离自己的故事和别人的故事
+        const myStories = res.stories.filter(s => s.author.id === store.user.id);
+        const otherStories = res.stories.filter(s => s.author.id !== store.user.id);
+
         app.innerHTML = `
-          <h2 style="margin-bottom: 20px;">📚 发现故事</h2>
-          ${res.stories.length === 0 ? '<p>还没有故事，快来创建第一个吧！</p>' : ''}
-          ${res.stories.map(story => `
-            <div class="story-card" onclick="router.go('node', {id: ${story.nodes[0]?.id || story.rootNodeId}})">
-              <h3>${story.title}</h3>
-              <p class="meta">${story.description || '暂无简介'}</p>
-              <div class="stats">
-                <span>👤 ${story.author.username}</span>
-                <span>⭐ ${story.nodes[0]?.ratingAvg?.toFixed(1) || '0.0'} (${story.nodes[0]?.ratingCount || 0}评分)</span>
-                <span>📖 ${story.nodes[0]?.readCount || 0}阅读</span>
-              </div>
-            </div>
-          `).join('')}
+          ${myStories.length > 0 ? `
+            <h2 style="margin-bottom: 20px;">📖 我的创作</h2>
+            ${myStories.map(story => renderStoryCard(story)).join('')}
+          ` : ''}
+
+          <h2 style="margin-bottom: 20px; margin-top: 30px;">📚 发现故事</h2>
+          ${otherStories.length === 0 ? '<p>还没有其他故事，快来创建第一个吧！</p>' : ''}
+          ${otherStories.map(story => renderStoryCard(story)).join('')}
         `;
       } catch (e) {
         app.innerHTML = `<p>加载失败: ${e.message}</p><p>请确保后端服务已启动</p>`;
       }
+    }
+
+    function renderStoryCard(story) {
+      return `
+        <div class="story-card" onclick="router.go('node', {id: ${story.nodes[0]?.id || story.rootNodeId}})">
+          <h3>${story.title}</h3>
+          <p class="meta">${story.description || '暂无简介'}</p>
+          <div class="stats">
+            <span>👤 ${story.author.username}</span>
+            <span>⭐ ${story.nodes[0]?.ratingAvg?.toFixed(1) || '0.0'} (${story.nodes[0]?.ratingCount || 0}评分)</span>
+            <span>📖 ${story.nodes[0]?.readCount || 0}阅读</span>
+          </div>
+        </div>
+      `;
     }
 
     // 渲染创建页面
@@ -413,6 +542,10 @@
           firstNodeTitle,
           firstNodeContent
         });
+        // 显示审核提示
+        if (res.message) {
+          alert(res.message);
+        }
         router.go('node', { id: res.story.rootNodeId });
       } catch (e) {
         alert('创建失败: ' + e.message);
@@ -453,6 +586,15 @@
                 ${[1,2,3,4,5].map(n => `<span class="star ${userRating >= n ? 'active' : ''}" onclick="handleRate(${node.id}, ${n})">★</span>`).join('')}
               </div>
               <span>${userRating ? `已评分: ${userRating}星` : '点击星星评分'}</span>
+            </div>
+
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+              ${node.author.id !== store.user?.id ? `
+                <button class="btn btn-secondary" onclick="showReportModal(${node.id})" style="font-size: 13px;">
+                  🚨 举报该内容
+                </button>
+              ` : ''}
+              ${node.reviewStatus !== 'APPROVED' ? `<span style="color: #e74c3c; font-size: 13px; margin-left: 10px;">审核状态: ${getReviewStatusText(node.reviewStatus)}</span>` : ''}
             </div>
           </div>
 
@@ -532,6 +674,10 @@
       try {
         const res = await api.post(`/nodes/${store.currentBranchParentId}/branches`, { title, content });
         hideBranchModal();
+        // 显示审核提示
+        if (res.message) {
+          alert(res.message);
+        }
         router.go('node', { id: res.node.id });
       } catch (e) {
         alert('创建失败: ' + e.message);
@@ -590,6 +736,51 @@
       }
     }
 
+    // 审核状态文本
+    function getReviewStatusText(status) {
+      const statusMap = {
+        'PENDING': '审核中',
+        'APPROVED': '已通过',
+        'REJECTED': '已驳回',
+        'HIDDEN': '已下架'
+      };
+      return statusMap[status] || status;
+    }
+
+    // 举报功能
+    function showReportModal(nodeId) {
+      if (!store.user) return alert('请先登录');
+      store.currentReportNodeId = nodeId;
+      document.getElementById('reportModal').classList.remove('hidden');
+    }
+
+    function hideReportModal() {
+      document.getElementById('reportModal').classList.add('hidden');
+      document.getElementById('reportReason').value = '';
+      document.getElementById('reportDescription').value = '';
+    }
+
+    async function submitReport() {
+      const reason = document.getElementById('reportReason').value;
+      const description = document.getElementById('reportDescription').value.trim();
+
+      if (!reason) return alert('请选择举报原因');
+
+      try {
+        const res = await api.post(`/nodes/${store.currentReportNodeId}/report`, {
+          reason,
+          description
+        });
+        hideReportModal();
+        alert(`举报成功！${res.autoHidden ? '该内容已被自动下架。' : ''}您今日还可举报 ${res.remainingReports} 次。`);
+        if (res.autoHidden) {
+          renderNode(store.currentReportNodeId);
+        }
+      } catch (e) {
+        alert('举报失败: ' + e.message);
+      }
+    }
+
     // 版本信息
     async function loadVersion() {
       try {
@@ -603,6 +794,388 @@
       } catch (e) {
         console.log('Version info not available');
       }
+    }
+
+    // 加载通知
+    async function loadNotifications() {
+      if (!store.user) return;
+      try {
+        const res = await api.get('/notifications');
+        const unreadCount = res.unreadCount || 0;
+        const badge = document.getElementById('unreadBadge');
+        if (unreadCount > 0) {
+          badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+          badge.style.display = 'block';
+        } else {
+          badge.style.display = 'none';
+        }
+      } catch (e) {
+        console.error('Failed to load notifications');
+      }
+    }
+
+    // 渲染搜索页面
+    function renderSearch() {
+      const app = document.getElementById('app');
+      app.innerHTML = `
+        <h2 style="margin-bottom: 20px;">🔍 搜索</h2>
+        <div class="search-box">
+          <input type="text" id="searchInput" placeholder="搜索故事或章节..." onkeyup="handleSearchInput(event)">
+        </div>
+        <div id="searchResults"></div>
+      `;
+      document.getElementById('searchInput').focus();
+    }
+
+    let searchTimeout;
+    async function handleSearchInput(event) {
+      const query = event.target.value.trim();
+      
+      if (event.key === 'Enter' && query) {
+        performSearch(query);
+        return;
+      }
+
+      // 防抖搜索
+      clearTimeout(searchTimeout);
+      if (query.length >= 2) {
+        searchTimeout = setTimeout(() => performSearch(query), 500);
+      } else {
+        document.getElementById('searchResults').innerHTML = '';
+      }
+    }
+
+    async function performSearch(query) {
+      const resultsDiv = document.getElementById('searchResults');
+      resultsDiv.innerHTML = '<div class="loading"></div>';
+
+      try {
+        const res = await api.get(`/search?q=${encodeURIComponent(query)}`);
+        
+        if (res.total === 0) {
+          resultsDiv.innerHTML = '<div class="search-empty">没有找到相关内容</div>';
+          return;
+        }
+
+        let html = '';
+        
+        if (res.stories && res.stories.length > 0) {
+          html += '<div class="search-results"><h3>📚 故事 (' + res.stories.length + ')</h3>';
+          html += res.stories.map(story => renderStoryCard(story)).join('');
+          html += '</div>';
+        }
+
+        if (res.nodes && res.nodes.length > 0) {
+          html += '<div class="search-results"><h3>📖 章节 (' + res.nodes.length + ')</h3>';
+          html += res.nodes.map(node => `
+            <div class="story-card" onclick="router.go('node', {id: ${node.id}})">
+              <h3>${node.title} ${node.aiGenerated ? '<span class="ai-badge">AI生成</span>' : ''}</h3>
+              <p class="meta">来自故事：${node.story.title}</p>
+              <div class="stats">
+                <span>👤 ${node.author.username}</span>
+                <span>⭐ ${node.ratingAvg.toFixed(1)}</span>
+                <span>📖 ${node.readCount}阅读</span>
+              </div>
+            </div>
+          `).join('');
+          html += '</div>';
+        }
+
+        resultsDiv.innerHTML = html;
+      } catch (e) {
+        resultsDiv.innerHTML = `<p style="color: red;">搜索失败: ${e.message}</p>`;
+      }
+    }
+
+    // 渲染通知页面
+    async function renderNotifications() {
+      if (!store.user) {
+        router.go('home');
+        return;
+      }
+
+      const app = document.getElementById('app');
+      app.innerHTML = '<div class="loading"></div>';
+
+      try {
+        const res = await api.get('/notifications');
+        
+        if (res.notifications.length === 0) {
+          app.innerHTML = `
+            <h2 style="margin-bottom: 20px;">🔔 通知</h2>
+            <div style="text-align: center; padding: 60px; color: #999;">
+              <p>暂无通知</p>
+            </div>
+          `;
+          return;
+        }
+
+        app.innerHTML = `
+          <h2 style="margin-bottom: 20px;">🔔 通知 ${res.unreadCount > 0 ? `<span style="color: #e74c3c;">(${res.unreadCount}条未读)</span>` : ''}</h2>
+          ${res.unreadCount > 0 ? '<button class="btn btn-secondary" onclick="markAllRead()" style="margin-bottom: 16px;">全部标为已读</button>' : ''}
+          ${res.notifications.map(notif => `
+            <div class="notification-item ${notif.isRead ? '' : 'unread'}" onclick="handleNotificationClick(${notif.id}, '${notif.link || ''}')">
+              <div class="title">${notif.title}</div>
+              <div class="content">${notif.content}</div>
+              <div class="time">${formatTime(notif.createdAt)}</div>
+            </div>
+          `).join('')}
+        `;
+
+        // 重新加载通知数量
+        loadNotifications();
+      } catch (e) {
+        app.innerHTML = `<p>加载失败: ${e.message}</p>`;
+      }
+    }
+
+    async function handleNotificationClick(notifId, link) {
+      try {
+        await api.request('PUT', `/notifications/${notifId}/read`);
+        loadNotifications();
+        
+        if (link) {
+          // 解析链接并跳转
+          if (link.startsWith('/node/')) {
+            const nodeId = parseInt(link.replace('/node/', ''));
+            router.go('node', { id: nodeId });
+          } else if (link.startsWith('/user/')) {
+            const userId = parseInt(link.replace('/user/', ''));
+            router.go('user', { id: userId });
+          }
+        }
+      } catch (e) {
+        console.error('Failed to mark notification as read');
+      }
+    }
+
+    async function markAllRead() {
+      try {
+        await api.request('PUT', '/notifications/read-all');
+        renderNotifications();
+      } catch (e) {
+        alert('操作失败: ' + e.message);
+      }
+    }
+
+    // 渲染用户资料页
+    async function renderUser(userId) {
+      const app = document.getElementById('app');
+      app.innerHTML = '<div class="loading"></div>';
+
+      try {
+        const res = await api.get(`/users/${userId}`);
+        const user = res.user;
+        const isOwnProfile = store.user && store.user.id === user.id;
+
+        app.innerHTML = `
+          <div class="user-profile">
+            <div class="user-header">
+              <div class="user-avatar">${user.username[0].toUpperCase()}</div>
+              <div class="user-info">
+                <h2>${user.username}</h2>
+                <div class="user-stats">
+                  <span>📖 ${res.storyCount} 个故事</span>
+                  <span>📝 ${res.nodeCount} 个章节</span>
+                  <span>👥 ${res.followerCount} 粉丝</span>
+                  <span>💫 ${res.followingCount} 关注</span>
+                </div>
+                ${user.bio ? `<div class="user-bio">${user.bio}</div>` : ''}
+                ${!isOwnProfile && store.user ? `
+                  <div class="user-actions">
+                    ${res.isFollowing ? 
+                      `<button class="btn btn-secondary" onclick="handleUnfollow(${user.id})">取消关注</button>` :
+                      `<button class="btn btn-primary" onclick="handleFollow(${user.id})">关注</button>`
+                    }
+                  </div>
+                ` : ''}
+                ${isOwnProfile ? `
+                  <div class="user-actions">
+                    <button class="btn btn-secondary" onclick="showEditProfile()">编辑资料</button>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          </div>
+
+          <h3 style="margin-bottom: 16px;">📚 创作的故事</h3>
+          <div id="userStories"></div>
+
+          <h3 style="margin: 30px 0 16px;">📝 参与的章节</h3>
+          <div id="userNodes"></div>
+        `;
+
+        // 加载用户故事
+        loadUserStories(userId);
+        loadUserNodes(userId);
+      } catch (e) {
+        app.innerHTML = `<p>加载失败: ${e.message}</p>`;
+      }
+    }
+
+    async function loadUserStories(userId) {
+      try {
+        const res = await api.get(`/users/${userId}/stories`);
+        const div = document.getElementById('userStories');
+        if (res.stories.length === 0) {
+          div.innerHTML = '<p style="color: #999;">还没有创作故事</p>';
+        } else {
+          div.innerHTML = res.stories.map(story => renderStoryCard(story)).join('');
+        }
+      } catch (e) {
+        document.getElementById('userStories').innerHTML = '<p style="color: red;">加载失败</p>';
+      }
+    }
+
+    async function loadUserNodes(userId) {
+      try {
+        const res = await api.get(`/users/${userId}/nodes`);
+        const div = document.getElementById('userNodes');
+        if (res.nodes.length === 0) {
+          div.innerHTML = '<p style="color: #999;">还没有参与章节创作</p>';
+        } else {
+          div.innerHTML = res.nodes.map(node => `
+            <div class="story-card" onclick="router.go('node', {id: ${node.id}})">
+              <h3>${node.title} ${node.aiGenerated ? '<span class="ai-badge">AI生成</span>' : ''}</h3>
+              <p class="meta">来自故事：${node.story.title}</p>
+              <div class="stats">
+                <span>⭐ ${node.ratingAvg.toFixed(1)}</span>
+                <span>📖 ${node.readCount}阅读</span>
+              </div>
+            </div>
+          `).join('');
+        }
+      } catch (e) {
+        document.getElementById('userNodes').innerHTML = '<p style="color: red;">加载失败</p>';
+      }
+    }
+
+    async function handleFollow(userId) {
+      if (!store.user) return alert('请先登录');
+      try {
+        await api.post(`/users/${userId}/follow`);
+        renderUser(userId);
+      } catch (e) {
+        alert('关注失败: ' + e.message);
+      }
+    }
+
+    async function handleUnfollow(userId) {
+      if (!store.user) return alert('请先登录');
+      try {
+        await api.request('DELETE', `/users/${userId}/follow`);
+        renderUser(userId);
+      } catch (e) {
+        alert('取消关注失败: ' + e.message);
+      }
+    }
+
+    function showEditProfile() {
+      const currentBio = store.user.bio || '';
+      const modal = document.createElement('div');
+      modal.id = 'editProfileModal';
+      modal.className = 'modal';
+      modal.innerHTML = `
+        <div class="modal-content">
+          <h3>编辑个人资料</h3>
+          <div class="form-group">
+            <label>个人简介</label>
+            <textarea id="editBio" placeholder="介绍一下自己..." style="min-height: 100px;">${currentBio}</textarea>
+          </div>
+          <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="hideEditProfile()">取消</button>
+            <button class="btn btn-primary" onclick="saveProfile()">保存</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+
+    function hideEditProfile() {
+      document.getElementById('editProfileModal')?.remove();
+    }
+
+    async function saveProfile() {
+      const bio = document.getElementById('editBio').value.trim();
+      try {
+        const res = await api.request('PUT', '/users/profile', { bio });
+        store.user = res.user;
+        hideEditProfile();
+        renderUser(store.user.id);
+      } catch (e) {
+        alert('保存失败: ' + e.message);
+      }
+    }
+
+    // 渲染动态流
+    async function renderFeed() {
+      if (!store.user) {
+        document.getElementById('app').innerHTML = `
+          <div style="text-align: center; padding: 60px;">
+            <p style="color: #999;">登录后查看关注的人的动态</p>
+            <button class="btn btn-primary" onclick="showLoginModal()" style="margin-top: 20px;">登录</button>
+          </div>
+        `;
+        return;
+      }
+
+      const app = document.getElementById('app');
+      app.innerHTML = '<div class="loading"></div>';
+
+      try {
+        const res = await api.get('/users/feed/me');
+        
+        if (res.feed.length === 0) {
+          app.innerHTML = `
+            <h2 style="margin-bottom: 20px;">📰 动态流</h2>
+            <div style="text-align: center; padding: 60px; color: #999;">
+              <p>还没有动态</p>
+              <p style="margin-top: 10px; font-size: 14px;">关注其他作者后，他们的新作品会出现在这里</p>
+            </div>
+          `;
+          return;
+        }
+
+        app.innerHTML = `
+          <h2 style="margin-bottom: 20px;">📰 动态流</h2>
+          ${res.feed.map(node => `
+            <div class="feed-item">
+              <div class="header">
+                <div class="avatar">${node.author.username[0].toUpperCase()}</div>
+                <div class="info">
+                  <div class="username">${node.author.username}</div>
+                  <div class="time">${formatTime(node.createdAt)}</div>
+                </div>
+              </div>
+              <div class="story-link" onclick="router.go('node', {id: ${node.story.nodes[0]?.id || node.storyId}})">${node.story.title}</div>
+              <div class="node-title" onclick="router.go('node', {id: ${node.id}})" style="cursor: pointer;">${node.title} ${node.aiGenerated ? '<span class="ai-badge">AI生成</span>' : ''}</div>
+              <div class="node-preview">${node.content.substring(0, 150)}...</div>
+              <div class="stats" style="margin-top: 12px;">
+                <span>⭐ ${node.ratingAvg.toFixed(1)}</span>
+                <span>📖 ${node.readCount}阅读</span>
+              </div>
+            </div>
+          `).join('')}
+        `;
+      } catch (e) {
+        app.innerHTML = `<p>加载失败: ${e.message}</p>`;
+      }
+    }
+
+    // 时间格式化
+    function formatTime(dateStr) {
+      const date = new Date(dateStr);
+      const now = new Date();
+      const diff = now - date;
+      const minutes = Math.floor(diff / 60000);
+      const hours = Math.floor(diff / 3600000);
+      const days = Math.floor(diff / 86400000);
+
+      if (minutes < 1) return '刚刚';
+      if (minutes < 60) return `${minutes}分钟前`;
+      if (hours < 24) return `${hours}小时前`;
+      if (days < 7) return `${days}天前`;
+      return date.toLocaleDateString('zh-CN');
     }
 
     // 初始化

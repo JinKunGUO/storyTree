@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../index';
+import { needsReview } from '../utils/sensitiveWords';
 
 const router = Router();
 
@@ -11,6 +12,8 @@ const getUserId = (req: any): number | null => {
 
 // List all stories with first node info
 router.get('/', async (req, res) => {
+  const userId = getUserId(req);
+
   try {
     const stories = await prisma.story.findMany({
       include: {
@@ -18,21 +21,32 @@ router.get('/', async (req, res) => {
           select: { id: true, username: true }
         },
         nodes: {
-          where: { parentId: null },
+          where: {
+            parentId: null,
+            // 只显示已通过审核的节点，或者用户自己的节点
+            OR: [
+              { reviewStatus: 'APPROVED' },
+              ...(userId ? [{ authorId: userId }] : [])
+            ]
+          },
           take: 1,
           select: {
             id: true,
             title: true,
             content: true,
             ratingAvg: true,
-            ratingCount: true
+            ratingCount: true,
+            reviewStatus: true
           }
         }
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    res.json({ stories });
+    // 过滤掉没有可见节点的故事
+    const filteredStories = stories.filter(s => s.nodes.length > 0);
+
+    res.json({ stories: filteredStories });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch stories' });
   }
@@ -45,20 +59,30 @@ router.post('/', async (req, res) => {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
-  const { title, description, firstNodeTitle, firstNodeContent } = req.body;
+  const { title, description, coverImage, firstNodeTitle, firstNodeContent } = req.body;
 
   try {
+    // 检查用户已发布节点数
+    const userNodeCount = await prisma.node.count({
+      where: { authorId: userId }
+    });
+
+    // 审核检查
+    const reviewCheck = needsReview(firstNodeContent, userNodeCount);
+
     const story = await prisma.story.create({
       data: {
         title,
         description,
+        coverImage,
         authorId: userId,
         nodes: {
           create: {
             title: firstNodeTitle || '第一章',
             content: firstNodeContent,
             authorId: userId,
-            path: '1'
+            path: '1',
+            reviewStatus: reviewCheck.needReview ? 'PENDING' : 'APPROVED'
           }
         }
       },
@@ -76,7 +100,11 @@ router.post('/', async (req, res) => {
       data: { rootNodeId: story.nodes[0].id }
     });
 
-    res.json({ story: { ...story, rootNodeId: story.nodes[0].id } });
+    res.json({
+      story: { ...story, rootNodeId: story.nodes[0].id },
+      reviewStatus: reviewCheck.needReview ? 'pending' : 'approved',
+      message: reviewCheck.needReview ? `内容需要审核：${reviewCheck.reason}` : '发布成功'
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to create story' });
