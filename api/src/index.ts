@@ -8,6 +8,11 @@ import authRoutes from './routes/auth';
 import storyRoutes from './routes/stories';
 import nodeRoutes from './routes/nodes';
 import aiRoutes from './routes/ai';
+import adminRoutes from './routes/admin';
+import userRoutes from './routes/users';
+import uploadRoutes from './routes/upload';
+import searchRoutes from './routes/search';
+import notificationRoutes from './routes/notifications';
 
 dotenv.config();
 
@@ -17,11 +22,19 @@ export const prisma = new PrismaClient();
 app.use(cors());
 app.use(express.json());
 
+// 静态文件服务 - 提供上传的图片
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/stories', storyRoutes);
 app.use('/api/nodes', nodeRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

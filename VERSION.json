@@ -1,11 +1,11 @@
 {
   "name": "storytree",
-  "version": "1.0.0",
+  "version": "1.0.4",
   "codename": "M1-Seed",
   "stage": "MVP",
-  "buildDate": "2025-02-10T00:00:00.000Z",
-  "commitHash": "initial",
-  "branch": "main",
+  "buildDate": "2026-02-11T08:54:36.915Z",
+  "commitHash": "0b919e7",
+  "branch": "feature/m2-basic-features",
   "repository": "storytree",
   "description": "分支式AI协作小说创作平台",
   "features": [
@@ -24,6 +24,30 @@
         "实现AI续写",
         "实现分支创作",
         "添加评分系统"
+      ]
+    },
+    "1.0.1": {
+      "date": "2026-02-11",
+      "changes": [
+        "版本更新"
+      ]
+    },
+    "1.0.2": {
+      "date": "2026-02-11",
+      "changes": [
+        "版本更新"
+      ]
+    },
+    "1.0.3": {
+      "date": "2026-02-11",
+      "changes": [
+        "版本更新"
+      ]
+    },
+    "1.0.4": {
+      "date": "2026-02-11",
+      "changes": [
+        "版本更新"
       ]
     }
   }

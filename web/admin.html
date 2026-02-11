@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StoryTree - 管理后台</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
+
+    .navbar {
+      background: #2c3e50;
+      color: white;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+    }
+    .nav-brand { font-size: 20px; font-weight: bold; }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 30px;
+    }
+    .stat-card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .stat-card .label { color: #666; font-size: 14px; margin-bottom: 8px; }
+    .stat-card .value { font-size: 32px; font-weight: bold; color: #2c3e50; }
+
+    .review-item {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .review-item .header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px; }
+    .review-item h3 { color: #2c3e50; margin-bottom: 8px; }
+    .review-item .meta { color: #666; font-size: 14px; margin-bottom: 12px; }
+    .review-item .content {
+      background: #f8f9fa;
+      padding: 16px;
+      border-radius: 8px;
+      line-height: 1.6;
+      margin-bottom: 16px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .review-item .reports { color: #e74c3c; font-size: 14px; margin-bottom: 12px; }
+    .review-item .actions { display: flex; gap: 10px; }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .btn-success { background: #27ae60; color: white; }
+    .btn-success:hover { background: #229954; }
+    .btn-danger { background: #e74c3c; color: white; }
+    .btn-danger:hover { background: #c0392b; }
+    .btn-warning { background: #f39c12; color: white; }
+    .btn-warning:hover { background: #e67e22; }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+    }
+    .loading:after {
+      content: '';
+      display: inline-block;
+      width: 30px;
+      height: 30px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #3498db;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    .empty { text-align: center; padding: 60px; color: #999; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-brand">🛡️ StoryTree 管理后台</div>
+    <div>
+      <span id="adminName">管理员</span>
+      <button class="btn" style="margin-left: 16px; background: rgba(255,255,255,0.2);" onclick="location.href='index.html'">返回前台</button>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h2 style="margin-bottom: 20px;">📊 审核统计</h2>
+    <div class="stats" id="stats"></div>
+
+    <h2 style="margin-bottom: 20px;">📝 待审核内容</h2>
+    <div id="reviewQueue"></div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://localhost:3001/api';
+    let adminId = null;
+
+    // API 调用
+    async function apiRequest(method, path, body) {
+      const options = {
+        method,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      };
+      if (adminId) {
+        options.headers['X-User-Id'] = adminId;
+      }
+      if (body) {
+        options.body = JSON.stringify(body);
+      }
+      const res = await fetch(`${API_BASE}${path}`, options);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || '请求失败');
+      }
+      return res.json();
+    }
+
+    // 初始化
+    async function init() {
+      // 简单的管理员登录
+      const username = prompt('请输入管理员用户名：');
+      if (!username) {
+        alert('需要登录才能访问管理后台');
+        location.href = 'index.html';
+        return;
+      }
+
+      try {
+        // 开发环境登录
+        const res = await apiRequest('POST', '/auth/dev-login', { 
+          username, 
+          email: `${username}@admin.com` 
+        });
+        adminId = res.user.id;
+        document.getElementById('adminName').textContent = res.user.username;
+
+        // 加载数据
+        loadStats();
+        loadReviewQueue();
+      } catch (e) {
+        alert('登录失败: ' + e.message);
+        location.href = 'index.html';
+      }
+    }
+
+    // 加载统计数据
+    async function loadStats() {
+      try {
+        const res = await apiRequest('GET', '/admin/review-queue');
+        const stats = res.stats;
+
+        document.getElementById('stats').innerHTML = `
+          <div class="stat-card">
+            <div class="label">待审核</div>
+            <div class="value">${stats.pending}</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">已通过</div>
+            <div class="value" style="color: #27ae60;">${stats.approved}</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">已驳回</div>
+            <div class="value" style="color: #e74c3c;">${stats.rejected}</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">已下架</div>
+            <div class="value" style="color: #f39c12;">${stats.hidden}</div>
+          </div>
+        `;
+      } catch (e) {
+        console.error('Failed to load stats:', e);
+      }
+    }
+
+    // 加载审核队列
+    async function loadReviewQueue() {
+      const queueDiv = document.getElementById('reviewQueue');
+      queueDiv.innerHTML = '<div class="loading"></div>';
+
+      try {
+        const res = await apiRequest('GET', '/admin/review-queue');
+        
+        if (res.queue.length === 0) {
+          queueDiv.innerHTML = '<div class="empty">暂无待审核内容</div>';
+          return;
+        }
+
+        queueDiv.innerHTML = res.queue.map(item => `
+          <div class="review-item">
+            <div class="header">
+              <div>
+                <h3>${item.title}</h3>
+                <div class="meta">
+                  作者：${item.author.username} | 
+                  创建时间：${new Date(item.createdAt).toLocaleString('zh-CN')}
+                </div>
+                ${item.reportCount > 0 ? `<div class="reports">⚠️ 被举报 ${item.reportCount} 次</div>` : ''}
+              </div>
+            </div>
+            <div class="content">${item.content}</div>
+            <div class="actions">
+              <button class="btn btn-success" onclick="handleReview(${item.id}, 'APPROVED')">✅ 通过</button>
+              <button class="btn btn-danger" onclick="handleReview(${item.id}, 'REJECTED')">❌ 驳回</button>
+              <button class="btn btn-warning" onclick="handleReview(${item.id}, 'HIDDEN')">🚫 下架</button>
+              ${item.reportCount > 0 ? `<button class="btn" style="background: #95a5a6; color: white;" onclick="viewReports(${item.id})">查看举报</button>` : ''}
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        queueDiv.innerHTML = `<p style="color: red;">加载失败: ${e.message}</p>`;
+      }
+    }
+
+    // 审核操作
+    async function handleReview(nodeId, status) {
+      const note = prompt(`请输入审核备注（可选）：`);
+      
+      try {
+        await apiRequest('POST', '/admin/review', {
+          nodeId,
+          status,
+          note
+        });
+        alert('审核成功');
+        loadStats();
+        loadReviewQueue();
+      } catch (e) {
+        alert('审核失败: ' + e.message);
+      }
+    }
+
+    // 查看举报
+    async function viewReports(nodeId) {
+      try {
+        const res = await apiRequest('GET', `/admin/reports/${nodeId}`);
+        
+        let reportText = `举报详情：\n\n`;
+        res.reports.forEach((report, idx) => {
+          reportText += `${idx + 1}. ${report.reporter.username}\n`;
+          reportText += `   原因：${report.reason}\n`;
+          if (report.description) {
+            reportText += `   说明：${report.description}\n`;
+          }
+          reportText += `   时间：${new Date(report.createdAt).toLocaleString('zh-CN')}\n\n`;
+        });
+
+        alert(reportText);
+      } catch (e) {
+        alert('加载举报详情失败: ' + e.message);
+      }
+    }
+
+    // 启动
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
+
