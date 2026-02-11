@@ -1,81 +1,56 @@
-# ============================================
-# StoryTree - Git忽略规则
-# ============================================
-
-# 依赖目录
+# Dependencies
 node_modules/
-*/node_modules/
 package-lock.json
-*/package-lock.json
-yarn.lock
-*/yarn.lock
 
-# 环境变量
+# Environment variables
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
-*/.env
-*/.env.local
+.env.*.local
 
-# 数据库
+# Database
 *.db
-*.db-journal
 *.sqlite
 *.sqlite3
 
-# 构建输出
-dist/
-build/
-out/
-.next/
-*.tsbuildinfo
+# Uploads
+api/uploads/
 
-# 日志
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
 logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-lerna-debug.log*
 
-# 测试
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Testing
 coverage/
 .nyc_output/
-*.lcov
 
-# IDE和编辑器
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-.DS_Store
-Thumbs.db
-
-# 临时文件
-*.tmp
-*.temp
-.temp/
+# Temporary files
 tmp/
 temp/
+*.tmp
 
-# 上传文件
-uploads/
-public/uploads/
+# Prisma
+api/prisma/migrations/
 
-# 缓存
+# Cache
 .cache/
 .parcel-cache/
-.eslintcache
-.stylelintcache
 
-# 本地配置
-config/local.*
-
-# 不使用Prisma迁移文件（开发阶段）
-prisma/migrations/
-
-# 但保留schema
-!prisma/schema.prisma
