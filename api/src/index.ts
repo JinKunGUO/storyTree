@@ -25,6 +25,9 @@ app.use(express.json());
 // 静态文件服务 - 提供上传的图片
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// 静态文件服务 - 提供前端页面
+app.use(express.static(path.join(__dirname, '../../web')));
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/stories', storyRoutes);
