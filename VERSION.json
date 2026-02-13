@@ -1,9 +1,9 @@
 {
   "name": "storytree",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "codename": "M1-Seed",
   "stage": "MVP",
-  "buildDate": "2026-02-12T09:26:37.397Z",
+  "buildDate": "2026-02-13T02:55:38.135Z",
   "commitHash": "a5249e3",
   "branch": "main",
   "repository": "storytree",
@@ -64,6 +64,12 @@
     },
     "1.0.7": {
       "date": "2026-02-12",
+      "changes": [
+        "版本更新"
+      ]
+    },
+    "1.0.8": {
+      "date": "2026-02-13",
       "changes": [
         "版本更新"
       ]

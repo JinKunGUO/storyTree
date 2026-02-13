@@ -975,10 +975,10 @@
               <div class="user-info">
                 <h2>${user.username}</h2>
                 <div class="user-stats">
-                  <span>📖 ${res.storyCount} 个故事</span>
-                  <span>📝 ${res.nodeCount} 个章节</span>
-                  <span>👥 ${res.followerCount} 粉丝</span>
-                  <span>💫 ${res.followingCount} 关注</span>
+                  <span>📖 ${user._count.stories} 个故事</span>
+                  <span>📝 ${user._count.nodes} 个章节</span>
+                  <span>👥 ${user._count.followers} 粉丝</span>
+                  <span>💫 ${user._count.following} 关注</span>
                 </div>
                 ${user.bio ? `<div class="user-bio">${user.bio}</div>` : ''}
                 ${!isOwnProfile && store.user ? `
