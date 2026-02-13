@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>发现故事 - StoryTree</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding-top: 80px;
+        }
+
+        .discover-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .page-header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .page-header h1 {
+            font-size: 42px;
+            margin-bottom: 15px;
+        }
+
+        .page-header p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+
+        .search-filter {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-box {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .search-btn {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.3s ease;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .filter-tags {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .filter-tag {
+            padding: 8px 16px;
+            background: #f5f5f5;
+            border: 2px solid transparent;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .filter-tag:hover,
+        .filter-tag.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .stories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .story-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .story-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .story-cover {
+            height: 200px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 48px;
+            position: relative;
+        }
+
+        .story-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #667eea;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .story-content {
+            padding: 25px;
+        }
+
+        .story-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .story-description {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 15px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .story-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+            color: #999;
+            font-size: 14px;
+        }
+
+        .story-author {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .story-stats {
+            display: flex;
+            gap: 15px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: white;
+        }
+
+        .loading i {
+            font-size: 48px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: white;
+        }
+
+        .empty-state i {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .page-header h1 {
+                font-size: 32px;
+            }
+
+            .search-box {
+                flex-direction: column;
+            }
+
+            .stories-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="/" class="nav-brand">
+                <i class="fas fa-tree"></i>
+                StoryTree
+            </a>
+            <div class="nav-menu">
+                <a href="/" class="nav-link">首页</a>
+                <a href="/discover" class="nav-link" style="color: #667eea;">发现故事</a>
+                <a href="/create" class="nav-link">开始创作</a>
+                <a href="/login" class="nav-link" id="loginLink">登录</a>
+                <a href="/register" class="nav-link primary" id="registerLink">注册</a>
+                <a href="/profile" class="nav-link" id="profileLink" style="display: none;">
+                    <i class="fas fa-user"></i> 个人中心
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="discover-container">
+        <!-- 页面标题 -->
+        <div class="page-header">
+            <h1><i class="fas fa-compass"></i> 发现精彩故事</h1>
+            <p>探索无限可能的故事世界</p>
+        </div>
+
+        <!-- 搜索和筛选 -->
+        <div class="search-filter">
+            <div class="search-box">
+                <input type="text" class="search-input" id="searchInput" placeholder="搜索故事标题、作者...">
+                <button class="search-btn" onclick="searchStories()">
+                    <i class="fas fa-search"></i> 搜索
+                </button>
+            </div>
+            <div class="filter-tags">
+                <span class="filter-tag active" data-filter="all">全部</span>
+                <span class="filter-tag" data-filter="popular">热门</span>
+                <span class="filter-tag" data-filter="new">最新</span>
+                <span class="filter-tag" data-filter="completed">已完结</span>
+            </div>
+        </div>
+
+        <!-- 故事列表 -->
+        <div class="stories-grid" id="storiesGrid">
+            <div class="loading">
+                <i class="fas fa-spinner"></i>
+                <p>正在加载精彩故事...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allStories = [];
+        let currentFilter = 'all';
+
+        // 检查登录状态
+        function checkAuthStatus() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            const loginLink = document.getElementById('loginLink');
+            const registerLink = document.getElementById('registerLink');
+            const profileLink = document.getElementById('profileLink');
+            
+            if (token) {
+                loginLink.style.display = 'none';
+                registerLink.style.display = 'none';
+                profileLink.style.display = 'block';
+            }
+        }
+
+        // 加载所有故事
+        async function loadStories() {
+            try {
+                const response = await fetch('/api/stories');
+                const data = await response.json();
+                
+                if (data.stories && data.stories.length > 0) {
+                    allStories = data.stories;
+                    displayStories(allStories);
+                } else {
+                    showEmptyState();
+                }
+            } catch (error) {
+                console.error('加载故事失败:', error);
+                showError();
+            }
+        }
+
+        // 显示故事
+        function displayStories(stories) {
+            const storiesGrid = document.getElementById('storiesGrid');
+            
+            if (stories.length === 0) {
+                showEmptyState();
+                return;
+            }
+
+            const storiesHTML = stories.map(story => `
+                <div class="story-card" onclick="window.location.href='/story/${story.id}'">
+                    <div class="story-cover">
+                        <i class="fas fa-book-open"></i>
+                        <span class="story-badge">${story._count.nodes} 章节</span>
+                    </div>
+                    <div class="story-content">
+                        <div class="story-title">${escapeHtml(story.title)}</div>
+                        <div class="story-description">${escapeHtml(story.description || '暂无描述')}</div>
+                        <div class="story-meta">
+                            <div class="story-author">
+                                <i class="fas fa-user-circle"></i>
+                                <span>${escapeHtml(story.author.username)}</span>
+                            </div>
+                            <div class="story-stats">
+                                <span><i class="fas fa-eye"></i> ${story.views || 0}</span>
+                                <span><i class="fas fa-heart"></i> ${story._count.likes || 0}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            storiesGrid.innerHTML = storiesHTML;
+        }
+
+        // 搜索故事
+        function searchStories() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            
+            if (!searchTerm) {
+                displayStories(allStories);
+                return;
+            }
+
+            const filtered = allStories.filter(story => 
+                story.title.toLowerCase().includes(searchTerm) ||
+                story.description?.toLowerCase().includes(searchTerm) ||
+                story.author.username.toLowerCase().includes(searchTerm)
+            );
+
+            displayStories(filtered);
+        }
+
+        // 筛选故事
+        function filterStories(filter) {
+            currentFilter = filter;
+            
+            // 更新筛选标签样式
+            document.querySelectorAll('.filter-tag').forEach(tag => {
+                tag.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            let filtered = [...allStories];
+
+            switch(filter) {
+                case 'popular':
+                    filtered.sort((a, b) => (b.views || 0) - (a.views || 0));
+                    break;
+                case 'new':
+                    filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                    break;
+                case 'completed':
+                    filtered = filtered.filter(s => s.status === 'COMPLETED');
+                    break;
+            }
+
+            displayStories(filtered);
+        }
+
+        // 显示空状态
+        function showEmptyState() {
+            const storiesGrid = document.getElementById('storiesGrid');
+            storiesGrid.innerHTML = `
+                <div class="empty-state" style="grid-column: 1/-1;">
+                    <i class="fas fa-book"></i>
+                    <h3>暂无故事</h3>
+                    <p>快来创建第一个故事吧！</p>
+                </div>
+            `;
+        }
+
+        // 显示错误
+        function showError() {
+            const storiesGrid = document.getElementById('storiesGrid');
+            storiesGrid.innerHTML = `
+                <div class="empty-state" style="grid-column: 1/-1;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>加载失败</h3>
+                    <p>请刷新页面重试</p>
+                </div>
+            `;
+        }
+
+        // HTML转义
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 搜索框回车事件
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthStatus();
+            loadStories();
+
+            document.getElementById('searchInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchStories();
+                }
+            });
+
+            // 筛选标签点击事件
+            document.querySelectorAll('.filter-tag').forEach(tag => {
+                tag.addEventListener('click', function() {
+                    filterStories(this.dataset.filter);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
+

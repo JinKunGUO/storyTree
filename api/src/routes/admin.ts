@@ -1,13 +1,43 @@
 import { Router } from 'express';
 import { prisma } from '../index';
 import { createNotification } from './notifications';
-import { requireAdmin } from '../utils/auth';
+import { verifyJWT } from '../utils/auth';
 
 const router = Router();
 
 const getUserId = (req: any): number | null => {
   const userId = req.headers['x-user-id'];
   return userId ? parseInt(userId as string) : null;
+};
+
+// 管理员验证中间件
+const requireAdmin = async (req: any, res: any, next: any) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  
+  if (!token) {
+    return res.status(401).json({ error: '未提供认证令牌' });
+  }
+
+  try {
+    const decoded = verifyJWT(token);
+    if (!decoded) {
+      return res.status(401).json({ error: '无效的认证令牌' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { id: true, isAdmin: true }
+    });
+
+    if (!user || !user.isAdmin) {
+      return res.status(403).json({ error: '需要管理员权限' });
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: '认证失败' });
+  }
 };
 
 // 获取审核队列 - 需要管理员权限
@@ -44,9 +74,6 @@ router.get('/review-queue', requireAdmin, async (req, res) => {
         },
         story: {
           select: { id: true, title: true }
-        },
-        _count: {
-          select: { reports: true }
         }
       },
       orderBy: { reportCount: 'desc' }

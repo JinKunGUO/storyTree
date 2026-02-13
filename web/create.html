@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>开始创作 - StoryTree</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding-top: 80px;
+        }
+
+        .create-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .page-header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .page-header h1 {
+            font-size: 42px;
+            margin-bottom: 15px;
+        }
+
+        .page-header p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+
+        .create-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .form-group .label-hint {
+            font-weight: 400;
+            color: #999;
+            font-size: 14px;
+            margin-left: 5px;
+        }
+
+        .form-input,
+        .form-textarea,
+        .form-select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-input:focus,
+        .form-textarea:focus,
+        .form-select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .char-count {
+            text-align: right;
+            color: #999;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #666;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .tips-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+        }
+
+        .tips-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .tips-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .tips-list li {
+            padding: 8px 0;
+            color: #666;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .tips-list li i {
+            color: #667eea;
+            margin-top: 3px;
+        }
+
+        .error-message {
+            color: #e74c3c;
+            font-size: 14px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .page-header h1 {
+                font-size: 32px;
+            }
+
+            .create-card {
+                padding: 30px 20px;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="/" class="nav-brand">
+                <i class="fas fa-tree"></i>
+                StoryTree
+            </a>
+            <div class="nav-menu">
+                <a href="/" class="nav-link">首页</a>
+                <a href="/discover" class="nav-link">发现故事</a>
+                <a href="/create" class="nav-link" style="color: #667eea;">开始创作</a>
+                <a href="/login" class="nav-link" id="loginLink">登录</a>
+                <a href="/register" class="nav-link primary" id="registerLink">注册</a>
+                <a href="/profile" class="nav-link" id="profileLink" style="display: none;">
+                    <i class="fas fa-user"></i> 个人中心
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="create-container">
+        <!-- 页面标题 -->
+        <div class="page-header">
+            <h1><i class="fas fa-pen-fancy"></i> 开始创作</h1>
+            <p>创建你的故事，让想象自由飞翔</p>
+        </div>
+
+        <div class="create-card">
+            <div class="success-message" id="successMessage">
+                <i class="fas fa-check-circle"></i> 故事创建成功！正在跳转...
+            </div>
+
+            <form id="createStoryForm">
+                <div class="form-group">
+                    <label for="title">
+                        故事标题
+                        <span class="label-hint">*必填</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="title" 
+                        class="form-input" 
+                        placeholder="给你的故事起一个吸引人的标题"
+                        maxlength="100"
+                        required
+                    >
+                    <div class="char-count">
+                        <span id="titleCount">0</span>/100
+                    </div>
+                    <div class="error-message" id="titleError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">
+                        故事简介
+                        <span class="label-hint">*必填</span>
+                    </label>
+                    <textarea 
+                        id="description" 
+                        class="form-textarea" 
+                        placeholder="简单描述你的故事内容，吸引读者阅读..."
+                        maxlength="500"
+                        required
+                    ></textarea>
+                    <div class="char-count">
+                        <span id="descCount">0</span>/500
+                    </div>
+                    <div class="error-message" id="descError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="genre">故事类型</label>
+                    <select id="genre" class="form-select">
+                        <option value="">选择类型（可选）</option>
+                        <option value="奇幻">奇幻</option>
+                        <option value="科幻">科幻</option>
+                        <option value="悬疑">悬疑</option>
+                        <option value="爱情">爱情</option>
+                        <option value="冒险">冒险</option>
+                        <option value="历史">历史</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="isPublic">
+                        <input type="checkbox" id="isPublic" checked style="margin-right: 8px;">
+                        公开故事（其他用户可以查看和评论）
+                    </label>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="window.history.back()">
+                        <i class="fas fa-arrow-left"></i> 取消
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        <i class="fas fa-rocket"></i> 创建故事
+                    </button>
+                </div>
+            </form>
+
+            <!-- 创作提示 -->
+            <div class="tips-section">
+                <h3><i class="fas fa-lightbulb"></i> 创作小贴士</h3>
+                <ul class="tips-list">
+                    <li>
+                        <i class="fas fa-check"></i>
+                        <span>起一个简洁有力的标题，让读者一眼就被吸引</span>
+                    </li>
+                    <li>
+                        <i class="fas fa-check"></i>
+                        <span>简介要概括故事的核心冲突和亮点</span>
+                    </li>
+                    <li>
+                        <i class="fas fa-check"></i>
+                        <span>创建后可以立即开始添加第一个章节</span>
+                    </li>
+                    <li>
+                        <i class="fas fa-check"></i>
+                        <span>使用AI续写功能可以帮助你突破创作瓶颈</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 检查登录状态
+        function checkAuthStatus() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            const loginLink = document.getElementById('loginLink');
+            const registerLink = document.getElementById('registerLink');
+            const profileLink = document.getElementById('profileLink');
+            
+            if (token) {
+                loginLink.style.display = 'none';
+                registerLink.style.display = 'none';
+                profileLink.style.display = 'block';
+            } else {
+                // 未登录，跳转到登录页
+                window.location.href = '/login?redirect=/create';
+            }
+        }
+
+        // 字符计数
+        function setupCharCount(inputId, countId) {
+            const input = document.getElementById(inputId);
+            const count = document.getElementById(countId);
+            
+            input.addEventListener('input', function() {
+                count.textContent = this.value.length;
+            });
+        }
+
+        // 显示错误
+        function showError(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.style.display = 'block';
+        }
+
+        // 清除错误
+        function clearError(elementId) {
+            const element = document.getElementById(elementId);
+            element.textContent = '';
+            element.style.display = 'none';
+        }
+
+        // 表单提交
+        document.getElementById('createStoryForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            // 清除所有错误
+            clearError('titleError');
+            clearError('descError');
+
+            const title = document.getElementById('title').value.trim();
+            const description = document.getElementById('description').value.trim();
+            const genre = document.getElementById('genre').value;
+            const isPublic = document.getElementById('isPublic').checked;
+
+            // 验证
+            let isValid = true;
+
+            if (!title || title.length < 2) {
+                showError('titleError', '标题至少需要2个字符');
+                isValid = false;
+            }
+
+            if (!description || description.length < 10) {
+                showError('descError', '简介至少需要10个字符');
+                isValid = false;
+            }
+
+            if (!isValid) return;
+
+            // 提交
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 创建中...';
+
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                const response = await fetch('/api/stories', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        title,
+                        description,
+                        genre: genre || undefined,
+                        isPublic
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // 显示成功消息
+                    document.getElementById('successMessage').style.display = 'block';
+                    
+                    // 跳转到故事详情页或添加章节页
+                    setTimeout(() => {
+                        window.location.href = `/story/${data.story.id}`;
+                    }, 1500);
+                } else {
+                    alert(data.error || '创建失败，请重试');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-rocket"></i> 创建故事';
+                }
+            } catch (error) {
+                console.error('创建故事错误:', error);
+                alert('网络错误，请检查网络连接');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-rocket"></i> 创建故事';
+            }
+        });
+
+        // 页面加载
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthStatus();
+            setupCharCount('title', 'titleCount');
+            setupCharCount('description', 'descCount');
+        });
+    </script>
+</body>
+</html>
+

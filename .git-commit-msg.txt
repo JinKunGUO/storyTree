@@ -1,0 +1,44 @@
+feat: M3 frontend development v1.0.9
+
+Complete M3 phase frontend pages and authentication system.
+
+New Features:
+- Add 7 complete frontend pages (home/register/login/discover/create/profile/test)
+- Implement user authentication system (register/login/JWT)
+- Add responsive design with mobile support
+- Implement story discovery and search
+- Implement story creation form
+- Implement user profile with statistics
+
+Backend Optimization:
+- Fix Express routing order (API routes first)
+- Optimize static file serving
+- Implement HTML5 routing support
+- Enhance JWT token (include username and isAdmin)
+
+UI/UX Improvements:
+- Unified purple gradient theme
+- Responsive navigation with hamburger menu
+- Card hover animations
+- Form validation and error messages
+- Loading and empty states
+
+Documentation:
+- Add M3 task planning guide
+- Add M3 testing guide
+- Add project startup guide
+- Add detailed changelog
+
+Bug Fixes:
+- Fix homepage button click issue
+- Fix page routing matching
+- Add button click debug logging
+
+Statistics:
+- New files: 14
+- Modified files: 8
+- New code lines: 2000+
+- Pages: 7
+
+See detailed changelog: docs/CHANGELOG_2026-02-13.md
+

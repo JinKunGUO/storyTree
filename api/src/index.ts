@@ -13,6 +13,7 @@ import userRoutes from './routes/users';
 import uploadRoutes from './routes/upload';
 import searchRoutes from './routes/search';
 import notificationRoutes from './routes/notifications';
+import commentRoutes from './routes/comments';
 
 dotenv.config();
 
@@ -28,7 +29,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 // 静态文件服务 - 提供前端页面
 app.use(express.static(path.join(__dirname, '../../web')));
 
-// Routes
+// Routes - 必须在通配符路由之前
 app.use('/api/auth', authRoutes);
 app.use('/api/stories', storyRoutes);
 app.use('/api/nodes', nodeRoutes);
@@ -38,6 +39,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/comments', commentRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -70,6 +72,28 @@ app.get('/api/version', (req, res) => {
   } catch (error) {
     res.status(500).json({ error: 'Failed to read version info' });
   }
+});
+
+// SPA路由 - 必须放在最后，处理HTML5路由
+app.get('*', (req, res) => {
+    if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ error: 'API not found' });
+    }
+    
+    // 检查请求的路径（不带扩展名）
+    const requestedPath = req.path.slice(1); // 去掉开头的 /
+    const possiblePages = ['register', 'login', 'create', 'discover', 'profile', 'admin'];
+    
+    // 如果请求的是这些页面之一，提供对应的HTML文件
+    if (possiblePages.includes(requestedPath)) {
+        const filePath = path.join(__dirname, '../../web', `${requestedPath}.html`);
+        if (fs.existsSync(filePath)) {
+            return res.sendFile(filePath);
+        }
+    }
+    
+    // 默认提供index.html
+    res.sendFile(path.join(__dirname, '../../web/index.html'));
 });
 
 const PORT = process.env.PORT || 3001;
