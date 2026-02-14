@@ -1,0 +1,55 @@
+feat: Complete M3 phase development v1.0.11
+
+🎉 M3阶段功能完成 - 评论系统、故事详情、章节阅读
+
+New Features:
+- ✅ Comment system frontend UI (comments.js)
+  - Tree structure comment display
+  - Post and reply to comments
+  - Edit and delete comments
+  - Pagination support
+  - Real-time character count
+  - Message notification system
+
+- ✅ Story detail page (story.html)
+  - Story cover and basic information
+  - Statistics (views, likes, chapters, word count)
+  - Chapter list with sorting
+  - Author information
+  - Start reading, bookmark, share buttons
+  - Responsive design
+
+- ✅ Chapter reading page (chapter.html)
+  - Immersive reading interface
+  - Chapter content display
+  - Previous/Next chapter navigation
+  - Reading settings (font size adjustment)
+  - Integrated comment section
+  - Reading progress save
+  - Responsive design
+
+Improvements:
+- 🔧 Update routing configuration
+  - Add story and chapter page routes
+  - Fix discover page story link path
+  - Optimize page navigation logic
+
+- 📚 Documentation
+  - Create M3 feature test guide
+  - Create quick start guide for M3
+  - Update version to v1.0.11
+
+Technical Details:
+- New files: 6 (comments.js, story.html, chapter.html, 3 docs)
+- Modified files: 3 (discover.html, index.ts, VERSION.json)
+- New code: ~2500+ lines
+- Total frontend pages: 10
+
+Testing:
+- ✅ All features tested and working
+- ✅ Responsive design verified
+- ✅ API integration confirmed
+- ✅ No lint errors
+
+See: docs/M3_FEATURE_TEST.md, docs/QUICK_START_M3.md
+

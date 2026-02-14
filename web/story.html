@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>故事详情 - StoryTree</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding-top: 80px;
+        }
+
+        .story-detail-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        /* 故事头部 */
+        .story-header {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .story-header-content {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 30px;
+        }
+
+        .story-cover {
+            width: 200px;
+            height: 280px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .story-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .story-info {
+            flex: 1;
+        }
+
+        .story-title {
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .story-meta {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .meta-item i {
+            color: #667eea;
+        }
+
+        .story-tags {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            background: #f0f0f0;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .story-description {
+            color: #666;
+            line-height: 1.8;
+            margin-bottom: 20px;
+        }
+
+        .story-stats {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .story-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border-radius: 25px;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        /* 作者信息 */
+        .author-section {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .author-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .author-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            overflow: hidden;
+        }
+
+        .author-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .author-details {
+            flex: 1;
+        }
+
+        .author-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .author-stats {
+            font-size: 14px;
+            color: #999;
+        }
+
+        .btn-follow {
+            padding: 8px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-follow:hover {
+            background: #764ba2;
+        }
+
+        /* 章节列表 */
+        .chapters-section {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .chapter-sort {
+            display: flex;
+            gap: 10px;
+        }
+
+        .sort-btn {
+            padding: 8px 15px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .sort-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .chapters-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .chapter-item {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .chapter-item:hover {
+            background: #f0f0f0;
+            transform: translateX(5px);
+        }
+
+        .chapter-number {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 20px;
+        }
+
+        .chapter-info {
+            flex: 1;
+        }
+
+        .chapter-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .chapter-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 14px;
+            color: #999;
+        }
+
+        .chapter-status {
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 12px;
+        }
+
+        .status-published {
+            background: #e8f5e9;
+            color: #4caf50;
+        }
+
+        .status-draft {
+            background: #fff3e0;
+            color: #ff9800;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state i {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        /* 加载状态 */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .loading i {
+            font-size: 32px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .story-header-content {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+
+            .story-cover {
+                margin: 0 auto;
+            }
+
+            .story-meta,
+            .story-stats,
+            .story-actions {
+                justify-content: center;
+            }
+
+            .story-title {
+                font-size: 24px;
+            }
+
+            .chapter-number {
+                width: 40px;
+                height: 40px;
+                margin-right: 15px;
+            }
+
+            .chapter-title {
+                font-size: 16px;
+            }
+        }
+
+        /* 消息提示 */
+        .message {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            background: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .message-success {
+            border-left: 4px solid #4caf50;
+        }
+
+        .message-error {
+            border-left: 4px solid #f44336;
+        }
+
+        .message i {
+            font-size: 20px;
+        }
+
+        .message-success i {
+            color: #4caf50;
+        }
+
+        .message-error i {
+            color: #f44336;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .fade-out {
+            animation: fadeOut 0.3s ease-out forwards;
+        }
+
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+                transform: translateX(400px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <i class="fas fa-tree"></i>
+                StoryTree
+            </a>
+            <ul class="nav-menu" id="navMenu">
+                <li><a href="/">首页</a></li>
+                <li><a href="/discover">发现</a></li>
+                <li><a href="/create">创作</a></li>
+                <li><a href="/profile" id="profileLink" style="display: none;">个人中心</a></li>
+                <li><a href="/login" id="loginLink">登录</a></li>
+                <li><a href="#" id="logoutLink" style="display: none;">退出</a></li>
+            </ul>
+            <div class="hamburger" id="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 故事详情 -->
+    <div class="story-detail-container">
+        <!-- 加载状态 -->
+        <div id="loadingState" class="loading">
+            <i class="fas fa-spinner"></i>
+            <p>加载中...</p>
+        </div>
+
+        <!-- 故事内容 -->
+        <div id="storyContent" style="display: none;">
+            <!-- 故事头部 -->
+            <div class="story-header">
+                <div class="story-header-content">
+                    <div class="story-cover">
+                        <img id="storyCover" src="/assets/default-cover.jpg" alt="故事封面">
+                    </div>
+                    <div class="story-info">
+                        <h1 class="story-title" id="storyTitle">故事标题</h1>
+                        <div class="story-meta">
+                            <div class="meta-item">
+                                <i class="fas fa-user"></i>
+                                <span id="storyAuthor">作者</span>
+                            </div>
+                            <div class="meta-item">
+                                <i class="fas fa-calendar"></i>
+                                <span id="storyDate">创建时间</span>
+                            </div>
+                            <div class="meta-item">
+                                <i class="fas fa-tag"></i>
+                                <span id="storyGenre">类型</span>
+                            </div>
+                        </div>
+                        <div class="story-tags" id="storyTags"></div>
+                        <p class="story-description" id="storyDescription">故事简介...</p>
+                        <div class="story-stats">
+                            <div class="stat-item">
+                                <div class="stat-value" id="viewCount">0</div>
+                                <div class="stat-label">阅读量</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="likeCount">0</div>
+                                <div class="stat-label">点赞数</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="chapterCount">0</div>
+                                <div class="stat-label">章节数</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="wordCount">0</div>
+                                <div class="stat-label">字数</div>
+                            </div>
+                        </div>
+                        <div class="story-actions">
+                            <button class="btn btn-primary" id="startReadBtn">
+                                <i class="fas fa-book-open"></i>
+                                开始阅读
+                            </button>
+                            <button class="btn btn-secondary" id="likeBtn">
+                                <i class="far fa-heart"></i>
+                                收藏
+                            </button>
+                            <button class="btn btn-secondary" id="shareBtn">
+                                <i class="fas fa-share-alt"></i>
+                                分享
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 作者信息 -->
+            <div class="author-section">
+                <div class="author-info">
+                    <div class="author-avatar">
+                        <img id="authorAvatar" src="/assets/default-avatar.png" alt="作者头像">
+                    </div>
+                    <div class="author-details">
+                        <div class="author-name" id="authorName">作者名称</div>
+                        <div class="author-stats">
+                            <span id="authorStories">0</span> 部作品 · 
+                            <span id="authorFollowers">0</span> 关注者
+                        </div>
+                    </div>
+                    <button class="btn-follow" id="followBtn">
+                        <i class="fas fa-plus"></i> 关注
+                    </button>
+                </div>
+            </div>
+
+            <!-- 章节列表 -->
+            <div class="chapters-section">
+                <div class="section-header">
+                    <h2 class="section-title">章节目录</h2>
+                    <div class="chapter-sort">
+                        <button class="sort-btn active" data-sort="asc">正序</button>
+                        <button class="sort-btn" data-sort="desc">倒序</button>
+                    </div>
+                </div>
+                <div class="chapters-list" id="chaptersList">
+                    <!-- 章节列表将在这里动态加载 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script>
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthStatus();
+            loadStoryDetail();
+
+            // 汉堡菜单
+            const hamburger = document.getElementById('hamburger');
+            const navMenu = document.getElementById('navMenu');
+            hamburger?.addEventListener('click', () => {
+                navMenu?.classList.toggle('active');
+            });
+        });
+
+        // 加载故事详情
+        async function loadStoryDetail() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const storyId = urlParams.get('id');
+
+            if (!storyId) {
+                showError('故事ID不存在');
+                window.location.href = '/discover';
+                return;
+            }
+
+            try {
+                // 加载故事信息
+                const response = await fetch(`/api/stories/${storyId}`);
+                if (!response.ok) {
+                    throw new Error('加载故事失败');
+                }
+
+                const story = await response.json();
+                renderStory(story);
+
+                // 加载章节列表
+                await loadChapters(storyId);
+
+                // 隐藏加载状态，显示内容
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('storyContent').style.display = 'block';
+
+            } catch (error) {
+                console.error('加载故事错误:', error);
+                showError('加载失败，请稍后重试');
+            }
+        }
+
+        // 渲染故事信息
+        function renderStory(story) {
+            document.getElementById('storyTitle').textContent = story.title;
+            document.getElementById('storyAuthor').textContent = story.author?.username || '未知作者';
+            document.getElementById('storyDate').textContent = new Date(story.createdAt).toLocaleDateString('zh-CN');
+            document.getElementById('storyGenre').textContent = story.genre || '未分类';
+            document.getElementById('storyDescription').textContent = story.description || '暂无简介';
+            
+            // 统计数据
+            document.getElementById('viewCount').textContent = story.views || 0;
+            document.getElementById('likeCount').textContent = story.likes || 0;
+            document.getElementById('chapterCount').textContent = story.nodeCount || 0;
+            document.getElementById('wordCount').textContent = calculateWordCount(story);
+
+            // 封面图片
+            if (story.coverImage) {
+                document.getElementById('storyCover').src = story.coverImage;
+            }
+
+            // 作者信息
+            if (story.author) {
+                document.getElementById('authorName').textContent = story.author.username;
+                if (story.author.avatar) {
+                    document.getElementById('authorAvatar').src = story.author.avatar;
+                }
+            }
+
+            // 开始阅读按钮
+            document.getElementById('startReadBtn').addEventListener('click', () => {
+                const firstChapter = document.querySelector('.chapter-item');
+                if (firstChapter) {
+                    firstChapter.click();
+                }
+            });
+        }
+
+        // 加载章节列表
+        async function loadChapters(storyId) {
+            try {
+                const response = await fetch(`/api/stories/${storyId}/nodes`);
+                if (!response.ok) {
+                    throw new Error('加载章节失败');
+                }
+
+                const chapters = await response.json();
+                renderChapters(chapters);
+
+                // 排序按钮
+                document.querySelectorAll('.sort-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+                        this.classList.add('active');
+                        
+                        const sortOrder = this.dataset.sort;
+                        const sortedChapters = sortOrder === 'asc' ? chapters : [...chapters].reverse();
+                        renderChapters(sortedChapters);
+                    });
+                });
+
+            } catch (error) {
+                console.error('加载章节错误:', error);
+                showError('加载章节失败');
+            }
+        }
+
+        // 渲染章节列表
+        function renderChapters(chapters) {
+            const container = document.getElementById('chaptersList');
+            
+            if (chapters.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-book"></i>
+                        <p>还没有章节</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = chapters.map((chapter, index) => `
+                <div class="chapter-item" data-chapter-id="${chapter.id}">
+                    <div class="chapter-number">${index + 1}</div>
+                    <div class="chapter-info">
+                        <div class="chapter-title">${chapter.title}</div>
+                        <div class="chapter-meta">
+                            <span><i class="fas fa-eye"></i> ${chapter.views || 0} 阅读</span>
+                            <span><i class="fas fa-comment"></i> ${chapter.commentCount || 0} 评论</span>
+                            <span><i class="fas fa-clock"></i> ${new Date(chapter.createdAt).toLocaleDateString('zh-CN')}</span>
+                        </div>
+                    </div>
+                    <div class="chapter-status ${chapter.isPublished ? 'status-published' : 'status-draft'}">
+                        ${chapter.isPublished ? '已发布' : '草稿'}
+                    </div>
+                </div>
+            `).join('');
+
+            // 添加点击事件
+            container.querySelectorAll('.chapter-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const chapterId = this.dataset.chapterId;
+                    window.location.href = `/chapter?id=${chapterId}`;
+                });
+            });
+        }
+
+        // 计算总字数
+        function calculateWordCount(story) {
+            // 这里应该从后端获取实际字数
+            return story.wordCount || 0;
+        }
+
+        // 显示错误消息
+        function showError(message) {
+            showMessage(message, 'error');
+        }
+
+        // 显示成功消息
+        function showSuccess(message) {
+            showMessage(message, 'success');
+        }
+
+        // 显示消息
+        function showMessage(message, type = 'info') {
+            const messageEl = document.createElement('div');
+            messageEl.className = `message message-${type}`;
+            messageEl.innerHTML = `
+                <i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'}"></i>
+                <span>${message}</span>
+            `;
+
+            document.body.appendChild(messageEl);
+
+            setTimeout(() => {
+                messageEl.classList.add('fade-out');
+                setTimeout(() => messageEl.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
+

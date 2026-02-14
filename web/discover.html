@@ -335,10 +335,10 @@
             }
 
             const storiesHTML = stories.map(story => `
-                <div class="story-card" onclick="window.location.href='/story/${story.id}'">
+                <div class="story-card" onclick="window.location.href='/story?id=${story.id}'">
                     <div class="story-cover">
                         <i class="fas fa-book-open"></i>
-                        <span class="story-badge">${story._count.nodes} 章节</span>
+                        <span class="story-badge">${story._count?.nodes || 0} 章节</span>
                     </div>
                     <div class="story-content">
                         <div class="story-title">${escapeHtml(story.title)}</div>
@@ -346,11 +346,11 @@
                         <div class="story-meta">
                             <div class="story-author">
                                 <i class="fas fa-user-circle"></i>
-                                <span>${escapeHtml(story.author.username)}</span>
+                                <span>${escapeHtml(story.author?.username || '未知作者')}</span>
                             </div>
                             <div class="story-stats">
                                 <span><i class="fas fa-eye"></i> ${story.views || 0}</span>
-                                <span><i class="fas fa-heart"></i> ${story._count.likes || 0}</span>
+                                <span><i class="fas fa-heart"></i> ${story._count?.likes || 0}</span>
                             </div>
                         </div>
                     </div>
