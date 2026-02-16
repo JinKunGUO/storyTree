@@ -141,7 +141,11 @@ class CommentSystem {
         // 发表评论
         const submitBtn = document.getElementById('submit-comment');
         if (submitBtn) {
-            submitBtn.addEventListener('click', () => this.submitComment());
+            submitBtn.addEventListener('click', (e) => {
+                e.preventDefault(); // 阻止默认行为
+                e.stopPropagation(); // 阻止事件冒泡
+                this.submitComment();
+            });
         }
 
         // 事件委托处理评论操作
@@ -204,10 +208,10 @@ class CommentSystem {
             return;
         }
 
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
         if (!token) {
-            this.showError('请先登录');
-            window.location.href = '/login';
+            this.showError('请先登录再发表评论');
+            // 不自动跳转，让用户自己决定是否登录
             return;
         }
 
@@ -271,10 +275,10 @@ class CommentSystem {
             return;
         }
 
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
         if (!token) {
-            this.showError('请先登录');
-            window.location.href = '/login';
+            this.showError('请先登录再回复评论');
+            // 不自动跳转，让用户自己决定是否登录
             return;
         }
 

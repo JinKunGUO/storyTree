@@ -656,8 +656,15 @@
                     throw new Error('加载章节失败');
                 }
 
-                currentChapter = await response.json();
+                const data = await response.json();
+                console.log('章节API返回数据:', data);
+                
+                // API返回的是 {node: {...}} 结构
+                currentChapter = data.node;
                 storyId = currentChapter.storyId;
+                
+                console.log('当前章节:', currentChapter);
+                console.log('故事ID:', storyId);
                 
                 renderChapter(currentChapter);
                 
@@ -702,10 +709,21 @@
         // 加载章节导航
         async function loadChapterNavigation(storyId, currentChapterId) {
             try {
-                const response = await fetch(`/api/stories/${storyId}/nodes`);
-                if (!response.ok) return;
+                console.log('加载章节导航, storyId:', storyId);
+                const response = await fetch(`/api/stories/${storyId}`);
+                
+                console.log('故事API响应状态:', response.status);
+                
+                if (!response.ok) {
+                    console.error('加载故事失败:', response.status);
+                    return;
+                }
 
-                const chapters = await response.json();
+                const data = await response.json();
+                console.log('故事API返回数据:', data);
+                
+                // API返回 {story: {...}, nodes: [...]}
+                const chapters = data.nodes;
                 const currentIndex = chapters.findIndex(c => c.id === parseInt(currentChapterId));
 
                 // 上一章

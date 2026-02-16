@@ -369,17 +369,35 @@
             try {
                 const token = localStorage.getItem('token') || sessionStorage.getItem('token');
                 
+                console.log('开始加载用户信息...');
+                console.log('Token存在:', !!token);
+                console.log('Token长度:', token ? token.length : 0);
+                
+                if (!token) {
+                    console.error('Token不存在，跳转到登录页');
+                    window.location.href = '/login?redirect=/profile';
+                    return;
+                }
+                
+                console.log('请求 /api/auth/me...');
                 const response = await fetch('/api/auth/me', {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
                 });
 
+                console.log('API响应状态:', response.status);
+                console.log('响应Content-Type:', response.headers.get('content-type'));
+
                 if (!response.ok) {
-                    throw new Error('获取用户信息失败');
+                    const errorData = await response.json().catch(() => ({ error: '未知错误' }));
+                    console.error('API错误:', errorData);
+                    throw new Error(errorData.error || '获取用户信息失败');
                 }
 
                 const data = await response.json();
+                console.log('用户信息:', data);
+                
                 currentUser = data.user;
                 
                 displayUserProfile(data.user);
@@ -426,20 +444,36 @@
             try {
                 const token = localStorage.getItem('token') || sessionStorage.getItem('token');
                 
-                const response = await fetch(`/api/users/${userId}/stats`, {
+                console.log('开始加载用户统计, userId:', userId);
+                
+                // 使用 /api/users/:id 获取用户信息（包含_count）
+                const response = await fetch(`/api/users/${userId}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
                 });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    document.getElementById('storyCount').textContent = data.stats.storyCount || 0;
-                    document.getElementById('nodeCount').textContent = data.stats.nodeCount || 0;
-                    document.getElementById('likeCount').textContent = data.stats.totalLikes || 0;
-                    document.getElementById('viewCount').textContent = data.stats.totalViews || 0;
+                console.log('用户统计API响应状态:', response.status);
+
+                if (!response.ok) {
+                    console.error('加载用户统计失败:', response.status);
+                    return;
                 }
+                
+                const data = await response.json();
+                console.log('用户统计数据:', data);
+                
+                // 从_count中提取统计数据
+                const storyCount = data.user?._count?.stories || 0;
+                const nodeCount = data.user?._count?.nodes || 0;
+                
+                document.getElementById('storyCount').textContent = storyCount;
+                document.getElementById('nodeCount').textContent = nodeCount;
+                
+                // 点赞数和浏览量需要从故事中计算，先显示为0
+                // 这些数据会在loadUserStories中更新
+                document.getElementById('likeCount').textContent = 0;
+                document.getElementById('viewCount').textContent = 0;
             } catch (error) {
                 console.error('加载统计数据错误:', error);
             }
@@ -450,17 +484,28 @@
             try {
                 const token = localStorage.getItem('token') || sessionStorage.getItem('token');
                 
+                console.log('开始加载用户故事, userId:', userId);
+                console.log('请求 /api/users/' + userId + '/stories');
+                
                 const response = await fetch(`/api/users/${userId}/stories`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
                 });
 
+                console.log('故事API响应状态:', response.status);
+                console.log('故事API响应Content-Type:', response.headers.get('content-type'));
+
                 if (!response.ok) {
-                    throw new Error('加载故事失败');
+                    const errorText = await response.text();
+                    console.error('故事API错误响应:', errorText);
+                    throw new Error('加载故事失败: ' + response.status);
                 }
 
                 const data = await response.json();
+                console.log('故事API返回数据:', data);
+                console.log('故事数量:', data.stories?.length || 0);
+                
                 displayUserStories(data.stories);
             } catch (error) {
                 console.error('加载故事错误:', error);
@@ -472,29 +517,52 @@
         function displayUserStories(stories) {
             const storiesList = document.getElementById('storiesList');
             
+            console.log('收到的故事数据:', stories);
+            
             if (!stories || stories.length === 0) {
                 showEmptyStories();
                 return;
             }
 
-            const storiesHTML = stories.map(story => `
-                <div class="story-item" onclick="window.location.href='/story/${story.id}'">
-                    <div class="story-icon">
-                        <i class="fas fa-book-open"></i>
-                    </div>
-                    <div class="story-details">
-                        <div class="story-title">${escapeHtml(story.title)}</div>
-                        <div class="story-meta">
-                            <span><i class="fas fa-file-alt"></i> ${story._count.nodes} 章节</span>
-                            <span><i class="fas fa-heart"></i> ${story._count.likes || 0} 点赞</span>
-                            <span><i class="fas fa-eye"></i> ${story.views || 0} 浏览</span>
-                            <span><i class="fas fa-clock"></i> ${formatDate(story.createdAt)}</span>
+            // 计算总的点赞数和浏览量
+            let totalLikes = 0;
+            let totalViews = 0;
+
+            const storiesHTML = stories.map(story => {
+                // 安全地获取章节数
+                const nodeCount = story._count?.nodes || story.nodes?.length || 0;
+                
+                // 安全地获取统计数据
+                const likeCount = story._count?.likes || 0;
+                const viewCount = story.views || 0;
+                
+                // 累加到总数
+                totalLikes += likeCount;
+                totalViews += viewCount;
+                
+                return `
+                    <div class="story-item" onclick="window.location.href='/story?id=${story.id}'">
+                        <div class="story-icon">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                        <div class="story-details">
+                            <div class="story-title">${escapeHtml(story.title)}</div>
+                            <div class="story-meta">
+                                <span><i class="fas fa-file-alt"></i> ${nodeCount} 章节</span>
+                                <span><i class="fas fa-heart"></i> ${likeCount} 点赞</span>
+                                <span><i class="fas fa-eye"></i> ${viewCount} 浏览</span>
+                                <span><i class="fas fa-clock"></i> ${formatDate(story.createdAt)}</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
 
             storiesList.innerHTML = storiesHTML;
+            
+            // 更新统计卡片中的总点赞数和总浏览量
+            document.getElementById('likeCount').textContent = totalLikes;
+            document.getElementById('viewCount').textContent = totalViews;
         }
 
         // 显示空状态
