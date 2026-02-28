@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../index';
 import { needsReview } from '../utils/sensitiveWords';
+import { authenticateToken, getUserId } from '../utils/middleware';
 
 const router = Router();
 
@@ -8,10 +9,132 @@ const router = Router();
 const reportLimit = new Map<string, { count: number; date: string }>();
 const MAX_REPORTS_PER_DAY = 10;
 
-const getUserId = (req: any): number | null => {
-  const userId = req.headers['x-user-id'];
-  return userId ? parseInt(userId as string) : null;
-};
+// Create node (first node or branch)
+router.post('/', authenticateToken, async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { storyId, parentId, title, content, image, path } = req.body;
+
+  if (!storyId || !title || !content) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  try {
+    // 验证故事是否存在
+    const story = await prisma.story.findUnique({
+      where: { id: parseInt(storyId) }
+    });
+
+    if (!story) {
+      return res.status(404).json({ error: 'Story not found' });
+    }
+
+    // 检查用户已发布节点数
+    const userNodeCount = await prisma.node.count({
+      where: { authorId: userId }
+    });
+
+    // 审核检查
+    const reviewCheck = needsReview(content, userNodeCount);
+
+    // 如果是第一个节点（没有parentId）
+    if (!parentId) {
+      // 检查故事是否已有根节点
+      const existingRoot = await prisma.node.findFirst({
+        where: {
+          storyId: parseInt(storyId),
+          parentId: null
+        }
+      });
+
+      if (existingRoot) {
+        return res.status(400).json({ error: '该故事已有第一章，请使用分支功能添加新章节' });
+      }
+
+      // 创建第一个节点
+      const node = await prisma.node.create({
+        data: {
+          storyId: parseInt(storyId),
+          parentId: null,
+          authorId: userId,
+          title,
+          content,
+          image: image || null,
+          path: path || '1',
+          reviewStatus: reviewCheck.needReview ? 'PENDING' : 'APPROVED'
+        },
+        include: {
+          author: {
+            select: { id: true, username: true }
+          },
+          story: {
+            select: { id: true, title: true }
+          }
+        }
+      });
+
+      // 更新故事的rootNodeId
+      await prisma.story.update({
+        where: { id: parseInt(storyId) },
+        data: { rootNodeId: node.id }
+      });
+
+      return res.json({
+        node,
+        reviewStatus: reviewCheck.needReview ? 'pending' : 'approved',
+        message: reviewCheck.needReview ? `内容需要审核：${reviewCheck.reason}` : '第一章创建成功'
+      });
+    }
+
+    // 如果有parentId，创建分支
+    const parentNode = await prisma.node.findUnique({
+      where: { id: parseInt(parentId) }
+    });
+
+    if (!parentNode) {
+      return res.status(404).json({ error: 'Parent node not found' });
+    }
+
+    // 生成路径
+    const siblingCount = await prisma.node.count({
+      where: { parentId: parseInt(parentId) }
+    });
+    const newPath = path || `${parentNode.path}.${siblingCount + 1}`;
+
+    const node = await prisma.node.create({
+      data: {
+        storyId: parseInt(storyId),
+        parentId: parseInt(parentId),
+        authorId: userId,
+        title,
+        content,
+        image: image || null,
+        path: newPath,
+        reviewStatus: reviewCheck.needReview ? 'PENDING' : 'APPROVED'
+      },
+      include: {
+        author: {
+          select: { id: true, username: true }
+        },
+        story: {
+          select: { id: true, title: true }
+        }
+      }
+    });
+
+    res.json({
+      node,
+      reviewStatus: reviewCheck.needReview ? 'pending' : 'approved',
+      message: reviewCheck.needReview ? `内容需要审核：${reviewCheck.reason}` : '分支创建成功'
+    });
+  } catch (error) {
+    console.error('创建节点错误:', error);
+    res.status(500).json({ error: 'Failed to create node' });
+  }
+});
 
 // Get node details with branches
 router.get('/:id', async (req, res) => {
@@ -86,7 +209,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create branch
-router.post('/:id/branches', async (req, res) => {
+router.post('/:id/branches', authenticateToken, async (req, res) => {
   const userId = getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });

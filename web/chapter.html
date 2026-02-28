@@ -509,6 +509,167 @@
                 transform: translateX(400px);
             }
         }
+
+        /* 编辑模态框 */
+        .edit-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .edit-modal.active {
+            display: flex;
+        }
+
+        .edit-modal-content {
+            background: white;
+            border-radius: 20px;
+            max-width: 900px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .edit-modal-header {
+            padding: 30px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .edit-modal-header h2 {
+            font-size: 24px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .edit-modal-header h2 i {
+            color: #667eea;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 32px;
+            color: #999;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .close-btn:hover {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .edit-modal-body {
+            padding: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group textarea {
+            min-height: 400px;
+            resize: vertical;
+            font-family: inherit;
+            line-height: 1.8;
+        }
+
+        .form-hint {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .edit-modal-footer {
+            padding: 20px 30px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+        }
+
+        .btn-cancel,
+        .btn-save {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .btn-cancel {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .btn-cancel:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-save {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-save:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
     </style>
 </head>
 <body>
@@ -528,6 +689,9 @@
             </div>
         </div>
         <div class="toolbar-right">
+            <button class="toolbar-btn" id="editChapterBtn" style="display: none;" title="编辑章节">
+                <i class="fas fa-edit"></i>
+            </button>
             <button class="toolbar-btn" id="settingsBtn" title="阅读设置">
                 <i class="fas fa-cog"></i>
             </button>
@@ -618,6 +782,52 @@
         </div>
     </div>
 
+    <!-- 编辑章节模态框 -->
+    <div class="edit-modal" id="editModal">
+        <div class="edit-modal-content">
+            <div class="edit-modal-header">
+                <h2>
+                    <i class="fas fa-edit"></i>
+                    编辑章节
+                </h2>
+                <button class="close-btn" id="closeEditModal">×</button>
+            </div>
+            <div class="edit-modal-body">
+                <form id="editChapterForm">
+                    <div class="form-group">
+                        <label for="editChapterTitle">章节标题 *</label>
+                        <input 
+                            type="text" 
+                            id="editChapterTitle" 
+                            name="title" 
+                            required 
+                            placeholder="输入章节标题"
+                            maxlength="100"
+                        >
+                        <div class="form-hint">最多100个字符</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editChapterContent">章节内容 *</label>
+                        <textarea 
+                            id="editChapterContent" 
+                            name="content" 
+                            required 
+                            placeholder="输入章节内容..."
+                        ></textarea>
+                        <div class="form-hint">
+                            当前字数: <span id="contentWordCount">0</span> 字
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="edit-modal-footer">
+                <button class="btn-cancel" id="cancelEdit">取消</button>
+                <button class="btn-save" id="saveEdit">保存修改</button>
+            </div>
+        </div>
+    </div>
+
     <script src="auth.js"></script>
     <script src="comments.js"></script>
     <script>
@@ -630,6 +840,7 @@
             checkAuthStatus();
             loadChapter();
             initSettings();
+            initEditFeature(); // 初始化编辑功能
 
             // 字符计数
             const commentInput = document.getElementById('comment-input');
@@ -704,6 +915,186 @@
 
             // 更新页面标题
             document.title = `${chapter.title} - StoryTree`;
+
+            // 检查是否是作者
+            checkIfAuthor(chapter);
+        }
+
+        // 检查是否是作者
+        async function checkIfAuthor(chapter) {
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                if (!token) {
+                    console.log('未登录，不显示编辑按钮');
+                    return;
+                }
+
+                // 获取当前用户信息
+                const response = await fetch('/api/auth/me', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    console.log('获取用户信息失败');
+                    return;
+                }
+
+                const userData = await response.json();
+                console.log('当前用户:', userData.user);
+                console.log('章节作者ID:', chapter.authorId);
+
+                // 比对用户ID
+                if (userData.user && userData.user.id === chapter.authorId) {
+                    console.log('✅ 是作者，显示编辑按钮');
+                    document.getElementById('editChapterBtn').style.display = 'block';
+                } else {
+                    console.log('❌ 不是作者，不显示编辑按钮');
+                }
+
+            } catch (error) {
+                console.error('检查作者权限错误:', error);
+            }
+        }
+
+        // 打开编辑模态框
+        function openEditModal() {
+            if (!currentChapter) return;
+
+            const modal = document.getElementById('editModal');
+            const titleInput = document.getElementById('editChapterTitle');
+            const contentInput = document.getElementById('editChapterContent');
+            const wordCount = document.getElementById('contentWordCount');
+
+            // 填充当前数据
+            titleInput.value = currentChapter.title || '';
+            contentInput.value = currentChapter.content || '';
+            wordCount.textContent = (currentChapter.content || '').length;
+
+            // 显示模态框
+            modal.classList.add('active');
+
+            // 聚焦到标题输入框
+            setTimeout(() => titleInput.focus(), 100);
+        }
+
+        // 关闭编辑模态框
+        function closeEditModal() {
+            const modal = document.getElementById('editModal');
+            modal.classList.remove('active');
+        }
+
+        // 保存编辑
+        async function saveChapterEdit() {
+            const titleInput = document.getElementById('editChapterTitle');
+            const contentInput = document.getElementById('editChapterContent');
+            const saveBtn = document.getElementById('saveEdit');
+
+            const title = titleInput.value.trim();
+            const content = contentInput.value.trim();
+
+            // 验证
+            if (!title) {
+                showError('请输入章节标题');
+                titleInput.focus();
+                return;
+            }
+
+            if (!content) {
+                showError('请输入章节内容');
+                contentInput.focus();
+                return;
+            }
+
+            try {
+                saveBtn.disabled = true;
+                saveBtn.textContent = '保存中...';
+
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                const response = await fetch(`/api/nodes/${currentChapter.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        title,
+                        content
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || '保存失败');
+                }
+
+                const data = await response.json();
+                console.log('保存成功:', data);
+
+                // 更新当前章节数据
+                currentChapter.title = title;
+                currentChapter.content = content;
+
+                // 重新渲染章节
+                renderChapter(currentChapter);
+
+                // 关闭模态框
+                closeEditModal();
+
+                // 显示成功消息
+                showSuccess('保存成功！');
+
+            } catch (error) {
+                console.error('保存失败:', error);
+                showError(error.message || '保存失败，请稍后重试');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = '保存修改';
+            }
+        }
+
+        // 初始化编辑功能
+        function initEditFeature() {
+            const editBtn = document.getElementById('editChapterBtn');
+            const closeBtn = document.getElementById('closeEditModal');
+            const cancelBtn = document.getElementById('cancelEdit');
+            const saveBtn = document.getElementById('saveEdit');
+            const contentInput = document.getElementById('editChapterContent');
+            const wordCount = document.getElementById('contentWordCount');
+
+            // 编辑按钮点击
+            editBtn?.addEventListener('click', openEditModal);
+
+            // 关闭按钮
+            closeBtn?.addEventListener('click', closeEditModal);
+            cancelBtn?.addEventListener('click', closeEditModal);
+
+            // 保存按钮
+            saveBtn?.addEventListener('click', saveChapterEdit);
+
+            // 字数统计
+            contentInput?.addEventListener('input', function() {
+                wordCount.textContent = this.value.length;
+            });
+
+            // 点击模态框外部关闭
+            document.getElementById('editModal')?.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeEditModal();
+                }
+            });
+
+            // ESC键关闭
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    const modal = document.getElementById('editModal');
+                    if (modal.classList.contains('active')) {
+                        closeEditModal();
+                    }
+                }
+            });
         }
 
         // 加载章节导航

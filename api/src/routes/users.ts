@@ -291,6 +291,11 @@ router.get('/:id/stories', async (req, res) => {
         author: {
           select: { id: true, username: true }
         },
+        _count: {
+          select: {
+            nodes: true
+          }
+        },
         nodes: {
           where: { parentId: null },
           take: 1,
@@ -308,7 +313,7 @@ router.get('/:id/stories', async (req, res) => {
 
     res.json({ stories });
   } catch (error) {
-    console.error(error);
+    console.error('获取用户故事错误:', error);
     res.status(500).json({ error: 'Failed to fetch user stories' });
   }
 });

@@ -421,10 +421,11 @@
                 if (response.ok) {
                     // 显示成功消息
                     document.getElementById('successMessage').style.display = 'block';
+                    document.getElementById('successMessage').innerHTML = '<i class="fas fa-check-circle"></i> 故事创建成功！正在跳转到撰写页面...';
                     
-                    // 跳转到故事详情页或添加章节页
+                    // 跳转到撰写页面
                     setTimeout(() => {
-                        window.location.href = `/story/${data.story.id}`;
+                        window.location.href = `/write?storyId=${data.story.id}`;
                     }, 1500);
                 } else {
                     alert(data.error || '创建失败，请重试');
@@ -448,4 +449,3 @@
     </script>
 </body>
 </html>
-

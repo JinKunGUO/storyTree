@@ -134,11 +134,32 @@ function handleRegister() {
             const data = await response.json();
             
             if (response.ok) {
+                console.log('注册成功，开始保存token');
+                console.log('Token:', data.token ? '存在 (长度: ' + data.token.length + ')' : '不存在');
+                console.log('User:', data.user ? data.user.username : '不存在');
+                
                 // 保存token到localStorage
-                localStorage.setItem('token', data.token);
-                localStorage.setItem('user', JSON.stringify(data.user));
+                try {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    console.log('✅ 已保存到localStorage');
+                    
+                    // 验证保存
+                    const savedToken = localStorage.getItem('token');
+                    if (savedToken) {
+                        console.log('✅ Token保存成功，验证通过');
+                    } else {
+                        console.error('❌ Token保存失败！');
+                        throw new Error('Token保存失败');
+                    }
+                } catch (e) {
+                    console.error('保存token错误:', e);
+                    alert('注册成功但保存失败，请检查浏览器设置（可能是隐私模式）');
+                    return;
+                }
                 
                 // 跳转到主页
+                console.log('准备跳转到首页');
                 window.location.href = '/';
             } else {
                 // 显示错误信息
@@ -213,17 +234,40 @@ function handleLogin() {
             const data = await response.json();
             
             if (response.ok) {
-                // 保存token到localStorage
-                if (rememberMe) {
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                } else {
-                    sessionStorage.setItem('token', data.token);
-                    sessionStorage.setItem('user', JSON.stringify(data.user));
+                console.log('登录成功，开始保存token');
+                console.log('Token:', data.token ? '存在 (长度: ' + data.token.length + ')' : '不存在');
+                console.log('User:', data.user ? data.user.username : '不存在');
+                console.log('记住我:', rememberMe);
+                
+                // 保存token到localStorage或sessionStorage
+                try {
+                    if (rememberMe) {
+                        localStorage.setItem('token', data.token);
+                        localStorage.setItem('user', JSON.stringify(data.user));
+                        console.log('✅ 已保存到localStorage');
+                    } else {
+                        sessionStorage.setItem('token', data.token);
+                        sessionStorage.setItem('user', JSON.stringify(data.user));
+                        console.log('✅ 已保存到sessionStorage');
+                    }
+                    
+                    // 验证保存
+                    const savedToken = localStorage.getItem('token') || sessionStorage.getItem('token');
+                    if (savedToken) {
+                        console.log('✅ Token保存成功，验证通过');
+                    } else {
+                        console.error('❌ Token保存失败！');
+                        throw new Error('Token保存失败');
+                    }
+                } catch (e) {
+                    console.error('保存token错误:', e);
+                    alert('登录成功但保存失败，请检查浏览器设置（可能是隐私模式）');
+                    return;
                 }
                 
                 // 跳转到主页或返回页面
                 const redirectUrl = new URLSearchParams(window.location.search).get('redirect') || '/';
+                console.log('准备跳转到:', redirectUrl);
                 window.location.href = redirectUrl;
             } else {
                 // 显示错误信息
@@ -286,4 +330,48 @@ if ('ontouchstart' in window) {
             }, 150);
         });
     });
+}
+
+// 检查登录状态
+function checkAuthStatus() {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || 'null');
+    
+    console.log('检查登录状态, token:', token ? '存在' : '不存在');
+    console.log('用户信息:', user);
+    
+    // 如果在需要登录的页面但未登录，跳转到登录页
+    const protectedPages = ['/create', '/write', '/profile', '/admin'];
+    const currentPath = window.location.pathname;
+    
+    if (protectedPages.includes(currentPath) && !token) {
+        console.log('未登录，跳转到登录页');
+        window.location.href = `/login?redirect=${encodeURIComponent(window.location.href)}`;
+        return false;
+    }
+    
+    // 更新导航栏用户信息
+    updateNavbar(user);
+    
+    return !!token;
+}
+
+// 更新导航栏显示
+function updateNavbar(user) {
+    const profileLink = document.getElementById('profileLink');
+    
+    if (user && profileLink) {
+        profileLink.innerHTML = `<i class="fas fa-user"></i> ${user.username}`;
+    }
+}
+
+// 退出登录
+function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
+    
+    console.log('已退出登录');
+    window.location.href = '/login';
 }

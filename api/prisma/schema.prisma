@@ -7,191 +7,151 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id       Int     @id @default(autoincrement())
-  username String  @unique
-  email    String  @unique
-  password String
-  avatar   String?
-  bio      String? // 个人简介
-  isAdmin  Boolean @default(false) @map("is_admin") // 是否为管理员
+model comments {
+  id             Int        @id @default(autoincrement())
+  content        String
+  node_id        Int
+  user_id        Int
+  parent_id      Int?
+  created_at     DateTime   @default(now())
+  updated_at     DateTime
+  comments       comments?  @relation("commentsTocomments", fields: [parent_id], references: [id])
+  other_comments comments[] @relation("commentsTocomments")
+  users          users      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  nodes          nodes      @relation(fields: [node_id], references: [id], onDelete: Cascade)
 
-  // 邮箱验证相关
-  emailVerified            Boolean   @default(false) @map("email_verified")
-  emailVerificationToken   String?   @map("email_verification_token")
-  emailVerificationExpires DateTime? @map("email_verification_expires")
-
-  // 密码重置相关
-  passwordResetToken   String?   @map("password_reset_token")
-  passwordResetExpires DateTime? @map("password_reset_expires")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  stories      Story[]
-  nodes        Node[]
-  ratings      Rating[]
-  reports      Report[] // 用户发起的举报
-  comments     Comment[] // 用户发表的评论
-  following    Follow[]       @relation("UserFollowing") // 我关注的人
-  followers    Follow[]       @relation("UserFollowers") // 关注我的人
-  Notification Notification[]
-
-  @@map("users")
+  @@index([created_at])
+  @@index([parent_id])
+  @@index([user_id])
+  @@index([node_id])
 }
 
-model Story {
-  id          Int      @id @default(autoincrement())
-  title       String
-  description String?
-  coverImage  String?  @map("cover_image") // 故事封面图片
-  authorId    Int      @map("author_id")
-  rootNodeId  Int?     @map("root_node_id")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+model follows {
+  id                                Int      @id @default(autoincrement())
+  follower_id                       Int
+  following_id                      Int
+  created_at                        DateTime @default(now())
+  users_follows_following_idTousers users    @relation("follows_following_idTousers", fields: [following_id], references: [id], onDelete: Cascade)
+  users_follows_follower_idTousers  users    @relation("follows_follower_idTousers", fields: [follower_id], references: [id], onDelete: Cascade)
 
-  author User   @relation(fields: [authorId], references: [id])
-  nodes  Node[]
-
-  @@map("stories")
+  @@unique([follower_id, following_id])
+  @@index([following_id])
+  @@index([follower_id])
 }
 
-// 审核状态说明（使用字符串）：
-// PENDING    - 待审核（新用户或疑似违规）
-// APPROVED   - 已通过
-// REJECTED   - 已驳回
-// HIDDEN     - 被举报下架
+model nodes {
+  id             Int        @id @default(autoincrement())
+  story_id       Int
+  parent_id      Int?
+  author_id      Int
+  title          String
+  content        String
+  image          String?
+  path           String
+  ai_generated   Boolean    @default(false)
+  rating_avg     Float      @default(0)
+  rating_count   Int        @default(0)
+  read_count     Int        @default(0)
+  review_status  String     @default("APPROVED")
+  report_count   Int        @default(0)
+  report_reasons String?
+  reviewed_by    Int?
+  reviewed_at    DateTime?
+  review_note    String?
+  created_at     DateTime   @default(now())
+  updated_at     DateTime
+  comments       comments[]
+  nodes          nodes?     @relation("nodesTonodes", fields: [parent_id], references: [id])
+  other_nodes    nodes[]    @relation("nodesTonodes")
+  users          users      @relation(fields: [author_id], references: [id])
+  stories        stories    @relation(fields: [story_id], references: [id], onDelete: Cascade)
+  ratings        ratings[]
+  reports        reports[]
 
-model Node {
-  id          Int     @id @default(autoincrement())
-  storyId     Int     @map("story_id")
-  parentId    Int?    @map("parent_id")
-  authorId    Int     @map("author_id")
-  title       String
-  content     String
-  image       String? // 章节配图
-  path        String
-  aiGenerated Boolean @default(false) @map("ai_generated")
-
-  // Rating stats
-  ratingAvg   Float @default(0) @map("rating_avg")
-  ratingCount Int   @default(0) @map("rating_count")
-  readCount   Int   @default(0) @map("read_count")
-
-  // 审核相关字段：PENDING, APPROVED, REJECTED, HIDDEN
-  reviewStatus  String    @default("APPROVED") @map("review_status")
-  reportCount   Int       @default(0) @map("report_count")
-  reportReasons String?   @map("report_reasons") // JSON存储举报原因
-  reviewedBy    Int?      @map("reviewed_by") // 审核员ID
-  reviewedAt    DateTime? @map("reviewed_at")
-  reviewNote    String?   @map("review_note") // 审核备注
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  story    Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
-  author   User      @relation(fields: [authorId], references: [id])
-  parent   Node?     @relation("NodeBranches", fields: [parentId], references: [id])
-  branches Node[]    @relation("NodeBranches")
-  ratings  Rating[]
-  comments Comment[] // 该节点的评论
-  Report   Report[]
-
-  @@index([storyId])
-  @@index([parentId])
+  @@index([review_status])
   @@index([path])
-  @@index([reviewStatus])
-  @@map("nodes")
+  @@index([parent_id])
+  @@index([story_id])
 }
 
-model Rating {
-  id        Int      @id @default(autoincrement())
-  nodeId    Int      @map("node_id")
-  userId    Int      @map("user_id")
-  score     Int // 1-5
-  createdAt DateTime @default(now()) @map("created_at")
+model notifications {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  type       String
+  title      String
+  content    String
+  link       String?
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now())
+  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  node Node @relation(fields: [nodeId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([nodeId, userId])
-  @@map("ratings")
+  @@index([is_read])
+  @@index([user_id])
 }
 
-// 举报表
-model Report {
+model ratings {
+  id         Int      @id @default(autoincrement())
+  node_id    Int
+  user_id    Int
+  score      Int
+  created_at DateTime @default(now())
+  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  nodes      nodes    @relation(fields: [node_id], references: [id], onDelete: Cascade)
+
+  @@unique([node_id, user_id])
+}
+
+model reports {
   id          Int       @id @default(autoincrement())
-  nodeId      Int       @map("node_id")
-  reporterId  Int       @map("reporter_id")
-  reason      String // spam, illegal, porn, violence, copyright, other
-  description String? // 详细说明
-  status      String    @default("pending") @map("status") // pending, resolved, dismissed
-  createdAt   DateTime  @default(now()) @map("created_at")
-  resolvedAt  DateTime? @map("resolved_at")
-  resolvedBy  Int?      @map("resolved_by")
+  node_id     Int
+  reporter_id Int
+  reason      String
+  description String?
+  status      String    @default("pending")
+  created_at  DateTime  @default(now())
+  resolved_at DateTime?
+  resolved_by Int?
+  users       users     @relation(fields: [reporter_id], references: [id], onDelete: Cascade)
+  nodes       nodes     @relation(fields: [node_id], references: [id], onDelete: Cascade)
 
-  node     Node @relation(fields: [nodeId], references: [id], onDelete: Cascade)
-  reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
-
-  @@index([nodeId])
-  @@index([reporterId])
-  @@map("reports")
+  @@index([reporter_id])
+  @@index([node_id])
 }
 
-// 关注关系表
-model Follow {
-  id          Int      @id @default(autoincrement())
-  followerId  Int      @map("follower_id") // 关注者
-  followingId Int      @map("following_id") // 被关注者
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  follower  User @relation("UserFollowing", fields: [followerId], references: [id], onDelete: Cascade)
-  following User @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
-
-  @@unique([followerId, followingId]) // 不能重复关注
-  @@index([followerId])
-  @@index([followingId])
-  @@map("follows")
+model stories {
+  id           Int      @id @default(autoincrement())
+  title        String
+  description  String?
+  cover_image  String?
+  author_id    Int
+  root_node_id Int?
+  created_at   DateTime @default(now())
+  updated_at   DateTime
+  nodes        nodes[]
+  users        users    @relation(fields: [author_id], references: [id])
 }
 
-// 通知表
-model Notification {
-  id        Int      @id @default(autoincrement())
-  userId    Int      @map("user_id") // 接收通知的用户
-  type      String // follow, review, story_update, etc.
-  title     String // 通知标题
-  content   String // 通知内容
-  link      String? // 相关链接（如节点ID）
-  isRead    Boolean  @default(false) @map("is_read")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([isRead])
-  @@map("notifications")
-}
-
-// 评论表
-model Comment {
-  id        Int      @id @default(autoincrement())
-  content   String
-  nodeId    Int      @map("node_id")
-  userId    Int      @map("user_id")
-  parentId  Int?     @map("parent_id") // 回复的评论ID
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // 关联关系
-  node    Node      @relation(fields: [nodeId], references: [id], onDelete: Cascade)
-  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
-  replies Comment[] @relation("CommentReplies")
-
-  // 索引优化
-  @@index([nodeId])
-  @@index([userId])
-  @@index([parentId])
-  @@index([createdAt])
-  @@map("comments")
+model users {
+  id                                  Int             @id @default(autoincrement())
+  username                            String          @unique
+  email                               String          @unique
+  password                            String
+  avatar                              String?
+  bio                                 String?
+  is_admin                            Boolean         @default(false)
+  email_verified                      Boolean         @default(false)
+  email_verification_token            String?
+  email_verification_expires          DateTime?
+  password_reset_token                String?
+  password_reset_expires              DateTime?
+  created_at                          DateTime        @default(now())
+  updated_at                          DateTime
+  comments                            comments[]
+  follows_follows_following_idTousers follows[]       @relation("follows_following_idTousers")
+  follows_follows_follower_idTousers  follows[]       @relation("follows_follower_idTousers")
+  nodes                               nodes[]
+  notifications                       notifications[]
+  ratings                             ratings[]
+  reports                             reports[]
+  stories                             stories[]
 }

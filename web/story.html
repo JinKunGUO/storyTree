@@ -445,6 +445,220 @@
                 transform: translateX(400px);
             }
         }
+
+        /* 编辑模态框 */
+        .edit-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .edit-modal.active {
+            display: flex;
+        }
+
+        .edit-modal-content {
+            background: white;
+            border-radius: 20px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .edit-modal-header {
+            padding: 30px 30px 20px;
+            border-bottom: 2px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .edit-modal-header h2 {
+            font-size: 24px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #999;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .close-btn:hover {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .edit-modal-body {
+            padding: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-hint {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .cover-upload {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .cover-preview {
+            width: 120px;
+            height: 168px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed #ddd;
+        }
+
+        .cover-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .cover-preview i {
+            font-size: 32px;
+            color: #ccc;
+        }
+
+        .cover-upload-btn {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .cover-upload-btn:hover {
+            background: #764ba2;
+        }
+
+        .edit-modal-footer {
+            padding: 20px 30px 30px;
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+        }
+
+        .btn-cancel {
+            padding: 12px 30px;
+            background: #f0f0f0;
+            color: #666;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 16px;
+        }
+
+        .btn-cancel:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-save {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-save:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
     </style>
 </head>
 <body>
@@ -528,6 +742,14 @@
                                 <i class="fas fa-book-open"></i>
                                 开始阅读
                             </button>
+                            <button class="btn btn-primary" id="writeChapterBtn" style="display: none;">
+                                <i class="fas fa-pen"></i>
+                                续写章节
+                            </button>
+                            <button class="btn btn-primary" id="editStoryBtn" style="display: none;">
+                                <i class="fas fa-edit"></i>
+                                编辑故事
+                            </button>
                             <button class="btn btn-secondary" id="likeBtn">
                                 <i class="far fa-heart"></i>
                                 收藏
@@ -576,6 +798,62 @@
         </div>
     </div>
 
+    <!-- 编辑故事模态框 -->
+    <div class="edit-modal" id="editModal">
+        <div class="edit-modal-content">
+            <div class="edit-modal-header">
+                <h2>
+                    <i class="fas fa-edit"></i>
+                    编辑故事信息
+                </h2>
+                <button class="close-btn" id="closeEditModal">×</button>
+            </div>
+            <div class="edit-modal-body">
+                <form id="editStoryForm">
+                    <div class="form-group">
+                        <label for="editTitle">故事标题 *</label>
+                        <input type="text" id="editTitle" name="title" required 
+                               placeholder="输入故事标题" maxlength="100">
+                        <div class="form-hint">最多100个字符</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editDescription">故事简介 *</label>
+                        <textarea id="editDescription" name="description" required 
+                                  placeholder="简要描述你的故事..." maxlength="500"></textarea>
+                        <div class="form-hint">最多500个字符</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>故事封面</label>
+                        <div class="cover-upload">
+                            <div class="cover-preview" id="editCoverPreview">
+                                <i class="fas fa-image"></i>
+                            </div>
+                            <div>
+                                <input type="file" id="editCoverInput" accept="image/*" style="display: none;">
+                                <button type="button" class="cover-upload-btn" id="editCoverBtn">
+                                    <i class="fas fa-upload"></i> 选择图片
+                                </button>
+                                <div class="form-hint" style="margin-top: 10px;">
+                                    支持 JPG、PNG 格式<br>
+                                    建议尺寸：400x560px
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="edit-modal-footer">
+                <button class="btn-cancel" id="cancelEdit">取消</button>
+                <button class="btn-save" id="saveEdit">
+                    <i class="fas fa-save"></i>
+                    保存修改
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="auth.js"></script>
     <script>
         // 页面初始化
@@ -596,6 +874,8 @@
             const urlParams = new URLSearchParams(window.location.search);
             const storyId = urlParams.get('id');
 
+            console.log('开始加载故事，ID:', storyId);
+
             if (!storyId) {
                 showError('故事ID不存在');
                 window.location.href = '/discover';
@@ -604,62 +884,274 @@
 
             try {
                 // 加载故事信息
+                console.log('正在请求API...');
                 const response = await fetch(`/api/stories/${storyId}`);
+                console.log('API响应状态:', response.status);
+                
                 if (!response.ok) {
                     throw new Error('加载故事失败');
                 }
 
-                const story = await response.json();
+                const data = await response.json();
+                console.log('API返回数据:', data);
+                
+                const story = data.story || data; // 兼容两种返回格式
+                const nodes = data.nodes || []; // 获取章节列表
+                
+                console.log('解析后的story:', story);
+                console.log('解析后的nodes:', nodes);
+                
                 renderStory(story);
+                renderChapters(nodes);
 
-                // 加载章节列表
-                await loadChapters(storyId);
+                // 排序按钮
+                document.querySelectorAll('.sort-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+                        this.classList.add('active');
+                        
+                        const sortOrder = this.dataset.sort;
+                        const sortedChapters = sortOrder === 'asc' ? nodes : [...nodes].reverse();
+                        renderChapters(sortedChapters);
+                    });
+                });
 
                 // 隐藏加载状态，显示内容
+                console.log('准备显示内容...');
                 document.getElementById('loadingState').style.display = 'none';
                 document.getElementById('storyContent').style.display = 'block';
+                console.log('内容已显示');
 
             } catch (error) {
                 console.error('加载故事错误:', error);
+                console.error('错误堆栈:', error.stack);
                 showError('加载失败，请稍后重试');
+                
+                // 即使出错也隐藏加载状态
+                document.getElementById('loadingState').style.display = 'none';
             }
         }
 
         // 渲染故事信息
         function renderStory(story) {
-            document.getElementById('storyTitle').textContent = story.title;
-            document.getElementById('storyAuthor').textContent = story.author?.username || '未知作者';
-            document.getElementById('storyDate').textContent = new Date(story.createdAt).toLocaleDateString('zh-CN');
-            document.getElementById('storyGenre').textContent = story.genre || '未分类';
-            document.getElementById('storyDescription').textContent = story.description || '暂无简介';
-            
-            // 统计数据
-            document.getElementById('viewCount').textContent = story.views || 0;
-            document.getElementById('likeCount').textContent = story.likes || 0;
-            document.getElementById('chapterCount').textContent = story.nodeCount || 0;
-            document.getElementById('wordCount').textContent = calculateWordCount(story);
-
-            // 封面图片
-            if (story.coverImage) {
-                document.getElementById('storyCover').src = story.coverImage;
-            }
-
-            // 作者信息
-            if (story.author) {
-                document.getElementById('authorName').textContent = story.author.username;
-                if (story.author.avatar) {
-                    document.getElementById('authorAvatar').src = story.author.avatar;
+            try {
+                console.log('开始渲染故事信息...');
+                
+                // 保存故事数据到全局变量
+                window.currentStory = story;
+                
+                document.getElementById('storyTitle').textContent = story.title || '未命名故事';
+                document.getElementById('storyAuthor').textContent = story.author?.username || '未知作者';
+                
+                // 安全处理日期
+                try {
+                    const date = new Date(story.createdAt);
+                    document.getElementById('storyDate').textContent = date.toLocaleDateString('zh-CN');
+                } catch (e) {
+                    console.error('日期格式错误:', e);
+                    document.getElementById('storyDate').textContent = '未知时间';
                 }
+                
+                document.getElementById('storyGenre').textContent = story.genre || '未分类';
+                document.getElementById('storyDescription').textContent = story.description || '暂无简介';
+                
+                // 统计数据
+                document.getElementById('viewCount').textContent = story.views || 0;
+                document.getElementById('likeCount').textContent = story.likes || 0;
+                document.getElementById('chapterCount').textContent = story.nodeCount || 0;
+                document.getElementById('wordCount').textContent = calculateWordCount(story);
+
+                // 封面图片
+                if (story.coverImage) {
+                    document.getElementById('storyCover').src = story.coverImage;
+                }
+
+                // 作者信息
+                if (story.author) {
+                    document.getElementById('authorName').textContent = story.author.username;
+                    if (story.author.avatar) {
+                        document.getElementById('authorAvatar').src = story.author.avatar;
+                    }
+                }
+
+                // 检查是否是作者，显示编辑按钮
+                checkIfAuthor(story);
+
+                // 开始阅读按钮
+                const startReadBtn = document.getElementById('startReadBtn');
+                // 移除旧的事件监听器
+                const newStartReadBtn = startReadBtn.cloneNode(true);
+                startReadBtn.parentNode.replaceChild(newStartReadBtn, startReadBtn);
+                
+                newStartReadBtn.addEventListener('click', () => {
+                    const firstChapter = document.querySelector('.chapter-item');
+                    if (firstChapter) {
+                        firstChapter.click();
+                    } else {
+                        showError('还没有章节可以阅读');
+                    }
+                });
+                
+                console.log('故事信息渲染完成');
+            } catch (error) {
+                console.error('渲染故事信息时出错:', error);
+                console.error('错误堆栈:', error.stack);
+                throw error; // 重新抛出错误以便外层捕获
+            }
+        }
+
+        // 检查是否是作者
+        async function checkIfAuthor(story) {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) return;
+
+            try {
+                const response = await fetch('/api/auth/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const userData = await response.json();
+                    const currentUserId = userData.user.id;
+
+                    // 如果当前用户是故事作者，显示编辑和续写按钮
+                    if (story.authorId === currentUserId || story.author?.id === currentUserId) {
+                        // 显示编辑故事按钮
+                        const editBtn = document.getElementById('editStoryBtn');
+                        editBtn.style.display = 'inline-flex';
+                        editBtn.addEventListener('click', () => openEditModal(story));
+                        
+                        // 显示续写章节按钮
+                        const writeBtn = document.getElementById('writeChapterBtn');
+                        writeBtn.style.display = 'inline-flex';
+                        writeBtn.addEventListener('click', () => {
+                            // 跳转到写作页面
+                            window.location.href = `/write?storyId=${story.id}`;
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('检查作者权限错误:', error);
+            }
+        }
+
+        // 打开编辑模态框
+        function openEditModal(story) {
+            const modal = document.getElementById('editModal');
+            
+            // 填充表单数据
+            document.getElementById('editTitle').value = story.title || '';
+            document.getElementById('editDescription').value = story.description || '';
+            
+            // 显示封面预览
+            const coverPreview = document.getElementById('editCoverPreview');
+            if (story.coverImage) {
+                coverPreview.innerHTML = `<img src="${story.coverImage}" alt="封面">`;
+            } else {
+                coverPreview.innerHTML = '<i class="fas fa-image"></i>';
+            }
+            
+            // 显示模态框
+            modal.classList.add('active');
+        }
+
+        // 关闭编辑模态框
+        function closeEditModal() {
+            const modal = document.getElementById('editModal');
+            modal.classList.remove('active');
+        }
+
+        // 保存编辑
+        async function saveStoryEdit() {
+            const title = document.getElementById('editTitle').value.trim();
+            const description = document.getElementById('editDescription').value.trim();
+
+            // 验证
+            if (!title) {
+                showError('请输入故事标题');
+                return;
             }
 
-            // 开始阅读按钮
-            document.getElementById('startReadBtn').addEventListener('click', () => {
-                const firstChapter = document.querySelector('.chapter-item');
-                if (firstChapter) {
-                    firstChapter.click();
+            if (!description) {
+                showError('请输入故事简介');
+                return;
+            }
+
+            const saveBtn = document.getElementById('saveEdit');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                const response = await fetch(`/api/stories/${window.currentStory.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        title,
+                        description
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || '保存失败');
+                }
+
+                const data = await response.json();
+                
+                showSuccess('保存成功！');
+                closeEditModal();
+                
+                // 刷新页面显示
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+
+            } catch (error) {
+                console.error('保存故事错误:', error);
+                showError(error.message || '保存失败，请重试');
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fas fa-save"></i> 保存修改';
+            }
+        }
+
+        // 初始化编辑模态框事件
+        document.addEventListener('DOMContentLoaded', function() {
+            // 关闭按钮
+            document.getElementById('closeEditModal')?.addEventListener('click', closeEditModal);
+            document.getElementById('cancelEdit')?.addEventListener('click', closeEditModal);
+            
+            // 保存按钮
+            document.getElementById('saveEdit')?.addEventListener('click', saveStoryEdit);
+            
+            // 点击模态框背景关闭
+            document.getElementById('editModal')?.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeEditModal();
                 }
             });
-        }
+
+            // 封面上传
+            document.getElementById('editCoverBtn')?.addEventListener('click', function() {
+                document.getElementById('editCoverInput').click();
+            });
+
+            document.getElementById('editCoverInput')?.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        document.getElementById('editCoverPreview').innerHTML = 
+                            `<img src="${e.target.result}" alt="封面预览">`;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        });
 
         // 加载章节列表
         async function loadChapters(storyId) {
