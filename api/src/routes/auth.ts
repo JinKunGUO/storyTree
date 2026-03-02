@@ -43,7 +43,7 @@ router.post('/register', async (req, res) => {
 
   try {
     // 检查用户名和邮箱是否已存在
-    const existingUser = await prisma.user.findFirst({
+    const existingUser = await prisma.users.findFirst({
       where: {
         OR: [
           { username },
@@ -65,11 +65,12 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await hashPassword(password);
 
     // 创建用户
-    const user = await prisma.user.create({
+    const user = await prisma.users.create({
       data: {
         username,
         email,
         password: hashedPassword,
+        updatedAt: new Date(),
       },
       select: {
         id: true,
@@ -102,7 +103,7 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users.findUnique({
       where: { email },
       select: {
         id: true,
@@ -155,7 +156,7 @@ router.get('/me', async (req, res) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-this') as { userId: number };
     
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users.findUnique({
       where: { id: decoded.userId },
       select: {
         id: true,
@@ -187,7 +188,7 @@ router.post('/forgot-password', async (req, res) => {
   }
 
   try {
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users.findUnique({
       where: { email }
     });
 
@@ -199,7 +200,7 @@ router.post('/forgot-password', async (req, res) => {
     const resetToken = generateToken();
     const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1小时
 
-    await prisma.user.update({
+    await prisma.users.update({
       where: { id: user.id },
       data: {
         passwordResetToken: resetToken,
@@ -231,7 +232,7 @@ router.post('/reset-password', async (req, res) => {
   }
 
   try {
-    const user = await prisma.user.findFirst({
+    const user = await prisma.users.findFirst({
       where: {
         passwordResetToken: token,
         passwordResetExpires: {
@@ -246,7 +247,7 @@ router.post('/reset-password', async (req, res) => {
 
     const hashedPassword = await hashPassword(newPassword);
 
-    await prisma.user.update({
+    await prisma.users.update({
       where: { id: user.id },
       data: {
         password: hashedPassword,

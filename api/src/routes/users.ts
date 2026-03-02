@@ -15,7 +15,7 @@ router.get('/:id', async (req, res) => {
   const currentUserId = getUserId(req);
 
   try {
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users.findUnique({
       where: { id: parseInt(id) },
       select: {
         id: true,
@@ -25,8 +25,8 @@ router.get('/:id', async (req, res) => {
         createdAt: true,
         _count: {
           select: {
-            stories: true,
-            nodes: true,
+            authored_stories: true,
+            authored_nodes: true,
             following: true,
             followers: true
           }
@@ -41,11 +41,11 @@ router.get('/:id', async (req, res) => {
     // 检查当前用户是否已关注
     let isFollowing = false;
     if (currentUserId) {
-      const follow = await prisma.follow.findUnique({
+      const follow = await prisma.follows.findUnique({
         where: {
-          followerId_followingId: {
-            followerId: currentUserId,
-            followingId: parseInt(id)
+          follower_id_following_id: {
+            follower_id: currentUserId,
+            following_id: parseInt(id)
           }
         }
       });
@@ -80,15 +80,15 @@ router.post('/:id/follow', async (req, res) => {
   }
 
   try {
-    const follow = await prisma.follow.create({
+    const follow = await prisma.follows.create({
       data: {
-        followerId: userId,
-        followingId: targetId
+        follower_id: userId,
+        following_id: targetId
       }
     });
 
     // 获取关注者信息
-    const follower = await prisma.user.findUnique({
+    const follower = await prisma.users.findUnique({
       where: { id: userId },
       select: { username: true }
     });
@@ -124,11 +124,11 @@ router.delete('/:id/follow', async (req, res) => {
   const { id } = req.params;
 
   try {
-    await prisma.follow.delete({
+    await prisma.follows.delete({
       where: {
-        followerId_followingId: {
-          followerId: userId,
-          followingId: parseInt(id)
+        follower_id_following_id: {
+          follower_id: userId,
+          following_id: parseInt(id)
         }
       }
     });
@@ -153,7 +153,7 @@ router.put('/profile', async (req, res) => {
   const { bio } = req.body;
 
   try {
-    const user = await prisma.user.update({
+    const user = await prisma.users.update({
       where: { id: userId },
       data: { bio },
       select: {
@@ -178,8 +178,8 @@ router.get('/:id/following', async (req, res) => {
   const { id } = req.params;
 
   try {
-    const following = await prisma.follow.findMany({
-      where: { followerId: parseInt(id) },
+    const following = await prisma.follows.findMany({
+      where: { follower_id: parseInt(id) },
       include: {
         following: {
           select: {
@@ -192,13 +192,13 @@ router.get('/:id/following', async (req, res) => {
           }
         }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { created_at: 'desc' }
     });
 
     res.json({
       following: following.map(f => ({
         ...f.following,
-        followedAt: f.createdAt
+        followedAt: f.created_at
       }))
     });
   } catch (error) {
@@ -212,8 +212,8 @@ router.get('/:id/followers', async (req, res) => {
   const { id } = req.params;
 
   try {
-    const followers = await prisma.follow.findMany({
-      where: { followingId: parseInt(id) },
+    const followers = await prisma.follows.findMany({
+      where: { following_id: parseInt(id) },
       include: {
         follower: {
           select: {
@@ -226,13 +226,13 @@ router.get('/:id/followers', async (req, res) => {
           }
         }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { created_at: 'desc' }
     });
 
     res.json({
       followers: followers.map(f => ({
         ...f.follower,
-        followedAt: f.createdAt
+        followedAt: f.created_at
       }))
     });
   } catch (error) {
@@ -250,16 +250,16 @@ router.get('/feed/me', async (req, res) => {
 
   try {
     // 获取关注的人的最新节点
-    const feed = await prisma.node.findMany({
+    const feed = await prisma.nodes.findMany({
       where: {
         author: {
           followers: {
             some: {
-              followerId: userId
+              follower_id: userId
             }
           }
         },
-        reviewStatus: 'APPROVED'
+        review_status: 'APPROVED'
       },
       include: {
         author: {
@@ -269,7 +269,7 @@ router.get('/feed/me', async (req, res) => {
           select: { id: true, title: true }
         }
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { created_at: 'desc' },
       take: 20
     });
 
@@ -285,8 +285,8 @@ router.get('/:id/stories', async (req, res) => {
   const { id } = req.params;
 
   try {
-    const stories = await prisma.story.findMany({
-      where: { authorId: parseInt(id) },
+    const stories = await prisma.stories.findMany({
+      where: { author_id: parseInt(id) },
       include: {
         author: {
           select: { id: true, username: true }
@@ -297,18 +297,18 @@ router.get('/:id/stories', async (req, res) => {
           }
         },
         nodes: {
-          where: { parentId: null },
+          where: { parent_id: null },
           take: 1,
           select: {
             id: true,
             title: true,
-            ratingAvg: true,
-            ratingCount: true,
-            readCount: true
+            rating_avg: true,
+            rating_count: true,
+            read_count: true
           }
         }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { created_at: 'desc' }
     });
 
     res.json({ stories });
@@ -323,10 +323,10 @@ router.get('/:id/nodes', async (req, res) => {
   const { id } = req.params;
 
   try {
-    const nodes = await prisma.node.findMany({
+    const nodes = await prisma.nodes.findMany({
       where: { 
-        authorId: parseInt(id),
-        reviewStatus: 'APPROVED'
+        author_id: parseInt(id),
+        review_status: 'APPROVED'
       },
       include: {
         story: {
@@ -336,7 +336,7 @@ router.get('/:id/nodes', async (req, res) => {
           select: { id: true, username: true }
         }
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { created_at: 'desc' },
       take: 20
     });
 

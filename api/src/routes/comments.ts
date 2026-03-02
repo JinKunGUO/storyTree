@@ -5,13 +5,13 @@ import { verifyJWT } from '../utils/auth';
 const router = Router();
 
 // 获取节点的评论列表
-router.get('/nodes/:nodeId/comments', async (req, res) => {
-  const { nodeId } = req.params;
+router.get('/nodes/:node_id/comments', async (req, res) => {
+  const { node_id } = req.params;
   const { page = 1, limit = 20 } = req.query;
 
   try {
-    const comments = await prisma.comment.findMany({
-      where: { nodeId: parseInt(nodeId), parentId: null }, // 只获取顶级评论
+    const comments = await prisma.comments.findMany({
+      where: { node_id: parseInt(node_id), parent_id: null }, // 只获取顶级评论
       include: {
         user: {
           select: {
@@ -20,7 +20,7 @@ router.get('/nodes/:nodeId/comments', async (req, res) => {
             avatar: true
           }
         },
-        replies: {
+        other_comments: {
           include: {
             user: {
               select: {
@@ -30,16 +30,16 @@ router.get('/nodes/:nodeId/comments', async (req, res) => {
               }
             }
           },
-          orderBy: { createdAt: 'asc' }
+          orderBy: { created_at: 'asc' }
         }
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { created_at: 'desc' },
       skip: (parseInt(page as string) - 1) * parseInt(limit as string),
       take: parseInt(limit as string)
     });
 
-    const totalCount = await prisma.comment.count({
-      where: { nodeId: parseInt(nodeId), parentId: null }
+    const totalCount = await prisma.comments.count({
+      where: { node_id: parseInt(node_id), parent_id: null }
     });
 
     res.json({
@@ -57,9 +57,9 @@ router.get('/nodes/:nodeId/comments', async (req, res) => {
 });
 
 // 发表评论
-router.post('/nodes/:nodeId/comments', async (req, res) => {
-  const { nodeId } = req.params;
-  const { content, parentId } = req.body;
+router.post('/nodes/:node_id/comments', async (req, res) => {
+  const { node_id } = req.params;
+  const { content, parent_id } = req.body;
   const token = req.headers.authorization?.replace('Bearer ', '');
 
   if (!token) {
@@ -80,30 +80,31 @@ router.post('/nodes/:nodeId/comments', async (req, res) => {
       return res.status(400).json({ error: '评论内容不能超过500字符' });
     }
 
-    const node = await prisma.node.findUnique({
-      where: { id: parseInt(nodeId) }
+    const node = await prisma.nodes.findUnique({
+      where: { id: parseInt(node_id) }
     });
 
     if (!node) {
       return res.status(404).json({ error: '章节不存在' });
     }
 
-    // 验证parentId是否存在
-    if (parentId) {
-      const parentComment = await prisma.comment.findUnique({
-        where: { id: parseInt(parentId as string) }
+    // 验证parent_id是否存在
+    if (parent_id) {
+      const parentComment = await prisma.comments.findUnique({
+        where: { id: parseInt(parent_id as string) }
       });
-      if (!parentComment || parentComment.nodeId !== parseInt(nodeId)) {
+      if (!parentComment || parentComment.node_id !== parseInt(node_id)) {
         return res.status(400).json({ error: '回复的评论不存在' });
       }
     }
 
-    const comment = await prisma.comment.create({
+    const comment = await prisma.comments.create({
       data: {
         content: content.trim(),
-        nodeId: parseInt(nodeId),
-        userId: decoded.userId,
-        parentId: parentId ? parseInt(parentId as string) : null
+        node_id: parseInt(node_id),
+        user_id: decoded.userId,
+        parent_id: parent_id ? parseInt(parent_id as string) : null,
+        updated_at: new Date()
       },
       include: {
         user: {
@@ -116,35 +117,35 @@ router.post('/nodes/:nodeId/comments', async (req, res) => {
       }
     });
 
-    // 发送通知给被回复的用户（如果有parentId）
-    if (parentId) {
-      const parentComment = await prisma.comment.findUnique({
-        where: { id: parseInt(parentId as string) },
+    // 发送通知给被回复的用户（如果有parent_id）
+    if (parent_id) {
+      const parentComment = await prisma.comments.findUnique({
+        where: { id: parseInt(parent_id as string) },
         include: { user: true }
       });
       
-      if (parentComment && parentComment.userId !== decoded.userId) {
-        await prisma.notification.create({
+      if (parentComment && parentComment.user_id !== decoded.userId) {
+        await prisma.notifications.create({
           data: {
-            userId: parentComment.userId,
+            user_id: parentComment.user_id,
             type: 'comment_reply',
             title: '评论回复',
             content: `${decoded.username || '用户'} 回复了你的评论`,
-            link: `/nodes/${nodeId}`
+            link: `/nodes/${node_id}`
           }
         });
       }
     }
 
     // 发送通知给章节作者
-    if (node.authorId !== decoded.userId) {
-      await prisma.notification.create({
+    if (node.author_id !== decoded.userId) {
+      await prisma.notifications.create({
         data: {
-          userId: node.authorId,
+          user_id: node.author_id,
           type: 'comment',
           title: '新评论',
           content: `${decoded.username || '用户'} 评论了你的章节`,
-          link: `/nodes/${nodeId}`
+          link: `/nodes/${node_id}`
         }
       });
     }
@@ -171,7 +172,7 @@ router.delete('/comments/:commentId', async (req, res) => {
       return res.status(401).json({ error: '无效的Token' });
     }
 
-    const comment = await prisma.comment.findUnique({
+    const comment = await prisma.comments.findUnique({
       where: { id: parseInt(commentId) }
     });
 
@@ -179,11 +180,11 @@ router.delete('/comments/:commentId', async (req, res) => {
       return res.status(404).json({ error: '评论不存在' });
     }
 
-    if (comment.userId !== decoded.userId && !decoded.isAdmin) {
+    if (comment.user_id !== decoded.userId && !decoded.isAdmin) {
       return res.status(403).json({ error: '无权删除此评论' });
     }
 
-    await prisma.comment.delete({
+    await prisma.comments.delete({
       where: { id: parseInt(commentId) }
     });
 
@@ -217,7 +218,7 @@ router.put('/comments/:commentId', async (req, res) => {
       return res.status(400).json({ error: '评论内容不能超过500字符' });
     }
 
-    const comment = await prisma.comment.findUnique({
+    const comment = await prisma.comments.findUnique({
       where: { id: parseInt(commentId) }
     });
 
@@ -225,11 +226,11 @@ router.put('/comments/:commentId', async (req, res) => {
       return res.status(404).json({ error: '评论不存在' });
     }
 
-    if (comment.userId !== decoded.userId) {
+    if (comment.user_id !== decoded.userId) {
       return res.status(403).json({ error: '无权编辑此评论' });
     }
 
-    const updatedComment = await prisma.comment.update({
+    const updatedComment = await prisma.comments.update({
       where: { id: parseInt(commentId) },
       data: { content: content.trim() },
       include: {

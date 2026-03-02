@@ -50,7 +50,7 @@ router.post('/avatar', upload.single('avatar'), async (req, res) => {
     const fileUrl = getFileUrl(req.file.filename);
 
     // 更新用户头像
-    const user = await prisma.user.update({
+    const user = await prisma.users.update({
       where: { id: userId },
       data: { avatar: fileUrl },
       select: {
@@ -84,7 +84,7 @@ router.post('/story/:storyId/cover', upload.single('cover'), async (req, res) =>
     }
 
     // 检查故事所有权
-    const story = await prisma.story.findUnique({
+    const story = await prisma.stories.findUnique({
       where: { id: parseInt(storyId) }
     });
 
@@ -92,16 +92,16 @@ router.post('/story/:storyId/cover', upload.single('cover'), async (req, res) =>
       return res.status(404).json({ error: 'Story not found' });
     }
 
-    if (story.authorId !== userId) {
+    if (story.author_id !== userId) {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
     const fileUrl = getFileUrl(req.file.filename);
 
     // 更新故事封面
-    const updatedStory = await prisma.story.update({
+    const updatedStory = await prisma.stories.update({
       where: { id: parseInt(storyId) },
-      data: { coverImage: fileUrl }
+      data: { cover_image: fileUrl }
     });
 
     res.json({ success: true, story: updatedStory });

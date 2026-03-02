@@ -24,7 +24,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
   try {
     // 验证故事是否存在
-    const story = await prisma.story.findUnique({
+    const story = await prisma.stories.findUnique({
       where: { id: parseInt(storyId) }
     });
 
@@ -33,8 +33,8 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     // 检查用户已发布节点数
-    const userNodeCount = await prisma.node.count({
-      where: { authorId: userId }
+    const userNodeCount = await prisma.nodes.count({
+      where: { author_id: userId }
     });
 
     // 审核检查
@@ -43,10 +43,10 @@ router.post('/', authenticateToken, async (req, res) => {
     // 如果是第一个节点（没有parentId）
     if (!parentId) {
       // 检查故事是否已有根节点
-      const existingRoot = await prisma.node.findFirst({
+      const existingRoot = await prisma.nodes.findFirst({
         where: {
-          storyId: parseInt(storyId),
-          parentId: null
+          story_id: parseInt(storyId),
+          parent_id: null
         }
       });
 
@@ -55,16 +55,17 @@ router.post('/', authenticateToken, async (req, res) => {
       }
 
       // 创建第一个节点
-      const node = await prisma.node.create({
+      const node = await prisma.nodes.create({
         data: {
-          storyId: parseInt(storyId),
-          parentId: null,
-          authorId: userId,
+          story_id: parseInt(storyId),
+          parent_id: null,
+          author_id: userId,
           title,
           content,
           image: image || null,
           path: path || '1',
-          reviewStatus: reviewCheck.needReview ? 'PENDING' : 'APPROVED'
+          review_status: reviewCheck.needReview ? 'PENDING' : 'APPROVED',
+          updated_at: new Date()
         },
         include: {
           author: {
@@ -76,10 +77,10 @@ router.post('/', authenticateToken, async (req, res) => {
         }
       });
 
-      // 更新故事的rootNodeId
-      await prisma.story.update({
+      // 更新故事的root_node_id
+      await prisma.stories.update({
         where: { id: parseInt(storyId) },
-        data: { rootNodeId: node.id }
+        data: { root_node_id: node.id }
       });
 
       return res.json({
@@ -90,7 +91,7 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     // 如果有parentId，创建分支
-    const parentNode = await prisma.node.findUnique({
+    const parentNode = await prisma.nodes.findUnique({
       where: { id: parseInt(parentId) }
     });
 
@@ -99,21 +100,22 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     // 生成路径
-    const siblingCount = await prisma.node.count({
-      where: { parentId: parseInt(parentId) }
+    const siblingCount = await prisma.nodes.count({
+      where: { parent_id: parseInt(parentId) }
     });
     const newPath = path || `${parentNode.path}.${siblingCount + 1}`;
 
-    const node = await prisma.node.create({
+    const node = await prisma.nodes.create({
       data: {
-        storyId: parseInt(storyId),
-        parentId: parseInt(parentId),
-        authorId: userId,
+        story_id: parseInt(storyId),
+        parent_id: parseInt(parentId),
+        author_id: userId,
         title,
         content,
         image: image || null,
         path: newPath,
-        reviewStatus: reviewCheck.needReview ? 'PENDING' : 'APPROVED'
+        review_status: reviewCheck.needReview ? 'PENDING' : 'APPROVED',
+          updated_at: new Date()
       },
       include: {
         author: {
@@ -136,25 +138,92 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
+// Update node (章节编辑)
+router.put('/:id', authenticateToken, async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { id } = req.params;
+  const { title, content } = req.body;
+
+  if (!title || !content) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  try {
+    // 检查节点是否存在
+    const node = await prisma.nodes.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+
+    // 检查是否是作者
+    if (node.author_id !== userId) {
+      return res.status(403).json({ error: 'Not authorized to edit this node' });
+    }
+
+    // 检查用户已发布节点数
+    const userNodeCount = await prisma.nodes.count({
+      where: { author_id: userId }
+    });
+
+    // 审核检查
+    const reviewCheck = needsReview(content, userNodeCount);
+
+    // 更新节点
+    const updatedNode = await prisma.nodes.update({
+      where: { id: parseInt(id) },
+      data: {
+        title,
+        content,
+        updated_at: new Date(),
+        review_status: reviewCheck.needReview ? 'PENDING' : 'APPROVED'
+      },
+      include: {
+        author: {
+          select: { id: true, username: true }
+        },
+        story: {
+          select: { id: true, title: true }
+        }
+      }
+    });
+
+    res.json({
+      node: updatedNode,
+      reviewStatus: reviewCheck.needReview ? 'pending' : 'approved',
+      message: reviewCheck.needReview ? `内容需要审核：${reviewCheck.reason}` : '更新成功'
+    });
+  } catch (error) {
+    console.error('更新节点错误:', error);
+    res.status(500).json({ error: 'Failed to update node' });
+  }
+});
+
 // Get node details with branches
 router.get('/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
     // Increment read count
-    await prisma.node.update({
+    await prisma.nodes.update({
       where: { id: parseInt(id) },
-      data: { readCount: { increment: 1 } }
+      data: { read_count: { increment: 1 } }
     });
 
-    const node = await prisma.node.findUnique({
+    const node = await prisma.nodes.findUnique({
       where: { id: parseInt(id) },
       include: {
         author: {
           select: { id: true, username: true }
         },
         story: {
-          select: { id: true, title: true, authorId: true }
+          select: { id: true, title: true, author_id: true }
         }
       }
     });
@@ -164,24 +233,24 @@ router.get('/:id', async (req, res) => {
     }
 
     // Get branches with rating info
-    const branches = await prisma.node.findMany({
-      where: { parentId: parseInt(id) },
+    const branches = await prisma.nodes.findMany({
+      where: { parent_id: parseInt(id) },
       include: {
         author: {
           select: { id: true, username: true }
         }
       },
       orderBy: [
-        { ratingAvg: 'desc' },
-        { readCount: 'desc' }
+        { rating_avg: 'desc' },
+        { read_count: 'desc' }
       ]
     });
 
     // Get parent info for breadcrumb
     let parent = null;
-    if (node.parentId) {
-      parent = await prisma.node.findUnique({
-        where: { id: node.parentId },
+    if (node.parent_id) {
+      parent = await prisma.nodes.findUnique({
+        where: { id: node.parent_id },
         select: { id: true, title: true }
       });
     }
@@ -190,11 +259,11 @@ router.get('/:id', async (req, res) => {
     const userId = getUserId(req);
     let userRating = null;
     if (userId) {
-      const rating = await prisma.rating.findUnique({
+      const rating = await prisma.ratings.findUnique({
         where: {
-          nodeId_userId: {
-            nodeId: parseInt(id),
-            userId
+          node_id_user_id: {
+            node_id: parseInt(id),
+            user_id: userId
           }
         }
       });
@@ -219,7 +288,7 @@ router.post('/:id/branches', authenticateToken, async (req, res) => {
   const { title, content, image } = req.body;
 
   try {
-    const parentNode = await prisma.node.findUnique({
+    const parentNode = await prisma.nodes.findUnique({
       where: { id: parseInt(id) },
       include: { story: true }
     });
@@ -229,29 +298,30 @@ router.post('/:id/branches', authenticateToken, async (req, res) => {
     }
 
     // 检查用户已发布节点数
-    const userNodeCount = await prisma.node.count({
-      where: { authorId: userId }
+    const userNodeCount = await prisma.nodes.count({
+      where: { author_id: userId }
     });
 
     // 审核检查
     const reviewCheck = needsReview(content, userNodeCount);
 
     // Generate path: parent.path + branch number
-    const siblingCount = await prisma.node.count({
-      where: { parentId: parseInt(id) }
+    const siblingCount = await prisma.nodes.count({
+      where: { parent_id: parseInt(id) }
     });
     const newPath = `${parentNode.path}.${siblingCount + 1}`;
 
-    const node = await prisma.node.create({
+    const node = await prisma.nodes.create({
       data: {
-        storyId: parentNode.storyId,
-        parentId: parseInt(id),
-        authorId: userId,
+        story_id: parentNode.story_id,
+        parent_id: parseInt(id),
+        author_id: userId,
         title,
         content,
         image,
         path: newPath,
-        reviewStatus: reviewCheck.needReview ? 'PENDING' : 'APPROVED'
+        review_status: reviewCheck.needReview ? 'PENDING' : 'APPROVED',
+          updated_at: new Date()
       },
       include: {
         author: {
@@ -290,16 +360,16 @@ router.post('/:id/rate', async (req, res) => {
 
   try {
     // Upsert rating
-    await prisma.rating.upsert({
+    await prisma.ratings.upsert({
       where: {
-        nodeId_userId: {
-          nodeId: parseInt(id),
-          userId
+        node_id_user_id: {
+          node_id: parseInt(id),
+          user_id: userId
         }
       },
       create: {
-        nodeId: parseInt(id),
-        userId,
+        node_id: parseInt(id),
+        user_id: userId,
         score
       },
       update: {
@@ -308,20 +378,20 @@ router.post('/:id/rate', async (req, res) => {
     });
 
     // Recalculate average
-    const ratings = await prisma.rating.findMany({
-      where: { nodeId: parseInt(id) }
+    const ratings = await prisma.ratings.findMany({
+      where: { node_id: parseInt(id) }
     });
     const avg = ratings.reduce((sum, r) => sum + r.score, 0) / ratings.length;
 
-    await prisma.node.update({
+    await prisma.nodes.update({
       where: { id: parseInt(id) },
       data: {
-        ratingAvg: avg,
-        ratingCount: ratings.length
+        rating_avg: avg,
+        rating_count: ratings.length
       }
     });
 
-    res.json({ success: true, ratingAvg: avg, ratingCount: ratings.length });
+    res.json({ success: true, rating_avg: avg, rating_count: ratings.length });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to rate node' });
@@ -359,10 +429,10 @@ router.post('/:id/report', async (req, res) => {
 
   try {
     // 检查是否重复举报
-    const existingReport = await prisma.report.findFirst({
+    const existingReport = await prisma.reports.findFirst({
       where: {
-        nodeId: parseInt(id),
-        reporterId: userId
+        node_id: parseInt(id),
+        reporter_id: userId
       }
     });
 
@@ -371,21 +441,21 @@ router.post('/:id/report', async (req, res) => {
     }
 
     // 创建举报记录
-    const report = await prisma.report.create({
+    const report = await prisma.reports.create({
       data: {
-        nodeId: parseInt(id),
-        reporterId: userId,
+        node_id: parseInt(id),
+        reporter_id: userId,
         reason,
         description: description || null
       }
     });
 
     // 更新节点举报计数
-    const node = await prisma.node.update({
+    const node = await prisma.nodes.update({
       where: { id: parseInt(id) },
       data: {
-        reportCount: { increment: 1 },
-        reportReasons: {
+        report_count: { increment: 1 },
+        report_reasons: {
           set: JSON.stringify({
             reasons: [...(await getExistingReasons(parseInt(id))), reason]
           })
@@ -394,17 +464,17 @@ router.post('/:id/report', async (req, res) => {
     });
 
     // 如果举报次数 >= 3，自动下架
-    if (node.reportCount >= 3) {
-      await prisma.node.update({
+    if (node.report_count >= 3) {
+      await prisma.nodes.update({
         where: { id: parseInt(id) },
-        data: { reviewStatus: 'HIDDEN' }
+        data: { review_status: 'HIDDEN' }
       });
     }
 
     res.json({
       success: true,
       report,
-      autoHidden: node.reportCount >= 3,
+      autoHidden: node.report_count >= 3,
       remainingReports: MAX_REPORTS_PER_DAY - (reportLimit.get(limitKey)?.count || 0)
     });
   } catch (error) {
@@ -415,13 +485,13 @@ router.post('/:id/report', async (req, res) => {
 
 // 辅助函数：获取已有举报原因
 async function getExistingReasons(nodeId: number): Promise<string[]> {
-  const node = await prisma.node.findUnique({
+  const node = await prisma.nodes.findUnique({
     where: { id: nodeId },
-    select: { reportReasons: true }
+    select: { report_reasons: true }
   });
-  if (node?.reportReasons) {
+  if (node?.report_reasons) {
     try {
-      const parsed = JSON.parse(node.reportReasons);
+      const parsed = JSON.parse(node.report_reasons);
       return parsed.reasons || [];
     } catch {
       return [];

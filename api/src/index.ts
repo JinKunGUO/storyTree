@@ -14,6 +14,8 @@ import uploadRoutes from './routes/upload';
 import searchRoutes from './routes/search';
 import notificationRoutes from './routes/notifications';
 import commentRoutes from './routes/comments';
+import bookmarkRoutes from './routes/bookmarks';
+import shareRoutes from './routes/shares';
 
 dotenv.config();
 
@@ -40,6 +42,8 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/comments', commentRoutes);
+app.use('/api/bookmarks', bookmarkRoutes);
+app.use('/api/shares', shareRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

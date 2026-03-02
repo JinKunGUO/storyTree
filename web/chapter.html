@@ -689,6 +689,9 @@
             </div>
         </div>
         <div class="toolbar-right">
+            <button class="toolbar-btn" id="shareChapterBtn" title="分享章节">
+                <i class="fas fa-share-alt"></i>
+            </button>
             <button class="toolbar-btn" id="editChapterBtn" style="display: none;" title="编辑章节">
                 <i class="fas fa-edit"></i>
             </button>
@@ -830,6 +833,7 @@
 
     <script src="auth.js"></script>
     <script src="comments.js"></script>
+    <script src="share.js"></script>
     <script>
         let currentChapter = null;
         let storyId = null;
@@ -841,6 +845,18 @@
             loadChapter();
             initSettings();
             initEditFeature(); // 初始化编辑功能
+            
+            // 初始化分享按钮
+            document.getElementById('shareChapterBtn')?.addEventListener('click', function() {
+                if (currentChapter && storyId) {
+                    shareManager.showSharePanel({
+                        storyId: storyId,
+                        nodeId: currentChapter.id,
+                        title: currentChapter.title,
+                        description: currentChapter.content?.substring(0, 100) + '...'
+                    });
+                }
+            });
 
             // 字符计数
             const commentInput = document.getElementById('comment-input');
@@ -872,7 +888,7 @@
                 
                 // API返回的是 {node: {...}} 结构
                 currentChapter = data.node;
-                storyId = currentChapter.storyId;
+                storyId = currentChapter.story_id;  // 修改为 story_id
                 
                 console.log('当前章节:', currentChapter);
                 console.log('故事ID:', storyId);
@@ -909,7 +925,7 @@
         function renderChapter(chapter) {
             document.getElementById('chapterTitle').textContent = chapter.title;
             document.getElementById('chapterAuthor').textContent = chapter.author?.username || '未知作者';
-            document.getElementById('chapterDate').textContent = new Date(chapter.createdAt).toLocaleDateString('zh-CN');
+            document.getElementById('chapterDate').textContent = new Date(chapter.created_at).toLocaleDateString('zh-CN');
             document.getElementById('chapterWords').textContent = `${chapter.content?.length || 0}字`;
             document.getElementById('chapterText').textContent = chapter.content || '暂无内容';
 
@@ -944,10 +960,10 @@
 
                 const userData = await response.json();
                 console.log('当前用户:', userData.user);
-                console.log('章节作者ID:', chapter.authorId);
+                console.log('章节作者ID:', chapter.author_id);  // 修改为 author_id
 
                 // 比对用户ID
-                if (userData.user && userData.user.id === chapter.authorId) {
+                if (userData.user && userData.user.id === chapter.author_id) {  // 修改为 author_id
                     console.log('✅ 是作者，显示编辑按钮');
                     document.getElementById('editChapterBtn').style.display = 'block';
                 } else {

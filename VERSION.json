@@ -1,10 +1,10 @@
 {
   "name": "storytree",
-  "version": "1.0.14",
-  "codename": "M3-Complete",
+  "version": "1.0.17",
+  "codename": "M4-Bookmark",
   "stage": "MVP+",
-  "buildDate": "2026-02-28T03:47:40.501Z",
-  "commitHash": "e4e5110",
+  "buildDate": "2026-03-02T03:13:19.468Z",
+  "commitHash": "ab7d323",
   "branch": "feature/m3-user-auth",
   "repository": "storytree",
   "description": "分支式AI协作小说创作平台",
@@ -21,7 +21,8 @@
     "分支式创作结构",
     "章节评分系统",
     "多人协作创作",
-    "响应式设计"
+    "响应式设计",
+    "故事收藏功能"
   ],
   "changelog": {
     "1.0.0": {
@@ -182,6 +183,59 @@
     },
     "1.0.14": {
       "date": "2026-02-28",
+      "changes": [
+        "版本更新"
+      ]
+    },
+    "1.0.15": {
+      "date": "2026-02-28",
+      "changes": [
+        "🔖 故事收藏功能完整实现",
+        "✅ 数据库Schema更新",
+        "  - 新增bookmarks表",
+        "  - 添加user_id和story_id唯一约束",
+        "  - 添加索引优化查询性能",
+        "  - 级联删除关联记录",
+        "✅ 后端API开发（4个端点）",
+        "  - POST /api/bookmarks - 收藏故事",
+        "  - DELETE /api/bookmarks/:storyId - 取消收藏",
+        "  - GET /api/bookmarks - 获取收藏列表（分页）",
+        "  - GET /api/bookmarks/check/:storyId - 检查收藏状态",
+        "  - 所有端点都需要JWT认证",
+        "  - 完善的错误处理",
+        "✅ 前端功能实现",
+        "  - 故事详情页收藏按钮交互",
+        "  - 实时检查收藏状态",
+        "  - 切换收藏状态（收藏/取消收藏）",
+        "  - 按钮状态更新（空心❤️ ↔ 实心❤️）",
+        "  - 按钮颜色变化（默认 ↔ 红色）",
+        "  - 防止重复点击（禁用按钮）",
+        "✅ 用户体验优化",
+        "  - 未登录用户提示登录",
+        "  - 操作成功/失败消息提示",
+        "  - 按钮状态实时同步",
+        "  - 页面刷新保持收藏状态",
+        "📚 文档完善",
+        "  - 创建完整功能文档（BOOKMARK_FEATURE.md）",
+        "  - 创建快速参考文档（BOOKMARK_QUICK_REF.md）",
+        "  - 详细的API文档和使用说明",
+        "  - 测试场景和优化建议",
+        "📊 项目统计",
+        "  - 新增文件: 3个（bookmarks.ts, BOOKMARK_FEATURE.md, BOOKMARK_QUICK_REF.md）",
+        "  - 修改文件: 3个（schema.prisma, index.ts, story.html）",
+        "  - 新增代码: ~320行",
+        "  - 后端代码: ~200行",
+        "  - 前端代码: ~120行"
+      ]
+    },
+    "1.0.16": {
+      "date": "2026-03-02",
+      "changes": [
+        "版本更新"
+      ]
+    },
+    "1.0.17": {
+      "date": "2026-03-02",
       "changes": [
         "版本更新"
       ]

@@ -27,7 +27,7 @@ router.get('/', async (req, res) => {
 
     // 搜索故事
     if (type === 'all' || type === 'stories') {
-      stories = await prisma.story.findMany({
+      stories = await prisma.stories.findMany({
         where: {
           OR: [
             { title: { contains: searchTerm } },
@@ -39,19 +39,19 @@ router.get('/', async (req, res) => {
             select: { id: true, username: true }
           },
           nodes: {
-            where: { parentId: null },
+            where: { parent_id: null },
             take: 1,
             select: {
               id: true,
               title: true,
-              ratingAvg: true,
-              ratingCount: true,
-              readCount: true
+              rating_avg: true,
+              rating_count: true,
+              read_count: true
             }
           }
         },
         orderBy: [
-          { updatedAt: 'desc' }
+          { updated_at: 'desc' }
         ],
         take: 20
       });
@@ -59,7 +59,7 @@ router.get('/', async (req, res) => {
 
     // 搜索章节
     if (type === 'all' || type === 'nodes') {
-      nodes = await prisma.node.findMany({
+      nodes = await prisma.nodes.findMany({
         where: {
           AND: [
             {
@@ -68,7 +68,7 @@ router.get('/', async (req, res) => {
                 { content: { contains: searchTerm } }
               ]
             },
-            { reviewStatus: 'APPROVED' } // 只搜索已审核通过的内容
+            { review_status: 'APPROVED' } // 只搜索已审核通过的内容
           ]
         },
         include: {
@@ -80,8 +80,8 @@ router.get('/', async (req, res) => {
           }
         },
         orderBy: [
-          { ratingAvg: 'desc' },
-          { readCount: 'desc' }
+          { rating_avg: 'desc' },
+          { read_count: 'desc' }
         ],
         take: 20
       });

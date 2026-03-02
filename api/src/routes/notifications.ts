@@ -4,22 +4,22 @@ import { prisma } from '../index';
 const router = Router();
 
 const getUserId = (req: any): number | null => {
-  const userId = req.headers['x-user-id'];
-  return userId ? parseInt(userId as string) : null;
+  const user_id = req.headers['x-user-id'];
+  return user_id ? parseInt(user_id as string) : null;
 };
 
 // 创建通知的辅助函数
 export async function createNotification(
-  userId: number,
+  user_id: number,
   type: string,
   title: string,
   content: string,
   link?: string
 ) {
   try {
-    await prisma.notification.create({
+    await prisma.notifications.create({
       data: {
-        userId,
+        user_id,
         type,
         title,
         content,
@@ -33,20 +33,20 @@ export async function createNotification(
 
 // 获取用户通知列表
 router.get('/', async (req, res) => {
-  const userId = getUserId(req);
-  if (!userId) {
+  const user_id = getUserId(req);
+  if (!user_id) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
   try {
-    const notifications = await prisma.notification.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
+    const notifications = await prisma.notifications.findMany({
+      where: { user_id },
+      orderBy: { created_at: 'desc' },
       take: 50
     });
 
-    const unreadCount = await prisma.notification.count({
-      where: { userId, isRead: false }
+    const unreadCount = await prisma.notifications.count({
+      where: { user_id, is_read: false }
     });
 
     res.json({ notifications, unreadCount });
@@ -58,15 +58,15 @@ router.get('/', async (req, res) => {
 
 // 标记通知为已读
 router.put('/:id/read', async (req, res) => {
-  const userId = getUserId(req);
-  if (!userId) {
+  const user_id = getUserId(req);
+  if (!user_id) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
   const { id } = req.params;
 
   try {
-    const notification = await prisma.notification.findUnique({
+    const notification = await prisma.notifications.findUnique({
       where: { id: parseInt(id) }
     });
 
@@ -74,13 +74,13 @@ router.put('/:id/read', async (req, res) => {
       return res.status(404).json({ error: 'Notification not found' });
     }
 
-    if (notification.userId !== userId) {
+    if (notification.user_id !== user_id) {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
-    await prisma.notification.update({
+    await prisma.notifications.update({
       where: { id: parseInt(id) },
-      data: { isRead: true }
+      data: { is_read: true }
     });
 
     res.json({ success: true });
@@ -92,15 +92,15 @@ router.put('/:id/read', async (req, res) => {
 
 // 标记所有通知为已读
 router.put('/read-all', async (req, res) => {
-  const userId = getUserId(req);
-  if (!userId) {
+  const user_id = getUserId(req);
+  if (!user_id) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
   try {
-    await prisma.notification.updateMany({
-      where: { userId, isRead: false },
-      data: { isRead: true }
+    await prisma.notifications.updateMany({
+      where: { user_id, is_read: false },
+      data: { is_read: true }
     });
 
     res.json({ success: true });
@@ -112,15 +112,15 @@ router.put('/read-all', async (req, res) => {
 
 // 删除通知
 router.delete('/:id', async (req, res) => {
-  const userId = getUserId(req);
-  if (!userId) {
+  const user_id = getUserId(req);
+  if (!user_id) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
   const { id } = req.params;
 
   try {
-    const notification = await prisma.notification.findUnique({
+    const notification = await prisma.notifications.findUnique({
       where: { id: parseInt(id) }
     });
 
@@ -128,11 +128,11 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Notification not found' });
     }
 
-    if (notification.userId !== userId) {
+    if (notification.user_id !== user_id) {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
-    await prisma.notification.delete({
+    await prisma.notifications.delete({
       where: { id: parseInt(id) }
     });
 

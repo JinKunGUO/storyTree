@@ -7,6 +7,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model bookmarks {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  story_id   Int
+  created_at DateTime @default(now())
+  user       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  story      stories  @relation(fields: [story_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, story_id])
+  @@index([user_id])
+  @@index([story_id])
+}
+
 model comments {
   id             Int        @id @default(autoincrement())
   content        String
@@ -17,8 +30,8 @@ model comments {
   updated_at     DateTime
   comments       comments?  @relation("commentsTocomments", fields: [parent_id], references: [id])
   other_comments comments[] @relation("commentsTocomments")
-  users          users      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  nodes          nodes      @relation(fields: [node_id], references: [id], onDelete: Cascade)
+  user           users      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  node           nodes      @relation(fields: [node_id], references: [id], onDelete: Cascade)
 
   @@index([created_at])
   @@index([parent_id])
@@ -31,8 +44,8 @@ model follows {
   follower_id                       Int
   following_id                      Int
   created_at                        DateTime @default(now())
-  users_follows_following_idTousers users    @relation("follows_following_idTousers", fields: [following_id], references: [id], onDelete: Cascade)
-  users_follows_follower_idTousers  users    @relation("follows_follower_idTousers", fields: [follower_id], references: [id], onDelete: Cascade)
+  following                         users    @relation("follows_following_idTousers", fields: [following_id], references: [id], onDelete: Cascade)
+  follower                          users    @relation("follows_follower_idTousers", fields: [follower_id], references: [id], onDelete: Cascade)
 
   @@unique([follower_id, following_id])
   @@index([following_id])
@@ -63,10 +76,11 @@ model nodes {
   comments       comments[]
   nodes          nodes?     @relation("nodesTonodes", fields: [parent_id], references: [id])
   other_nodes    nodes[]    @relation("nodesTonodes")
-  users          users      @relation(fields: [author_id], references: [id])
-  stories        stories    @relation(fields: [story_id], references: [id], onDelete: Cascade)
+  author         users      @relation("NodeAuthor", fields: [author_id], references: [id])
+  story          stories    @relation(fields: [story_id], references: [id], onDelete: Cascade)
   ratings        ratings[]
   reports        reports[]
+  shares         shares[]
 
   @@index([review_status])
   @@index([path])
@@ -83,7 +97,7 @@ model notifications {
   link       String?
   is_read    Boolean  @default(false)
   created_at DateTime @default(now())
-  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([is_read])
   @@index([user_id])
@@ -95,8 +109,8 @@ model ratings {
   user_id    Int
   score      Int
   created_at DateTime @default(now())
-  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  nodes      nodes    @relation(fields: [node_id], references: [id], onDelete: Cascade)
+  user       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  node       nodes    @relation(fields: [node_id], references: [id], onDelete: Cascade)
 
   @@unique([node_id, user_id])
 }
@@ -111,24 +125,44 @@ model reports {
   created_at  DateTime  @default(now())
   resolved_at DateTime?
   resolved_by Int?
-  users       users     @relation(fields: [reporter_id], references: [id], onDelete: Cascade)
-  nodes       nodes     @relation(fields: [node_id], references: [id], onDelete: Cascade)
+  reporter    users     @relation(fields: [reporter_id], references: [id], onDelete: Cascade)
+  node        nodes     @relation(fields: [node_id], references: [id], onDelete: Cascade)
 
   @@index([reporter_id])
   @@index([node_id])
 }
 
+model shares {
+  id          Int      @id @default(autoincrement())
+  story_id    Int
+  node_id     Int?
+  user_id     Int?
+  platform    String
+  created_at  DateTime @default(now())
+  story       stories  @relation(fields: [story_id], references: [id], onDelete: Cascade)
+  node        nodes?   @relation(fields: [node_id], references: [id], onDelete: Cascade)
+  user        users?   @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([story_id])
+  @@index([node_id])
+  @@index([user_id])
+  @@index([platform])
+  @@index([created_at])
+}
+
 model stories {
-  id           Int      @id @default(autoincrement())
+  id           Int         @id @default(autoincrement())
   title        String
   description  String?
   cover_image  String?
   author_id    Int
   root_node_id Int?
-  created_at   DateTime @default(now())
+  created_at   DateTime    @default(now())
   updated_at   DateTime
+  bookmarks    bookmarks[]
   nodes        nodes[]
-  users        users    @relation(fields: [author_id], references: [id])
+  shares       shares[]
+  author       users       @relation("StoryAuthor", fields: [author_id], references: [id])
 }
 
 model users {
@@ -138,20 +172,22 @@ model users {
   password                            String
   avatar                              String?
   bio                                 String?
-  is_admin                            Boolean         @default(false)
-  email_verified                      Boolean         @default(false)
-  email_verification_token            String?
-  email_verification_expires          DateTime?
-  password_reset_token                String?
-  password_reset_expires              DateTime?
-  created_at                          DateTime        @default(now())
-  updated_at                          DateTime
+  isAdmin                             Boolean         @default(false) @map("is_admin")
+  emailVerified                       Boolean         @default(false) @map("email_verified")
+  emailVerificationToken              String?         @map("email_verification_token")
+  emailVerificationExpires            DateTime?       @map("email_verification_expires")
+  passwordResetToken                  String?         @map("password_reset_token")
+  passwordResetExpires                DateTime?       @map("password_reset_expires")
+  createdAt                           DateTime        @default(now()) @map("created_at")
+  updatedAt                           DateTime        @map("updated_at")
+  bookmarks                           bookmarks[]
   comments                            comments[]
-  follows_follows_following_idTousers follows[]       @relation("follows_following_idTousers")
-  follows_follows_follower_idTousers  follows[]       @relation("follows_follower_idTousers")
-  nodes                               nodes[]
+  following                           follows[]       @relation("follows_following_idTousers")
+  followers                           follows[]       @relation("follows_follower_idTousers")
+  authored_nodes                      nodes[]         @relation("NodeAuthor")
   notifications                       notifications[]
   ratings                             ratings[]
   reports                             reports[]
-  stories                             stories[]
+  shares                              shares[]
+  authored_stories                    stories[]       @relation("StoryAuthor")
 }

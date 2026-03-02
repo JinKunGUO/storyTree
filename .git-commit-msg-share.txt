@@ -1,0 +1,60 @@
+feat: implement share feature and fix schema naming issues
+
+Major Features:
+- Implement complete story and chapter sharing functionality
+- Fix database schema naming inconsistencies  
+- Add chapter editing capability
+- Fix field name mismatches across multiple pages
+
+New Features:
+1. Share Feature
+   - Copy link to clipboard
+   - Social media sharing (WeChat, Weibo, QQ, Qzone)
+   - Share statistics tracking (by platform, user, time)
+   - Available on both story detail and chapter pages
+
+2. Bookmark Feature
+   - Users can bookmark favorite stories
+   - Bookmark list management
+   - Bookmark status synchronization
+
+Important Fixes:
+1. Schema Naming Unification
+   - Use underscore naming consistently (author_id, story_id, etc)
+   - Fix field name mismatches in all routes
+   - Update relationship field names
+
+2. Chapter Feature Fixes
+   - Add chapter edit API (PUT /api/nodes/:id)
+   - Fix edit button display on chapter page
+   - Fix back button navigation
+
+3. Database Changes
+   - Add shares table for tracking share data
+   - Add necessary indexes for query optimization
+   - Update model relationships
+
+New Files:
+- api/src/routes/shares.ts (Share API)
+- api/src/routes/bookmarks.ts (Bookmark API)
+- web/share.js (Share component)
+- 10 documentation files in docs/
+
+Modified Files:
+- 13 backend route files
+- 2 frontend HTML files
+- api/prisma/schema.prisma
+- VERSION.json
+
+Deleted Files:
+- 11 temporary files and scripts
+
+Statistics:
+- New code: ~2000 lines
+- New API endpoints: 8
+- Bugs fixed: 20+
+- New documentation: 10 files
+
+Version: 1.1.0
+Branch: feature/m3-user-auth
+

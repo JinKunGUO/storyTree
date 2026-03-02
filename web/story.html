@@ -855,6 +855,7 @@
     </div>
 
     <script src="auth.js"></script>
+    <script src="share.js"></script>
     <script>
         // 页面初始化
         document.addEventListener('DOMContentLoaded', function() {
@@ -866,6 +867,18 @@
             const navMenu = document.getElementById('navMenu');
             hamburger?.addEventListener('click', () => {
                 navMenu?.classList.toggle('active');
+            });
+            
+            // 分享按钮
+            document.getElementById('shareBtn')?.addEventListener('click', function() {
+                if (window.currentStory) {
+                    shareManager.showSharePanel({
+                        storyId: window.currentStory.id,
+                        title: window.currentStory.title,
+                        description: window.currentStory.description,
+                        image: window.currentStory.coverImage
+                    });
+                }
             });
         });
 
@@ -976,6 +989,9 @@
 
                 // 检查是否是作者，显示编辑按钮
                 checkIfAuthor(story);
+                
+                // 检查收藏状态并初始化收藏按钮
+                checkBookmarkStatus(story.id);
 
                 // 开始阅读按钮
                 const startReadBtn = document.getElementById('startReadBtn');
@@ -1253,6 +1269,123 @@
                 messageEl.classList.add('fade-out');
                 setTimeout(() => messageEl.remove(), 300);
             }, 3000);
+        }
+
+        // 检查收藏状态
+        async function checkBookmarkStatus(storyId) {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            const likeBtn = document.getElementById('likeBtn');
+            
+            if (!token) {
+                // 未登录，显示登录提示
+                likeBtn.addEventListener('click', () => {
+                    showError('请先登录');
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 1500);
+                });
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/bookmarks/check/${storyId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    updateBookmarkButton(data.isBookmarked);
+                }
+            } catch (error) {
+                console.error('检查收藏状态失败:', error);
+            }
+
+            // 添加点击事件
+            likeBtn.addEventListener('click', () => toggleBookmark(storyId));
+        }
+
+        // 更新收藏按钮状态
+        function updateBookmarkButton(isBookmarked) {
+            const likeBtn = document.getElementById('likeBtn');
+            const icon = likeBtn.querySelector('i');
+            
+            if (isBookmarked) {
+                icon.classList.remove('far');
+                icon.classList.add('fas');
+                likeBtn.innerHTML = '<i class="fas fa-heart"></i> 已收藏';
+                likeBtn.style.background = '#ff6b6b';
+                likeBtn.style.color = 'white';
+            } else {
+                icon.classList.remove('fas');
+                icon.classList.add('far');
+                likeBtn.innerHTML = '<i class="far fa-heart"></i> 收藏';
+                likeBtn.style.background = '';
+                likeBtn.style.color = '';
+            }
+        }
+
+        // 切换收藏状态
+        async function toggleBookmark(storyId) {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            
+            if (!token) {
+                showError('请先登录');
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 1500);
+                return;
+            }
+
+            const likeBtn = document.getElementById('likeBtn');
+            const icon = likeBtn.querySelector('i');
+            const isBookmarked = icon.classList.contains('fas');
+
+            // 禁用按钮防止重复点击
+            likeBtn.disabled = true;
+
+            try {
+                if (isBookmarked) {
+                    // 取消收藏
+                    const response = await fetch(`/api/bookmarks/${storyId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('取消收藏失败');
+                    }
+
+                    updateBookmarkButton(false);
+                    showSuccess('已取消收藏');
+                } else {
+                    // 添加收藏
+                    const response = await fetch('/api/bookmarks', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ storyId: parseInt(storyId) })
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.error || '收藏失败');
+                    }
+
+                    updateBookmarkButton(true);
+                    showSuccess('收藏成功');
+                }
+            } catch (error) {
+                console.error('收藏操作失败:', error);
+                showError(error.message || '操作失败，请重试');
+            } finally {
+                likeBtn.disabled = false;
+            }
         }
     </script>
 </body>

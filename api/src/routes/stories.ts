@@ -10,18 +10,18 @@ router.get('/', optionalAuth, async (req, res) => {
   const userId = getUserId(req);
 
   try {
-    const stories = await prisma.story.findMany({
+    const stories = await prisma.stories.findMany({
       include: {
         author: {
           select: { id: true, username: true }
         },
         nodes: {
           where: {
-            parentId: null,
+            parent_id: null,
             // 只显示已通过审核的节点，或者用户自己的节点
             OR: [
-              { reviewStatus: 'APPROVED' },
-              ...(userId ? [{ authorId: userId }] : [])
+              { review_status: 'APPROVED' },
+              ...(userId ? [{ author_id: userId }] : [])
             ]
           },
           take: 1,
@@ -29,13 +29,13 @@ router.get('/', optionalAuth, async (req, res) => {
             id: true,
             title: true,
             content: true,
-            ratingAvg: true,
-            ratingCount: true,
-            reviewStatus: true
+            rating_avg: true,
+            rating_count: true,
+            review_status: true
           }
         }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { created_at: 'desc' }
     });
 
     // 过滤掉没有可见节点的故事
@@ -54,32 +54,34 @@ router.post('/', authenticateToken, async (req, res) => {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
-  const { title, description, coverImage, firstNodeTitle, firstNodeContent } = req.body;
+  const { title, description, cover_image, firstNodeTitle, firstNodeContent } = req.body;
 
   try {
     // 如果提供了第一章内容，则创建故事和第一章
     if (firstNodeContent) {
       // 检查用户已发布节点数
-      const userNodeCount = await prisma.node.count({
-        where: { authorId: userId }
+      const userNodeCount = await prisma.nodes.count({
+        where: { author_id: userId }
       });
 
       // 审核检查
       const reviewCheck = needsReview(firstNodeContent, userNodeCount);
 
-      const story = await prisma.story.create({
+      const story = await prisma.stories.create({
         data: {
           title,
           description,
-          coverImage,
-          authorId: userId,
+          cover_image,
+          author_id: userId,
+          updated_at: new Date(),
           nodes: {
             create: {
               title: firstNodeTitle || '第一章',
               content: firstNodeContent,
-              authorId: userId,
+              author_id: userId,
               path: '1',
-              reviewStatus: reviewCheck.needReview ? 'PENDING' : 'APPROVED'
+              review_status: reviewCheck.needReview ? 'PENDING' : 'APPROVED',
+              updated_at: new Date()
             }
           }
         },
@@ -91,25 +93,26 @@ router.post('/', authenticateToken, async (req, res) => {
         }
       });
 
-      // Update rootNodeId
-      await prisma.story.update({
+      // Update root_node_id
+      await prisma.stories.update({
         where: { id: story.id },
-        data: { rootNodeId: story.nodes[0].id }
+        data: { root_node_id: story.nodes[0].id }
       });
 
       return res.json({
-        story: { ...story, rootNodeId: story.nodes[0].id },
-        reviewStatus: reviewCheck.needReview ? 'pending' : 'approved',
+        story: { ...story, root_node_id: story.nodes[0].id },
+        review_status: reviewCheck.needReview ? 'pending' : 'approved',
         message: reviewCheck.needReview ? `内容需要审核：${reviewCheck.reason}` : '发布成功'
       });
     } else {
       // 只创建故事，不创建第一章
-      const story = await prisma.story.create({
+      const story = await prisma.stories.create({
         data: {
           title,
           description,
-          coverImage,
-          authorId: userId
+          cover_image,
+          author_id: userId,
+          updated_at: new Date()
         },
         include: {
           author: {
@@ -134,7 +137,7 @@ router.get('/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    const story = await prisma.story.findUnique({
+    const story = await prisma.stories.findUnique({
       where: { id: parseInt(id) },
       include: {
         author: {
@@ -148,14 +151,14 @@ router.get('/:id', async (req, res) => {
     }
 
     // Get all nodes for this story
-    const nodes = await prisma.node.findMany({
-      where: { storyId: parseInt(id) },
+    const nodes = await prisma.nodes.findMany({
+      where: { story_id: parseInt(id) },
       include: {
         author: {
           select: { id: true, username: true }
         },
         _count: {
-          select: { branches: true }
+          select: { other_nodes: true }
         }
       },
       orderBy: { path: 'asc' }
@@ -176,11 +179,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
   }
 
   const { id } = req.params;
-  const { title, description, coverImage } = req.body;
+  const { title, description, cover_image } = req.body;
 
   try {
     // 检查故事是否存在
-    const story = await prisma.story.findUnique({
+    const story = await prisma.stories.findUnique({
       where: { id: parseInt(id) }
     });
 
@@ -189,17 +192,17 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 
     // 检查权限：只有作者可以编辑
-    if (story.authorId !== userId) {
+    if (story.author_id !== userId) {
       return res.status(403).json({ error: 'Not authorized to edit this story' });
     }
 
     // 更新故事（只更新存在的字段）
-    const updatedStory = await prisma.story.update({
+    const updatedStory = await prisma.stories.update({
       where: { id: parseInt(id) },
       data: {
         ...(title && { title }),
         ...(description && { description }),
-        ...(coverImage && { coverImage })
+        ...(cover_image && { cover_image })
       },
       include: {
         author: {

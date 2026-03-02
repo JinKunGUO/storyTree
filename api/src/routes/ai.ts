@@ -29,11 +29,11 @@ router.post('/generate', async (req, res) => {
 
   try {
     // Get the node content and context
-    const node = await prisma.node.findUnique({
+    const node = await prisma.nodes.findUnique({
       where: { id: parseInt(nodeId) },
       include: {
         story: true,
-        parent: true
+        nodes: true  // parent node
       }
     });
 
@@ -43,11 +43,11 @@ router.post('/generate', async (req, res) => {
 
     // Build context from story so far
     let context = '';
-    if (node.parent) {
+    if (node.nodes) {  // if has parent
       // Get full path
       const pathParts = node.path.split('.');
-      const allNodes = await prisma.node.findMany({
-        where: { storyId: node.storyId },
+      const allNodes = await prisma.nodes.findMany({
+        where: { story_id: node.story_id },
         orderBy: { path: 'asc' }
       });
 
@@ -184,7 +184,7 @@ router.post('/accept', async (req, res) => {
   const { parentNodeId, title, content } = req.body;
 
   try {
-    const parentNode = await prisma.node.findUnique({
+    const parentNode = await prisma.nodes.findUnique({
       where: { id: parseInt(parentNodeId) },
       include: { story: true }
     });
@@ -194,21 +194,22 @@ router.post('/accept', async (req, res) => {
     }
 
     // Generate path
-    const siblingCount = await prisma.node.count({
-      where: { parentId: parseInt(parentNodeId) }
+    const siblingCount = await prisma.nodes.count({
+      where: { parent_id: parseInt(parentNodeId) }
     });
     const newPath = `${parentNode.path}.${siblingCount + 1}`;
 
     // Create the AI-generated node
-    const node = await prisma.node.create({
+    const node = await prisma.nodes.create({
       data: {
-        storyId: parentNode.storyId,
-        parentId: parseInt(parentNodeId),
-        authorId: userId,
+        story_id: parentNode.story_id,
+        parent_id: parseInt(parentNodeId),
+        author_id: userId,
         title,
         content,
         path: newPath,
-        aiGenerated: true
+        ai_generated: true,
+        updated_at: new Date()
       },
       include: {
         author: {

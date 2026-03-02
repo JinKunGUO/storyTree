@@ -24,7 +24,7 @@ const requireAdmin = async (req: any, res: any, next: any) => {
       return res.status(401).json({ error: '无效的认证令牌' });
     }
 
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users.findUnique({
       where: { id: decoded.userId },
       select: { id: true, isAdmin: true }
     });
@@ -49,8 +49,8 @@ router.get('/review-queue', requireAdmin, async (req, res) => {
 
   try {
     // 获取待审核的节点（PENDING状态）
-    const pendingNodes = await prisma.node.findMany({
-      where: { reviewStatus: 'PENDING' },
+    const pendingNodes = await prisma.nodes.findMany({
+      where: { review_status: 'PENDING' },
       include: {
         author: {
           select: { id: true, username: true }
@@ -59,14 +59,14 @@ router.get('/review-queue', requireAdmin, async (req, res) => {
           select: { id: true, title: true }
         }
       },
-      orderBy: { createdAt: 'asc' }
+      orderBy: { created_at: 'asc' }
     });
 
     // 获取被举报但未处理的节点
-    const reportedNodes = await prisma.node.findMany({
+    const reportedNodes = await prisma.nodes.findMany({
       where: {
-        reportCount: { gt: 0 },
-        reviewStatus: { not: 'HIDDEN' }
+        report_count: { gt: 0 },
+        review_status: { not: 'HIDDEN' }
       },
       include: {
         author: {
@@ -76,7 +76,7 @@ router.get('/review-queue', requireAdmin, async (req, res) => {
           select: { id: true, title: true }
         }
       },
-      orderBy: { reportCount: 'desc' }
+      orderBy: { report_count: 'desc' }
     });
 
     res.json({
@@ -127,13 +127,13 @@ router.post('/review', requireAdmin, async (req, res) => {
         return res.status(400).json({ error: 'Invalid action' });
     }
 
-    const node = await prisma.node.update({
+    const node = await prisma.nodes.update({
       where: { id: parseInt(nodeId) },
       data: {
-        reviewStatus: newStatus,
-        reviewedBy: userId,
-        reviewedAt: new Date(),
-        reviewNote: note || null
+        review_status: newStatus,
+        reviewed_by: userId,
+        reviewed_at: new Date(),
+        review_note: note || null
       },
       include: {
         author: {
@@ -153,7 +153,7 @@ router.post('/review', requireAdmin, async (req, res) => {
     }[newStatus] || newStatus;
 
     await createNotification(
-      node.authorId,
+      node.author_id,
       'review',
       '内容审核结果',
       `您的内容《${node.title}》审核${statusText}${note ? `：${note}` : ''}`,
@@ -177,14 +177,14 @@ router.get('/reports/:nodeId', requireAdmin, async (req, res) => {
   const { nodeId } = req.params;
 
   try {
-    const reports = await prisma.report.findMany({
-      where: { nodeId: parseInt(nodeId) },
+    const reports = await prisma.reports.findMany({
+      where: { node_id: parseInt(nodeId) },
       include: {
         reporter: {
           select: { id: true, username: true }
         }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { created_at: 'desc' }
     });
 
     res.json({ reports });
