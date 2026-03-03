@@ -1,12 +1,29 @@
 import { Router } from 'express';
 import Anthropic from '@anthropic-ai/sdk';
+import jwt from 'jsonwebtoken';
 import { prisma } from '../index';
 
 const router = Router();
 
+// JWT认证函数 - 从Authorization header中提取并验证token
 const getUserId = (req: any): number | null => {
-  const userId = req.headers['x-user-id'];
-  return userId ? parseInt(userId as string) : null;
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('❌ 未找到Authorization header或格式错误');
+      return null;
+    }
+
+    const token = authHeader.substring(7); // 移除 "Bearer " 前缀
+    const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
+    
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; username?: string };
+    console.log('✅ Token验证成功，用户ID:', decoded.userId);
+    return decoded.userId;
+  } catch (error) {
+    console.error('❌ Token验证失败:', error instanceof Error ? error.message : 'Unknown error');
+    return null;
+  }
 };
 
 // Initialize Anthropic client
@@ -15,94 +32,169 @@ const anthropic = new Anthropic({
 });
 
 // Generate AI continuation options
+// Generate AI continuation options
 router.post('/generate', async (req, res) => {
   const userId = getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
-  const { nodeId, style, count = 3 } = req.body;
+  const { nodeId, storyId, context: userContext, style, count = 3 } = req.body;
 
-  if (!nodeId) {
-    return res.status(400).json({ error: 'nodeId is required' });
+  // 支持两种模式：
+  // 1. 基于nodeId（已保存的章节）
+  // 2. 基于storyId + context（新写作，未保存）
+  if (!nodeId && !storyId) {
+    return res.status(400).json({ error: 'nodeId or storyId is required' });
   }
 
   try {
-    // Get the node content and context
-    const node = await prisma.nodes.findUnique({
-      where: { id: parseInt(nodeId) },
-      include: {
-        story: true,
-        nodes: true  // parent node
-      }
-    });
-
-    if (!node) {
-      return res.status(404).json({ error: 'Node not found' });
-    }
-
-    // Build context from story so far
     let context = '';
-    if (node.nodes) {  // if has parent
-      // Get full path
-      const pathParts = node.path.split('.');
-      const allNodes = await prisma.nodes.findMany({
-        where: { story_id: node.story_id },
-        orderBy: { path: 'asc' }
+    let storyTitle = '';
+    let storyDescription = '';
+
+    if (nodeId) {
+      // 模式1：基于已存在的节点
+      const node = await prisma.nodes.findUnique({
+        where: { id: parseInt(nodeId) },
+        include: {
+          story: true,
+          nodes: true  // parent node
+        }
       });
 
-      // Find nodes in the current path
-      let currentPath = '';
-      for (let i = 0; i < pathParts.length; i++) {
-        currentPath = currentPath ? `${currentPath}.${pathParts[i]}` : pathParts[i];
-        const pathNode = allNodes.find(n => n.path === currentPath);
-        if (pathNode) {
-          context += `\n【${pathNode.title}】\n${pathNode.content}\n`;
-        }
+      if (!node) {
+        return res.status(404).json({ error: 'Node not found' });
       }
-    } else {
-      context = node.content;
+
+      storyTitle = node.story.title;
+      storyDescription = node.story.description || '';
+
+      // Build context from story so far
+      if (node.nodes) {  // if has parent
+        // Get full path
+        const pathParts = node.path.split('.');
+        const allNodes = await prisma.nodes.findMany({
+          where: { story_id: node.story_id },
+          orderBy: { path: 'asc' }
+        });
+
+        // Find nodes in the current path
+        let currentPath = '';
+        for (let i = 0; i < pathParts.length; i++) {
+          currentPath = currentPath ? `${currentPath}.${pathParts[i]}` : pathParts[i];
+          const pathNode = allNodes.find(n => n.path === currentPath);
+          if (pathNode) {
+            context += `\n【${pathNode.title}】\n${pathNode.content}\n`;
+          }
+        }
+      } else {
+        context = node.content;
+      }
+    } else if (storyId) {
+      // 模式2：基于故事ID和用户提供的上下文
+      const story = await prisma.stories.findUnique({
+        where: { id: parseInt(storyId) },
+        include: {
+          nodes: {
+            orderBy: { path: 'asc' },
+            take: 5  // 获取最近5个章节作为上下文
+          }
+        }
+      });
+
+      if (!story) {
+        return res.status(404).json({ error: 'Story not found' });
+      }
+
+      storyTitle = story.title;
+      storyDescription = story.description || '';
+
+      // 如果用户提供了上下文，使用用户的；否则使用已有章节
+      if (userContext && userContext.trim().length > 0) {
+        context = userContext;
+      } else if (story.nodes && story.nodes.length > 0) {
+        // 使用已有章节作为上下文
+        context = story.nodes.map(n => `【${n.title}】\n${n.content}`).join('\n\n');
+      } else {
+        // 完全新的故事，使用故事描述
+        context = storyDescription;
+      }
     }
 
+    // 定义AI写作风格
+    const styleOptions = {
+      '悬疑': '加入意外转折，营造紧张悬念的氛围，使用伏笔和暗示',
+      '温情': '深化人物情感，展现细腻的人物关系，温暖治愈',
+      '科幻': '融入科技元素和未来想象，理性与想象并重',
+      '武侠': '展现江湖侠义，注重武打场面和人物气节',
+      '现实': '贴近生活真实，细腻刻画人物心理和社会百态',
+      '浪漫': '营造浪漫氛围，注重情感描写和细节刻画',
+      '奇幻': '构建奇幻世界观，富有想象力和魔幻色彩',
+      '脑洞': '跳出常规思路，走向出人意料的创意方向'
+    };
+
+    // 智能选择风格
+    let selectedStyles: string[];
+    if (style && styleOptions[style as keyof typeof styleOptions]) {
+      // 用户指定了风格，生成该风格的多个版本
+      selectedStyles = [style, style, style];
+    } else {
+      // 自动选择多样化的风格
+      const allStyles = Object.keys(styleOptions);
+      selectedStyles = allStyles.sort(() => Math.random() - 0.5).slice(0, count);
+    }
+
+    // 构建风格说明
+    const styleInstructions = selectedStyles.map((s, i) => 
+      `${i + 1}. ${s}向 - ${styleOptions[s as keyof typeof styleOptions]}`
+    ).join('\n');
+
     // Create prompt for Claude
-    const prompt = `基于以下故事前文，续写${count}个不同风格的后续章节。每个续写约300-500字。
+    const prompt = `你是一位专业的小说创作助手。请基于以下故事前文，续写${count}个不同风格的后续章节。
 
-【前文】
-故事标题：${node.story.title}
+【故事信息】
+故事标题：${storyTitle}
+${storyDescription ? `故事简介：${storyDescription}` : ''}
 
-${context}
+【前文内容】
+${context.substring(0, 2000)}${context.length > 2000 ? '\n...(内容过长已截断)' : ''}
 
-请续写${count}个不同方向的后续：
+【续写要求】
+请续写${count}个不同方向的后续章节：
 
-风格说明：
-1. 悬疑向 - 加入意外转折，营造紧张氛围
-2. 温情向 - 深化人物情感，展现人物关系
-3. 脑洞向 - 跳出常规思路，走向出人意料的方向
+${styleInstructions}
 
-输出要求：
-- 为每个续写提供一个简短的标题（10字以内）
-- 内容要与前文保持连贯
-- 用中文输出
-- 只输出续写内容，不要解释
+【输出规范】
+- 每个续写300-500字
+- 标题简洁有力（10字以内）
+- 内容与前文自然衔接
+- 保持故事连贯性和人物一致性
+- 语言优美流畅，富有画面感
+- 只输出续写内容，不要解释和评论
 
-格式：
-【方向1：风格名称】
+【输出格式】
+【方向1：${selectedStyles[0]}】
 标题：XXX
 内容：
 XXX
 
-【方向2：风格名称】
+【方向2：${selectedStyles[1]}】
 标题：XXX
 内容：
 XXX
 
-【方向3：风格名称】
+${count > 2 ? `【方向3：${selectedStyles[2]}】
 标题：XXX
 内容：
-XXX`;
+XXX` : ''}`;
 
     // Call Claude API
     let aiResponse: string;
+    const startTime = Date.now();
+    let tokensUsed = { input: 0, output: 0, total: 0 };
+    let success = true;
+    let errorMessage: string | null = null;
 
     try {
       const response = await anthropic.messages.create({
@@ -119,8 +211,19 @@ XXX`;
 
       const content = response.content[0];
       aiResponse = content.type === 'text' ? content.text : '';
+      
+      // 记录Token使用量
+      tokensUsed = {
+        input: response.usage.input_tokens || 0,
+        output: response.usage.output_tokens || 0,
+        total: (response.usage.input_tokens || 0) + (response.usage.output_tokens || 0)
+      };
+
     } catch (aiError) {
+      success = false;
+      errorMessage = aiError instanceof Error ? aiError.message : 'Unknown error';
       console.error('AI API Error:', aiError);
+      
       // Return mock response for development
       aiResponse = `【方向1：悬疑向】
 标题：深夜的脚步声
@@ -164,10 +267,47 @@ XXX`;
 什么任务？！我现在是一只需要执行任务的猫？这个世界到底怎么了？`;
     }
 
+    const responseTime = Date.now() - startTime;
+
+    // 计算成本（Claude Haiku定价：输入$0.25/M tokens，输出$1.25/M tokens）
+    const costUsd = (tokensUsed.input * 0.25 / 1000000) + (tokensUsed.output * 1.25 / 1000000);
+
+    // 记录AI使用日志
+    try {
+      await prisma.ai_usage_logs.create({
+        data: {
+          user_id: userId,
+          story_id: storyId ? parseInt(storyId) : null,
+          node_id: nodeId ? parseInt(nodeId) : null,
+          action_type: 'generate',
+          model_name: 'claude-3-haiku-20240307',
+          prompt_tokens: tokensUsed.input,
+          completion_tokens: tokensUsed.output,
+          total_tokens: tokensUsed.total,
+          cost_usd: costUsd,
+          response_time_ms: responseTime,
+          success: success,
+          error_message: errorMessage
+        }
+      });
+    } catch (logError) {
+      console.error('Failed to log AI usage:', logError);
+      // 不影响主流程，继续执行
+    }
+
     // Parse the response
     const options = parseAiResponse(aiResponse);
 
-    res.json({ options, raw: aiResponse });
+    res.json({ 
+      options, 
+      raw: aiResponse,
+      metadata: {
+        tokensUsed: tokensUsed.total,
+        costUsd: costUsd.toFixed(6),
+        responseTimeMs: responseTime,
+        success: success
+      }
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to generate options' });
@@ -261,5 +401,73 @@ function parseAiResponse(response: string): Array<{ title: string; content: stri
 
   return options;
 }
+
+// 获取AI使用统计
+router.get('/usage-stats', async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    // 获取用户的AI使用统计
+    const stats = await prisma.ai_usage_logs.aggregate({
+      where: { user_id: userId },
+      _sum: {
+        total_tokens: true,
+        cost_usd: true
+      },
+      _count: {
+        id: true
+      }
+    });
+
+    // 获取最近7天的使用情况
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const recentStats = await prisma.ai_usage_logs.aggregate({
+      where: {
+        user_id: userId,
+        created_at: { gte: sevenDaysAgo }
+      },
+      _sum: {
+        total_tokens: true,
+        cost_usd: true
+      },
+      _count: {
+        id: true
+      }
+    });
+
+    // 获取成功率
+    const successCount = await prisma.ai_usage_logs.count({
+      where: {
+        user_id: userId,
+        success: true
+      }
+    });
+
+    const totalCount = stats._count.id || 0;
+    const successRate = totalCount > 0 ? (successCount / totalCount) * 100 : 0;
+
+    res.json({
+      total: {
+        requests: totalCount,
+        tokens: stats._sum.total_tokens || 0,
+        cost: (stats._sum.cost_usd || 0).toFixed(6),
+        successRate: successRate.toFixed(2)
+      },
+      recent7Days: {
+        requests: recentStats._count.id || 0,
+        tokens: recentStats._sum.total_tokens || 0,
+        cost: (recentStats._sum.cost_usd || 0).toFixed(6)
+      }
+    });
+  } catch (error) {
+    console.error('Failed to get usage stats:', error);
+    res.status(500).json({ error: 'Failed to get usage stats' });
+  }
+});
 
 export default router;

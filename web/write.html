@@ -751,16 +751,16 @@
 
         // 保存草稿
         document.getElementById('saveDraftBtn').addEventListener('click', async function() {
-            await saveChapter(false);
+            await saveChapter(false); // false = 保存草稿，不跳转
         });
 
         // 发布章节
         document.getElementById('publishBtn').addEventListener('click', async function() {
-            await saveChapter(true);
+            await saveChapter(true); // true = 发布并跳转
         });
 
         // 保存章节
-        async function saveChapter(publish = false) {
+        async function saveChapter(shouldPublishAndRedirect = false) {
             const title = document.getElementById('chapterTitle').value.trim();
             const content = quill.root.innerHTML;
             const textContent = quill.getText().trim();
@@ -787,6 +787,7 @@
                 const token = localStorage.getItem('token') || sessionStorage.getItem('token');
                 
                 console.log('开始保存章节...');
+                console.log('模式:', shouldPublishAndRedirect ? '发布并跳转' : '保存草稿');
                 console.log('Token:', token ? '存在' : '不存在');
                 
                 // 判断是第一章还是续写章节
@@ -851,16 +852,47 @@
 
                 if (response.ok) {
                     const chapterNum = isFirstChapter ? '第一章' : '新章节';
-                    showSuccess(`${chapterNum}发布成功！`);
                     
-                    // 跳转到新创建的章节页面
-                    setTimeout(() => {
+                    if (shouldPublishAndRedirect) {
+                        // 发布模式：显示成功消息并跳转
+                        showSuccess(`${chapterNum}发布成功！即将跳转...`);
+                        
+                        // 清除未保存标记
+                        hasUnsavedChanges = false;
+                        
+                        // 保存节点ID，以便下次续写
                         if (data.node && data.node.id) {
-                            window.location.href = `/chapter?id=${data.node.id}`;
-                        } else {
-                            window.location.href = `/story?id=${storyId}`;
+                            window.lastNodeId = data.node.id;
                         }
-                    }, 1500);
+                        
+                        // 跳转到新创建的章节页面
+                        setTimeout(() => {
+                            if (data.node && data.node.id) {
+                                window.location.href = `/chapter?id=${data.node.id}`;
+                            } else {
+                                window.location.href = `/story?id=${storyId}`;
+                            }
+                        }, 1500);
+                    } else {
+                        // 草稿模式：显示成功消息，留在当前页面
+                        showSuccess(`${chapterNum}草稿保存成功！`);
+                        
+                        // 清除未保存标记
+                        hasUnsavedChanges = false;
+                        
+                        // 保存节点ID，以便下次续写或发布
+                        if (data.node && data.node.id) {
+                            window.lastNodeId = data.node.id;
+                            console.log('草稿已保存，节点ID:', data.node.id);
+                        }
+                        
+                        // 重新启用按钮
+                        publishBtn.disabled = false;
+                        saveDraftBtn.disabled = false;
+                        
+                        // 移除加载状态
+                        document.getElementById('loadingOverlay').classList.remove('active');
+                    }
                 } else {
                     throw new Error(data.error || '保存失败');
                 }
@@ -869,7 +901,6 @@
                 showError(error.message || '保存失败，请重试');
                 publishBtn.disabled = false;
                 saveDraftBtn.disabled = false;
-            } finally {
                 document.getElementById('loadingOverlay').classList.remove('active');
             }
         }
@@ -902,9 +933,20 @@
         }
 
         // 防止意外离开
+        let hasUnsavedChanges = false;
+        
+        // 监听内容变化
+        quill.on('text-change', function() {
+            hasUnsavedChanges = true;
+        });
+        
+        // 监听标题变化
+        document.getElementById('chapterTitle').addEventListener('input', function() {
+            hasUnsavedChanges = true;
+        });
+        
         window.addEventListener('beforeunload', function(e) {
-            const content = quill.getText().trim();
-            if (content.length > 0) {
+            if (hasUnsavedChanges) {
                 e.preventDefault();
                 e.returnValue = '你有未保存的内容，确定要离开吗？';
             }

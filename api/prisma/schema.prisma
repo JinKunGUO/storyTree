@@ -12,8 +12,8 @@ model bookmarks {
   user_id    Int
   story_id   Int
   created_at DateTime @default(now())
-  user       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
   story      stories  @relation(fields: [story_id], references: [id], onDelete: Cascade)
+  user       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, story_id])
   @@index([user_id])
@@ -40,12 +40,12 @@ model comments {
 }
 
 model follows {
-  id                                Int      @id @default(autoincrement())
-  follower_id                       Int
-  following_id                      Int
-  created_at                        DateTime @default(now())
-  following                         users    @relation("follows_following_idTousers", fields: [following_id], references: [id], onDelete: Cascade)
-  follower                          users    @relation("follows_follower_idTousers", fields: [follower_id], references: [id], onDelete: Cascade)
+  id           Int      @id @default(autoincrement())
+  follower_id  Int
+  following_id Int
+  created_at   DateTime @default(now())
+  following    users    @relation("follows_following_idTousers", fields: [following_id], references: [id], onDelete: Cascade)
+  follower     users    @relation("follows_follower_idTousers", fields: [follower_id], references: [id], onDelete: Cascade)
 
   @@unique([follower_id, following_id])
   @@index([following_id])
@@ -133,15 +133,15 @@ model reports {
 }
 
 model shares {
-  id          Int      @id @default(autoincrement())
-  story_id    Int
-  node_id     Int?
-  user_id     Int?
-  platform    String
-  created_at  DateTime @default(now())
-  story       stories  @relation(fields: [story_id], references: [id], onDelete: Cascade)
-  node        nodes?   @relation(fields: [node_id], references: [id], onDelete: Cascade)
-  user        users?   @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  id         Int      @id @default(autoincrement())
+  story_id   Int
+  node_id    Int?
+  user_id    Int?
+  platform   String
+  created_at DateTime @default(now())
+  user       users?   @relation(fields: [user_id], references: [id])
+  node       nodes?   @relation(fields: [node_id], references: [id], onDelete: Cascade)
+  story      stories  @relation(fields: [story_id], references: [id], onDelete: Cascade)
 
   @@index([story_id])
   @@index([node_id])
@@ -166,28 +166,51 @@ model stories {
 }
 
 model users {
-  id                                  Int             @id @default(autoincrement())
-  username                            String          @unique
-  email                               String          @unique
-  password                            String
-  avatar                              String?
-  bio                                 String?
-  isAdmin                             Boolean         @default(false) @map("is_admin")
-  emailVerified                       Boolean         @default(false) @map("email_verified")
-  emailVerificationToken              String?         @map("email_verification_token")
-  emailVerificationExpires            DateTime?       @map("email_verification_expires")
-  passwordResetToken                  String?         @map("password_reset_token")
-  passwordResetExpires                DateTime?       @map("password_reset_expires")
-  createdAt                           DateTime        @default(now()) @map("created_at")
-  updatedAt                           DateTime        @map("updated_at")
-  bookmarks                           bookmarks[]
-  comments                            comments[]
-  following                           follows[]       @relation("follows_following_idTousers")
-  followers                           follows[]       @relation("follows_follower_idTousers")
-  authored_nodes                      nodes[]         @relation("NodeAuthor")
-  notifications                       notifications[]
-  ratings                             ratings[]
-  reports                             reports[]
-  shares                              shares[]
-  authored_stories                    stories[]       @relation("StoryAuthor")
+  id                       Int             @id @default(autoincrement())
+  username                 String          @unique
+  email                    String          @unique
+  password                 String
+  avatar                   String?
+  bio                      String?
+  isAdmin                  Boolean         @default(false) @map("is_admin")
+  emailVerified            Boolean         @default(false) @map("email_verified")
+  emailVerificationToken   String?         @map("email_verification_token")
+  emailVerificationExpires DateTime?       @map("email_verification_expires")
+  passwordResetToken       String?         @map("password_reset_token")
+  passwordResetExpires     DateTime?       @map("password_reset_expires")
+  createdAt                DateTime        @default(now()) @map("created_at")
+  updatedAt                DateTime        @map("updated_at")
+  ai_usage_logs            ai_usage_logs[]
+  bookmarks                bookmarks[]
+  comments                 comments[]
+  following                follows[]       @relation("follows_following_idTousers")
+  followers                follows[]       @relation("follows_follower_idTousers")
+  authored_nodes           nodes[]         @relation("NodeAuthor")
+  notifications            notifications[]
+  ratings                  ratings[]
+  reports                  reports[]
+  shares                   shares[]
+  authored_stories         stories[]       @relation("StoryAuthor")
+}
+
+model ai_usage_logs {
+  id                Int      @id @default(autoincrement())
+  user_id           Int
+  story_id          Int?
+  node_id           Int?
+  action_type       String
+  model_name        String
+  prompt_tokens     Int      @default(0)
+  completion_tokens Int      @default(0)
+  total_tokens      Int      @default(0)
+  cost_usd          Float    @default(0)
+  response_time_ms  Int      @default(0)
+  success           Boolean  @default(true)
+  error_message     String?
+  created_at        DateTime @default(now())
+  user              users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([created_at])
+  @@index([action_type])
 }
