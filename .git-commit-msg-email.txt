@@ -1,0 +1,118 @@
+feat: implement email verification and password reset with development mode
+
+## New Features
+
+### Email Verification & Password Reset
+- Complete email verification flow for new registrations
+- Secure password reset via email with time-limited tokens
+- Development mode: prints email content to console (no SMTP needed)
+- Production mode: sends real emails when SMTP is configured
+- Email verification page with automatic token processing
+- Password reset page with strength validation
+
+### Frontend Pages (3 new)
+1. verify-email.html - Email verification page
+2. forgot-password.html - Request password reset
+3. reset-password.html - Reset password with token
+
+### Backend APIs (4 new endpoints)
+1. POST /api/auth/verify-email - Verify email token
+2. POST /api/auth/resend-verification - Resend verification email
+3. POST /api/auth/forgot-password - Request password reset
+4. POST /api/auth/reset-password - Reset password with token
+
+## Bug Fixes
+
+### Frontend Routing Fix
+- Added new auth pages to routing whitelist in api/src/index.ts
+- Fixed: /reset-password now shows correct page instead of homepage
+- Fixed: /verify-email now accessible
+- Fixed: /forgot-password now accessible
+
+### Email Sending Fix
+- Added development mode detection in api/src/utils/auth.ts
+- No longer crashes when SMTP is not configured
+- Prints email links to console for easy testing
+- Auto-detects placeholder SMTP credentials
+
+## Improvements
+
+### Development Experience
+- No SMTP configuration needed for local testing
+- Email links printed to console for easy access
+- Automatic mode switching based on configuration
+- Clear console output with formatted email info
+
+### Security
+- 64-character hex tokens (256-bit entropy)
+- Email verification: 24-hour expiration
+- Password reset: 1-hour expiration
+- Tokens cleared after use
+- Password strength validation (min 6 characters)
+- bcrypt password hashing (12 rounds)
+
+### URL Format
+- Changed from /verify-email/{token} to /verify-email?token={token}
+- Changed from /reset-password/{token} to /reset-password?token={token}
+- Consistent query parameter format across all auth pages
+
+## Documentation
+
+### New Documents
+- docs/EMAIL_VERIFICATION_AND_PASSWORD_RESET.md - Complete feature documentation
+- docs/FIXES_COLLECTION.md - Consolidated fix reference
+
+### Cleaned Up
+- Removed 18 redundant/temporary files:
+  - 3 temporary git commit message files
+  - 10 individual fix documents (merged into FIXES_COLLECTION.md)
+  - 5 redundant quick reference files
+
+### Updated
+- api/.env.example - Added SMTP configuration examples
+- web/login.html - Fixed forgot password link
+
+## Technical Details
+
+### Modified Files
+Backend (2 files):
+- api/src/routes/auth.ts - Added 4 new endpoints, updated registration
+- api/src/utils/auth.ts - Added dev mode, email functions
+- api/src/index.ts - Updated routing whitelist
+
+Frontend (3 files):
+- web/verify-email.html - New page
+- web/forgot-password.html - New page  
+- web/reset-password.html - New page
+- web/login.html - Updated link
+
+Configuration (1 file):
+- api/.env.example - Added SMTP settings
+
+### Development Mode Detection
+```typescript
+const isDevelopmentMode = !process.env.SMTP_USER || 
+                          process.env.SMTP_USER === 'your-email@gmail.com' ||
+                          !process.env.SMTP_PASS ||
+                          process.env.SMTP_PASS === 'your-email-password-or-app-password';
+```
+
+### Testing
+To test password reset:
+1. Click "Forgot Password" on login page
+2. Enter any email address
+3. Check server console for reset link
+4. Copy link and paste in browser
+5. Enter new password
+6. Login with new password
+
+## Statistics
+- Lines added: ~1,200
+- Lines removed: ~500 (cleanup)
+- New files: 4
+- Modified files: 5
+- Deleted files: 18
+- Net documentation: -14 files (better organization)
+
+Version: 1.2.0
+

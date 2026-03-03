@@ -86,7 +86,11 @@ app.get('*', (req, res) => {
     
     // 检查请求的路径（不带扩展名）
     const requestedPath = req.path.slice(1); // 去掉开头的 /
-    const possiblePages = ['register', 'login', 'create', 'discover', 'profile', 'admin', 'story', 'chapter', 'write', 'debug'];
+    const possiblePages = [
+        'register', 'login', 'create', 'discover', 'profile', 'admin', 
+        'story', 'chapter', 'write', 'debug',
+        'reset-password', 'verify-email', 'forgot-password'
+    ];
     
     // 如果请求的是这些页面之一，提供对应的HTML文件
     if (possiblePages.includes(requestedPath)) {

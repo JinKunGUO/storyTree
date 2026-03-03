@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>邮箱验证 - StoryTree</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .verify-container {
+            max-width: 500px;
+            margin: 100px auto;
+            padding: 40px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .verify-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .verify-icon.loading {
+            color: #3498db;
+            animation: spin 1s linear infinite;
+        }
+
+        .verify-icon.success {
+            color: #2ecc71;
+        }
+
+        .verify-icon.error {
+            color: #e74c3c;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .verify-title {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        .verify-message {
+            font-size: 16px;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .verify-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+
+        .resend-section {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid #ecf0f1;
+        }
+
+        .resend-text {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 15px;
+        }
+
+        .resend-form {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .resend-input {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            width: 250px;
+        }
+
+        .btn-resend {
+            padding: 10px 20px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-resend:hover {
+            background: #2980b9;
+        }
+
+        .btn-resend:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="verify-container">
+        <div id="loadingState">
+            <i class="fas fa-spinner verify-icon loading"></i>
+            <h1 class="verify-title">正在验证邮箱...</h1>
+            <p class="verify-message">请稍候，我们正在验证您的邮箱地址</p>
+        </div>
+
+        <div id="successState" style="display: none;">
+            <i class="fas fa-check-circle verify-icon success"></i>
+            <h1 class="verify-title">验证成功！</h1>
+            <p class="verify-message">您的邮箱已成功验证，现在可以使用所有功能了</p>
+            <div class="verify-actions">
+                <a href="/index.html" class="btn btn-primary">
+                    <i class="fas fa-home"></i> 返回首页
+                </a>
+                <a href="/profile.html" class="btn btn-secondary">
+                    <i class="fas fa-user"></i> 个人中心
+                </a>
+            </div>
+        </div>
+
+        <div id="errorState" style="display: none;">
+            <i class="fas fa-times-circle verify-icon error"></i>
+            <h1 class="verify-title">验证失败</h1>
+            <p class="verify-message" id="errorMessage">验证链接无效或已过期</p>
+            
+            <div class="verify-actions">
+                <a href="/index.html" class="btn btn-secondary">
+                    <i class="fas fa-home"></i> 返回首页
+                </a>
+            </div>
+
+            <div class="resend-section">
+                <p class="resend-text">需要重新发送验证邮件？</p>
+                <div class="resend-form">
+                    <input 
+                        type="email" 
+                        id="resendEmail" 
+                        class="resend-input" 
+                        placeholder="请输入您的邮箱"
+                    >
+                    <button id="resendBtn" class="btn-resend">
+                        <i class="fas fa-envelope"></i> 重新发送
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 从URL获取token
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token') || window.location.pathname.split('/').pop();
+
+        // 页面加载时自动验证
+        document.addEventListener('DOMContentLoaded', async function() {
+            if (!token || token === 'verify-email.html') {
+                showError('缺少验证令牌');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/auth/verify-email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ token })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showSuccess();
+                } else {
+                    showError(data.error || '验证失败');
+                }
+            } catch (error) {
+                console.error('验证错误:', error);
+                showError('网络错误，请稍后重试');
+            }
+        });
+
+        // 显示成功状态
+        function showSuccess() {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('errorState').style.display = 'none';
+            document.getElementById('successState').style.display = 'block';
+        }
+
+        // 显示错误状态
+        function showError(message) {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('successState').style.display = 'none';
+            document.getElementById('errorState').style.display = 'block';
+            document.getElementById('errorMessage').textContent = message;
+        }
+
+        // 重新发送验证邮件
+        document.getElementById('resendBtn')?.addEventListener('click', async function() {
+            const email = document.getElementById('resendEmail').value.trim();
+            
+            if (!email) {
+                alert('请输入邮箱地址');
+                return;
+            }
+
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 发送中...';
+
+            try {
+                const response = await fetch('/api/auth/resend-verification', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert('验证邮件已发送，请检查您的邮箱');
+                    document.getElementById('resendEmail').value = '';
+                } else {
+                    alert(data.error || '发送失败');
+                }
+            } catch (error) {
+                console.error('发送错误:', error);
+                alert('网络错误，请稍后重试');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-envelope"></i> 重新发送';
+            }
+        });
+    </script>
+</body>
+</html>
+

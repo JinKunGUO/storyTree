@@ -3,16 +3,26 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
+// 检查是否为开发模式（SMTP配置未设置）
+const isDevelopmentMode = !process.env.SMTP_USER || 
+                          process.env.SMTP_USER === 'your-email@gmail.com' ||
+                          !process.env.SMTP_PASS ||
+                          process.env.SMTP_PASS === 'your-email-password-or-app-password';
+
 // 邮件配置
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+let transporter: nodemailer.Transporter | null = null;
+
+if (!isDevelopmentMode) {
+  transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT || '587'),
+    secure: false,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+}
 
 // JWT配置
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
@@ -54,9 +64,9 @@ export function verifyJWT(token: string): { userId: number; username?: string; i
 
 // 发送验证邮件
 export async function sendVerificationEmail(email: string, token: string): Promise<void> {
-  const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3001'}/verify-email/${token}`;
+  const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3001'}/verify-email?token=${token}`;
   
-  await transporter.sendMail({
+  const emailContent = {
     from: process.env.SMTP_FROM || 'noreply@storytree.com',
     to: email,
     subject: 'StoryTree - 邮箱验证',
@@ -68,14 +78,26 @@ export async function sendVerificationEmail(email: string, token: string): Promi
       <p>${verificationUrl}</p>
       <p>此链接将在24小时后过期。</p>
     `,
-  });
+  };
+
+  if (isDevelopmentMode) {
+    console.log('\n=== 开发模式：邮件未实际发送 ===');
+    console.log('收件人:', email);
+    console.log('主题:', emailContent.subject);
+    console.log('验证链接:', verificationUrl);
+    console.log('Token:', token);
+    console.log('================================\n');
+    return;
+  }
+  
+  await transporter!.sendMail(emailContent);
 }
 
 // 发送密码重置邮件
 export async function sendPasswordResetEmail(email: string, token: string): Promise<void> {
-  const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3001'}/reset-password/${token}`;
+  const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3001'}/reset-password?token=${token}`;
   
-  await transporter.sendMail({
+  const emailContent = {
     from: process.env.SMTP_FROM || 'noreply@storytree.com',
     to: email,
     subject: 'StoryTree - 密码重置',
@@ -88,7 +110,19 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
       <p>此链接将在1小时后过期。</p>
       <p>如果你没有请求重置密码，请忽略此邮件。</p>
     `,
-  });
+  };
+
+  if (isDevelopmentMode) {
+    console.log('\n=== 开发模式：邮件未实际发送 ===');
+    console.log('收件人:', email);
+    console.log('主题:', emailContent.subject);
+    console.log('重置链接:', resetUrl);
+    console.log('Token:', token);
+    console.log('================================\n');
+    return;
+  }
+  
+  await transporter!.sendMail(emailContent);
 }
 
 // 验证邮箱格式
