@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import Anthropic from '@anthropic-ai/sdk';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../index';
+import OpenAI from 'openai';
 
 const router = Router();
 
@@ -26,9 +26,10 @@ const getUserId = (req: any): number | null => {
   }
 };
 
-// Initialize Anthropic client
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || ''
+// 初始化阿里云千问客户端（使用OpenAI兼容接口）
+const qwenClient = new OpenAI({
+  apiKey: process.env.QWEN_API_KEY || '',
+  baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1'
 });
 
 // Generate AI continuation options
@@ -189,7 +190,7 @@ ${count > 2 ? `【方向3：${selectedStyles[2]}】
 内容：
 XXX` : ''}`;
 
-    // Call Claude API
+    // 调用千问API
     let aiResponse: string;
     const startTime = Date.now();
     let tokensUsed = { input: 0, output: 0, total: 0 };
@@ -197,32 +198,36 @@ XXX` : ''}`;
     let errorMessage: string | null = null;
 
     try {
-      const response = await anthropic.messages.create({
-        model: 'claude-3-haiku-20240307',
-        max_tokens: 2000,
-        temperature: 0.8,
+      console.log('🤖 调用阿里云千问API...');
+      
+      const response = await qwenClient.chat.completions.create({
+        model: process.env.QWEN_MODEL || 'qwen-plus', // 可选：qwen-turbo, qwen-plus, qwen-max
         messages: [
           {
             role: 'user',
             content: prompt
           }
-        ]
+        ],
+        temperature: 0.8,
+        max_tokens: 2000
       });
 
-      const content = response.content[0];
-      aiResponse = content.type === 'text' ? content.text : '';
+      aiResponse = response.choices[0]?.message?.content || '';
       
       // 记录Token使用量
       tokensUsed = {
-        input: response.usage.input_tokens || 0,
-        output: response.usage.output_tokens || 0,
-        total: (response.usage.input_tokens || 0) + (response.usage.output_tokens || 0)
+        input: response.usage?.prompt_tokens || 0,
+        output: response.usage?.completion_tokens || 0,
+        total: response.usage?.total_tokens || 0
       };
 
-    } catch (aiError) {
+      console.log('✅ 千问API调用成功');
+      console.log('   Token使用:', tokensUsed.input, '输入 +', tokensUsed.output, '输出');
+
+    } catch (aiError: any) {
       success = false;
-      errorMessage = aiError instanceof Error ? aiError.message : 'Unknown error';
-      console.error('AI API Error:', aiError);
+      errorMessage = aiError?.message || 'Unknown error';
+      console.error('❌ 千问API调用失败:', aiError);
       
       // Return mock response for development
       aiResponse = `【方向1：悬疑向】
@@ -269,8 +274,8 @@ XXX` : ''}`;
 
     const responseTime = Date.now() - startTime;
 
-    // 计算成本（Claude Haiku定价：输入$0.25/M tokens，输出$1.25/M tokens）
-    const costUsd = (tokensUsed.input * 0.25 / 1000000) + (tokensUsed.output * 1.25 / 1000000);
+    // 计算成本（千问定价：约¥0.002/千tokens，这里简化为USD）
+    const costUsd = (tokensUsed.total * 0.002 / 1000) * 0.14; // 假设汇率1 RMB = 0.14 USD
 
     // 记录AI使用日志
     try {
@@ -280,7 +285,7 @@ XXX` : ''}`;
           story_id: storyId ? parseInt(storyId) : null,
           node_id: nodeId ? parseInt(nodeId) : null,
           action_type: 'generate',
-          model_name: 'claude-3-haiku-20240307',
+          model_name: process.env.QWEN_MODEL || 'qwen-plus',
           prompt_tokens: tokensUsed.input,
           completion_tokens: tokensUsed.output,
           total_tokens: tokensUsed.total,

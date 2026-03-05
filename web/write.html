@@ -623,6 +623,11 @@
             
             initEditor();
             loadStoryInfo();
+            
+            // 延迟初始化AI功能，确保DOM完全加载
+            setTimeout(() => {
+                initAiFeature();
+            }, 100);
         });
 
         // 初始化编辑器
@@ -652,6 +657,7 @@
                 // 监听内容变化，更新字数
                 quill.on('text-change', function() {
                     updateWordCount();
+                    hasUnsavedChanges = true;
                 });
                 
                 // 聚焦编辑器
@@ -935,11 +941,6 @@
         // 防止意外离开
         let hasUnsavedChanges = false;
         
-        // 监听内容变化
-        quill.on('text-change', function() {
-            hasUnsavedChanges = true;
-        });
-        
         // 监听标题变化
         document.getElementById('chapterTitle').addEventListener('input', function() {
             hasUnsavedChanges = true;
@@ -962,15 +963,34 @@
 
         // 初始化AI功能
         function initAiFeature() {
+            console.log('开始初始化AI功能...');
+            
             aiModal = document.getElementById('aiModal');
             const aiSuggestBtn = document.getElementById('aiSuggestBtn');
             const closeAiModal = document.getElementById('closeAiModal');
             const cancelAiBtn = document.getElementById('cancelAiBtn');
             const regenerateBtn = document.getElementById('regenerateBtn');
 
+            console.log('DOM元素查找结果:', {
+                aiModal: !!aiModal,
+                aiSuggestBtn: !!aiSuggestBtn,
+                closeAiModal: !!closeAiModal,
+                cancelAiBtn: !!cancelAiBtn,
+                regenerateBtn: !!regenerateBtn
+            });
+
+            if (!aiModal) {
+                console.error('❌ AI模态框元素未找到');
+                return;
+            }
+
             if (aiSuggestBtn) {
                 aiSuggestBtn.addEventListener('click', showAiSuggestions);
+                console.log('✅ AI续写按钮事件已绑定');
+            } else {
+                console.error('❌ AI续写按钮未找到');
             }
+            
             if (closeAiModal) {
                 closeAiModal.addEventListener('click', closeAiModalFunc);
             }
@@ -982,18 +1002,26 @@
             }
 
             // 点击模态框背景关闭
-            aiModal.addEventListener('click', function(e) {
-                if (e.target === aiModal) {
-                    closeAiModalFunc();
-                }
-            });
+            if (aiModal) {
+                aiModal.addEventListener('click', function(e) {
+                    if (e.target === aiModal) {
+                        closeAiModalFunc();
+                    }
+                });
+            }
 
-            console.log('AI功能初始化完成');
+            console.log('✅ AI功能初始化完成');
         }
 
         // 显示AI续写建议
         async function showAiSuggestions() {
             console.log('用户点击AI续写建议');
+
+            // 检查编辑器是否已初始化
+            if (!quill) {
+                showError('编辑器未初始化，请刷新页面');
+                return;
+            }
 
             // 检查是否有内容作为上下文
             const currentContent = quill.getText().trim();
@@ -1242,19 +1270,11 @@
 
         // 关闭AI模态框
         function closeAiModalFunc() {
-            aiModal.classList.remove('active');
-            console.log('关闭AI模态框');
+            if (aiModal) {
+                aiModal.classList.remove('active');
+                console.log('关闭AI模态框');
+            }
         }
-
-        // 在页面加载时初始化AI功能
-        document.addEventListener('DOMContentLoaded', function() {
-            // ... 现有的初始化代码 ...
-            
-            // 延迟初始化AI功能，确保DOM完全加载
-            setTimeout(() => {
-                initAiFeature();
-            }, 100);
-        });
     </script>
 </body>
 </html>
