@@ -381,6 +381,21 @@ body {
     padding: 8px 16px;
     border-radius: 20px;
     transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.nav-level-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    color: #333;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-left: 5px;
 }
 
 .nav-link:hover {

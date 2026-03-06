@@ -488,6 +488,40 @@
                 flex-direction: column;
             }
         }
+
+        /* 润色风格按钮 */
+        .polish-style-btn {
+            padding: 12px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            background: white;
+            color: #666;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .polish-style-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+
+        .polish-style-btn.active {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .polish-style-btn i {
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
@@ -550,9 +584,13 @@
 
     <!-- 操作按钮 -->
     <div class="write-actions">
-        <button class="action-btn btn-ai" id="aiSuggestBtn">
+        <button class="action-btn btn-ai" id="aiPolishBtn" title="AI润色">
+            <i class="fas fa-wand-magic-sparkles"></i>
+            AI润色
+        </button>
+        <button class="action-btn btn-ai" id="aiSuggestBtn" title="AI续写建议">
             <i class="fas fa-magic"></i>
-            AI续写建议
+            AI续写
         </button>
         <button class="action-btn btn-save" id="saveDraftBtn">
             <i class="fas fa-save"></i>
@@ -598,6 +636,106 @@
                 </button>
                 <button class="btn btn-secondary" id="cancelAiBtn">
                     取消
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI润色模态框 -->
+    <div class="ai-modal" id="polishModal">
+        <div class="ai-modal-content" style="max-width: 1200px;">
+            <div class="ai-modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <h2><i class="fas fa-wand-magic-sparkles"></i> AI润色</h2>
+                <button class="close-btn" id="closePolishModal">×</button>
+            </div>
+            
+            <div class="ai-modal-body">
+                <!-- 风格选择器 -->
+                <div id="polishStyleSelector" style="margin-bottom: 25px;">
+                    <div style="font-size: 16px; font-weight: 600; margin-bottom: 15px; color: #333;">
+                        <i class="fas fa-palette"></i> 选择润色风格
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                        <button class="polish-style-btn active" data-style="concise">
+                            <i class="fas fa-compress"></i> 简洁
+                        </button>
+                        <button class="polish-style-btn" data-style="elegant">
+                            <i class="fas fa-feather"></i> 华丽
+                        </button>
+                        <button class="polish-style-btn" data-style="humorous">
+                            <i class="fas fa-smile"></i> 幽默
+                        </button>
+                        <button class="polish-style-btn" data-style="serious">
+                            <i class="fas fa-book"></i> 严肃
+                        </button>
+                        <button class="polish-style-btn" data-style="poetic">
+                            <i class="fas fa-feather-alt"></i> 诗意
+                        </button>
+                        <button class="polish-style-btn" data-style="colloquial">
+                            <i class="fas fa-comment"></i> 口语
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 加载状态 -->
+                <div class="ai-loading" id="polishLoading" style="display: none;">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>AI正在润色中，请稍候...</p>
+                    <p style="font-size: 14px; color: #999; margin-top: 10px;">通常需要5-15秒</p>
+                </div>
+                
+                <!-- 对比展示 -->
+                <div id="polishComparison" style="display: none;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                        <div>
+                            <div style="font-size: 16px; font-weight: 600; margin-bottom: 10px; color: #666;">
+                                <i class="fas fa-file-alt"></i> 原文
+                            </div>
+                            <div id="originalText" style="
+                                background: #f9f9f9;
+                                border-radius: 10px;
+                                padding: 20px;
+                                min-height: 200px;
+                                max-height: 400px;
+                                overflow-y: auto;
+                                line-height: 1.8;
+                                color: #666;
+                                white-space: pre-wrap;
+                            "></div>
+                        </div>
+                        <div>
+                            <div style="font-size: 16px; font-weight: 600; margin-bottom: 10px; color: #667eea;">
+                                <i class="fas fa-wand-magic-sparkles"></i> 润色后
+                            </div>
+                            <div id="polishedText" style="
+                                background: linear-gradient(135deg, #f5f7ff 0%, #fef5ff 100%);
+                                border-radius: 10px;
+                                padding: 20px;
+                                min-height: 200px;
+                                max-height: 400px;
+                                overflow-y: auto;
+                                line-height: 1.8;
+                                color: #333;
+                                white-space: pre-wrap;
+                                border: 2px solid #667eea;
+                            "></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 错误提示 -->
+                <div class="ai-error" id="polishError" style="display: none;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p id="polishErrorMessage"></p>
+                </div>
+            </div>
+            
+            <div class="ai-modal-footer">
+                <button class="btn btn-secondary" id="cancelPolishBtn">
+                    取消
+                </button>
+                <button class="btn btn-primary" id="applyPolishBtn" style="display: none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 30px; border-radius: 10px; font-weight: 600; cursor: pointer;">
+                    <i class="fas fa-check"></i> 应用润色
                 </button>
             </div>
         </div>
@@ -1010,6 +1148,9 @@
                 });
             }
 
+            // 初始化润色功能
+            initPolishFeature();
+
             console.log('✅ AI功能初始化完成');
         }
 
@@ -1273,6 +1414,255 @@
             if (aiModal) {
                 aiModal.classList.remove('active');
                 console.log('关闭AI模态框');
+            }
+        }
+
+        // ============================================
+        // AI润色功能
+        // ============================================
+
+        let polishModal;
+        let selectedPolishStyle = 'concise';
+        let originalContent = '';
+        let polishedContent = '';
+
+        // 初始化润色功能
+        function initPolishFeature() {
+            console.log('开始初始化AI润色功能...');
+            
+            polishModal = document.getElementById('polishModal');
+            const aiPolishBtn = document.getElementById('aiPolishBtn');
+            const closePolishModal = document.getElementById('closePolishModal');
+            const cancelPolishBtn = document.getElementById('cancelPolishBtn');
+            const applyPolishBtn = document.getElementById('applyPolishBtn');
+
+            if (!polishModal) {
+                console.error('❌ 润色模态框元素未找到');
+                return;
+            }
+
+            if (aiPolishBtn) {
+                aiPolishBtn.addEventListener('click', showPolishModal);
+                console.log('✅ AI润色按钮事件已绑定');
+            }
+            
+            if (closePolishModal) {
+                closePolishModal.addEventListener('click', closePolishModalFunc);
+            }
+            if (cancelPolishBtn) {
+                cancelPolishBtn.addEventListener('click', closePolishModalFunc);
+            }
+            if (applyPolishBtn) {
+                applyPolishBtn.addEventListener('click', applyPolish);
+            }
+
+            // 点击模态框背景关闭
+            polishModal.addEventListener('click', function(e) {
+                if (e.target === polishModal) {
+                    closePolishModalFunc();
+                }
+            });
+
+            // 初始化风格按钮
+            document.querySelectorAll('.polish-style-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // 移除所有active类
+                    document.querySelectorAll('.polish-style-btn').forEach(b => b.classList.remove('active'));
+                    // 添加active类到当前按钮
+                    this.classList.add('active');
+                    // 保存选中的风格
+                    selectedPolishStyle = this.dataset.style;
+                    console.log('选择润色风格:', selectedPolishStyle);
+                    
+                    // 如果已经有内容，自动重新润色
+                    if (originalContent) {
+                        performPolish();
+                    }
+                });
+            });
+
+            console.log('✅ AI润色功能初始化完成');
+        }
+
+        // 显示润色模态框
+        function showPolishModal() {
+            console.log('用户点击AI润色按钮');
+
+            // 检查编辑器是否已初始化
+            if (!quill) {
+                showError('编辑器未初始化，请刷新页面');
+                return;
+            }
+
+            // 获取选中的文本，如果没有选中则获取全部内容
+            const selection = quill.getSelection();
+            let contentToPolish;
+            
+            if (selection && selection.length > 0) {
+                // 有选中文本，只润色选中部分
+                contentToPolish = quill.getText(selection.index, selection.length).trim();
+                console.log('润色选中文本，长度:', contentToPolish.length);
+            } else {
+                // 没有选中，润色全部内容
+                contentToPolish = quill.getText().trim();
+                console.log('润色全部内容，长度:', contentToPolish.length);
+            }
+            
+            if (contentToPolish.length < 10) {
+                showError('请先写一些内容（至少10字），或选中要润色的文本');
+                return;
+            }
+
+            if (contentToPolish.length > 5000) {
+                showError('内容过长（超过5000字），请选中部分文本进行润色');
+                return;
+            }
+
+            // 保存原始内容
+            originalContent = contentToPolish;
+
+            // 打开模态框
+            polishModal.classList.add('active');
+            document.getElementById('polishStyleSelector').style.display = 'block';
+            document.getElementById('polishLoading').style.display = 'none';
+            document.getElementById('polishComparison').style.display = 'none';
+            document.getElementById('polishError').style.display = 'none';
+            document.getElementById('applyPolishBtn').style.display = 'none';
+
+            // 显示原文
+            document.getElementById('originalText').textContent = originalContent;
+
+            // 自动开始润色
+            setTimeout(() => {
+                performPolish();
+            }, 300);
+        }
+
+        // 执行润色
+        async function performPolish() {
+            console.log('开始执行AI润色，风格:', selectedPolishStyle);
+
+            // 显示加载状态
+            document.getElementById('polishStyleSelector').style.display = 'block';
+            document.getElementById('polishLoading').style.display = 'block';
+            document.getElementById('polishComparison').style.display = 'none';
+            document.getElementById('polishError').style.display = 'none';
+            document.getElementById('applyPolishBtn').style.display = 'none';
+
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                if (!token) {
+                    throw new Error('请先登录');
+                }
+
+                console.log('调用AI润色API...');
+                const response = await fetch('/api/ai/v2/polish', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        content: originalContent,
+                        style: selectedPolishStyle
+                    })
+                });
+
+                console.log('润色API响应状态:', response.status);
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `API错误 (${response.status})`);
+                }
+
+                const data = await response.json();
+                console.log('润色API返回数据:', data);
+
+                if (data.polished) {
+                    polishedContent = data.polished;
+                    displayPolishResult();
+                } else {
+                    throw new Error('AI未返回润色结果');
+                }
+
+            } catch (error) {
+                console.error('AI润色错误:', error);
+                document.getElementById('polishLoading').style.display = 'none';
+                document.getElementById('polishError').style.display = 'block';
+                
+                let errorMessage = error.message || 'AI服务暂时不可用';
+                
+                if (error.message.includes('登录') || error.message.includes('401')) {
+                    errorMessage = '请先登录后再使用AI润色功能';
+                } else if (error.message.includes('积分') || error.message.includes('配额')) {
+                    errorMessage = '积分或配额不足，请充值或升级会员';
+                } else if (error.message.includes('网络')) {
+                    errorMessage = '网络连接失败，请检查网络';
+                }
+                
+                document.getElementById('polishErrorMessage').textContent = errorMessage;
+            }
+        }
+
+        // 显示润色结果
+        function displayPolishResult() {
+            console.log('显示润色结果');
+            
+            document.getElementById('polishLoading').style.display = 'none';
+            document.getElementById('polishComparison').style.display = 'block';
+            document.getElementById('applyPolishBtn').style.display = 'inline-block';
+
+            // 显示原文和润色后的文本
+            document.getElementById('originalText').textContent = originalContent;
+            document.getElementById('polishedText').textContent = polishedContent;
+        }
+
+        // 应用润色
+        function applyPolish() {
+            console.log('应用润色结果');
+
+            if (!polishedContent) {
+                showError('没有润色结果可应用');
+                return;
+            }
+
+            // 检查是否有选中的文本
+            const selection = quill.getSelection();
+            
+            if (selection && selection.length > 0) {
+                // 替换选中的文本
+                quill.deleteText(selection.index, selection.length);
+                quill.insertText(selection.index, polishedContent);
+                quill.setSelection(selection.index + polishedContent.length, 0);
+            } else {
+                // 替换全部内容
+                quill.setText(polishedContent);
+                quill.setSelection(polishedContent.length, 0);
+            }
+
+            // 更新字数
+            updateWordCount();
+
+            // 关闭模态框
+            closePolishModalFunc();
+
+            // 显示成功提示
+            showSuccess('润色已应用！你可以继续编辑');
+
+            // 标记有未保存的更改
+            hasUnsavedChanges = true;
+        }
+
+        // 关闭润色模态框
+        function closePolishModalFunc() {
+            if (polishModal) {
+                polishModal.classList.remove('active');
+                console.log('关闭润色模态框');
+                
+                // 清空数据
+                originalContent = '';
+                polishedContent = '';
             }
         }
     </script>

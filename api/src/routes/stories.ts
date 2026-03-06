@@ -155,7 +155,7 @@ router.get('/:id', async (req, res) => {
       where: { story_id: parseInt(id) },
       include: {
         author: {
-          select: { id: true, username: true }
+          select: { id: true, username: true, level: true }
         },
         _count: {
           select: { other_nodes: true }

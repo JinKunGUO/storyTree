@@ -361,7 +361,9 @@ function updateNavbar(user) {
     const profileLink = document.getElementById('profileLink');
     
     if (user && profileLink) {
-        profileLink.innerHTML = `<i class="fas fa-user"></i> ${user.username}`;
+        const level = user.level || 1;
+        const levelBadgeHtml = `<span class="nav-level-badge">Lv${level}</span>`;
+        profileLink.innerHTML = `<i class="fas fa-user"></i> ${user.username} ${levelBadgeHtml}`;
     }
 }
 

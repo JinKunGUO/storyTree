@@ -8,6 +8,7 @@ import authRoutes from './routes/auth';
 import storyRoutes from './routes/stories';
 import nodeRoutes from './routes/nodes';
 import aiRoutes from './routes/ai';
+import aiV2Routes from './routes/ai-v2';
 import adminRoutes from './routes/admin';
 import userRoutes from './routes/users';
 import uploadRoutes from './routes/upload';
@@ -16,8 +17,14 @@ import notificationRoutes from './routes/notifications';
 import commentRoutes from './routes/comments';
 import bookmarkRoutes from './routes/bookmarks';
 import shareRoutes from './routes/shares';
+import pointsRoutes from './routes/points';
+import paymentRoutes from './routes/payment';
+import { closeQueues } from './utils/queue';
 
 dotenv.config();
+
+// 启动AI Worker
+import './workers/aiWorker';
 
 const app = express();
 export const prisma = new PrismaClient();
@@ -36,6 +43,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/stories', storyRoutes);
 app.use('/api/nodes', nodeRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/ai/v2', aiV2Routes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/upload', uploadRoutes);
@@ -44,6 +52,8 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/bookmarks', bookmarkRoutes);
 app.use('/api/shares', shareRoutes);
+app.use('/api/points', pointsRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -88,7 +98,7 @@ app.get('*', (req, res) => {
     const requestedPath = req.path.slice(1); // 去掉开头的 /
     const possiblePages = [
         'register', 'login', 'create', 'discover', 'profile', 'admin', 
-        'story', 'chapter', 'write', 'debug',
+        'story', 'chapter', 'write', 'debug', 'level', 'payment',
         'reset-password', 'verify-email', 'forgot-password'
     ];
     
@@ -113,6 +123,15 @@ app.listen(PORT, () => {
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
+  console.log('🛑 收到SIGTERM信号，开始优雅关闭...');
+  await closeQueues();
+  await prisma.$disconnect();
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  console.log('🛑 收到SIGINT信号，开始优雅关闭...');
+  await closeQueues();
   await prisma.$disconnect();
   process.exit(0);
 });

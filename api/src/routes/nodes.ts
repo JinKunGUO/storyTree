@@ -146,7 +146,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
   }
 
   const { id } = req.params;
-  const { title, content } = req.body;
+  const { title, content, image } = req.body;
 
   if (!title || !content) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -175,15 +175,23 @@ router.put('/:id', authenticateToken, async (req, res) => {
     // 审核检查
     const reviewCheck = needsReview(content, userNodeCount);
 
+    // 准备更新数据
+    const updateData: any = {
+      title,
+      content,
+      updated_at: new Date(),
+      review_status: reviewCheck.needReview ? 'PENDING' : 'APPROVED'
+    };
+
+    // 如果提供了image字段，则更新它
+    if (image !== undefined) {
+      updateData.image = image || null;
+    }
+
     // 更新节点
     const updatedNode = await prisma.nodes.update({
       where: { id: parseInt(id) },
-      data: {
-        title,
-        content,
-        updated_at: new Date(),
-        review_status: reviewCheck.needReview ? 'PENDING' : 'APPROVED'
-      },
+      data: updateData,
       include: {
         author: {
           select: { id: true, username: true }
@@ -399,7 +407,7 @@ router.post('/:id/rate', async (req, res) => {
 });
 
 // 举报节点
-router.post('/:id/report', async (req, res) => {
+router.post('/:id/report', authenticateToken, async (req, res) => {
   const userId = getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
@@ -408,8 +416,20 @@ router.post('/:id/report', async (req, res) => {
   const { id } = req.params;
   const { reason, description } = req.body;
 
+  // 映射前端的中文原因到后端的英文代码
+  const reasonMap: { [key: string]: string } = {
+    '垃圾广告': 'spam',
+    '不当内容': 'illegal',
+    '暴力血腥': 'violence',
+    '色情低俗': 'porn',
+    '抄袭侵权': 'copyright',
+    '其他': 'other'
+  };
+
+  const mappedReason = reasonMap[reason] || reason;
   const validReasons = ['spam', 'illegal', 'porn', 'violence', 'copyright', 'other'];
-  if (!reason || !validReasons.includes(reason)) {
+  
+  if (!mappedReason || !validReasons.includes(mappedReason)) {
     return res.status(400).json({ error: 'Invalid reason' });
   }
 
@@ -445,7 +465,7 @@ router.post('/:id/report', async (req, res) => {
       data: {
         node_id: parseInt(id),
         reporter_id: userId,
-        reason,
+        reason: mappedReason,
         description: description || null
       }
     });
@@ -457,7 +477,7 @@ router.post('/:id/report', async (req, res) => {
         report_count: { increment: 1 },
         report_reasons: {
           set: JSON.stringify({
-            reasons: [...(await getExistingReasons(parseInt(id))), reason]
+            reasons: [...(await getExistingReasons(parseInt(id))), mappedReason]
           })
         }
       }

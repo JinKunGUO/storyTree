@@ -52,6 +52,36 @@
             font-weight: 700;
             color: #333;
             margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .level-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 15px;
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            color: #333;
+            border-radius: 20px;
+            font-size: 16px;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+        }
+
+        .profile-points {
+            color: #667eea;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .profile-points i {
+            color: #ffd700;
         }
 
         .profile-email {
@@ -414,15 +444,28 @@
         function displayUserProfile(user) {
             const profileHeader = document.getElementById('profileHeader');
             
+            // 获取等级信息
+            const level = user.level || 1;
+            const points = user.points || 0;
+            const levelNames = ['新手作者', '初级作者', '中级作者', '高级作者'];
+            const levelName = levelNames[level - 1] || '新手作者';
+            
             profileHeader.innerHTML = `
                 <div class="profile-avatar">
                     <i class="fas fa-user"></i>
                 </div>
                 <div class="profile-info">
-                    <div class="profile-name">${escapeHtml(user.username)}</div>
+                    <div class="profile-name">
+                        ${escapeHtml(user.username)}
+                        <span class="level-badge">Lv${level} ${levelName}</span>
+                    </div>
                     <div class="profile-email">
                         <i class="fas fa-envelope"></i>
                         ${escapeHtml(user.email)}
+                    </div>
+                    <div class="profile-points">
+                        <i class="fas fa-star"></i>
+                        积分: ${points}
                     </div>
                     <div class="profile-bio">
                         ${escapeHtml(user.bio || '这个人很懒，还没有写个人简介...')}

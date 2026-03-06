@@ -1,0 +1,519 @@
+import { Router } from 'express';
+import jwt from 'jsonwebtoken';
+import { prisma } from '../index';
+import { aiContinuationQueue, aiPolishQueue, aiIllustrationQueue } from '../utils/queue';
+import { canUseAiFeature, getUserMonthlyQuota, getUserLevel, hasEnoughPoints, AI_COST } from '../utils/points';
+
+const router = Router();
+
+// JWT认证函数
+const getUserId = (req: any): number | null => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return null;
+    }
+    const token = authHeader.substring(7);
+    const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+    return decoded.userId;
+  } catch (error) {
+    return null;
+  }
+};
+
+/**
+ * 提交AI续写任务（异步）
+ */
+router.post('/continuation/submit', async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: '未登录' });
+  }
+
+  const { storyId, nodeId, context, style, count = 3, surpriseTime } = req.body;
+
+  if (!storyId) {
+    return res.status(400).json({ error: 'storyId是必需的' });
+  }
+
+  try {
+    // 检查权限
+    const permission = await canUseAiFeature(userId, 'continuation');
+    if (!permission.allowed) {
+      return res.status(403).json({ error: permission.reason });
+    }
+
+    // 获取故事信息
+    const story = await prisma.stories.findUnique({
+      where: { id: parseInt(storyId) },
+      include: {
+        nodes: {
+          orderBy: { path: 'asc' },
+          take: 5
+        }
+      }
+    });
+
+    if (!story) {
+      return res.status(404).json({ error: '故事不存在' });
+    }
+
+    // 构建上下文
+    let fullContext = context || '';
+    if (!fullContext && story.nodes.length > 0) {
+      fullContext = story.nodes.map(n => `【${n.title}】\n${n.content}`).join('\n\n');
+    } else if (!fullContext) {
+      fullContext = story.description || '';
+    }
+
+    // 计算调度时间
+    let scheduledAt: Date | undefined;
+    const now = new Date();
+
+    switch (surpriseTime) {
+      case '1hour':
+        scheduledAt = new Date(now.getTime() + 60 * 60 * 1000);
+        break;
+      case 'tonight':
+        scheduledAt = new Date(now);
+        scheduledAt.setHours(22, 0, 0, 0);
+        if (scheduledAt < now) {
+          scheduledAt.setDate(scheduledAt.getDate() + 1);
+        }
+        break;
+      case 'tomorrow':
+        scheduledAt = new Date(now);
+        scheduledAt.setDate(scheduledAt.getDate() + 1);
+        scheduledAt.setHours(8, 0, 0, 0);
+        break;
+      default:
+        scheduledAt = undefined; // 立即处理
+    }
+
+    // 创建任务记录
+    const task = await prisma.ai_tasks.create({
+      data: {
+        user_id: userId,
+        story_id: parseInt(storyId),
+        node_id: nodeId ? parseInt(nodeId) : null,
+        task_type: 'continuation',
+        status: 'pending',
+        priority: surpriseTime ? 0 : 10, // 立即处理的优先级更高
+        input_data: JSON.stringify({
+          context: fullContext,
+          storyTitle: story.title,
+          storyDescription: story.description,
+          style,
+          count
+        }),
+        scheduled_at: scheduledAt
+      }
+    });
+
+    // 添加到队列
+    const delay = scheduledAt ? scheduledAt.getTime() - now.getTime() : 0;
+    await aiContinuationQueue.add(
+      {
+        taskId: task.id,
+        userId,
+        storyId: parseInt(storyId),
+        nodeId: nodeId ? parseInt(nodeId) : undefined,
+        context: fullContext,
+        storyTitle: story.title,
+        storyDescription: story.description || '',
+        style,
+        count
+      },
+      {
+        delay: Math.max(delay, 0),
+        priority: task.priority
+      }
+    );
+
+    res.json({
+      taskId: task.id,
+      status: 'pending',
+      scheduledAt,
+      message: scheduledAt
+        ? `任务已提交，将在 ${scheduledAt.toLocaleString('zh-CN')} 开始处理`
+        : '任务已提交，正在处理中...'
+    });
+  } catch (error) {
+    console.error('提交AI续写任务失败:', error);
+    res.status(500).json({ error: '提交任务失败' });
+  }
+});
+
+/**
+ * 提交AI润色任务（同步快速处理）
+ */
+router.post('/polish', async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: '未登录' });
+  }
+
+  const { content, style = 'elegant' } = req.body;
+
+  if (!content || content.trim().length === 0) {
+    return res.status(400).json({ error: '内容不能为空' });
+  }
+
+  try {
+    // 检查权限
+    const permission = await canUseAiFeature(userId, 'polish');
+    if (!permission.allowed) {
+      return res.status(403).json({ error: permission.reason });
+    }
+
+    // 创建任务
+    const task = await prisma.ai_tasks.create({
+      data: {
+        user_id: userId,
+        task_type: 'polish',
+        status: 'pending',
+        priority: 20, // 润色任务高优先级
+        input_data: JSON.stringify({ content, style })
+      }
+    });
+
+    // 添加到队列（同步等待）
+    const job = await aiPolishQueue.add(
+      {
+        taskId: task.id,
+        userId,
+        content,
+        style
+      },
+      {
+        priority: 20
+      }
+    );
+
+    // 等待任务完成（最多30秒）
+    const result = await job.finished();
+
+    // 获取结果
+    const completedTask = await prisma.ai_tasks.findUnique({
+      where: { id: task.id }
+    });
+
+    if (completedTask?.result_data) {
+      const resultData = JSON.parse(completedTask.result_data);
+      res.json({
+        taskId: task.id,
+        original: resultData.original,
+        polished: resultData.polished,
+        style: resultData.style
+      });
+    } else {
+      res.status(500).json({ error: '润色失败' });
+    }
+  } catch (error) {
+    console.error('AI润色失败:', error);
+    res.status(500).json({ error: '润色失败' });
+  }
+});
+
+/**
+ * 提交AI插图任务（异步）
+ */
+router.post('/illustration/submit', async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: '未登录' });
+  }
+
+  const { storyId, nodeId, chapterTitle, chapterContent } = req.body;
+
+  if (!storyId || !nodeId || !chapterTitle || !chapterContent) {
+    return res.status(400).json({ error: '参数不完整' });
+  }
+
+  try {
+    // 检查权限
+    const permission = await canUseAiFeature(userId, 'illustration');
+    if (!permission.allowed) {
+      return res.status(403).json({ error: permission.reason });
+    }
+
+    // 创建任务
+    const task = await prisma.ai_tasks.create({
+      data: {
+        user_id: userId,
+        story_id: parseInt(storyId),
+        node_id: parseInt(nodeId),
+        task_type: 'illustration',
+        status: 'pending',
+        priority: 5,
+        input_data: JSON.stringify({ chapterTitle, chapterContent })
+      }
+    });
+
+    // 添加到队列
+    await aiIllustrationQueue.add({
+      taskId: task.id,
+      userId,
+      storyId: parseInt(storyId),
+      nodeId: parseInt(nodeId),
+      chapterTitle,
+      chapterContent
+    });
+
+    res.json({
+      taskId: task.id,
+      status: 'pending',
+      message: '插图生成任务已提交，完成后将通知您'
+    });
+  } catch (error) {
+    console.error('提交AI插图任务失败:', error);
+    res.status(500).json({ error: '提交任务失败' });
+  }
+});
+
+/**
+ * 查询任务状态
+ */
+router.get('/tasks/:taskId', async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: '未登录' });
+  }
+
+  const { taskId } = req.params;
+
+  try {
+    const task = await prisma.ai_tasks.findUnique({
+      where: { id: parseInt(taskId) }
+    });
+
+    if (!task) {
+      return res.status(404).json({ error: '任务不存在' });
+    }
+
+    if (task.user_id !== userId) {
+      return res.status(403).json({ error: '无权访问此任务' });
+    }
+
+    let result = null;
+    if (task.result_data) {
+      result = JSON.parse(task.result_data);
+    }
+
+    res.json({
+      taskId: task.id,
+      taskType: task.task_type,
+      status: task.status,
+      createdAt: task.created_at,
+      scheduledAt: task.scheduled_at,
+      startedAt: task.started_at,
+      completedAt: task.completed_at,
+      result,
+      errorMessage: task.error_message
+    });
+  } catch (error) {
+    console.error('查询任务失败:', error);
+    res.status(500).json({ error: '查询失败' });
+  }
+});
+
+/**
+ * 获取我的任务列表
+ */
+router.get('/tasks', async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: '未登录' });
+  }
+
+  const { taskType, status, page = 1, limit = 20 } = req.query;
+
+  try {
+    const where: any = { user_id: userId };
+    if (taskType) where.task_type = taskType;
+    if (status) where.status = status;
+
+    const tasks = await prisma.ai_tasks.findMany({
+      where,
+      orderBy: { created_at: 'desc' },
+      skip: (parseInt(page as string) - 1) * parseInt(limit as string),
+      take: parseInt(limit as string),
+      include: {
+        user: {
+          select: { id: true, username: true }
+        }
+      }
+    });
+
+    const total = await prisma.ai_tasks.count({ where });
+
+    res.json({
+      tasks: tasks.map(task => ({
+        taskId: task.id,
+        taskType: task.task_type,
+        status: task.status,
+        createdAt: task.created_at,
+        completedAt: task.completed_at,
+        hasResult: !!task.result_data
+      })),
+      pagination: {
+        page: parseInt(page as string),
+        limit: parseInt(limit as string),
+        total,
+        pages: Math.ceil(total / parseInt(limit as string))
+      }
+    });
+  } catch (error) {
+    console.error('获取任务列表失败:', error);
+    res.status(500).json({ error: '获取失败' });
+  }
+});
+
+/**
+ * 获取用户AI配额信息
+ */
+router.get('/quota', async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: '未登录' });
+  }
+
+  try {
+    const user = await prisma.users.findUnique({
+      where: { id: userId },
+      select: { points: true, level: true, subscription_type: true, subscription_expires: true }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+
+    const levelInfo = getUserLevel(user.points);
+    const quota = await getUserMonthlyQuota(userId);
+
+    res.json({
+      level: {
+        current: levelInfo.level,
+        name: levelInfo.name,
+        progress: levelInfo.progress,
+        nextLevelPoints: levelInfo.nextLevelPoints
+      },
+      points: user.points,
+      subscription: {
+        type: user.subscription_type,
+        expires: user.subscription_expires,
+        active: user.subscription_expires && user.subscription_expires > new Date()
+      },
+      quota: {
+        continuation: {
+          used: quota.continuation.used,
+          limit: quota.continuation.limit,
+          remaining: quota.continuation.unlimited ? -1 : Math.max(0, quota.continuation.limit - quota.continuation.used),
+          unlimited: quota.continuation.unlimited
+        },
+        polish: {
+          used: quota.polish.used,
+          limit: quota.polish.limit,
+          remaining: quota.polish.unlimited ? -1 : Math.max(0, quota.polish.limit - quota.polish.used),
+          unlimited: quota.polish.unlimited
+        },
+        illustration: {
+          used: quota.illustration.used,
+          limit: quota.illustration.limit,
+          remaining: quota.illustration.unlimited ? -1 : Math.max(0, quota.illustration.limit - quota.illustration.used),
+          unlimited: quota.illustration.unlimited
+        }
+      },
+      costs: {
+        continuation: AI_COST.CONTINUATION,
+        polish: AI_COST.POLISH,
+        illustration: AI_COST.ILLUSTRATION
+      }
+    });
+  } catch (error) {
+    console.error('获取配额信息失败:', error);
+    res.status(500).json({ error: '获取失败' });
+  }
+});
+
+/**
+ * 接受AI续写结果（创建节点）
+ */
+router.post('/continuation/accept', async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: '未登录' });
+  }
+
+  const { taskId, optionIndex } = req.body;
+
+  try {
+    const task = await prisma.ai_tasks.findUnique({
+      where: { id: parseInt(taskId) }
+    });
+
+    if (!task || task.user_id !== userId) {
+      return res.status(404).json({ error: '任务不存在' });
+    }
+
+    if (task.status !== 'completed') {
+      return res.status(400).json({ error: '任务未完成' });
+    }
+
+    const resultData = JSON.parse(task.result_data || '{}');
+    const options = resultData.options || [];
+
+    if (optionIndex < 0 || optionIndex >= options.length) {
+      return res.status(400).json({ error: '选项索引无效' });
+    }
+
+    const selectedOption = options[optionIndex];
+
+    // 创建节点
+    const parentNodeId = task.node_id;
+    let newPath = '1';
+
+    if (parentNodeId) {
+      const parentNode = await prisma.nodes.findUnique({
+        where: { id: parentNodeId }
+      });
+
+      if (parentNode) {
+        const siblingCount = await prisma.nodes.count({
+          where: { parent_id: parentNodeId }
+        });
+        newPath = `${parentNode.path}.${siblingCount + 1}`;
+      }
+    }
+
+    const node = await prisma.nodes.create({
+      data: {
+        story_id: task.story_id!,
+        parent_id: parentNodeId,
+        author_id: userId,
+        title: selectedOption.title,
+        content: selectedOption.content,
+        path: newPath,
+        ai_generated: true,
+        updated_at: new Date()
+      },
+      include: {
+        author: {
+          select: { id: true, username: true }
+        },
+        story: {
+          select: { id: true, title: true }
+        }
+      }
+    });
+
+    res.json({ node });
+  } catch (error) {
+    console.error('接受AI续写失败:', error);
+    res.status(500).json({ error: '操作失败' });
+  }
+});
+
+export default router;
+

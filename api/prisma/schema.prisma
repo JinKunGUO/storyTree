@@ -172,6 +172,10 @@ model users {
   password                 String
   avatar                   String?
   bio                      String?
+  level                    Int             @default(1)
+  points                   Int             @default(0)
+  subscription_type        String?
+  subscription_expires     DateTime?
   isAdmin                  Boolean         @default(false) @map("is_admin")
   emailVerified            Boolean         @default(false) @map("email_verified")
   emailVerificationToken   String?         @map("email_verification_token")
@@ -181,6 +185,9 @@ model users {
   createdAt                DateTime        @default(now()) @map("created_at")
   updatedAt                DateTime        @map("updated_at")
   ai_usage_logs            ai_usage_logs[]
+  ai_tasks                 ai_tasks[]
+  point_transactions       point_transactions[]
+  orders                   orders[]
   bookmarks                bookmarks[]
   comments                 comments[]
   following                follows[]       @relation("follows_following_idTousers")
@@ -213,4 +220,59 @@ model ai_usage_logs {
   @@index([user_id])
   @@index([created_at])
   @@index([action_type])
+}
+
+model ai_tasks {
+  id            Int       @id @default(autoincrement())
+  user_id       Int
+  story_id      Int?
+  node_id       Int?
+  task_type     String
+  status        String    @default("pending")
+  priority      Int       @default(0)
+  input_data    String
+  result_data   String?
+  error_message String?
+  scheduled_at  DateTime?
+  started_at    DateTime?
+  completed_at  DateTime?
+  created_at    DateTime  @default(now())
+  user          users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([status])
+  @@index([task_type])
+  @@index([scheduled_at])
+}
+
+model point_transactions {
+  id          Int      @id @default(autoincrement())
+  user_id     Int
+  amount      Int
+  type        String
+  description String
+  reference_id Int?
+  created_at  DateTime @default(now())
+  user        users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([created_at])
+  @@index([type])
+}
+
+model orders {
+  id             String   @id
+  user_id        Int
+  type           String
+  amount         Float
+  points         Int?
+  status         String   @default("pending")
+  payment_method String?
+  paid_at        DateTime?
+  created_at     DateTime @default(now())
+  user           users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([status])
+  @@index([created_at])
 }
