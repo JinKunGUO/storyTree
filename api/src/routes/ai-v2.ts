@@ -31,7 +31,7 @@ router.post('/continuation/submit', async (req, res) => {
     return res.status(401).json({ error: '未登录' });
   }
 
-  const { storyId, nodeId, context, style, count = 3, surpriseTime } = req.body;
+  const { storyId, nodeId, context, style, count = 3, mode = 'chapter', surpriseTime } = req.body;
 
   if (!storyId) {
     return res.status(400).json({ error: 'storyId是必需的' });
@@ -49,8 +49,7 @@ router.post('/continuation/submit', async (req, res) => {
       where: { id: parseInt(storyId) },
       include: {
         nodes: {
-          orderBy: { path: 'asc' },
-          take: 5
+          orderBy: { path: 'asc' }
         }
       }
     });
@@ -61,8 +60,45 @@ router.post('/continuation/submit', async (req, res) => {
 
     // 构建上下文
     let fullContext = context || '';
-    if (!fullContext && story.nodes.length > 0) {
-      fullContext = story.nodes.map(n => `【${n.title}】\n${n.content}`).join('\n\n');
+    
+    if (mode === 'chapter' && nodeId) {
+      // 整章模式：获取当前节点及其前两章（共3章）
+      const currentNode = await prisma.nodes.findUnique({
+        where: { id: parseInt(nodeId) }
+      });
+
+      if (currentNode) {
+        // 获取前三章：从当前节点向上追溯
+        const recentNodes = [];
+        let node: typeof currentNode | null = currentNode;
+        let count = 0;
+
+        // 向上追溯最多3章
+        while (node && count < 3) {
+          recentNodes.unshift(node); // 添加到数组开头，保持时间顺序
+          count++;
+          
+          if (node.parent_id) {
+            node = await prisma.nodes.findUnique({
+              where: { id: node.parent_id }
+            });
+          } else {
+            break;
+          }
+        }
+
+        // 构建上下文
+        fullContext = recentNodes.map(n => `【${n.title}】\n${n.content}`).join('\n\n');
+        console.log(`[AI续写] 整章模式，使用前${recentNodes.length}章作为上下文，总字数: ${fullContext.length}`);
+      }
+    } else if (mode === 'segment') {
+      // 小段落模式：仅使用当前编辑器内容
+      fullContext = context || '';
+      console.log(`[AI续写] 小段落模式，使用当前内容作为上下文，字数: ${fullContext.length}`);
+    } else if (!fullContext && story.nodes.length > 0) {
+      // 兜底：使用前5章
+      const recentNodes = story.nodes.slice(-5);
+      fullContext = recentNodes.map(n => `【${n.title}】\n${n.content}`).join('\n\n');
     } else if (!fullContext) {
       fullContext = story.description || '';
     }
@@ -105,7 +141,8 @@ router.post('/continuation/submit', async (req, res) => {
           storyTitle: story.title,
           storyDescription: story.description,
           style,
-          count
+          count,
+          mode // 保存模式信息
         }),
         scheduled_at: scheduledAt
       }
@@ -123,7 +160,8 @@ router.post('/continuation/submit', async (req, res) => {
         storyTitle: story.title,
         storyDescription: story.description || '',
         style,
-        count
+        count,
+        mode
       },
       {
         delay: Math.max(delay, 0),
@@ -470,8 +508,29 @@ router.post('/continuation/accept', async (req, res) => {
 
     const selectedOption = options[optionIndex];
 
+    // 确定父节点ID
+    let parentNodeId = task.node_id;
+    
+    // 如果没有指定父节点（从章节目录创作），找到最新的一章作为父节点
+    if (!parentNodeId && task.story_id) {
+      const latestNode = await prisma.nodes.findFirst({
+        where: { 
+          story_id: task.story_id,
+          is_published: true // 只考虑已发布的章节
+        },
+        orderBy: [
+          { path: 'desc' }, // 按路径降序，获取最后一章
+          { created_at: 'desc' } // 如果路径相同，按创建时间降序
+        ]
+      });
+      
+      if (latestNode) {
+        parentNodeId = latestNode.id;
+        console.log(`[AI续写] 自动选择最新章节作为父节点: ${latestNode.id} (${latestNode.title})`);
+      }
+    }
+
     // 创建节点
-    const parentNodeId = task.node_id;
     let newPath = '1';
 
     if (parentNodeId) {
@@ -485,6 +544,18 @@ router.post('/continuation/accept', async (req, res) => {
         });
         newPath = `${parentNode.path}.${siblingCount + 1}`;
       }
+    } else {
+      // 如果没有任何章节，这是第一章
+      const existingRoot = await prisma.nodes.findFirst({
+        where: {
+          story_id: task.story_id!,
+          parent_id: null
+        }
+      });
+      
+      if (existingRoot) {
+        return res.status(400).json({ error: '故事已有第一章，无法创建新的根节点' });
+      }
     }
 
     const node = await prisma.nodes.create({
@@ -496,6 +567,7 @@ router.post('/continuation/accept', async (req, res) => {
         content: selectedOption.content,
         path: newPath,
         ai_generated: true,
+        is_published: true, // AI创建的章节默认已发布
         updated_at: new Date()
       },
       include: {
@@ -507,6 +579,14 @@ router.post('/continuation/accept', async (req, res) => {
         }
       }
     });
+
+    // 如果是第一章，更新故事的root_node_id
+    if (!parentNodeId) {
+      await prisma.stories.update({
+        where: { id: task.story_id! },
+        data: { root_node_id: node.id }
+      });
+    }
 
     res.json({ node });
   } catch (error) {

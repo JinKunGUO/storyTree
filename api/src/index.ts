@@ -99,7 +99,7 @@ app.get('*', (req, res) => {
     const possiblePages = [
         'register', 'login', 'create', 'discover', 'profile', 'admin', 
         'story', 'chapter', 'write', 'debug', 'level', 'payment',
-        'reset-password', 'verify-email', 'forgot-password'
+        'reset-password', 'verify-email', 'forgot-password', 'ai-tasks'
     ];
     
     // 如果请求的是这些页面之一，提供对应的HTML文件

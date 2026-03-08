@@ -522,6 +522,74 @@
         .polish-style-btn i {
             font-size: 16px;
         }
+
+        /* 惊喜时间按钮 */
+        .surprise-time-btn {
+            padding: 12px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            background: white;
+            color: #666;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .surprise-time-btn:hover {
+            border-color: #f093fb;
+            color: #f093fb;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(240, 147, 251, 0.2);
+        }
+
+        .surprise-time-btn.active {
+            border-color: #f093fb;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .surprise-time-btn i {
+            font-size: 16px;
+        }
+
+        /* AI风格按钮 */
+        .ai-style-btn {
+            padding: 12px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            background: white;
+            color: #666;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .ai-style-btn:hover {
+            border-color: #f093fb;
+            color: #f093fb;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(240, 147, 251, 0.2);
+        }
+
+        .ai-style-btn.active {
+            border-color: #f093fb;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .ai-style-btn i {
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
@@ -588,7 +656,7 @@
             <i class="fas fa-wand-magic-sparkles"></i>
             AI润色
         </button>
-        <button class="action-btn btn-ai" id="aiSuggestBtn" title="AI续写建议">
+        <button class="action-btn btn-ai" id="aiSuggestBtn" title="AI续写小段落">
             <i class="fas fa-magic"></i>
             AI续写
         </button>
@@ -606,15 +674,75 @@
     <div class="ai-modal" id="aiModal">
         <div class="ai-modal-content">
             <div class="ai-modal-header">
-                <h2><i class="fas fa-magic"></i> AI续写建议</h2>
+                <h2 id="aiModalTitle"><i class="fas fa-magic"></i> AI续写</h2>
                 <button class="close-btn" id="closeAiModal">×</button>
             </div>
             
             <div class="ai-modal-body">
+                <!-- 惊喜时间选择器（仅整章模式显示） -->
+                <div id="surpriseTimeSelector" style="margin-bottom: 25px; display: none;">
+                    <div style="font-size: 16px; font-weight: 600; margin-bottom: 15px; color: #333;">
+                        <i class="fas fa-clock"></i> 选择惊喜时间
+                        <span style="font-size: 12px; font-weight: 400; color: #999; margin-left: 10px;">
+                            让AI在未来某个时刻为你创作新章节
+                        </span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px;">
+                        <button class="surprise-time-btn active" data-time="immediate">
+                            <i class="fas fa-bolt"></i> 立即生成
+                        </button>
+                        <button class="surprise-time-btn" data-time="1hour">
+                            <i class="fas fa-hourglass-half"></i> 1小时后
+                        </button>
+                        <button class="surprise-time-btn" data-time="tonight">
+                            <i class="fas fa-moon"></i> 今晚22:00
+                        </button>
+                        <button class="surprise-time-btn" data-time="tomorrow">
+                            <i class="fas fa-sun"></i> 明天8:00
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 风格选择器 -->
+                <div id="aiStyleSelector" style="margin-bottom: 25px;">
+                    <div style="font-size: 16px; font-weight: 600; margin-bottom: 15px; color: #333;">
+                        <i class="fas fa-palette"></i> 选择续写风格
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px;">
+                        <button class="ai-style-btn active" data-style="suspense">
+                            <i class="fas fa-question-circle"></i> 悬疑
+                        </button>
+                        <button class="ai-style-btn" data-style="warm">
+                            <i class="fas fa-heart"></i> 温情
+                        </button>
+                        <button class="ai-style-btn" data-style="creative">
+                            <i class="fas fa-lightbulb"></i> 脑洞
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 生成按钮 -->
+                <div style="margin-bottom: 25px; text-align: center;">
+                    <button id="startAiGenerationBtn" style="
+                        padding: 15px 40px;
+                        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                        color: white;
+                        border: none;
+                        border-radius: 50px;
+                        font-size: 16px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        box-shadow: 0 5px 20px rgba(240, 147, 251, 0.4);
+                        transition: all 0.3s;
+                    " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <i class="fas fa-magic"></i> 开始生成
+                    </button>
+                </div>
+
                 <!-- 加载状态 -->
-                <div class="ai-loading" id="aiLoading">
+                <div class="ai-loading" id="aiLoading" style="display: none;">
                     <i class="fas fa-spinner fa-spin"></i>
-                    <p>AI正在思考中，请稍候...</p>
+                    <p id="aiLoadingText">AI正在思考中，请稍候...</p>
                     <p style="font-size: 14px; color: #999; margin-top: 10px;">通常需要3-10秒</p>
                 </div>
                 
@@ -1098,6 +1226,10 @@
         let aiModal;
         let aiOptions = [];
         let currentUserId = null;
+        let selectedSurpriseTime = 'immediate'; // 默认立即生成
+        let selectedAiStyle = 'suspense'; // 默认悬疑风格
+        let currentAiTaskId = null; // 当前AI任务ID
+        let aiMode = 'segment'; // AI模式: 'segment' = 续写小段落, 'chapter' = 创作整章
 
         // 初始化AI功能
         function initAiFeature() {
@@ -1108,13 +1240,15 @@
             const closeAiModal = document.getElementById('closeAiModal');
             const cancelAiBtn = document.getElementById('cancelAiBtn');
             const regenerateBtn = document.getElementById('regenerateBtn');
+            const startAiGenerationBtn = document.getElementById('startAiGenerationBtn');
 
             console.log('DOM元素查找结果:', {
                 aiModal: !!aiModal,
                 aiSuggestBtn: !!aiSuggestBtn,
                 closeAiModal: !!closeAiModal,
                 cancelAiBtn: !!cancelAiBtn,
-                regenerateBtn: !!regenerateBtn
+                regenerateBtn: !!regenerateBtn,
+                startAiGenerationBtn: !!startAiGenerationBtn
             });
 
             if (!aiModal) {
@@ -1122,8 +1256,9 @@
                 return;
             }
 
+            // AI续写按钮（小段落）
             if (aiSuggestBtn) {
-                aiSuggestBtn.addEventListener('click', showAiSuggestions);
+                aiSuggestBtn.addEventListener('click', () => openAiModal('segment'));
                 console.log('✅ AI续写按钮事件已绑定');
             } else {
                 console.error('❌ AI续写按钮未找到');
@@ -1138,6 +1273,9 @@
             if (regenerateBtn) {
                 regenerateBtn.addEventListener('click', regenerateAiSuggestions);
             }
+            if (startAiGenerationBtn) {
+                startAiGenerationBtn.addEventListener('click', startAiGeneration);
+            }
 
             // 点击模态框背景关闭
             if (aiModal) {
@@ -1148,10 +1286,273 @@
                 });
             }
 
+            // 初始化惊喜时间按钮
+            document.querySelectorAll('.surprise-time-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.surprise-time-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    selectedSurpriseTime = this.dataset.time;
+                    console.log('选择惊喜时间:', selectedSurpriseTime);
+                });
+            });
+
+            // 初始化AI风格按钮
+            document.querySelectorAll('.ai-style-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.ai-style-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    selectedAiStyle = this.dataset.style;
+                    console.log('选择AI风格:', selectedAiStyle);
+                });
+            });
+
             // 初始化润色功能
             initPolishFeature();
 
             console.log('✅ AI功能初始化完成');
+        }
+
+        // 打开AI模态框（写作页面只支持小段落续写）
+        function openAiModal(mode = 'segment') {
+            console.log('打开AI续写模态框');
+            aiMode = 'segment'; // 写作页面固定为小段落模式
+
+            // 检查编辑器是否已初始化
+            if (!quill) {
+                showError('编辑器未初始化，请刷新页面');
+                return;
+            }
+
+            // 获取当前内容
+            const currentContent = quill.getText().trim();
+            
+            // 检查50字限制
+            if (currentContent.length < 50) {
+                showError('请先写一些内容（至少50字），AI才能更好地理解故事方向');
+                return;
+            }
+
+            // 设置UI（小段落模式：隐藏惊喜时间选择器）
+            const modalTitle = document.getElementById('aiModalTitle');
+            const surpriseTimeSelector = document.getElementById('surpriseTimeSelector');
+            
+            modalTitle.innerHTML = '<i class="fas fa-magic"></i> AI续写';
+            surpriseTimeSelector.style.display = 'none';
+            selectedSurpriseTime = 'immediate'; // 强制立即生成
+
+            // 显示选择器，隐藏其他内容
+            document.getElementById('aiStyleSelector').style.display = 'block';
+            document.getElementById('startAiGenerationBtn').parentElement.style.display = 'block';
+            document.getElementById('aiLoading').style.display = 'none';
+            document.getElementById('aiOptions').style.display = 'none';
+            document.getElementById('aiError').style.display = 'none';
+            document.getElementById('regenerateBtn').style.display = 'none';
+
+            // 打开模态框
+            aiModal.classList.add('active');
+        }
+
+        // 开始AI生成
+        async function startAiGeneration() {
+            console.log('开始AI生成, 惊喜时间:', selectedSurpriseTime, '风格:', selectedAiStyle);
+
+            // 检查编辑器
+            if (!quill) {
+                showError('编辑器未初始化');
+                return;
+            }
+
+            const currentContent = quill.getText().trim();
+            
+            // 隐藏选择器，显示加载状态
+            document.getElementById('surpriseTimeSelector').style.display = 'none';
+            document.getElementById('aiStyleSelector').style.display = 'none';
+            document.getElementById('startAiGenerationBtn').parentElement.style.display = 'none';
+            document.getElementById('aiLoading').style.display = 'block';
+            document.getElementById('aiOptions').style.display = 'none';
+            document.getElementById('aiError').style.display = 'none';
+
+            // 根据惊喜时间更新加载文本
+            const loadingText = document.getElementById('aiLoadingText');
+            if (selectedSurpriseTime === 'immediate') {
+                loadingText.textContent = 'AI正在思考中，请稍候...';
+            } else {
+                const timeMap = {
+                    '1hour': '1小时后',
+                    'tonight': '今晚22:00',
+                    'tomorrow': '明天8:00'
+                };
+                loadingText.textContent = `任务已提交，AI将在${timeMap[selectedSurpriseTime]}为你创作新章节`;
+            }
+
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                if (!token) {
+                    throw new Error('请先登录');
+                }
+
+                console.log('调用AI API v2...');
+                console.log('故事ID:', storyId);
+                console.log('当前内容长度:', currentContent.length);
+                console.log('惊喜时间:', selectedSurpriseTime);
+                console.log('风格:', selectedAiStyle);
+
+                // 使用新的AI v2 API
+                const response = await fetch('/api/ai/v2/continuation/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        storyId: parseInt(storyId),
+                        nodeId: window.lastNodeId || null,
+                        context: currentContent,
+                        style: selectedAiStyle,
+                        count: 3,
+                        mode: aiMode, // 'segment' 或 'chapter'
+                        surpriseTime: (aiMode === 'chapter' && selectedSurpriseTime !== 'immediate') ? selectedSurpriseTime : null
+                    })
+                });
+
+                console.log('AI API响应状态:', response.status);
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `API错误 (${response.status})`);
+                }
+
+                const data = await response.json();
+                console.log('AI API返回数据:', data);
+
+                currentAiTaskId = data.taskId;
+
+                if (selectedSurpriseTime === 'immediate') {
+                    // 立即生成：轮询任务状态
+                    await pollTaskStatus(data.taskId);
+                } else {
+                    // 延迟生成：显示成功消息
+                    document.getElementById('aiLoading').style.display = 'none';
+                    showSuccess(data.message || '任务已提交');
+                    setTimeout(() => {
+                        closeAiModalFunc();
+                    }, 2000);
+                }
+
+            } catch (error) {
+                console.error('AI生成错误:', error);
+                document.getElementById('aiLoading').style.display = 'none';
+                document.getElementById('aiError').style.display = 'block';
+                document.getElementById('regenerateBtn').style.display = 'inline-block';
+                
+                let errorMessage = error.message || 'AI服务暂时不可用';
+                
+                if (error.message.includes('登录') || error.message.includes('401')) {
+                    errorMessage = '请先登录后再使用AI续写功能';
+                } else if (error.message.includes('积分') || error.message.includes('配额')) {
+                    errorMessage = '积分或配额不足';
+                } else if (error.message.includes('网络')) {
+                    errorMessage = '网络连接失败，请检查网络';
+                }
+                
+                document.getElementById('aiErrorMessage').textContent = errorMessage;
+            }
+        }
+
+        // 轮询任务状态
+        async function pollTaskStatus(taskId) {
+            console.log('开始轮询任务状态:', taskId);
+            
+            const maxAttempts = 60; // 最多轮询60次（60秒）
+            let attempts = 0;
+
+            const checkStatus = async () => {
+                attempts++;
+                
+                try {
+                    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                    const response = await fetch(`/api/ai/v2/tasks/${taskId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('查询任务失败');
+                    }
+
+                    const data = await response.json();
+                    console.log(`轮询第${attempts}次, 任务状态:`, data.status);
+
+                    if (data.status === 'completed') {
+                        // 任务完成，显示结果
+                        console.log('任务完成，结果:', data.result);
+                        displayAiTaskResult(data.result);
+                    } else if (data.status === 'failed') {
+                        throw new Error(data.errorMessage || '生成失败');
+                    } else if (attempts < maxAttempts) {
+                        // 继续轮询
+                        setTimeout(checkStatus, 1000);
+                    } else {
+                        throw new Error('生成超时，请稍后查看任务列表');
+                    }
+                } catch (error) {
+                    console.error('轮询错误:', error);
+                    document.getElementById('aiLoading').style.display = 'none';
+                    document.getElementById('aiError').style.display = 'block';
+                    document.getElementById('aiErrorMessage').textContent = error.message;
+                }
+            };
+
+            checkStatus();
+        }
+
+        // 显示AI任务结果（写作页面：仅小段落模式）
+        function displayAiTaskResult(result) {
+            console.log('显示AI任务结果:', result);
+            
+            document.getElementById('aiLoading').style.display = 'none';
+            document.getElementById('aiOptions').style.display = 'block';
+            document.getElementById('regenerateBtn').style.display = 'inline-block';
+
+            const optionsContainer = document.getElementById('aiOptions');
+            optionsContainer.innerHTML = '';
+
+            // 保存选项供后续使用
+            const options = result.options || [];
+            aiOptions = options;
+
+            if (options.length === 0) {
+                optionsContainer.innerHTML = '<p style="text-align: center; color: #999;">未生成续写选项</p>';
+                return;
+            }
+
+            options.forEach((option, index) => {
+                const card = document.createElement('div');
+                card.className = 'ai-option-card';
+                
+                // 小段落模式：插入编辑器
+                card.innerHTML = `
+                    <div class="ai-option-header">
+                        <span class="ai-option-style">${option.style || '风格' + (index + 1)}</span>
+                        <span style="font-size: 12px; color: #999;">
+                            <i class="fas fa-robot"></i> AI创作
+                        </span>
+                    </div>
+                    <div class="ai-option-title">${option.title}</div>
+                    <div class="ai-option-content">${option.content}</div>
+                    <div class="ai-option-actions">
+                        <button class="btn-use" onclick="useAiSuggestion(${index})">
+                            <i class="fas fa-check"></i> 插入编辑器
+                        </button>
+                        <button class="btn-preview" onclick="previewAiSuggestion(${index})">
+                            <i class="fas fa-eye"></i> 查看完整
+                        </button>
+                    </div>
+                `;
+                optionsContainer.appendChild(card);
+            });
         }
 
         // 显示AI续写建议
@@ -1300,27 +1701,35 @@
             });
         }
 
-        // 使用AI续写
+        // 使用AI续写（小段落模式：插入到编辑器）
         window.useAiSuggestion = function(index) {
             const option = aiOptions[index];
             
             console.log('用户选择了选项:', index, option);
+            console.log('当前模式:', aiMode);
             
-            // 将内容插入到编辑器
-            const currentContent = quill.root.innerHTML;
+            // 获取当前光标位置
+            const selection = quill.getSelection();
+            const cursorPosition = selection ? selection.index : quill.getLength();
             
-            // 添加分隔和AI生成的内容
-            const newContent = currentContent + 
-                '<p><br></p>' + 
-                '<p>' + option.content.replace(/\n/g, '</p><p>') + '</p>';
+            // 在光标位置插入AI生成的内容
+            // 先插入一个换行
+            quill.insertText(cursorPosition, '\n', 'user');
             
-            quill.root.innerHTML = newContent;
+            // 然后插入AI内容（按段落分割）
+            const paragraphs = option.content.split('\n').filter(p => p.trim());
+            let insertPosition = cursorPosition + 1;
             
-            // 如果标题为空，填入AI生成的标题
-            const titleInput = document.getElementById('chapterTitle');
-            if (!titleInput.value.trim()) {
-                titleInput.value = option.title;
-            }
+            paragraphs.forEach((paragraph, i) => {
+                quill.insertText(insertPosition, paragraph, 'user');
+                insertPosition += paragraph.length;
+                
+                // 每段后面加换行（除了最后一段）
+                if (i < paragraphs.length - 1) {
+                    quill.insertText(insertPosition, '\n', 'user');
+                    insertPosition += 1;
+                }
+            });
             
             // 更新字数
             updateWordCount();
@@ -1331,9 +1740,9 @@
             // 显示成功提示
             showSuccess('AI续写已插入编辑器，你可以继续编辑');
             
-            // 聚焦编辑器到末尾
+            // 聚焦编辑器到插入内容的末尾
             setTimeout(() => {
-                quill.setSelection(quill.getLength(), 0);
+                quill.setSelection(insertPosition, 0);
                 quill.focus();
             }, 300);
         };
@@ -1406,7 +1815,15 @@
         // 重新生成AI续写
         async function regenerateAiSuggestions() {
             console.log('重新生成AI续写');
-            await showAiSuggestions();
+            
+            // 重置界面到选择器状态
+            document.getElementById('surpriseTimeSelector').style.display = 'block';
+            document.getElementById('aiStyleSelector').style.display = 'block';
+            document.getElementById('startAiGenerationBtn').parentElement.style.display = 'block';
+            document.getElementById('aiLoading').style.display = 'none';
+            document.getElementById('aiOptions').style.display = 'none';
+            document.getElementById('aiError').style.display = 'none';
+            document.getElementById('regenerateBtn').style.display = 'none';
         }
 
         // 关闭AI模态框

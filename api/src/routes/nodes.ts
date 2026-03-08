@@ -64,6 +64,7 @@ router.post('/', authenticateToken, async (req, res) => {
           content,
           image: image || null,
           path: path || '1',
+          is_published: true, // 默认已发布
           review_status: reviewCheck.needReview ? 'PENDING' : 'APPROVED',
           updated_at: new Date()
         },
@@ -114,6 +115,7 @@ router.post('/', authenticateToken, async (req, res) => {
         content,
         image: image || null,
         path: newPath,
+        is_published: true, // 默认已发布
         review_status: reviewCheck.needReview ? 'PENDING' : 'APPROVED',
           updated_at: new Date()
       },
@@ -210,6 +212,87 @@ router.put('/:id', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('更新节点错误:', error);
     res.status(500).json({ error: 'Failed to update node' });
+  }
+});
+
+// Delete node (删除章节)
+router.delete('/:id', authenticateToken, async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { id } = req.params;
+
+  try {
+    // 检查节点是否存在
+    const node = await prisma.nodes.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        story: {
+          select: { id: true, author_id: true }
+        }
+      }
+    });
+
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+
+    // 检查权限：必须是节点作者或故事作者
+    if (node.author_id !== userId && node.story.author_id !== userId) {
+      return res.status(403).json({ error: 'Not authorized to delete this node' });
+    }
+
+    // 检查是否有子节点
+    const childCount = await prisma.nodes.count({
+      where: { parent_id: parseInt(id) }
+    });
+
+    if (childCount > 0) {
+      return res.status(400).json({ 
+        error: '该章节有子章节，无法删除',
+        hasChildren: true,
+        childCount
+      });
+    }
+
+    // 检查是否是根节点
+    if (node.parent_id === null) {
+      // 如果是根节点，需要清除故事的root_node_id
+      await prisma.stories.update({
+        where: { id: node.story_id },
+        data: { root_node_id: null }
+      });
+    }
+
+    // 删除相关的评分
+    await prisma.ratings.deleteMany({
+      where: { node_id: parseInt(id) }
+    });
+
+    // 删除相关的评论
+    await prisma.comments.deleteMany({
+      where: { node_id: parseInt(id) }
+    });
+
+    // 删除相关的举报
+    await prisma.reports.deleteMany({
+      where: { node_id: parseInt(id) }
+    });
+
+    // 删除节点
+    await prisma.nodes.delete({
+      where: { id: parseInt(id) }
+    });
+
+    res.json({ 
+      success: true, 
+      message: '章节删除成功' 
+    });
+  } catch (error) {
+    console.error('删除节点错误:', error);
+    res.status(500).json({ error: 'Failed to delete node' });
   }
 });
 
@@ -328,6 +411,7 @@ router.post('/:id/branches', authenticateToken, async (req, res) => {
         content,
         image,
         path: newPath,
+        is_published: true, // 默认已发布
         review_status: reviewCheck.needReview ? 'PENDING' : 'APPROVED',
           updated_at: new Date()
       },

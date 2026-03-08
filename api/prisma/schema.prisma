@@ -62,6 +62,7 @@ model nodes {
   image          String?
   path           String
   ai_generated   Boolean    @default(false)
+  is_published   Boolean    @default(false)
   rating_avg     Float      @default(0)
   rating_count   Int        @default(0)
   read_count     Int        @default(0)
