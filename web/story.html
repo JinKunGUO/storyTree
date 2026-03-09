@@ -967,6 +967,10 @@
                 <div class="section-header">
                     <h2 class="section-title">章节目录</h2>
                     <div class="chapter-sort">
+                        <button class="btn btn-secondary" id="viewTreeBtn" style="margin-right: 15px;">
+                            <i class="fas fa-sitemap"></i>
+                            查看分支树
+                        </button>
                         <button class="btn btn-primary" id="aiCreateChapterBtn" style="display: none; margin-right: 15px;">
                             <i class="fas fa-robot"></i>
                             AI创作章节
@@ -1152,6 +1156,15 @@
                         description: window.currentStory.description,
                         image: window.currentStory.coverImage
                     });
+                }
+            });
+
+            // 查看分支树按钮
+            document.getElementById('viewTreeBtn')?.addEventListener('click', function() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const storyId = urlParams.get('id');
+                if (storyId) {
+                    window.location.href = `/story-tree?id=${storyId}`;
                 }
             });
         });

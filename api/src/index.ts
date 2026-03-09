@@ -98,7 +98,7 @@ app.get('*', (req, res) => {
     const requestedPath = req.path.slice(1); // 去掉开头的 /
     const possiblePages = [
         'register', 'login', 'create', 'discover', 'profile', 'admin', 
-        'story', 'chapter', 'write', 'debug', 'level', 'payment',
+        'story', 'story-tree', 'chapter', 'write', 'debug', 'level', 'payment',
         'reset-password', 'verify-email', 'forgot-password', 'ai-tasks'
     ];
     

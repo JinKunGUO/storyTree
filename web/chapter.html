@@ -12,10 +12,55 @@
             padding-top: 60px;
         }
 
+        /* 面包屑导航 */
+        .breadcrumb-nav {
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 10px 20px;
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            z-index: 101;
+        }
+
+        .breadcrumb-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            font-size: 14px;
+        }
+
+        .breadcrumb-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #667eea;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .breadcrumb-item:hover {
+            color: #764ba2;
+        }
+
+        .breadcrumb-item.current {
+            color: #333;
+            font-weight: 600;
+            cursor: default;
+        }
+
+        .breadcrumb-separator {
+            color: #ccc;
+        }
+
         /* 阅读工具栏 */
         .reading-toolbar {
             position: fixed;
-            top: 60px;
+            top: 95px;
             left: 0;
             right: 0;
             background: white;
@@ -92,7 +137,7 @@
         /* 阅读容器 */
         .reading-container {
             max-width: 800px;
-            margin: 80px auto 40px;
+            margin: 130px auto 40px;
             padding: 0 20px;
         }
 
@@ -696,6 +741,13 @@
     </style>
 </head>
 <body>
+    <!-- 面包屑导航 -->
+    <div class="breadcrumb-nav" id="breadcrumbNav" style="display: none;">
+        <div class="breadcrumb-container" id="breadcrumbContainer">
+            <!-- 动态加载 -->
+        </div>
+    </div>
+
     <!-- 阅读工具栏 -->
     <div class="reading-toolbar">
         <div class="toolbar-left">
@@ -1144,6 +1196,9 @@
                 // 加载章节导航
                 await loadChapterNavigation(storyId, chapterId);
 
+                // 加载面包屑导航
+                await loadBreadcrumbNav(chapterId);
+
                 // 隐藏加载状态
                 document.getElementById('loadingState').style.display = 'none';
                 document.getElementById('chapterContainer').style.display = 'block';
@@ -1474,6 +1529,75 @@
 
             } catch (error) {
                 console.error('加载导航错误:', error);
+            }
+        }
+
+        // 加载面包屑导航
+        async function loadBreadcrumbNav(nodeId) {
+            try {
+                console.log('加载面包屑导航, nodeId:', nodeId);
+                const response = await fetch(`/api/stories/nodes/${nodeId}/path`);
+                
+                if (!response.ok) {
+                    console.error('加载路径失败:', response.status);
+                    return;
+                }
+
+                const data = await response.json();
+                console.log('面包屑路径数据:', data);
+                
+                // 渲染面包屑
+                const breadcrumbContainer = document.getElementById('breadcrumbContainer');
+                const breadcrumbNav = document.getElementById('breadcrumbNav');
+                
+                if (!breadcrumbContainer || !data.path || data.path.length === 0) {
+                    return;
+                }
+
+                let breadcrumbHTML = '';
+                
+                // 添加故事标题
+                if (data.story) {
+                    breadcrumbHTML += `
+                        <a href="/story?id=${data.story.id}" class="breadcrumb-item">
+                            <i class="fas fa-book"></i>
+                            <span>${data.story.title}</span>
+                        </a>
+                    `;
+                }
+                
+                // 添加路径中的所有节点
+                data.path.forEach((node, index) => {
+                    // 添加分隔符
+                    if (index > 0 || data.story) {
+                        breadcrumbHTML += '<span class="breadcrumb-separator"><i class="fas fa-chevron-right"></i></span>';
+                    }
+                    
+                    // 最后一个节点（当前章节）不可点击
+                    if (index === data.path.length - 1) {
+                        breadcrumbHTML += `
+                            <span class="breadcrumb-item current">
+                                <i class="fas fa-file-alt"></i>
+                                <span>${node.title}</span>
+                            </span>
+                        `;
+                    } else {
+                        breadcrumbHTML += `
+                            <a href="/chapter?id=${node.id}" class="breadcrumb-item">
+                                <i class="fas fa-file-alt"></i>
+                                <span>${node.title}</span>
+                            </a>
+                        `;
+                    }
+                });
+                
+                breadcrumbContainer.innerHTML = breadcrumbHTML;
+                breadcrumbNav.style.display = 'block';
+                
+                console.log('面包屑导航渲染完成');
+
+            } catch (error) {
+                console.error('加载面包屑导航错误:', error);
             }
         }
 
