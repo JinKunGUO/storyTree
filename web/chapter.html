@@ -764,6 +764,9 @@
             </div>
         </div>
         <div class="toolbar-right">
+            <button class="toolbar-btn" id="createBranchBtn" style="display: none;" title="创建分支">
+                <i class="fas fa-code-branch"></i>
+            </button>
             <button class="toolbar-btn" id="generateIllustrationBtn" style="display: none;" title="生成AI插图">
                 <i class="fas fa-image"></i>
             </button>
@@ -1294,7 +1297,7 @@
                 const token = localStorage.getItem('token') || sessionStorage.getItem('token');
                 
                 if (!token) {
-                    console.log('未登录，不显示编辑按钮');
+                    console.log('未登录，不显示编辑和创建分支按钮');
                     return;
                 }
 
@@ -1314,7 +1317,17 @@
                 console.log('当前用户:', userData.user);
                 console.log('章节作者ID:', chapter.author_id);  // 修改为 author_id
 
-                // 比对用户ID
+                // 所有登录用户都可以创建分支
+                console.log('✅ 已登录，显示创建分支按钮');
+                const createBranchBtn = document.getElementById('createBranchBtn');
+                createBranchBtn.style.display = 'block';
+                
+                // 添加创建分支按钮的点击事件
+                createBranchBtn.onclick = () => {
+                    window.location.href = `/write?storyId=${storyId}&parentId=${chapter.id}`;
+                };
+
+                // 比对用户ID，只有作者可以编辑
                 if (userData.user && userData.user.id === chapter.author_id) {  // 修改为 author_id
                     console.log('✅ 是作者，显示编辑和插图按钮');
                     document.getElementById('editChapterBtn').style.display = 'block';

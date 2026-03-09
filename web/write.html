@@ -948,8 +948,9 @@
         async function loadStoryInfo() {
             const urlParams = new URLSearchParams(window.location.search);
             storyId = urlParams.get('storyId');
+            const parentId = urlParams.get('parentId'); // 获取parentId参数
 
-            console.log('开始加载故事信息, storyId:', storyId);
+            console.log('开始加载故事信息, storyId:', storyId, 'parentId:', parentId);
 
             if (!storyId) {
                 console.error('故事ID不存在');
@@ -983,8 +984,21 @@
                     
                     // 根据章节数量更新提示文字
                     let chapterHint = '撰写第一章';
-                    if (nodes.length > 0) {
-                        // 找到最后一章（按path排序）
+                    
+                    if (parentId) {
+                        // 如果URL中指定了parentId，使用它作为父节点
+                        window.lastNodeId = parseInt(parentId);
+                        const parentNode = nodes.find(n => n.id === parseInt(parentId));
+                        
+                        if (parentNode) {
+                            chapterHint = `从「${parentNode.title}」创建分支`;
+                            console.log('使用URL指定的父节点:', parentNode.title, 'ID:', parentNode.id);
+                        } else {
+                            chapterHint = `创建新分支`;
+                            console.log('使用URL指定的父节点ID:', parentId);
+                        }
+                    } else if (nodes.length > 0) {
+                        // 如果没有指定parentId，找到最后一章作为父节点
                         const sortedNodes = nodes.sort((a, b) => {
                             const pathA = a.path.split('.').map(Number);
                             const pathB = b.path.split('.').map(Number);
