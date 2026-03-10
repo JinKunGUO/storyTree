@@ -16,7 +16,7 @@ router.post('/', authenticateToken, async (req, res) => {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
-  const { storyId, parentId, title, content, image, path } = req.body;
+  const { storyId, parentId, title, content, image, path, isPublished } = req.body;
 
   if (!storyId || !title || !content) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -37,8 +37,9 @@ router.post('/', authenticateToken, async (req, res) => {
       where: { author_id: userId }
     });
 
-    // 审核检查
-    const reviewCheck = needsReview(content, userNodeCount);
+    // 审核检查（只对发布的内容进行审核）
+    const shouldPublish = isPublished !== false; // 默认为true以保持向后兼容
+    const reviewCheck = shouldPublish ? needsReview(content, userNodeCount) : { needReview: false, reason: '' };
 
     // 如果是第一个节点（没有parentId）
     if (!parentId) {
@@ -64,7 +65,7 @@ router.post('/', authenticateToken, async (req, res) => {
           content,
           image: image || null,
           path: path || '1',
-          is_published: true, // 默认已发布
+          is_published: shouldPublish, // 根据参数设置发布状态
           review_status: reviewCheck.needReview ? 'PENDING' : 'APPROVED',
           updated_at: new Date()
         },
@@ -84,10 +85,14 @@ router.post('/', authenticateToken, async (req, res) => {
         data: { root_node_id: node.id }
       });
 
+      const statusMessage = shouldPublish 
+        ? (reviewCheck.needReview ? `内容需要审核：${reviewCheck.reason}` : '第一章创建成功')
+        : '草稿保存成功';
+
       return res.json({
         node,
         reviewStatus: reviewCheck.needReview ? 'pending' : 'approved',
-        message: reviewCheck.needReview ? `内容需要审核：${reviewCheck.reason}` : '第一章创建成功'
+        message: statusMessage
       });
     }
 
@@ -115,7 +120,7 @@ router.post('/', authenticateToken, async (req, res) => {
         content,
         image: image || null,
         path: newPath,
-        is_published: true, // 默认已发布
+        is_published: shouldPublish, // 根据参数设置发布状态
         review_status: reviewCheck.needReview ? 'PENDING' : 'APPROVED',
           updated_at: new Date()
       },
@@ -129,10 +134,14 @@ router.post('/', authenticateToken, async (req, res) => {
       }
     });
 
+    const statusMessage = shouldPublish 
+      ? (reviewCheck.needReview ? `内容需要审核：${reviewCheck.reason}` : '分支创建成功')
+      : '草稿保存成功';
+
     res.json({
       node,
       reviewStatus: reviewCheck.needReview ? 'pending' : 'approved',
-      message: reviewCheck.needReview ? `内容需要审核：${reviewCheck.reason}` : '分支创建成功'
+      message: statusMessage
     });
   } catch (error) {
     console.error('创建节点错误:', error);
@@ -425,7 +434,7 @@ router.post('/:id/branches', authenticateToken, async (req, res) => {
   }
 
   const { id } = req.params;
-  const { title, content, image } = req.body;
+  const { title, content, image, isPublished } = req.body;
 
   try {
     const parentNode = await prisma.nodes.findUnique({
@@ -442,8 +451,9 @@ router.post('/:id/branches', authenticateToken, async (req, res) => {
       where: { author_id: userId }
     });
 
-    // 审核检查
-    const reviewCheck = needsReview(content, userNodeCount);
+    // 审核检查（只对发布的内容进行审核）
+    const shouldPublish = isPublished !== false; // 默认为true以保持向后兼容
+    const reviewCheck = shouldPublish ? needsReview(content, userNodeCount) : { needReview: false, reason: '' };
 
     // Generate path: parent.path + branch number
     const siblingCount = await prisma.nodes.count({
@@ -460,7 +470,7 @@ router.post('/:id/branches', authenticateToken, async (req, res) => {
         content,
         image,
         path: newPath,
-        is_published: true, // 默认已发布
+        is_published: shouldPublish, // 根据参数设置发布状态
         review_status: reviewCheck.needReview ? 'PENDING' : 'APPROVED',
           updated_at: new Date()
       },
@@ -474,10 +484,14 @@ router.post('/:id/branches', authenticateToken, async (req, res) => {
       }
     });
 
+    const statusMessage = shouldPublish 
+      ? (reviewCheck.needReview ? `内容需要审核：${reviewCheck.reason}` : '发布成功')
+      : '草稿保存成功';
+
     res.json({
       node,
       reviewStatus: reviewCheck.needReview ? 'pending' : 'approved',
-      message: reviewCheck.needReview ? `内容需要审核：${reviewCheck.reason}` : '发布成功'
+      message: statusMessage
     });
   } catch (error) {
     console.error(error);
