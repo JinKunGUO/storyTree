@@ -1564,11 +1564,14 @@
                 const data = await response.json();
                 console.log('章节API返回数据:', data);
                 
-                // API返回的是 {node: {...}} 结构
+                // API返回的是 {node: {...}, branches: [...]} 结构
                 currentChapter = data.node;
+                // 将branches字段添加到currentChapter对象中
+                currentChapter.branches = data.branches || [];
                 storyId = currentChapter.story_id;  // 修改为 story_id
                 
                 console.log('当前章节:', currentChapter);
+                console.log('子分支数量:', currentChapter.branches.length);
                 console.log('故事ID:', storyId);
                 
                 renderChapter(currentChapter);
