@@ -2924,16 +2924,21 @@
         // 检查是否显示AI推荐按钮
         async function checkShowRecommendButton() {
             try {
-                // 快速检查是否有子分支
-                const response = await fetch(`/api/nodes?parent_id=${currentChapter.id}&limit=1`);
+                // 检查是否有子分支（使用已有的branches数据或重新获取）
+                const response = await fetch(`/api/nodes/${currentChapter.id}`);
                 if (response.ok) {
                     const data = await response.json();
-                    if (data.nodes && data.nodes.length > 0) {
+                    if (data.branches && data.branches.length > 0) {
                         // 有子分支，显示AI推荐按钮
                         const token = localStorage.getItem('token') || sessionStorage.getItem('token');
                         if (token) {
                             document.getElementById('aiRecommendBtn').style.display = 'block';
+                            console.log('✅ 显示AI推荐按钮，子分支数:', data.branches.length);
+                        } else {
+                            console.log('❌ 未登录，不显示AI推荐按钮');
                         }
+                    } else {
+                        console.log('❌ 没有子分支，不显示AI推荐按钮');
                     }
                 }
             } catch (error) {
