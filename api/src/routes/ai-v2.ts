@@ -595,5 +595,148 @@ router.post('/continuation/accept', async (req, res) => {
   }
 });
 
+/**
+ * AI分支推荐
+ * 分析所有分支的质量，推荐最佳分支路径
+ */
+router.post('/recommend-branch', async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: '未登录' });
+  }
+
+  const { nodeId } = req.body;
+
+  if (!nodeId) {
+    return res.status(400).json({ error: 'nodeId是必需的' });
+  }
+
+  try {
+    // 获取当前节点
+    const currentNode = await prisma.nodes.findUnique({
+      where: { id: parseInt(nodeId) }
+    });
+
+    if (!currentNode) {
+      return res.status(404).json({ error: '节点不存在' });
+    }
+
+    // 获取所有子分支
+    const branches = await prisma.nodes.findMany({
+      where: { parent_id: parseInt(nodeId) },
+      include: {
+        author: {
+          select: { id: true, username: true }
+        },
+        _count: {
+          select: {
+            comments: true,
+            ratings: true
+          }
+        }
+      }
+    });
+
+    if (branches.length === 0) {
+      return res.json({
+        recommended: null,
+        alternatives: [],
+        message: '当前章节还没有分支'
+      });
+    }
+
+    // 计算每个分支的综合得分
+    const calculateBranchScore = (branch: any) => {
+      // 权重配置
+      const readWeight = 0.4;      // 阅读量权重
+      const ratingWeight = 0.4;    // 评分权重
+      const commentWeight = 0.2;   // 评论数权重
+
+      // 对数归一化阅读量（避免极端值）
+      const readScore = Math.log(branch.read_count + 1) * readWeight * 10;
+      
+      // 评分得分（0-5分）
+      const ratingScore = (branch.rating_avg || 0) * ratingWeight * 10;
+      
+      // 对数归一化评论数
+      const commentScore = Math.log(branch._count.comments + 1) * commentWeight * 10;
+
+      const totalScore = readScore + ratingScore + commentScore;
+
+      return {
+        ...branch,
+        score: totalScore,
+        scoreBreakdown: {
+          readScore: readScore.toFixed(2),
+          ratingScore: ratingScore.toFixed(2),
+          commentScore: commentScore.toFixed(2),
+          totalScore: totalScore.toFixed(2)
+        }
+      };
+    };
+
+    // 计算所有分支得分并排序
+    const scoredBranches = branches
+      .map(calculateBranchScore)
+      .sort((a, b) => b.score - a.score);
+
+    // 获取推荐分支（得分最高）
+    const recommended = scoredBranches[0];
+    const alternatives = scoredBranches.slice(1, 4); // 最多3个备选
+
+    // 生成推荐理由
+    let reason = '基于';
+    const reasons = [];
+    
+    if (recommended.read_count > 50) {
+      reasons.push(`高阅读量(${recommended.read_count}次)`);
+    }
+    if (recommended.rating_avg && recommended.rating_avg >= 4.0) {
+      reasons.push(`高评分(${recommended.rating_avg.toFixed(1)}分)`);
+    }
+    if (recommended._count.comments > 5) {
+      reasons.push(`活跃讨论(${recommended._count.comments}条评论)`);
+    }
+    
+    if (reasons.length > 0) {
+      reason += reasons.join('、');
+    } else {
+      reason = '综合数据分析';
+    }
+    
+    reason += '，推荐此分支作为最佳阅读路径';
+
+    res.json({
+      recommended: {
+        id: recommended.id,
+        title: recommended.title,
+        author: recommended.author,
+        readCount: recommended.read_count,
+        rating: recommended.rating_avg,
+        commentCount: recommended._count.comments,
+        score: recommended.score,
+        scoreBreakdown: recommended.scoreBreakdown,
+        aiGenerated: recommended.ai_generated
+      },
+      alternatives: alternatives.map(alt => ({
+        id: alt.id,
+        title: alt.title,
+        author: alt.author,
+        readCount: alt.read_count,
+        rating: alt.rating_avg,
+        commentCount: alt._count.comments,
+        score: alt.score,
+        scoreBreakdown: alt.scoreBreakdown,
+        aiGenerated: alt.ai_generated
+      })),
+      reason,
+      totalBranches: branches.length
+    });
+  } catch (error) {
+    console.error('AI分支推荐失败:', error);
+    res.status(500).json({ error: '推荐失败' });
+  }
+});
+
 export default router;
 

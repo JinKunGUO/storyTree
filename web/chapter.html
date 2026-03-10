@@ -939,6 +939,9 @@
             </div>
         </div>
         <div class="toolbar-right">
+            <button class="toolbar-btn" id="aiRecommendBtn" style="display: none;" title="AI推荐分支">
+                <i class="fas fa-magic"></i>
+            </button>
             <button class="toolbar-btn" id="compareBranchesBtn" style="display: none;" title="对比分支">
                 <i class="fas fa-exchange-alt"></i>
             </button>
@@ -1402,6 +1405,102 @@
         </div>
     </div>
 
+    <!-- AI推荐模态框 -->
+    <div class="compare-modal" id="recommendModal">
+        <div class="compare-modal-content">
+            <div class="compare-modal-header">
+                <h2>
+                    <i class="fas fa-magic"></i>
+                    AI分支推荐
+                </h2>
+                <button class="close-btn" id="closeRecommendModal" style="color: white;">×</button>
+            </div>
+            <div class="compare-modal-body">
+                <!-- 加载状态 -->
+                <div id="recommendLoading" style="display: none; text-align: center; padding: 40px;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: #667eea;"></i>
+                    <p style="color: #999; margin-top: 20px;">AI正在分析分支...</p>
+                </div>
+
+                <!-- 无分支提示 -->
+                <div class="no-siblings-message" id="noRecommendMessage" style="display: none;">
+                    <i class="fas fa-code-branch"></i>
+                    <h3>当前章节还没有分支</h3>
+                    <p>需要有多个分支才能进行AI推荐</p>
+                    <p style="margin-top: 15px;">
+                        <button class="btn-save" onclick="document.getElementById('recommendModal').classList.remove('active')">
+                            关闭
+                        </button>
+                    </p>
+                </div>
+
+                <!-- 推荐结果 -->
+                <div id="recommendResult" style="display: none;">
+                    <!-- 推荐理由 -->
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 20px;">
+                        <h3 style="margin: 0 0 10px 0; font-size: 18px;">
+                            <i class="fas fa-lightbulb"></i> AI推荐
+                        </h3>
+                        <p id="recommendReason" style="margin: 0; line-height: 1.6; font-size: 15px;"></p>
+                    </div>
+
+                    <!-- 推荐分支卡片 -->
+                    <div style="background: #f9f9f9; border-radius: 15px; padding: 20px; margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3 style="margin: 0; color: #333;">
+                                <i class="fas fa-star" style="color: #ffc107;"></i>
+                                <span id="recommendTitle">推荐分支</span>
+                            </h3>
+                            <span id="recommendAIBadge" style="display: none; background: #764ba2; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px;">
+                                <i class="fas fa-robot"></i> AI创作
+                            </span>
+                        </div>
+                        <div style="color: #666; margin-bottom: 15px;">
+                            <span><i class="fas fa-user"></i> <span id="recommendAuthor">作者</span></span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 15px;">
+                            <div style="text-align: center; padding: 15px; background: white; border-radius: 10px;">
+                                <div style="font-size: 24px; font-weight: 600; color: #667eea;" id="recommendReadCount">0</div>
+                                <div style="color: #999; font-size: 12px; margin-top: 5px;">阅读量</div>
+                            </div>
+                            <div style="text-align: center; padding: 15px; background: white; border-radius: 10px;">
+                                <div style="font-size: 24px; font-weight: 600; color: #ffc107;" id="recommendRating">0.0</div>
+                                <div style="color: #999; font-size: 12px; margin-top: 5px;">评分</div>
+                            </div>
+                            <div style="text-align: center; padding: 15px; background: white; border-radius: 10px;">
+                                <div style="font-size: 24px; font-weight: 600; color: #4caf50;" id="recommendComments">0</div>
+                                <div style="color: #999; font-size: 12px; margin-top: 5px;">评论数</div>
+                            </div>
+                        </div>
+                        <button id="goToRecommendBtn" style="
+                            width: 100%;
+                            padding: 12px;
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            color: white;
+                            border: none;
+                            border-radius: 10px;
+                            font-size: 16px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.3s;
+                        ">
+                            <i class="fas fa-arrow-right"></i>
+                            阅读此分支
+                        </button>
+                    </div>
+
+                    <!-- 其他备选分支 -->
+                    <div id="alternativesContainer" style="display: none;">
+                        <h4 style="color: #666; margin-bottom: 15px;">
+                            <i class="fas fa-list"></i> 其他备选分支
+                        </h4>
+                        <div id="alternativesList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="auth.js"></script>
     <script src="comments.js"></script>
     <script src="share.js"></script>
@@ -1412,6 +1511,7 @@
         let currentIllustrationTaskId = null;
         let siblings = [];
         let selectedSiblingId = null;
+        let recommendedBranch = null;
 
         // 页面初始化
         document.addEventListener('DOMContentLoaded', function() {
@@ -1422,6 +1522,7 @@
             initReportFeature(); // 初始化举报功能
             initIllustrationFeature(); // 初始化插图功能
             initBranchCompare(); // 初始化分支对比功能
+            initAIRecommend(); // 初始化AI推荐功能
             
             // 初始化分享按钮
             document.getElementById('shareChapterBtn')?.addEventListener('click', function() {
@@ -1497,6 +1598,9 @@
 
                 // 检查是否显示分支对比按钮
                 checkShowCompareButton();
+
+                // 检查是否显示AI推荐按钮
+                checkShowRecommendButton();
 
             } catch (error) {
                 console.error('加载章节错误:', error);
@@ -2659,6 +2763,181 @@
                 }
             } catch (error) {
                 console.error('检查同级分支错误:', error);
+            }
+        }
+
+        // ============================================
+        // AI分支推荐功能
+        // ============================================
+
+        // 初始化AI推荐功能
+        function initAIRecommend() {
+            const recommendBtn = document.getElementById('aiRecommendBtn');
+            const closeBtn = document.getElementById('closeRecommendModal');
+
+            // 推荐按钮点击
+            recommendBtn?.addEventListener('click', openRecommendModal);
+
+            // 关闭按钮
+            closeBtn?.addEventListener('click', closeRecommendModal);
+
+            // 点击模态框外部关闭
+            document.getElementById('recommendModal')?.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeRecommendModal();
+                }
+            });
+        }
+
+        // 打开AI推荐模态框
+        async function openRecommendModal() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            
+            if (!token) {
+                showError('请先登录');
+                setTimeout(() => {
+                    window.location.href = '/login?redirect=' + encodeURIComponent(window.location.href);
+                }, 1500);
+                return;
+            }
+
+            const modal = document.getElementById('recommendModal');
+            const loading = document.getElementById('recommendLoading');
+            const noRecommendMessage = document.getElementById('noRecommendMessage');
+            const recommendResult = document.getElementById('recommendResult');
+
+            // 重置显示状态
+            loading.style.display = 'block';
+            noRecommendMessage.style.display = 'none';
+            recommendResult.style.display = 'none';
+
+            // 显示模态框
+            modal.classList.add('active');
+
+            try {
+                // 调用AI推荐API
+                const response = await fetch('/api/ai/v2/recommend-branch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        nodeId: currentChapter.id
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'AI推荐失败');
+                }
+
+                const data = await response.json();
+                console.log('AI推荐结果:', data);
+
+                loading.style.display = 'none';
+
+                if (!data.recommended) {
+                    // 没有分支
+                    noRecommendMessage.style.display = 'block';
+                } else {
+                    // 显示推荐结果
+                    recommendedBranch = data.recommended;
+                    displayRecommendResult(data);
+                }
+
+            } catch (error) {
+                console.error('AI推荐错误:', error);
+                loading.style.display = 'none';
+                noRecommendMessage.style.display = 'block';
+                document.querySelector('#noRecommendMessage h3').textContent = '推荐失败';
+                document.querySelector('#noRecommendMessage p').textContent = error.message;
+            }
+        }
+
+        // 关闭AI推荐模态框
+        function closeRecommendModal() {
+            const modal = document.getElementById('recommendModal');
+            modal.classList.remove('active');
+            recommendedBranch = null;
+        }
+
+        // 显示推荐结果
+        function displayRecommendResult(data) {
+            const recommendResult = document.getElementById('recommendResult');
+            const recommended = data.recommended;
+            const alternatives = data.alternatives || [];
+
+            // 显示推荐理由
+            document.getElementById('recommendReason').textContent = data.reason;
+
+            // 显示推荐分支信息
+            document.getElementById('recommendTitle').textContent = recommended.title;
+            document.getElementById('recommendAuthor').textContent = recommended.author.username;
+            document.getElementById('recommendReadCount').textContent = recommended.readCount;
+            document.getElementById('recommendRating').textContent = (recommended.rating || 0).toFixed(1);
+            document.getElementById('recommendComments').textContent = recommended.commentCount;
+
+            // AI标记
+            if (recommended.aiGenerated) {
+                document.getElementById('recommendAIBadge').style.display = 'inline-block';
+            } else {
+                document.getElementById('recommendAIBadge').style.display = 'none';
+            }
+
+            // 跳转按钮
+            document.getElementById('goToRecommendBtn').onclick = () => {
+                window.location.href = `/chapter?id=${recommended.id}`;
+            };
+
+            // 显示备选分支
+            if (alternatives.length > 0) {
+                const alternativesContainer = document.getElementById('alternativesContainer');
+                const alternativesList = document.getElementById('alternativesList');
+                
+                alternativesList.innerHTML = alternatives.map(alt => `
+                    <div style="background: white; border-radius: 10px; padding: 15px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s;"
+                         onmouseover="this.style.boxShadow='0 5px 15px rgba(0,0,0,0.1)'"
+                         onmouseout="this.style.boxShadow='none'"
+                         onclick="window.location.href='/chapter?id=${alt.id}'">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <h4 style="margin: 0; color: #333;">${alt.title}</h4>
+                            ${alt.aiGenerated ? '<span style="background: #764ba2; color: white; padding: 2px 8px; border-radius: 8px; font-size: 11px;"><i class="fas fa-robot"></i> AI</span>' : ''}
+                        </div>
+                        <div style="color: #999; font-size: 13px; margin-bottom: 10px;">
+                            <i class="fas fa-user"></i> ${alt.author.username}
+                        </div>
+                        <div style="display: flex; gap: 15px; font-size: 13px; color: #666;">
+                            <span><i class="fas fa-eye"></i> ${alt.readCount}</span>
+                            <span><i class="fas fa-star" style="color: #ffc107;"></i> ${(alt.rating || 0).toFixed(1)}</span>
+                            <span><i class="fas fa-comment"></i> ${alt.commentCount}</span>
+                        </div>
+                    </div>
+                `).join('');
+
+                alternativesContainer.style.display = 'block';
+            }
+
+            recommendResult.style.display = 'block';
+        }
+
+        // 检查是否显示AI推荐按钮
+        async function checkShowRecommendButton() {
+            try {
+                // 快速检查是否有子分支
+                const response = await fetch(`/api/nodes?parent_id=${currentChapter.id}&limit=1`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.nodes && data.nodes.length > 0) {
+                        // 有子分支，显示AI推荐按钮
+                        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                        if (token) {
+                            document.getElementById('aiRecommendBtn').style.display = 'block';
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('检查子分支错误:', error);
             }
         }
     </script>
