@@ -368,6 +368,55 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Get siblings (同级分支)
+router.get('/:id/siblings', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const node = await prisma.nodes.findUnique({
+      where: { id: parseInt(id) },
+      select: { parent_id: true }
+    });
+
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+
+    // 如果是根节点，没有同级分支
+    if (!node.parent_id) {
+      return res.json({ siblings: [] });
+    }
+
+    // 查询同级分支（同一个父节点下的其他节点）
+    const siblings = await prisma.nodes.findMany({
+      where: {
+        parent_id: node.parent_id,
+        id: { not: parseInt(id) }
+      },
+      include: {
+        author: {
+          select: { id: true, username: true }
+        },
+        _count: {
+          select: {
+            comments: true,
+            ratings: true
+          }
+        }
+      },
+      orderBy: [
+        { rating_avg: 'desc' },
+        { read_count: 'desc' }
+      ]
+    });
+
+    res.json({ siblings });
+  } catch (error) {
+    console.error('获取同级分支错误:', error);
+    res.status(500).json({ error: 'Failed to fetch siblings' });
+  }
+});
+
 // Create branch
 router.post('/:id/branches', authenticateToken, async (req, res) => {
   const userId = getUserId(req);

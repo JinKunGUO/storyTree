@@ -738,6 +738,181 @@
             cursor: not-allowed;
             transform: none;
         }
+
+        /* 分支对比模态框 */
+        .compare-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .compare-modal.active {
+            display: flex;
+        }
+
+        .compare-modal-content {
+            background: white;
+            border-radius: 20px;
+            max-width: 1400px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .compare-modal-header {
+            padding: 30px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .compare-modal-header h2 {
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0;
+        }
+
+        .compare-modal-body {
+            padding: 30px;
+        }
+
+        .branch-selector {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+
+        .branch-selector label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .branch-selector select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .branch-selector select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .compare-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .compare-panel {
+            background: #f9f9f9;
+            border-radius: 15px;
+            padding: 25px;
+            min-height: 400px;
+        }
+
+        .compare-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .compare-panel-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .compare-panel-meta {
+            font-size: 13px;
+            color: #999;
+            display: flex;
+            gap: 15px;
+        }
+
+        .compare-panel-content {
+            line-height: 2;
+            color: #666;
+            white-space: pre-wrap;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .compare-stats {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .no-siblings-message {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .no-siblings-message i {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        .no-siblings-message h3 {
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        @media (max-width: 1024px) {
+            .compare-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -764,6 +939,9 @@
             </div>
         </div>
         <div class="toolbar-right">
+            <button class="toolbar-btn" id="compareBranchesBtn" style="display: none;" title="对比分支">
+                <i class="fas fa-exchange-alt"></i>
+            </button>
             <button class="toolbar-btn" id="createBranchBtn" style="display: none;" title="创建分支">
                 <i class="fas fa-code-branch"></i>
             </button>
@@ -1119,6 +1297,111 @@
         </div>
     </div>
 
+    <!-- 分支对比模态框 -->
+    <div class="compare-modal" id="compareModal">
+        <div class="compare-modal-content">
+            <div class="compare-modal-header">
+                <h2>
+                    <i class="fas fa-exchange-alt"></i>
+                    分支对比
+                </h2>
+                <button class="close-btn" id="closeCompareModal" style="color: white;">×</button>
+            </div>
+            <div class="compare-modal-body">
+                <!-- 分支选择器 -->
+                <div class="branch-selector" id="branchSelectorContainer" style="display: none;">
+                    <label for="branchSelect">
+                        <i class="fas fa-code-branch"></i> 选择要对比的分支
+                    </label>
+                    <select id="branchSelect">
+                        <option value="">请选择...</option>
+                    </select>
+                </div>
+
+                <!-- 无同级分支提示 -->
+                <div class="no-siblings-message" id="noSiblingsMessage" style="display: none;">
+                    <i class="fas fa-code-branch"></i>
+                    <h3>当前章节没有同级分支</h3>
+                    <p>同级分支是指与当前章节共享同一父章节的其他分支</p>
+                    <p style="margin-top: 15px;">
+                        <button class="btn-save" onclick="document.getElementById('compareModal').classList.remove('active')">
+                            关闭
+                        </button>
+                    </p>
+                </div>
+
+                <!-- 对比内容 -->
+                <div class="compare-grid" id="compareGrid" style="display: none;">
+                    <!-- 当前分支 -->
+                    <div class="compare-panel">
+                        <div class="compare-panel-header">
+                            <div>
+                                <div class="compare-panel-title" id="currentBranchTitle">当前分支</div>
+                                <div class="compare-panel-meta" id="currentBranchMeta">
+                                    <span><i class="fas fa-user"></i> 作者</span>
+                                    <span><i class="fas fa-calendar"></i> 日期</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="compare-panel-content" id="currentBranchContent">
+                            内容加载中...
+                        </div>
+                        <div class="compare-stats">
+                            <div class="stat-item">
+                                <div class="stat-value" id="currentReadCount">0</div>
+                                <div class="stat-label">阅读量</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="currentRating">0.0</div>
+                                <div class="stat-label">评分</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="currentComments">0</div>
+                                <div class="stat-label">评论数</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 对比分支 -->
+                    <div class="compare-panel">
+                        <div class="compare-panel-header">
+                            <div>
+                                <div class="compare-panel-title" id="compareBranchTitle">对比分支</div>
+                                <div class="compare-panel-meta" id="compareBranchMeta">
+                                    <span><i class="fas fa-user"></i> 作者</span>
+                                    <span><i class="fas fa-calendar"></i> 日期</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="compare-panel-content" id="compareBranchContent">
+                            请选择要对比的分支...
+                        </div>
+                        <div class="compare-stats">
+                            <div class="stat-item">
+                                <div class="stat-value" id="compareReadCount">0</div>
+                                <div class="stat-label">阅读量</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="compareRating">0.0</div>
+                                <div class="stat-label">评分</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="compareComments">0</div>
+                                <div class="stat-label">评论数</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 加载状态 -->
+                <div id="compareLoading" style="display: none; text-align: center; padding: 40px;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: #667eea;"></i>
+                    <p style="color: #999; margin-top: 20px;">加载中...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="auth.js"></script>
     <script src="comments.js"></script>
     <script src="share.js"></script>
@@ -1127,6 +1410,8 @@
         let storyId = null;
         let commentSystem = null;
         let currentIllustrationTaskId = null;
+        let siblings = [];
+        let selectedSiblingId = null;
 
         // 页面初始化
         document.addEventListener('DOMContentLoaded', function() {
@@ -1136,6 +1421,7 @@
             initEditFeature(); // 初始化编辑功能
             initReportFeature(); // 初始化举报功能
             initIllustrationFeature(); // 初始化插图功能
+            initBranchCompare(); // 初始化分支对比功能
             
             // 初始化分享按钮
             document.getElementById('shareChapterBtn')?.addEventListener('click', function() {
@@ -1208,6 +1494,9 @@
 
                 // 保存阅读进度
                 saveReadingProgress(chapterId);
+
+                // 检查是否显示分支对比按钮
+                checkShowCompareButton();
 
             } catch (error) {
                 console.error('加载章节错误:', error);
@@ -2194,6 +2483,182 @@
             } catch (error) {
                 console.error('应用插图失败:', error);
                 showError(error.message || '应用失败，请稍后重试');
+            }
+        }
+
+        // ============================================
+        // 分支对比功能
+        // ============================================
+
+        // 初始化分支对比功能
+        function initBranchCompare() {
+            const compareBtn = document.getElementById('compareBranchesBtn');
+            const closeBtn = document.getElementById('closeCompareModal');
+            const branchSelect = document.getElementById('branchSelect');
+
+            // 对比按钮点击
+            compareBtn?.addEventListener('click', openCompareModal);
+
+            // 关闭按钮
+            closeBtn?.addEventListener('click', closeCompareModal);
+
+            // 分支选择变化
+            branchSelect?.addEventListener('change', function() {
+                selectedSiblingId = parseInt(this.value);
+                if (selectedSiblingId) {
+                    loadCompareBranch(selectedSiblingId);
+                }
+            });
+
+            // 点击模态框外部关闭
+            document.getElementById('compareModal')?.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeCompareModal();
+                }
+            });
+        }
+
+        // 打开对比模态框
+        async function openCompareModal() {
+            const modal = document.getElementById('compareModal');
+            const loading = document.getElementById('compareLoading');
+            const noSiblingsMessage = document.getElementById('noSiblingsMessage');
+            const selectorContainer = document.getElementById('branchSelectorContainer');
+            const compareGrid = document.getElementById('compareGrid');
+
+            // 重置显示状态
+            loading.style.display = 'block';
+            noSiblingsMessage.style.display = 'none';
+            selectorContainer.style.display = 'none';
+            compareGrid.style.display = 'none';
+
+            // 显示模态框
+            modal.classList.add('active');
+
+            try {
+                // 获取同级分支
+                const response = await fetch(`/api/nodes/${currentChapter.id}/siblings`);
+                if (!response.ok) {
+                    throw new Error('获取同级分支失败');
+                }
+
+                const data = await response.json();
+                siblings = data.siblings || [];
+
+                console.log('同级分支:', siblings);
+
+                loading.style.display = 'none';
+
+                if (siblings.length === 0) {
+                    // 没有同级分支
+                    noSiblingsMessage.style.display = 'block';
+                } else {
+                    // 有同级分支，显示选择器
+                    selectorContainer.style.display = 'block';
+                    compareGrid.style.display = 'grid';
+                    
+                    // 填充分支选择器
+                    const branchSelect = document.getElementById('branchSelect');
+                    branchSelect.innerHTML = '<option value="">请选择要对比的分支...</option>';
+                    
+                    siblings.forEach(sibling => {
+                        const option = document.createElement('option');
+                        option.value = sibling.id;
+                        option.textContent = `${sibling.title} - ${sibling.author.username}`;
+                        branchSelect.appendChild(option);
+                    });
+
+                    // 显示当前分支信息
+                    displayCurrentBranch();
+                }
+
+            } catch (error) {
+                console.error('加载同级分支错误:', error);
+                loading.style.display = 'none';
+                noSiblingsMessage.style.display = 'block';
+                document.querySelector('.no-siblings-message h3').textContent = '加载失败';
+                document.querySelector('.no-siblings-message p').textContent = error.message;
+            }
+        }
+
+        // 关闭对比模态框
+        function closeCompareModal() {
+            const modal = document.getElementById('compareModal');
+            modal.classList.remove('active');
+            selectedSiblingId = null;
+        }
+
+        // 显示当前分支信息
+        function displayCurrentBranch() {
+            document.getElementById('currentBranchTitle').textContent = currentChapter.title;
+            document.getElementById('currentBranchMeta').innerHTML = `
+                <span><i class="fas fa-user"></i> ${currentChapter.author?.username || '未知'}</span>
+                <span><i class="fas fa-calendar"></i> ${new Date(currentChapter.created_at).toLocaleDateString('zh-CN')}</span>
+            `;
+            document.getElementById('currentBranchContent').textContent = currentChapter.content || '暂无内容';
+            document.getElementById('currentReadCount').textContent = currentChapter.read_count || 0;
+            document.getElementById('currentRating').textContent = (currentChapter.rating_avg || 0).toFixed(1);
+            document.getElementById('currentComments').textContent = currentChapter.comment_count || 0;
+        }
+
+        // 加载对比分支
+        async function loadCompareBranch(siblingId) {
+            const compareGrid = document.getElementById('compareGrid');
+
+            try {
+                // 显示加载状态
+                compareGrid.style.opacity = '0.5';
+                
+                // 获取分支详情
+                const response = await fetch(`/api/nodes/${siblingId}`);
+                if (!response.ok) {
+                    throw new Error('获取分支详情失败');
+                }
+
+                const data = await response.json();
+                const branch = data.node;
+
+                console.log('对比分支:', branch);
+
+                // 显示对比分支信息
+                document.getElementById('compareBranchTitle').textContent = branch.title;
+                document.getElementById('compareBranchMeta').innerHTML = `
+                    <span><i class="fas fa-user"></i> ${branch.author?.username || '未知'}</span>
+                    <span><i class="fas fa-calendar"></i> ${new Date(branch.created_at).toLocaleDateString('zh-CN')}</span>
+                `;
+                document.getElementById('compareBranchContent').textContent = branch.content || '暂无内容';
+                document.getElementById('compareReadCount').textContent = branch.read_count || 0;
+                document.getElementById('compareRating').textContent = (branch.rating_avg || 0).toFixed(1);
+                document.getElementById('compareComments').textContent = branch.comment_count || 0;
+
+                compareGrid.style.opacity = '1';
+
+            } catch (error) {
+                console.error('加载对比分支错误:', error);
+                showError(error.message);
+                compareGrid.style.opacity = '1';
+            }
+        }
+
+        // 检查是否显示对比按钮
+        async function checkShowCompareButton() {
+            // 只有当章节有父节点时才可能有同级分支
+            if (!currentChapter.parent_id) {
+                return;
+            }
+
+            try {
+                // 快速检查是否有同级分支
+                const response = await fetch(`/api/nodes/${currentChapter.id}/siblings`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.siblings && data.siblings.length > 0) {
+                        // 有同级分支，显示对比按钮
+                        document.getElementById('compareBranchesBtn').style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.error('检查同级分支错误:', error);
             }
         }
     </script>
