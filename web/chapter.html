@@ -2928,8 +2928,9 @@
                 const response = await fetch(`/api/nodes/${currentChapter.id}`);
                 if (response.ok) {
                     const data = await response.json();
-                    if (data.branches && data.branches.length > 0) {
-                        // 有子分支，显示AI推荐按钮
+                    // 只有当子分支数量大于1时才显示AI推荐按钮（避免只有一个分支时的歧义）
+                    if (data.branches && data.branches.length > 1) {
+                        // 有多个子分支，显示AI推荐按钮
                         const token = localStorage.getItem('token') || sessionStorage.getItem('token');
                         if (token) {
                             document.getElementById('aiRecommendBtn').style.display = 'block';
@@ -2937,6 +2938,8 @@
                         } else {
                             console.log('❌ 未登录，不显示AI推荐按钮');
                         }
+                    } else if (data.branches && data.branches.length === 1) {
+                        console.log('❌ 只有一个子分支，不显示AI推荐按钮（避免歧义）');
                     } else {
                         console.log('❌ 没有子分支，不显示AI推荐按钮');
                     }
