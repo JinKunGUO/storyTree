@@ -1713,6 +1713,22 @@
                 // 所有登录用户都可以创建分支
                 console.log('✅ 已登录，显示创建分支按钮');
                 const createBranchBtn = document.getElementById('createBranchBtn');
+                
+                // 判断是否为叶子节点（无子分支）
+                const isLeafNode = !chapter.branches || chapter.branches.length === 0;
+                
+                if (isLeafNode) {
+                    // 叶子节点：显示为"续写"
+                    createBranchBtn.innerHTML = '<i class="fas fa-pen"></i>';
+                    createBranchBtn.title = '续写';
+                    console.log('✅ 叶子节点，按钮显示为"续写"');
+                } else {
+                    // 中间节点：显示为"创建分支"
+                    createBranchBtn.innerHTML = '<i class="fas fa-code-branch"></i>';
+                    createBranchBtn.title = '创建分支';
+                    console.log('✅ 中间节点，按钮显示为"创建分支"，子分支数:', chapter.branches.length);
+                }
+                
                 createBranchBtn.style.display = 'block';
                 
                 // 添加创建分支按钮的点击事件
