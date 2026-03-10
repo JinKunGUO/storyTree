@@ -1236,6 +1236,20 @@
         function renderStory(story) {
             try {
                 console.log('开始渲染故事信息...');
+                console.log('原始story数据:', story);
+                
+                // 字段名转换：后端使用下划线命名，前端统一使用驼峰命名
+                if (story.cover_image && !story.coverImage) {
+                    story.coverImage = story.cover_image;
+                }
+                if (story.author_id && !story.authorId) {
+                    story.authorId = story.author_id;
+                }
+                if (story.created_at && !story.createdAt) {
+                    story.createdAt = story.created_at;
+                }
+                
+                console.log('转换后story数据:', story);
                 
                 // 保存故事数据到全局变量
                 window.currentStory = story;
@@ -1324,88 +1338,23 @@
                         editBtn.style.display = 'inline-flex';
                         editBtn.addEventListener('click', () => openEditModal(story));
                         
-                        // 获取最新章节信息
-                        let latestChapterInfo = await getLatestChapterInfo(story.id);
-                        
                         // 显示续写章节按钮
                         const writeBtn = document.getElementById('writeChapterBtn');
                         writeBtn.style.display = 'inline-flex';
-                        
-                        // 根据是否有章节，显示不同的按钮文本
-                        if (latestChapterInfo) {
-                            writeBtn.innerHTML = `
-                                <i class="fas fa-pen"></i>
-                                续写「${truncateText(latestChapterInfo.title, 10)}」
-                            `;
-                            writeBtn.title = `在「${latestChapterInfo.title}」后续写新章节`;
-                            writeBtn.addEventListener('click', () => {
-                                window.location.href = `/write?storyId=${story.id}&parentId=${latestChapterInfo.id}`;
-                            });
-                        } else {
-                            writeBtn.innerHTML = '<i class="fas fa-pen"></i> 创建第一章';
-                            writeBtn.title = '创建故事的第一个章节';
-                            writeBtn.addEventListener('click', () => {
-                                window.location.href = `/write?storyId=${story.id}`;
-                            });
-                        }
+                        writeBtn.addEventListener('click', () => {
+                            // 跳转到写作页面
+                            window.location.href = `/write?storyId=${story.id}`;
+                        });
                         
                         // 显示AI创作章节按钮
                         const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                         aiCreateBtn.style.display = 'inline-flex';
-                        
-                        // 根据是否有章节，显示不同的按钮文本
-                        if (latestChapterInfo) {
-                            aiCreateBtn.innerHTML = `
-                                <i class="fas fa-robot"></i>
-                                AI续写「${truncateText(latestChapterInfo.title, 10)}」
-                            `;
-                            aiCreateBtn.title = `让AI在「${latestChapterInfo.title}」后创作新章节`;
-                        } else {
-                            aiCreateBtn.innerHTML = '<i class="fas fa-robot"></i> AI创作第一章';
-                            aiCreateBtn.title = '让AI创作故事的第一个章节';
-                        }
-                        
-                        aiCreateBtn.addEventListener('click', () => openAiChapterModal(story, latestChapterInfo));
+                        aiCreateBtn.addEventListener('click', () => openAiChapterModal(story));
                     }
                 }
             } catch (error) {
                 console.error('检查作者权限错误:', error);
             }
-        }
-        
-        // 获取最新章节信息
-        async function getLatestChapterInfo(storyId) {
-            try {
-                const response = await fetch(`/api/stories/${storyId}`);
-                if (!response.ok) return null;
-                
-                const data = await response.json();
-                const nodes = data.nodes || [];
-                
-                if (nodes.length === 0) return null;
-                
-                // 返回最新的章节（按创建时间排序）
-                const latestNode = nodes.sort((a, b) => {
-                    const dateA = new Date(a.created_at || a.createdAt);
-                    const dateB = new Date(b.created_at || b.createdAt);
-                    return dateB - dateA;
-                })[0];
-                
-                return {
-                    id: latestNode.id,
-                    title: latestNode.title
-                };
-            } catch (error) {
-                console.error('获取最新章节信息失败:', error);
-                return null;
-            }
-        }
-        
-        // 截断文本
-        function truncateText(text, maxLength) {
-            if (!text) return '';
-            if (text.length <= maxLength) return text;
-            return text.substring(0, maxLength) + '...';
         }
 
         // 打开编辑模态框
@@ -1457,6 +1406,40 @@
             try {
                 const token = localStorage.getItem('token') || sessionStorage.getItem('token');
                 
+                // 检查是否有新的封面图片
+                const coverInput = document.getElementById('editCoverInput');
+                const coverFile = coverInput.files[0];
+                
+                let coverImage = window.currentStory.coverImage; // 保持原有封面
+                
+                // 如果用户选择了新的封面图片，先上传
+                if (coverFile) {
+                    console.log('检测到新封面图片，开始上传...');
+                    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 上传封面中...';
+                    
+                    const formData = new FormData();
+                    formData.append('cover', coverFile);
+                    
+                    const uploadResponse = await fetch(`/api/upload/story/${window.currentStory.id}/cover`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: formData
+                    });
+                    
+                    if (!uploadResponse.ok) {
+                        const uploadError = await uploadResponse.json();
+                        throw new Error(uploadError.error || '封面上传失败');
+                    }
+                    
+                    const uploadData = await uploadResponse.json();
+                    coverImage = uploadData.story.cover_image; // 使用后端返回的cover_image字段
+                    console.log('封面上传成功:', coverImage);
+                }
+                
+                // 更新故事信息
+                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
                 const response = await fetch(`/api/stories/${window.currentStory.id}`, {
                     method: 'PUT',
                     headers: {
@@ -1465,7 +1448,8 @@
                     },
                     body: JSON.stringify({
                         title,
-                        description
+                        description,
+                        cover_image: coverImage // 使用下划线命名，匹配后端字段
                     })
                 });
 
@@ -1475,11 +1459,23 @@
                 }
 
                 const data = await response.json();
+                console.log('故事更新成功:', data);
                 
                 showSuccess('保存成功！');
                 closeEditModal();
                 
-                // 刷新页面显示
+                // 立即更新页面上的封面图片和标题、简介
+                window.currentStory.title = title;
+                window.currentStory.description = description;
+                window.currentStory.coverImage = coverImage;
+                
+                document.getElementById('storyTitle').textContent = title;
+                document.getElementById('storyDescription').textContent = description;
+                if (coverImage) {
+                    document.getElementById('storyCover').src = coverImage;
+                }
+                
+                // 延迟刷新页面以确保用户看到更新
                 setTimeout(() => {
                     window.location.reload();
                 }, 1500);
@@ -1854,12 +1850,8 @@
         });
 
         // 打开AI创作章节模态框
-        function openAiChapterModal(story, latestChapterInfo = null) {
+        function openAiChapterModal(story) {
             console.log('打开AI创作章节模态框, 故事:', story);
-            console.log('最新章节信息:', latestChapterInfo);
-            
-            // 保存到全局变量供后续使用
-            window.currentLatestChapter = latestChapterInfo;
             
             const modal = document.getElementById('aiChapterModal');
             
@@ -1935,10 +1927,6 @@
 
                 console.log('调用AI API...');
 
-                // 获取父节点ID（如果有最新章节）
-                const parentNodeId = window.currentLatestChapter ? window.currentLatestChapter.id : null;
-                console.log('父节点ID:', parentNodeId);
-
                 // 调用AI v2 API
                 const response = await fetch('/api/ai/v2/continuation/submit', {
                     method: 'POST',
@@ -1948,7 +1936,7 @@
                     },
                     body: JSON.stringify({
                         storyId: parseInt(story.id),
-                        nodeId: parentNodeId, // 使用最新章节作为父节点
+                        nodeId: null, // 从章节目录创作，不指定当前节点
                         context: '', // 不需要当前内容，AI会基于前三章生成
                         style: selectedAiChapterStyle,
                         count: 3,

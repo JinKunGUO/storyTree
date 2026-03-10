@@ -1,12 +1,28 @@
 import { Router } from 'express';
 import { upload, getFileUrl } from '../utils/upload';
 import { prisma } from '../index';
+import jwt from 'jsonwebtoken';
 
 const router = Router();
 
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
+
+// 从Authorization header中获取用户ID
 const getUserId = (req: any): number | null => {
-  const userId = req.headers['x-user-id'];
-  return userId ? parseInt(userId as string) : null;
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+
+  try {
+    const token = authHeader.substring(7); // 移除 "Bearer " 前缀
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+    return decoded.userId;
+  } catch (error) {
+    console.error('JWT验证失败:', error);
+    return null;
+  }
 };
 
 // 上传图片
