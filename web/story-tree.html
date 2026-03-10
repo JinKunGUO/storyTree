@@ -437,8 +437,16 @@
                         </button>
                     </div>
                     <div class="tree-toolbar-right">
-                        <button class="toolbar-btn" id="resetZoom">
+                        <button class="toolbar-btn" id="zoomIn">
+                            <i class="fas fa-search-plus"></i>
+                            放大
+                        </button>
+                        <button class="toolbar-btn" id="zoomOut">
                             <i class="fas fa-search-minus"></i>
+                            缩小
+                        </button>
+                        <button class="toolbar-btn" id="resetZoom">
+                            <i class="fas fa-undo"></i>
                             重置视图
                         </button>
                         <button class="toolbar-btn" id="exportImage">
@@ -545,12 +553,40 @@
             document.getElementById('layoutHorizontal')?.addEventListener('click', () => changeLayout('horizontal'));
             document.getElementById('layoutRadial')?.addEventListener('click', () => changeLayout('radial'));
 
-            // 重置视图
-            document.getElementById('resetZoom')?.addEventListener('click', () => {
+            // 放大
+            document.getElementById('zoomIn')?.addEventListener('click', () => {
                 if (treeChart) {
-                    treeChart.dispatchAction({
-                        type: 'restore'
+                    const option = treeChart.getOption();
+                    const currentZoom = option.series[0].zoom || 1;
+                    const newZoom = Math.min(currentZoom * 1.2, 5); // 最大5倍
+                    treeChart.setOption({
+                        series: [{
+                            zoom: newZoom
+                        }]
                     });
+                }
+            });
+
+            // 缩小
+            document.getElementById('zoomOut')?.addEventListener('click', () => {
+                if (treeChart) {
+                    const option = treeChart.getOption();
+                    const currentZoom = option.series[0].zoom || 1;
+                    const newZoom = Math.max(currentZoom / 1.2, 0.2); // 最小0.2倍
+                    treeChart.setOption({
+                        series: [{
+                            zoom: newZoom
+                        }]
+                    });
+                }
+            });
+
+            // 重置视图 - 还原当前布局的初始状态
+            document.getElementById('resetZoom')?.addEventListener('click', () => {
+                if (treeChart && treeData) {
+                    // 重新渲染当前布局以还原到初始状态
+                    renderTree(treeData.tree);
+                    showMessage('已重置当前布局视图', 'success');
                 }
             });
 
@@ -661,12 +697,12 @@
             // 根据不同布局设置不同的边距和居中方式
             let layoutConfig = {};
             if (currentLayout === 'vertical') {
-                // 垂直布局：从上到下，居中显示
+                // 垂直布局：从上到下，水平居中
                 layoutConfig = {
-                    top: '5%',
-                    left: '20%',
-                    bottom: '5%',
-                    right: '20%',
+                    top: '10%',
+                    left: 'center',
+                    bottom: '10%',
+                    right: 'auto',
                     orient: 'TB',
                     labelPosition: 'bottom',
                     labelAlign: 'center',
@@ -676,10 +712,10 @@
             } else if (currentLayout === 'horizontal') {
                 // 水平布局：从左到右，垂直居中
                 layoutConfig = {
-                    top: '15%',
-                    left: '10%',
-                    bottom: '15%',
-                    right: '10%',
+                    top: 'middle',
+                    left: '5%',
+                    bottom: 'auto',
+                    right: '5%',
                     orient: 'LR',
                     labelPosition: 'right',
                     labelAlign: 'left',
@@ -689,7 +725,7 @@
             } else if (currentLayout === 'radial') {
                 // 径向布局：圆形放射状，完全居中
                 layoutConfig = {
-                    top: 'center',
+                    top: 'middle',
                     left: 'center',
                     bottom: 'auto',
                     right: 'auto',
@@ -729,6 +765,10 @@
                             </div>
                         `;
                     }
+                },
+                // 启用工具箱，包含缩放和还原功能
+                toolbox: {
+                    show: false  // 隐藏默认工具箱，使用自定义按钮
                 },
                 series: [
                     {
@@ -812,16 +852,22 @@
                         },
                         orient: layoutConfig.orient,
                         layout: currentLayout === 'radial' ? 'radial' : 'orthogonal',
-                        // 径向布局的初始半径
+                        // 启用缩放和拖拽
+                        roam: true,
+                        // 设置缩放范围
+                        scaleLimit: {
+                            min: 0.2,
+                            max: 5
+                        },
+                        // 径向布局的初始设置
                         ...(currentLayout === 'radial' ? {
-                            initialTreeDepth: 2,
-                            roam: true
+                            initialTreeDepth: -1
                         } : {})
                     }
                 ]
             };
 
-            treeChart.setOption(option);
+            treeChart.setOption(option, true);  // 使用 true 参数完全重置图表
 
             // 点击事件
             treeChart.off('click');
