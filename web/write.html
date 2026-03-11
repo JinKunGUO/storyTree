@@ -771,6 +771,61 @@
                     </div>
                 </div>
 
+                <!-- 期望字数选择器 -->
+                <div id="aiWordCountSelector" style="margin-bottom: 25px;">
+                    <div style="font-size: 16px; font-weight: 600; margin-bottom: 15px; color: #333;">
+                        <i class="fas fa-text-height"></i> 期望生成字数
+                        <span style="font-size: 12px; font-weight: 400; color: #999; margin-left: 10px;">
+                            AI将生成接近此字数的内容
+                        </span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+                        <button class="ai-style-btn" data-wordcount="500">
+                            <i class="fas fa-align-left"></i> 短篇<br><span style="font-size: 12px; opacity: 0.8;">约500字</span>
+                        </button>
+                        <button class="ai-style-btn active" data-wordcount="1000">
+                            <i class="fas fa-align-center"></i> 中篇<br><span style="font-size: 12px; opacity: 0.8;">约1000字</span>
+                        </button>
+                        <button class="ai-style-btn" data-wordcount="2000">
+                            <i class="fas fa-align-justify"></i> 长篇<br><span style="font-size: 12px; opacity: 0.8;">约2000字</span>
+                        </button>
+                        <button class="ai-style-btn" data-wordcount="custom">
+                            <i class="fas fa-edit"></i> 自定义
+                        </button>
+                    </div>
+                    
+                    <!-- 自定义字数输入框 -->
+                    <div id="customWordCountInput" style="display: none; margin-top: 15px; padding: 15px; background: #f9f9f9; border-radius: 10px;">
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="number" id="customWordCountValue" 
+                                   min="200" max="10000" step="100" value="1500"
+                                   placeholder="输入字数（200-10000）"
+                                   style="
+                                       flex: 1;
+                                       padding: 10px;
+                                       border: 2px solid #e0e0e0;
+                                       border-radius: 8px;
+                                       font-size: 14px;
+                                   ">
+                            <button id="confirmCustomWordCount" style="
+                                padding: 10px 20px;
+                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                color: white;
+                                border: none;
+                                border-radius: 8px;
+                                cursor: pointer;
+                                font-weight: 600;
+                                white-space: nowrap;
+                            ">
+                                <i class="fas fa-check"></i> 确认
+                            </button>
+                        </div>
+                        <div style="font-size: 12px; color: #999; margin-top: 8px;">
+                            <i class="fas fa-info-circle"></i> 建议范围：200-10000字，实际生成字数可能略有偏差
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 生成按钮 -->
                 <div style="margin-bottom: 25px; text-align: center;">
                     <button id="startAiGenerationBtn" style="
@@ -1448,6 +1503,7 @@
         let currentUserId = null;
         let selectedSurpriseTime = 'immediate'; // 默认立即生成
         let selectedAiStyle = 'suspense'; // 默认悬疑风格
+        let selectedAiWordCount = 1000; // 默认1000字（小段落）
         let currentAiTaskId = null; // 当前AI任务ID
         let aiMode = 'segment'; // AI模式: 'segment' = 续写小段落, 'chapter' = 创作整章
 
@@ -1557,9 +1613,46 @@
                 btn.addEventListener('click', function() {
                     document.querySelectorAll('.ai-style-btn').forEach(b => b.classList.remove('active'));
                     this.classList.add('active');
-                    selectedAiStyle = this.dataset.style;
-                    console.log('选择AI风格:', selectedAiStyle);
+                    
+                    // 检查是风格按钮还是字数按钮
+                    if (this.dataset.style) {
+                        selectedAiStyle = this.dataset.style;
+                        console.log('选择AI风格:', selectedAiStyle);
+                    } else if (this.dataset.wordcount) {
+                        const wordcount = this.dataset.wordcount;
+                        
+                        if (wordcount === 'custom') {
+                            // 显示自定义输入框
+                            document.getElementById('customWordCountInput').style.display = 'block';
+                            console.log('显示自定义字数输入框');
+                        } else {
+                            // 隐藏自定义输入框
+                            document.getElementById('customWordCountInput').style.display = 'none';
+                            selectedAiWordCount = parseInt(wordcount);
+                            console.log('选择期望字数:', selectedAiWordCount);
+                        }
+                    }
                 });
+            });
+            
+            // 确认自定义字数按钮
+            document.getElementById('confirmCustomWordCount')?.addEventListener('click', function() {
+                const customValue = parseInt(document.getElementById('customWordCountValue').value);
+                
+                // 验证输入
+                if (!customValue || customValue < 200 || customValue > 10000) {
+                    showError('请输入200-10000之间的字数');
+                    return;
+                }
+                
+                selectedAiWordCount = customValue;
+                console.log('确认自定义字数:', selectedAiWordCount);
+                
+                // 更新按钮文字显示
+                const customBtn = document.querySelector('#aiWordCountSelector .ai-style-btn[data-wordcount="custom"]');
+                customBtn.innerHTML = `<i class="fas fa-edit"></i> 自定义<br><span style="font-size: 12px; opacity: 0.8;">${customValue}字</span>`;
+                
+                showSuccess(`已设置期望字数：${customValue}字`);
             });
 
             // 初始化润色功能
@@ -1653,6 +1746,7 @@
                 console.log('当前内容长度:', currentContent.length);
                 console.log('惊喜时间:', selectedSurpriseTime);
                 console.log('风格:', selectedAiStyle);
+                console.log('期望字数:', selectedAiWordCount);
 
                 // 使用新的AI v2 API
                 const response = await fetch('/api/ai/v2/continuation/submit', {
@@ -1668,7 +1762,8 @@
                         style: selectedAiStyle,
                         count: 3,
                         mode: aiMode, // 'segment' 或 'chapter'
-                        surpriseTime: (aiMode === 'chapter' && selectedSurpriseTime !== 'immediate') ? selectedSurpriseTime : null
+                        surpriseTime: (aiMode === 'chapter' && selectedSurpriseTime !== 'immediate') ? selectedSurpriseTime : null,
+                        wordCount: selectedAiWordCount // 传递期望字数
                     })
                 });
 

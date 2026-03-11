@@ -31,7 +31,7 @@ router.post('/continuation/submit', async (req, res) => {
     return res.status(401).json({ error: '未登录' });
   }
 
-  const { storyId, nodeId, context, style, count = 3, mode = 'segment', surpriseTime, publishImmediately = true } = req.body;
+  const { storyId, nodeId, context, style, count = 3, mode = 'segment', surpriseTime, publishImmediately = true, wordCount = 1500 } = req.body;
 
   if (!storyId) {
     return res.status(400).json({ error: 'storyId是必需的' });
@@ -177,7 +177,8 @@ router.post('/continuation/submit', async (req, res) => {
           style,
           count,
           mode, // 保存模式信息
-          publishImmediately // 保存发布状态
+          publishImmediately, // 保存发布状态
+          wordCount // 保存期望字数
         }),
         scheduled_at: scheduledAt
       }
@@ -196,7 +197,8 @@ router.post('/continuation/submit', async (req, res) => {
         storyDescription: story.description || '',
         style,
         count,
-        mode
+        mode,
+        wordCount // 传递期望字数到队列
       },
       {
         delay: Math.max(delay, 0),
