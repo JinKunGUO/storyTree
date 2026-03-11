@@ -1657,25 +1657,15 @@
             }
         }
 
-        // 打开编辑模态框
+        // 跳转到write页面进行编辑
         function openEditModal() {
             if (!currentChapter) return;
 
-            const modal = document.getElementById('editModal');
-            const titleInput = document.getElementById('editChapterTitle');
-            const contentInput = document.getElementById('editChapterContent');
-            const wordCount = document.getElementById('contentWordCount');
-
-            // 填充当前数据
-            titleInput.value = currentChapter.title || '';
-            contentInput.value = currentChapter.content || '';
-            wordCount.textContent = (currentChapter.content || '').length;
-
-            // 显示模态框
-            modal.classList.add('active');
-
-            // 聚焦到标题输入框
-            setTimeout(() => titleInput.focus(), 100);
+            // 跳转到write页面，带上编辑参数
+            // editMode=true 表示编辑模式
+            // nodeId 表示要编辑的章节ID
+            // storyId 表示所属故事ID
+            window.location.href = `/write?storyId=${storyId}&nodeId=${currentChapter.id}&editMode=true`;
         }
 
         // 关闭编辑模态框
