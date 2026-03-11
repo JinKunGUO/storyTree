@@ -498,6 +498,46 @@
             }
         }
 
+        /* 插图风格按钮样式 */
+        .illustration-style-btn {
+            padding: 15px 20px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .illustration-style-btn i {
+            font-size: 24px;
+            color: #ff6b6b;
+        }
+
+        .illustration-style-btn:hover {
+            border-color: #ff6b6b;
+            background: #fff5f5;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.2);
+        }
+
+        .illustration-style-btn.active {
+            border-color: #ff6b6b;
+            background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
+            color: #ff6b6b;
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
+        }
+
+        .illustration-style-btn.active i {
+            color: #ff6b6b;
+        }
+
         /* 润色风格按钮 */
         .polish-style-btn {
             padding: 12px 20px;
@@ -668,6 +708,10 @@
         <button class="action-btn btn-ai" id="aiSuggestBtn" title="AI续写小段落">
             <i class="fas fa-magic"></i>
             AI续写
+        </button>
+        <button class="action-btn btn-ai" id="aiIllustrationBtn" title="AI插图">
+            <i class="fas fa-image"></i>
+            AI插图
         </button>
         <button class="action-btn btn-save" id="saveDraftBtn">
             <i class="fas fa-save"></i>
@@ -969,6 +1013,91 @@
                 </button>
                 <button class="btn btn-primary" id="applyPolishBtn" style="display: none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 30px; border-radius: 10px; font-weight: 600; cursor: pointer;">
                     <i class="fas fa-check"></i> 应用润色
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI插图生成模态框 -->
+    <div class="ai-modal" id="illustrationModal">
+        <div class="ai-modal-content">
+            <div class="ai-modal-header" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);">
+                <h2>
+                    <i class="fas fa-image"></i>
+                    AI插图生成
+                </h2>
+                <button class="close-btn" id="closeIllustrationModal">×</button>
+            </div>
+            <div class="ai-modal-body">
+                <!-- 风格选择器 -->
+                <div id="illustrationStyleSelector" style="margin-bottom: 25px;">
+                    <div style="font-size: 16px; font-weight: 600; margin-bottom: 15px; color: #333;">
+                        <i class="fas fa-palette"></i> 选择插图风格
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                        <button class="illustration-style-btn active" data-style="realistic">
+                            <i class="fas fa-camera"></i> 写实风格
+                        </button>
+                        <button class="illustration-style-btn" data-style="anime">
+                            <i class="fas fa-dragon"></i> 动漫风格
+                        </button>
+                        <button class="illustration-style-btn" data-style="fantasy">
+                            <i class="fas fa-hat-wizard"></i> 奇幻风格
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 字数和插图限制提示 -->
+                <div id="illustrationLimitInfo" style="display: none; margin-bottom: 20px; padding: 15px; background: #e3f2fd; border-radius: 10px; border-left: 4px solid #2196f3; color: #1976d2; font-size: 14px; line-height: 1.8;">
+                    <!-- 动态内容 -->
+                </div>
+
+                <!-- 加载状态 -->
+                <div id="illustrationLoading" style="display: none; text-align: center; padding: 40px;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: #ff6b6b; margin-bottom: 20px;"></i>
+                    <h3 style="color: #333; margin-bottom: 10px;">AI正在绘制插图...</h3>
+                    <p style="color: #999; font-size: 14px;">这通常需要30-60秒，请稍候</p>
+                    <div style="margin-top: 30px; padding: 20px; background: #f9f9f9; border-radius: 10px; text-align: left;">
+                        <h4 style="color: #ff6b6b; margin-bottom: 15px; font-size: 14px;">
+                            <i class="fas fa-lightbulb"></i> 生成提示
+                        </h4>
+                        <ul style="color: #666; font-size: 13px; line-height: 1.8; padding-left: 20px;">
+                            <li>AI会根据章节内容自动生成插图</li>
+                            <li>图片尺寸为 1024x1024 像素</li>
+                            <li>每次生成会消耗 20 积分</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 生成结果 -->
+                <div id="illustrationResult" style="display: none;">
+                    <!-- 动态内容 -->
+                </div>
+
+                <!-- 错误提示 -->
+                <div id="illustrationError" style="display: none; text-align: center; padding: 40px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #ff6b6b; margin-bottom: 20px;"></i>
+                    <h3 style="color: #333; margin-bottom: 10px;">生成失败</h3>
+                    <p id="illustrationErrorMessage" style="color: #999; font-size: 14px;"></p>
+                    <button onclick="startGenerateIllustration()" style="
+                        margin-top: 20px;
+                        padding: 12px 30px;
+                        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+                        color: white;
+                        border: none;
+                        border-radius: 10px;
+                        font-size: 16px;
+                        font-weight: 600;
+                        cursor: pointer;
+                    ">
+                        <i class="fas fa-redo"></i> 重试
+                    </button>
+                </div>
+            </div>
+            <div class="ai-modal-footer">
+                <button class="btn btn-secondary" id="cancelIllustrationBtn">关闭</button>
+                <button class="btn btn-primary" id="startGenerateIllustrationBtn">
+                    <i class="fas fa-magic"></i> 开始生成
                 </button>
             </div>
         </div>
@@ -1657,6 +1786,9 @@
 
             // 初始化润色功能
             initPolishFeature();
+
+            // 初始化插图功能
+            initIllustrationFeature();
 
             console.log('✅ AI功能初始化完成');
         }
@@ -2433,7 +2565,362 @@
                 polishedContent = '';
             }
         }
+
+        // ============================================
+        // AI插图功能
+        // ============================================
+
+        let illustrationModal;
+        let selectedIllustrationStyle = 'realistic';
+
+        // 初始化AI插图功能
+        function initIllustrationFeature() {
+            console.log('开始初始化AI插图功能...');
+            
+            illustrationModal = document.getElementById('illustrationModal');
+            const aiIllustrationBtn = document.getElementById('aiIllustrationBtn');
+            const closeIllustrationModal = document.getElementById('closeIllustrationModal');
+            const cancelIllustrationBtn = document.getElementById('cancelIllustrationBtn');
+            const startGenerateIllustrationBtn = document.getElementById('startGenerateIllustrationBtn');
+
+            if (!illustrationModal) {
+                console.error('❌ AI插图模态框元素未找到');
+                return;
+            }
+
+            if (aiIllustrationBtn) {
+                aiIllustrationBtn.addEventListener('click', showIllustrationModal);
+                console.log('✅ AI插图按钮事件已绑定');
+            }
+            
+            if (closeIllustrationModal) {
+                closeIllustrationModal.addEventListener('click', closeIllustrationModalFunc);
+            }
+            if (cancelIllustrationBtn) {
+                cancelIllustrationBtn.addEventListener('click', closeIllustrationModalFunc);
+            }
+            if (startGenerateIllustrationBtn) {
+                startGenerateIllustrationBtn.addEventListener('click', startGenerateIllustration);
+            }
+
+            // 点击模态框背景关闭
+            illustrationModal.addEventListener('click', function(e) {
+                if (e.target === illustrationModal) {
+                    closeIllustrationModalFunc();
+                }
+            });
+
+            // 初始化风格按钮
+            document.querySelectorAll('.illustration-style-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.illustration-style-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    selectedIllustrationStyle = this.dataset.style;
+                    console.log('选择插图风格:', selectedIllustrationStyle);
+                });
+            });
+
+            console.log('✅ AI插图功能初始化完成');
+        }
+
+        // 显示AI插图模态框
+        function showIllustrationModal() {
+            console.log('用户点击AI插图按钮');
+
+            // 检查编辑器是否已初始化
+            if (!quill) {
+                showError('编辑器未初始化，请刷新页面');
+                return;
+            }
+
+            // 获取当前内容
+            const currentContent = quill.getText().trim();
+            const wordCount = currentContent.length;
+
+            console.log('当前内容字数:', wordCount);
+
+            // 字数检测：至少需要100字才能生成插图
+            if (wordCount < 100) {
+                showError('内容太少（少于100字），请先写一些内容再生成插图');
+                return;
+            }
+
+            // 计算允许的插图数量（每1000字1张）
+            const maxAllowedIllustrations = Math.floor(wordCount / 1000);
+
+            if (maxAllowedIllustrations === 0) {
+                showError(`内容字数不足1000字（当前${wordCount}字），暂时无法生成插图。建议至少写够1000字后再添加插图。`);
+                return;
+            }
+
+            // 计算编辑器中已有的图片数量
+            const currentIllustrationCount = countImagesInEditor();
+
+            console.log('字数:', wordCount, '允许插图数:', maxAllowedIllustrations, '已有插图:', currentIllustrationCount);
+
+            // 检查是否超出限制
+            if (currentIllustrationCount >= maxAllowedIllustrations) {
+                showError(`插图数量已达上限！当前${wordCount}字，最多可添加${maxAllowedIllustrations}张插图（每1000字1张），已有${currentIllustrationCount}张。请增加内容字数或删除现有插图。`);
+                return;
+            }
+
+            // 显示提示信息
+            const remainingIllustrations = maxAllowedIllustrations - currentIllustrationCount;
+            document.getElementById('illustrationLimitInfo').innerHTML = `
+                <i class="fas fa-info-circle"></i> 
+                当前 <strong>${wordCount}字</strong>，
+                最多可添加 <strong>${maxAllowedIllustrations}张</strong> 插图（每1000字1张），
+                已有 <strong>${currentIllustrationCount}张</strong>，
+                还可生成 <strong>${remainingIllustrations}张</strong>
+            `;
+
+            // 打开模态框
+            illustrationModal.classList.add('active');
+            document.getElementById('illustrationStyleSelector').style.display = 'block';
+            document.getElementById('illustrationLimitInfo').style.display = 'block';
+            document.getElementById('illustrationLoading').style.display = 'none';
+            document.getElementById('illustrationResult').style.display = 'none';
+            document.getElementById('illustrationError').style.display = 'none';
+        }
+
+        // 计算编辑器中已有的图片数量
+        function countImagesInEditor() {
+            if (!quill) return 0;
+            
+            const delta = quill.getContents();
+            let imageCount = 0;
+            
+            delta.ops.forEach(op => {
+                if (op.insert && typeof op.insert === 'object' && op.insert.image) {
+                    imageCount++;
+                }
+            });
+            
+            console.log('编辑器中已有图片数量:', imageCount);
+            return imageCount;
+        }
+
+        // 轮询任务状态
+        let illustrationPollingInterval = null;
+        
+        async function pollIllustrationTask(taskId) {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            
+            try {
+                const response = await fetch(`/api/ai/v2/tasks/${taskId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('查询任务状态失败');
+                }
+
+                const task = await response.json();
+                console.log('任务状态:', task.status);
+
+                if (task.status === 'completed') {
+                    // 任务完成，停止轮询
+                    if (illustrationPollingInterval) {
+                        clearInterval(illustrationPollingInterval);
+                        illustrationPollingInterval = null;
+                    }
+
+                    // 获取图片URL
+                    const imageUrl = task.result?.imageUrl;
+
+                    if (imageUrl) {
+                        console.log('✅ 插图生成完成:', imageUrl);
+                        
+                        // 自动插入到编辑器
+                        insertIllustrationToEditor(imageUrl);
+                        
+                        // 关闭模态框
+                        closeIllustrationModalFunc();
+                        
+                        // 显示成功提示
+                        showSuccess('🎨 精美插图已生成并插入编辑器！');
+                    } else {
+                        throw new Error('未找到生成的图片');
+                    }
+                } else if (task.status === 'failed') {
+                    // 任务失败，停止轮询
+                    if (illustrationPollingInterval) {
+                        clearInterval(illustrationPollingInterval);
+                        illustrationPollingInterval = null;
+                    }
+
+                    throw new Error(task.errorMessage || '插图生成失败');
+                }
+                // 如果是 processing 或 pending，继续轮询
+            } catch (error) {
+                console.error('轮询任务状态失败:', error);
+                if (illustrationPollingInterval) {
+                    clearInterval(illustrationPollingInterval);
+                    illustrationPollingInterval = null;
+                }
+                
+                // 显示错误
+                document.getElementById('illustrationLoading').style.display = 'none';
+                document.getElementById('illustrationError').style.display = 'block';
+                document.getElementById('illustrationErrorMessage').textContent = error.message || '查询任务状态失败';
+            }
+        }
+
+        // 插入插图到编辑器
+        function insertIllustrationToEditor(imageUrl) {
+            console.log('插入插图到编辑器:', imageUrl);
+
+            if (!quill) {
+                showError('编辑器未初始化');
+                return;
+            }
+
+            // 获取当前光标位置，如果没有光标则插入到末尾
+            const selection = quill.getSelection();
+            const cursorPosition = selection ? selection.index : quill.getLength();
+            
+            // 在光标位置插入图片
+            quill.insertEmbed(cursorPosition, 'image', imageUrl, 'user');
+            
+            // 在图片后插入换行
+            quill.insertText(cursorPosition + 1, '\n', 'user');
+            
+            // 移动光标到图片后
+            quill.setSelection(cursorPosition + 2, 0);
+
+            // 标记有未保存的更改
+            hasUnsavedChanges = true;
+            
+            console.log('✅ 插图已插入编辑器');
+        }
+
+        // 开始生成插图
+        async function startGenerateIllustration() {
+            console.log('开始生成AI插图，风格:', selectedIllustrationStyle);
+
+            // 隐藏选择器，显示加载状态
+            document.getElementById('illustrationStyleSelector').style.display = 'none';
+            document.getElementById('illustrationLimitInfo').style.display = 'none';
+            document.getElementById('illustrationLoading').style.display = 'block';
+            document.getElementById('illustrationResult').style.display = 'none';
+            document.getElementById('illustrationError').style.display = 'none';
+
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                if (!token) {
+                    throw new Error('请先登录');
+                }
+
+                // 获取当前内容
+                const currentContent = quill.getText().trim();
+                const chapterTitle = document.getElementById('chapterTitle').value.trim() || '未命名章节';
+
+                // 获取故事ID（write页面使用的是全局变量storyId）
+                if (!storyId) {
+                    throw new Error('未找到故事ID，请刷新页面');
+                }
+
+                // 检查是否已保存章节（有nodeId）
+                const nodeId = window.lastNodeId;
+                
+                if (!nodeId) {
+                    showError('请先保存草稿后再生成插图');
+                    throw new Error('章节未保存');
+                }
+
+                console.log('提交AI插图任务...');
+                console.log('故事ID:', storyId);
+                console.log('章节ID:', nodeId);
+                console.log('章节标题:', chapterTitle);
+                console.log('内容长度:', currentContent.length);
+                console.log('插图风格:', selectedIllustrationStyle);
+
+                const response = await fetch('/api/ai/v2/illustration/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        storyId: parseInt(storyId),
+                        nodeId: parseInt(nodeId),
+                        chapterTitle: chapterTitle,
+                        chapterContent: currentContent,
+                        style: selectedIllustrationStyle
+                    })
+                });
+
+                console.log('插图API响应状态:', response.status);
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `API错误 (${response.status})`);
+                }
+
+                const data = await response.json();
+                console.log('插图API返回数据:', data);
+
+                // 更新加载状态文本
+                const loadingElement = document.getElementById('illustrationLoading');
+                loadingElement.innerHTML = `
+                    <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: #ff6b6b; margin-bottom: 20px;"></i>
+                    <p style="font-size: 18px; color: #333; margin-bottom: 10px;">AI正在绘制精美插图...</p>
+                    <p style="font-size: 14px; color: #999;">预计需要30-60秒，请稍候</p>
+                    <p style="font-size: 13px; color: #666; margin-top: 15px;">
+                        <i class="fas fa-info-circle"></i> 你可以关闭窗口继续编辑，完成后会自动插入
+                    </p>
+                `;
+
+                // 开始轮询任务状态（每3秒检查一次）
+                illustrationPollingInterval = setInterval(() => {
+                    pollIllustrationTask(data.taskId);
+                }, 3000);
+
+                // 立即检查一次
+                setTimeout(() => {
+                    pollIllustrationTask(data.taskId);
+                }, 2000);
+
+            } catch (error) {
+                console.error('AI插图生成错误:', error);
+                document.getElementById('illustrationLoading').style.display = 'none';
+                document.getElementById('illustrationError').style.display = 'block';
+                
+                let errorMessage = error.message || 'AI服务暂时不可用';
+                
+                if (error.message.includes('登录') || error.message.includes('401')) {
+                    errorMessage = '请先登录后再使用AI插图功能';
+                } else if (error.message.includes('保存') || error.message.includes('草稿')) {
+                    errorMessage = '请先点击"保存草稿"按钮保存章节，然后再生成插图';
+                } else if (error.message.includes('字数') || error.message.includes('插图数量')) {
+                    errorMessage = error.message; // 使用原始错误信息
+                } else if (error.message.includes('积分') || error.message.includes('配额')) {
+                    errorMessage = '积分或配额不足，请充值或升级会员';
+                } else if (error.message.includes('网络')) {
+                    errorMessage = '网络连接失败，请检查网络';
+                }
+                
+                document.getElementById('illustrationErrorMessage').textContent = errorMessage;
+            }
+        }
+
+        // 关闭AI插图模态框
+        function closeIllustrationModalFunc() {
+            if (illustrationModal) {
+                illustrationModal.classList.remove('active');
+                console.log('关闭AI插图模态框');
+                
+                // 清理轮询定时器
+                if (illustrationPollingInterval) {
+                    clearInterval(illustrationPollingInterval);
+                    illustrationPollingInterval = null;
+                    console.log('✅ 已停止任务轮询');
+                }
+            }
+        }
     </script>
 </body>
 </html>
-

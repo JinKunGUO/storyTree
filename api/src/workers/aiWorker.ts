@@ -876,6 +876,18 @@ aiIllustrationQueue.process(async (job: Job<IllustrationJobData>) => {
       }
     });
 
+    // 更新章节的插图字段
+    if (nodeId) {
+      await prisma.nodes.update({
+        where: { id: nodeId },
+        data: { 
+          image: imageUrl,
+          updated_at: new Date()
+        }
+      });
+      console.log(`✅ 章节插图已更新: nodeId=${nodeId}, imageUrl=${imageUrl}`);
+    }
+
     await prisma.ai_usage_logs.create({
       data: {
         user_id: userId,

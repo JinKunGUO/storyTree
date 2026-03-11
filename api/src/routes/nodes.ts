@@ -377,6 +377,36 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// 查询节点插图数量
+router.get('/:id/illustrations/count', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const node = await prisma.nodes.findUnique({
+      where: { id: parseInt(id) },
+      select: { image: true }
+    });
+
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+
+    // 统计image字段中有多少张图片
+    // 如果image字段包含多个URL（用逗号或换行分隔），则计数
+    let count = 0;
+    if (node.image) {
+      // 尝试多种分隔符：逗号、分号、换行
+      const images = node.image.split(/[,;\n]/).filter(url => url.trim());
+      count = images.length;
+    }
+
+    res.json({ count });
+  } catch (error) {
+    console.error('查询插图数量错误:', error);
+    res.status(500).json({ error: 'Failed to count illustrations' });
+  }
+});
+
 // Get siblings (同级分支)
 router.get('/:id/siblings', async (req, res) => {
   const { id } = req.params;
