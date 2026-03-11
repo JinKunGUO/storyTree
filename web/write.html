@@ -696,7 +696,7 @@
                             让AI在未来某个时刻为你创作新章节
                         </span>
                     </div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 12px;">
                         <button class="surprise-time-btn active" data-time="immediate">
                             <i class="fas fa-bolt"></i> 立即生成
                         </button>
@@ -709,6 +709,32 @@
                         <button class="surprise-time-btn" data-time="tomorrow">
                             <i class="fas fa-sun"></i> 明天8:00
                         </button>
+                        <button class="surprise-time-btn" data-time="custom">
+                            <i class="fas fa-calendar-alt"></i> 自定义
+                        </button>
+                    </div>
+                    <!-- 自定义时间选择器 -->
+                    <div id="customTimeSelector" style="display: none; padding: 15px; background: #f9f9f9; border-radius: 10px;">
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="datetime-local" id="customDateTime" style="
+                                flex: 1;
+                                padding: 10px;
+                                border: 2px solid #e0e0e0;
+                                border-radius: 8px;
+                                font-size: 14px;
+                            ">
+                            <button id="confirmCustomTime" style="
+                                padding: 10px 20px;
+                                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                                color: white;
+                                border: none;
+                                border-radius: 8px;
+                                font-weight: 600;
+                                cursor: pointer;
+                            ">
+                                <i class="fas fa-check"></i> 确认
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -718,14 +744,29 @@
                         <i class="fas fa-palette"></i> 选择续写风格
                     </div>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px;">
-                        <button class="ai-style-btn active" data-style="suspense">
+                        <button class="ai-style-btn active" data-style="悬疑">
                             <i class="fas fa-question-circle"></i> 悬疑
                         </button>
-                        <button class="ai-style-btn" data-style="warm">
+                        <button class="ai-style-btn" data-style="温情">
                             <i class="fas fa-heart"></i> 温情
                         </button>
-                        <button class="ai-style-btn" data-style="creative">
+                        <button class="ai-style-btn" data-style="脑洞">
                             <i class="fas fa-lightbulb"></i> 脑洞
+                        </button>
+                        <button class="ai-style-btn" data-style="科幻">
+                            <i class="fas fa-rocket"></i> 科幻
+                        </button>
+                        <button class="ai-style-btn" data-style="武侠">
+                            <i class="fas fa-fist-raised"></i> 武侠
+                        </button>
+                        <button class="ai-style-btn" data-style="现实">
+                            <i class="fas fa-city"></i> 现实
+                        </button>
+                        <button class="ai-style-btn" data-style="浪漫">
+                            <i class="fas fa-rose"></i> 浪漫
+                        </button>
+                        <button class="ai-style-btn" data-style="奇幻">
+                            <i class="fas fa-dragon"></i> 奇幻
                         </button>
                     </div>
                 </div>
@@ -1472,7 +1513,43 @@
                     this.classList.add('active');
                     selectedSurpriseTime = this.dataset.time;
                     console.log('选择惊喜时间:', selectedSurpriseTime);
+                    
+                    // 如果选择自定义，显示自定义时间选择器
+                    const customTimeSelector = document.getElementById('customTimeSelector');
+                    if (selectedSurpriseTime === 'custom') {
+                        customTimeSelector.style.display = 'block';
+                        // 设置最小时间为当前时间
+                        const now = new Date();
+                        now.setMinutes(now.getMinutes() + 5); // 至少5分钟后
+                        const minDateTime = now.toISOString().slice(0, 16);
+                        document.getElementById('customDateTime').min = minDateTime;
+                        document.getElementById('customDateTime').value = minDateTime;
+                    } else {
+                        customTimeSelector.style.display = 'none';
+                    }
                 });
+            });
+            
+            // 确认自定义时间
+            document.getElementById('confirmCustomTime')?.addEventListener('click', function() {
+                const customDateTime = document.getElementById('customDateTime').value;
+                if (!customDateTime) {
+                    showError('请选择一个时间');
+                    return;
+                }
+                
+                const selectedTime = new Date(customDateTime);
+                const now = new Date();
+                
+                if (selectedTime <= now) {
+                    showError('请选择未来的时间');
+                    return;
+                }
+                
+                // 保存自定义时间
+                selectedSurpriseTime = customDateTime;
+                console.log('确认自定义时间:', selectedSurpriseTime);
+                showSuccess('已设置自定义时间：' + selectedTime.toLocaleString('zh-CN'));
             });
 
             // 初始化AI风格按钮

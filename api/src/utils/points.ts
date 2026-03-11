@@ -188,11 +188,17 @@ export async function deductPoints(
 ): Promise<{ newPoints: number; success: boolean }> {
   const user = await prisma.users.findUnique({
     where: { id: userId },
-    select: { points: true }
+    select: { points: true, isAdmin: true }
   });
 
   if (!user) {
     throw new Error('用户不存在');
+  }
+
+  // 管理员用户不扣除积分
+  if (user.isAdmin) {
+    console.log(`🔑 管理员用户 ${userId} 使用AI功能，不扣除积分`);
+    return { newPoints: user.points, success: true };
   }
 
   if (user.points < amount) {
@@ -245,11 +251,20 @@ export async function getUserMonthlyQuota(userId: number): Promise<{
 }> {
   const user = await prisma.users.findUnique({
     where: { id: userId },
-    select: { points: true, subscription_type: true, subscription_expires: true }
+    select: { points: true, subscription_type: true, subscription_expires: true, isAdmin: true }
   });
 
   if (!user) {
     throw new Error('用户不存在');
+  }
+
+  // 管理员用户拥有无限配额
+  if (user.isAdmin) {
+    return {
+      continuation: { used: 0, limit: -1, unlimited: true },
+      polish: { used: 0, limit: -1, unlimited: true },
+      illustration: { used: 0, limit: -1, unlimited: true }
+    };
   }
 
   // 获取用户等级配额

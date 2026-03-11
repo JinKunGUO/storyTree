@@ -19,6 +19,7 @@ import bookmarkRoutes from './routes/bookmarks';
 import shareRoutes from './routes/shares';
 import pointsRoutes from './routes/points';
 import paymentRoutes from './routes/payment';
+import systemRoutes from './routes/system';
 import { closeQueues } from './utils/queue';
 
 dotenv.config();
@@ -54,6 +55,7 @@ app.use('/api/bookmarks', bookmarkRoutes);
 app.use('/api/shares', shareRoutes);
 app.use('/api/points', pointsRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/system', systemRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

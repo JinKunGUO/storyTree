@@ -31,7 +31,7 @@ router.post('/continuation/submit', async (req, res) => {
     return res.status(401).json({ error: '未登录' });
   }
 
-  const { storyId, nodeId, context, style, count = 3, mode = 'chapter', surpriseTime } = req.body;
+  const { storyId, nodeId, context, style, count = 3, mode = 'segment', surpriseTime, publishImmediately = true } = req.body;
 
   if (!storyId) {
     return res.status(400).json({ error: 'storyId是必需的' });
@@ -123,8 +123,42 @@ router.post('/continuation/submit', async (req, res) => {
         scheduledAt.setDate(scheduledAt.getDate() + 1);
         scheduledAt.setHours(8, 0, 0, 0);
         break;
-      default:
+      case null:
+      case undefined:
+      case 'immediate':
         scheduledAt = undefined; // 立即处理
+        break;
+      default:
+        // 尝试解析为自定义时间（ISO格式字符串）
+        try {
+          const customTime = new Date(surpriseTime);
+          
+          // 验证时间是否有效
+          if (isNaN(customTime.getTime())) {
+            console.warn(`⚠️ 无效的时间格式: ${surpriseTime}，使用立即处理`);
+            scheduledAt = undefined;
+            break;
+          }
+          
+          // 验证时间是否在未来
+          if (customTime > now) {
+            scheduledAt = customTime;
+            
+            // 调试日志：显示不同时区的时间
+            console.log(`📅 自定义时间解析成功:`);
+            console.log(`   - 原始输入: ${surpriseTime}`);
+            console.log(`   - UTC时间: ${customTime.toISOString()}`);
+            console.log(`   - 北京时间: ${customTime.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`);
+            console.log(`   - 纽约时间: ${customTime.toLocaleString('en-US', { timeZone: 'America/New_York' })}`);
+            console.log(`   - 时间戳: ${customTime.getTime()}`);
+          } else {
+            console.warn(`⚠️ 时间已过期: ${surpriseTime}（${customTime.toLocaleString('zh-CN')}），使用立即处理`);
+            scheduledAt = undefined;
+          }
+        } catch (error) {
+          console.warn(`⚠️ 解析自定义时间失败: ${surpriseTime}，错误: ${error}，使用立即处理`);
+          scheduledAt = undefined;
+        }
     }
 
     // 创建任务记录
@@ -142,7 +176,8 @@ router.post('/continuation/submit', async (req, res) => {
           storyDescription: story.description,
           style,
           count,
-          mode // 保存模式信息
+          mode, // 保存模式信息
+          publishImmediately // 保存发布状态
         }),
         scheduled_at: scheduledAt
       }
@@ -477,6 +512,7 @@ router.get('/quota', async (req, res) => {
 
 /**
  * 接受AI续写结果（创建节点）
+ * @param publishImmediately 是否立即发布（true=发布，false=草稿，默认true）
  */
 router.post('/continuation/accept', async (req, res) => {
   const userId = getUserId(req);
@@ -484,7 +520,7 @@ router.post('/continuation/accept', async (req, res) => {
     return res.status(401).json({ error: '未登录' });
   }
 
-  const { taskId, optionIndex } = req.body;
+  const { taskId, optionIndex, publishImmediately = true } = req.body;
 
   try {
     const task = await prisma.ai_tasks.findUnique({
@@ -567,7 +603,7 @@ router.post('/continuation/accept', async (req, res) => {
         content: selectedOption.content,
         path: newPath,
         ai_generated: true,
-        is_published: true, // AI创建的章节默认已发布
+        is_published: publishImmediately, // 根据参数决定发布状态
         updated_at: new Date()
       },
       include: {
@@ -588,7 +624,11 @@ router.post('/continuation/accept', async (req, res) => {
       });
     }
 
-    res.json({ node });
+    res.json({ 
+      node,
+      publishStatus: publishImmediately ? 'published' : 'draft',
+      message: publishImmediately ? '章节已发布' : '章节已保存为草稿'
+    });
   } catch (error) {
     console.error('接受AI续写失败:', error);
     res.status(500).json({ error: '操作失败' });
@@ -739,4 +779,3 @@ router.post('/recommend-branch', async (req, res) => {
 });
 
 export default router;
-

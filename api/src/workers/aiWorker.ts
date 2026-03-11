@@ -388,8 +388,41 @@ XXX` : ''}`;
     // 扣除积分
     await deductPoints(userId, AI_COST.CONTINUATION, 'ai_continuation', 'AI续写消耗', taskId);
 
-    // 发送通知
-    await notifyAiContinuationReady(userId, taskId, storyTitle);
+    // 处理任务完成逻辑
+    const task = await prisma.ai_tasks.findUnique({
+      where: { id: taskId }
+    });
+
+    if (task) {
+      // 检查任务类型和设置
+      const resultData = JSON.parse(task.result_data || '{}');
+      const options = resultData.options || [];
+      const inputData = JSON.parse(task.input_data || '{}');
+      const publishImmediately = inputData.publishImmediately !== undefined ? inputData.publishImmediately : true;
+      
+      if (options.length > 0) {
+        // 判断是自动接受还是手动确认
+        if (task.scheduled_at) {
+          // 定时任务，根据publishImmediately决定处理方式
+          if (publishImmediately) {
+            // 自动发布第一个选项
+            console.log(`🤖 自动发布第一个AI章节: ${task.id} - ${options[0].title}`);
+            await autoAcceptAiChapter(task, options[0], true);
+          } else {
+            // 保存所有选项为草稿
+            console.log(`📝 保存所有AI章节为草稿: ${task.id} - 共${options.length}个选项`);
+            await saveAllOptionsAsDraft(task, options);
+          }
+        } else {
+          // 立即任务，发送通知等待用户确认
+          console.log(`📋 等待用户手动确认: ${task.id} - ${options[0].title}`);
+          await notifyAiContinuationReady(userId, taskId, storyTitle);
+        }
+      }
+    } else {
+      // 这是立即任务，发送通知让用户手动接受
+      await notifyAiContinuationReady(userId, taskId, storyTitle);
+    }
 
     console.log(`✅ AI续写任务完成: ${taskId}`);
     return { success: true, options };
@@ -409,6 +442,258 @@ XXX` : ''}`;
     throw error;
   }
 });
+
+/**
+ * 保存所有AI选项为草稿
+ * @param task AI任务
+ * @param options 所有AI生成的选项
+ */
+async function saveAllOptionsAsDraft(task: any, options: any[]) {
+  try {
+    console.log(`📝 开始保存所有AI章节为草稿: ${task.id} - 共${options.length}个选项`);
+    
+    // 确定父节点ID
+    let parentNodeId = task.node_id;
+    
+    // 如果没有指定父节点，找到最新的一章作为父节点
+    if (!parentNodeId && task.story_id) {
+      const latestNode = await prisma.nodes.findFirst({
+        where: { 
+          story_id: task.story_id,
+          is_published: true
+        },
+        orderBy: [
+          { path: 'desc' },
+          { created_at: 'desc' }
+        ]
+      });
+      
+      if (latestNode) {
+        parentNodeId = latestNode.id;
+        console.log(`[保存草稿] 自动选择最新章节作为父节点: ${latestNode.id}`);
+      }
+    }
+
+    // 计算基础路径
+    let basePath = '1';
+    if (parentNodeId) {
+      const parentNode = await prisma.nodes.findUnique({
+        where: { id: parentNodeId }
+      });
+
+      if (parentNode) {
+        const siblingCount = await prisma.nodes.count({
+          where: { parent_id: parentNodeId }
+        });
+        basePath = `${parentNode.path}.${siblingCount + 1}`;
+      }
+    } else {
+      // 根节点
+      const existingRoot = await prisma.nodes.findFirst({
+        where: {
+          story_id: task.story_id!,
+          parent_id: null
+        }
+      });
+      
+      if (existingRoot) {
+        console.log(`[保存草稿] 故事已有根节点，跳过创建`);
+        return;
+      }
+    }
+
+    // 创建所有选项为草稿（作为分支）
+    const createdNodes = [];
+    for (let i = 0; i < options.length; i++) {
+      const option = options[i];
+      const nodePath = i === 0 ? basePath : `${basePath}.${i + 1}`;
+      
+      const node = await prisma.nodes.create({
+        data: {
+          story_id: task.story_id!,
+          parent_id: parentNodeId,
+          author_id: task.user_id,
+          title: `${option.title} (草稿${i + 1})`,
+          content: option.content,
+          path: nodePath,
+          ai_generated: true,
+          is_published: false, // 保存为草稿
+          updated_at: new Date()
+        }
+      });
+
+      createdNodes.push(node);
+      console.log(`✅ 草稿创建成功 ${i + 1}/${options.length}: #${node.id} - ${node.title}`);
+    }
+    
+    // 更新任务状态
+    await prisma.ai_tasks.update({
+      where: { id: task.id },
+      data: { 
+        status: 'completed',
+        result_data: JSON.stringify({
+          ...JSON.parse(task.result_data || '{}'),
+          savedAsDraft: true,
+          createdNodeIds: createdNodes.map(n => n.id),
+          publishStatus: 'draft'
+        })
+      }
+    });
+
+    // 发送通知
+    await prisma.notifications.create({
+      data: {
+        user_id: task.user_id,
+        type: 'ai_chapter_draft',
+        title: '📝 AI章节已保存为草稿',
+        content: `AI已为您创作${options.length}个章节草稿，可随时编辑和发布。`,
+        link: `/story?id=${task.story_id}`,
+        is_read: false
+      }
+    });
+
+    console.log(`✅ 所有AI章节已保存为草稿: ${createdNodes.length}个`);
+    return createdNodes;
+  } catch (error) {
+    console.error(`❌ 保存AI章节草稿失败:`, error);
+    
+    // 更新任务为失败状态
+    await prisma.ai_tasks.update({
+      where: { id: task.id },
+      data: { 
+        status: 'failed',
+        error_message: `保存草稿失败: ${error instanceof Error ? error.message : String(error)}`
+      }
+    });
+    
+    throw error;
+  }
+}
+
+/**
+ * 自动接受AI生成的选项并创建章节
+ * @param task AI任务
+ * @param firstOption 第一个选项
+ * @param publishImmediately 是否立即发布（true=发布，false=草稿）
+ */
+async function autoAcceptAiChapter(task: any, firstOption: any, publishImmediately: boolean = true) {
+  try {
+    console.log(`🤖 ${publishImmediately ? '自动接受' : '手动确认'} AI生成的章节: ${task.id} - ${firstOption.title}`);
+    
+    // 确定父节点ID
+    let parentNodeId = task.node_id;
+    
+    // 如果没有指定父节点，找到最新的一章作为父节点
+    if (!parentNodeId && task.story_id) {
+      const latestNode = await prisma.nodes.findFirst({
+        where: { 
+          story_id: task.story_id,
+          is_published: true
+        },
+        orderBy: [
+          { path: 'desc' },
+          { created_at: 'desc' }
+        ]
+      });
+      
+      if (latestNode) {
+        parentNodeId = latestNode.id;
+        console.log(`[${publishImmediately ? '自动接受' : '手动确认'}] 自动选择最新章节作为父节点: ${latestNode.id}`);
+      }
+    }
+
+    // 计算新路径
+    let newPath = '1';
+    if (parentNodeId) {
+      const parentNode = await prisma.nodes.findUnique({
+        where: { id: parentNodeId }
+      });
+
+      if (parentNode) {
+        const siblingCount = await prisma.nodes.count({
+          where: { parent_id: parentNodeId }
+        });
+        newPath = `${parentNode.path}.${siblingCount + 1}`;
+      }
+    } else {
+      // 根节点
+      const existingRoot = await prisma.nodes.findFirst({
+        where: {
+          story_id: task.story_id!,
+          parent_id: null
+        }
+      });
+      
+      if (existingRoot) {
+        console.log(`[${publishImmediately ? '自动接受' : '手动确认'}] 故事已有根节点，跳过创建`);
+        return;
+      }
+    }
+
+    // 创建节点
+    const node = await prisma.nodes.create({
+      data: {
+        story_id: task.story_id!,
+        parent_id: parentNodeId,
+        author_id: task.user_id,
+        title: firstOption.title,
+        content: firstOption.content,
+        path: newPath,
+        ai_generated: true,
+        is_published: publishImmediately, // 根据参数决定发布状态
+        updated_at: new Date()
+      }
+    });
+
+    console.log(`✅ ${publishImmediately ? '自动创建' : '草稿创建'}章节成功: #${node.id} - ${node.title}`);
+    
+    // 更新任务状态
+    await prisma.ai_tasks.update({
+      where: { id: task.id },
+      data: { 
+        status: 'completed',
+        result_data: JSON.stringify({
+          ...JSON.parse(task.result_data || '{}'),
+          autoAccepted: publishImmediately,
+          acceptedNodeId: node.id,
+          publishStatus: publishImmediately ? 'published' : 'draft'
+        })
+      }
+    });
+
+    // 发送通知
+    const notificationTitle = publishImmediately ? '🎉 AI章节自动创建成功' : '📝 AI章节已保存为草稿';
+    const notificationContent = publishImmediately 
+      ? `您的故事《${firstOption.title}》已由AI自动创建！`
+      : `您的故事《${firstOption.title}》已保存为草稿，可随时编辑发布。`;
+
+    await prisma.notifications.create({
+      data: {
+        user_id: task.user_id,
+        type: publishImmediately ? 'ai_chapter_created' : 'ai_chapter_draft',
+        title: notificationTitle,
+        content: notificationContent,
+        link: `/chapter?id=${node.id}`,
+        is_read: false
+      }
+    });
+
+    return node;
+  } catch (error) {
+    console.error(`❌ ${publishImmediately ? '自动接受' : '手动确认'}AI章节失败:`, error);
+    
+    // 更新任务为失败状态
+    await prisma.ai_tasks.update({
+      where: { id: task.id },
+      data: { 
+        status: 'failed',
+        error_message: `创建章节失败: ${error instanceof Error ? error.message : String(error)}`
+      }
+    });
+    
+    throw error;
+  }
+}
 
 /**
  * 处理AI润色任务
@@ -734,4 +1019,274 @@ function parseAiResponse(response: string): Array<{ title: string; content: stri
 }
 
 console.log('🤖 AI Worker已启动，等待任务...');
+
+/**
+ * 动态限流配置
+ */
+const RATE_LIMIT_CONFIG = {
+  MAX_BATCH_SIZE: 10,           // 每批最多处理10个任务
+  MIN_BATCH_SIZE: 3,            // 最少处理3个任务（负载低时）
+  MAX_QUEUE_SIZE: 100,          // 队列最大容量
+  HIGH_LOAD_THRESHOLD: 50,      // 高负载阈值（队列任务数）
+  DELAY_WARNING_MINUTES: 5,     // 延迟超过5分钟发送警告
+};
+
+/**
+ * 获取当前队列负载情况
+ */
+async function getQueueLoad(): Promise<{ total: number; waiting: number; active: number }> {
+  try {
+    const [continuationWaiting, continuationActive] = await Promise.all([
+      aiContinuationQueue.getWaitingCount(),
+      aiContinuationQueue.getActiveCount()
+    ]);
+    
+    const [polishWaiting, polishActive] = await Promise.all([
+      aiPolishQueue.getWaitingCount(),
+      aiPolishQueue.getActiveCount()
+    ]);
+    
+    const [illustrationWaiting, illustrationActive] = await Promise.all([
+      aiIllustrationQueue.getWaitingCount(),
+      aiIllustrationQueue.getActiveCount()
+    ]);
+    
+    return {
+      total: continuationWaiting + continuationActive + polishWaiting + polishActive + illustrationWaiting + illustrationActive,
+      waiting: continuationWaiting + polishWaiting + illustrationWaiting,
+      active: continuationActive + polishActive + illustrationActive
+    };
+  } catch (error) {
+    console.error('获取队列负载失败:', error);
+    return { total: 0, waiting: 0, active: 0 };
+  }
+}
+
+/**
+ * 计算任务优先级（越小优先级越高）
+ */
+function calculateTaskPriority(task: any, delayMinutes: number): number {
+  let priority = 5; // 基础优先级
+  
+  // 1. 延迟时间越长，优先级越高
+  if (delayMinutes > 30) {
+    priority -= 3;
+  } else if (delayMinutes > 10) {
+    priority -= 2;
+  } else if (delayMinutes > 5) {
+    priority -= 1;
+  }
+  
+  // 2. VIP用户优先级提升
+  // TODO: 可以根据用户等级或订阅状态调整
+  
+  // 3. 简单任务优先（润色 > 续写 > 插图）
+  if (task.task_type === 'polish') {
+    priority -= 1;
+  } else if (task.task_type === 'illustration') {
+    priority += 1;
+  }
+  
+  return Math.max(1, Math.min(10, priority)); // 限制在1-10之间
+}
+
+/**
+ * 发送延迟通知给用户
+ */
+async function notifyTaskDelay(userId: number, taskId: number, delayMinutes: number, estimatedMinutes: number) {
+  try {
+    await prisma.notifications.create({
+      data: {
+        user_id: userId,
+        type: 'ai_task_delay',
+        title: '⏰ AI任务延迟提醒',
+        content: `您的AI任务已延迟 ${delayMinutes} 分钟。由于当前系统负载较高，预计还需等待约 ${estimatedMinutes} 分钟。建议您稍后查看，或选择非高峰时段（凌晨0-6点）提交任务。`,
+        link: `/ai-tasks?taskId=${taskId}`,
+        is_read: false
+      }
+    });
+    console.log(`📬 已向用户 ${userId} 发送延迟通知 (任务 ${taskId})`);
+  } catch (error) {
+    console.error('发送延迟通知失败:', error);
+  }
+}
+
+/**
+ * 定时任务调度器 - 检查并执行到期的AI任务（优化版）
+ */
+async function checkScheduledTasks() {
+  try {
+    const now = new Date();
+    
+    // 1. 获取当前队列负载
+    const queueLoad = await getQueueLoad();
+    console.log(`📊 当前队列负载: 总计 ${queueLoad.total} (等待 ${queueLoad.waiting}, 处理中 ${queueLoad.active})`);
+    
+    // 2. 动态调整批处理大小
+    let batchSize = RATE_LIMIT_CONFIG.MAX_BATCH_SIZE;
+    
+    if (queueLoad.total > RATE_LIMIT_CONFIG.HIGH_LOAD_THRESHOLD) {
+      // 高负载：减少批处理大小，避免雪崩
+      batchSize = RATE_LIMIT_CONFIG.MIN_BATCH_SIZE;
+      console.log(`⚠️ 系统高负载，降低批处理大小至 ${batchSize}`);
+    } else if (queueLoad.total > RATE_LIMIT_CONFIG.HIGH_LOAD_THRESHOLD / 2) {
+      // 中等负载：适中的批处理大小
+      batchSize = Math.floor((RATE_LIMIT_CONFIG.MAX_BATCH_SIZE + RATE_LIMIT_CONFIG.MIN_BATCH_SIZE) / 2);
+    }
+    
+    // 3. 如果队列已满，暂停处理新任务
+    if (queueLoad.total >= RATE_LIMIT_CONFIG.MAX_QUEUE_SIZE) {
+      console.log(`🚫 队列已满 (${queueLoad.total}/${RATE_LIMIT_CONFIG.MAX_QUEUE_SIZE})，跳过本轮调度`);
+      return;
+    }
+    
+    // 4. 查找所有到期的待处理任务
+    const dueTasks = await prisma.ai_tasks.findMany({
+      where: {
+        status: 'pending',
+        scheduled_at: {
+          lte: now
+        }
+      },
+      orderBy: {
+        scheduled_at: 'asc' // 优先处理最早的任务
+      },
+      take: batchSize * 3 // 多取一些用于优先级排序
+    });
+
+    if (dueTasks.length === 0) {
+      return; // 没有到期任务
+    }
+    
+    console.log(`⏰ 发现 ${dueTasks.length} 个到期的定时任务`);
+    
+    // 5. 计算延迟时间并排序
+    const tasksWithPriority = dueTasks.map(task => {
+      const scheduledTime = new Date(task.scheduled_at!);
+      const delayMs = now.getTime() - scheduledTime.getTime();
+      const delayMinutes = Math.floor(delayMs / 60000);
+      
+      return {
+        task,
+        delayMinutes,
+        priority: calculateTaskPriority(task, delayMinutes)
+      };
+    });
+    
+    // 按优先级排序（优先级数字越小越优先）
+    tasksWithPriority.sort((a, b) => a.priority - b.priority);
+    
+    // 6. 只处理前 batchSize 个任务
+    const tasksToProcess = tasksWithPriority.slice(0, batchSize);
+    
+    console.log(`📤 本轮将处理 ${tasksToProcess.length} 个任务 (剩余 ${dueTasks.length - tasksToProcess.length} 个待处理)`);
+    
+    // 7. 统计延迟严重的任务
+    const delayedTasks = tasksWithPriority.filter(t => t.delayMinutes > RATE_LIMIT_CONFIG.DELAY_WARNING_MINUTES);
+    if (delayedTasks.length > 0) {
+      console.log(`⚠️ 有 ${delayedTasks.length} 个任务延迟超过 ${RATE_LIMIT_CONFIG.DELAY_WARNING_MINUTES} 分钟`);
+    }
+    
+    // 8. 处理任务
+    for (const { task, delayMinutes, priority } of tasksToProcess) {
+      try {
+        console.log(`📤 处理任务 ${task.id} (类型: ${task.task_type}, 延迟: ${delayMinutes}分钟, 优先级: ${priority})`);
+        
+        // 解析任务数据
+        const inputData = JSON.parse(task.input_data || '{}');
+        
+        // 根据任务类型添加到对应的队列
+        if (task.task_type === 'continuation') {
+          await aiContinuationQueue.add({
+            taskId: task.id,
+            userId: task.user_id,
+            storyId: task.story_id,
+            nodeId: task.node_id || undefined,
+            context: inputData.context || '',
+            storyTitle: inputData.storyTitle || '',
+            storyDescription: inputData.storyDescription || '',
+            style: inputData.style,
+            count: inputData.count || 3
+          }, {
+            priority: priority,
+            attempts: 3,
+            backoff: {
+              type: 'exponential',
+              delay: 5000
+            }
+          });
+        } else if (task.task_type === 'polish') {
+          await aiPolishQueue.add({
+            taskId: task.id,
+            userId: task.user_id,
+            content: inputData.content || '',
+            style: inputData.style || 'elegant'
+          }, {
+            priority: priority,
+            attempts: 3,
+            backoff: {
+              type: 'exponential',
+              delay: 5000
+            }
+          });
+        } else if (task.task_type === 'illustration') {
+          await aiIllustrationQueue.add({
+            taskId: task.id,
+            userId: task.user_id,
+            storyId: task.story_id,
+            nodeId: task.node_id || 0,
+            chapterTitle: inputData.chapterTitle || '',
+            chapterContent: inputData.chapterContent || ''
+          }, {
+            priority: priority,
+            attempts: 3,
+            backoff: {
+              type: 'exponential',
+              delay: 5000
+            }
+          });
+        }
+        
+        console.log(`✅ 任务 ${task.id} 已添加到队列`);
+        
+        // 如果延迟超过阈值，发送通知
+        if (delayMinutes > RATE_LIMIT_CONFIG.DELAY_WARNING_MINUTES) {
+          // 估算剩余等待时间（基于当前队列长度）
+          const estimatedMinutes = Math.ceil(queueLoad.waiting * 2); // 假设每个任务2分钟
+          await notifyTaskDelay(task.user_id, task.id, delayMinutes, estimatedMinutes);
+        }
+        
+      } catch (error) {
+        console.error(`❌ 处理任务 ${task.id} 失败:`, error);
+        
+        // 标记任务为失败
+        await prisma.ai_tasks.update({
+          where: { id: task.id },
+          data: {
+            status: 'failed',
+            error_message: error instanceof Error ? error.message : '任务调度失败',
+            completed_at: new Date()
+          }
+        });
+      }
+    }
+    
+    // 9. 如果还有很多任务未处理，记录警告
+    if (dueTasks.length > batchSize * 2) {
+      console.log(`⚠️ 警告: 当前有 ${dueTasks.length} 个任务待处理，系统可能需要扩容`);
+    }
+    
+  } catch (error) {
+    console.error('❌ 检查定时任务失败:', error);
+  }
+}
+
+// 每分钟检查一次定时任务
+const SCHEDULER_INTERVAL = 60 * 1000; // 60秒
+setInterval(checkScheduledTasks, SCHEDULER_INTERVAL);
+
+// 启动时立即检查一次
+checkScheduledTasks().then(() => {
+  console.log('✅ 定时任务调度器已启动，每60秒检查一次');
+});
 
