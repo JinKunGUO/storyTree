@@ -18,7 +18,7 @@
             border-bottom: 1px solid #e0e0e0;
             padding: 10px 20px;
             position: fixed;
-            top: 60px;
+            top: 0px;
             left: 0;
             right: 0;
             z-index: 101;
@@ -29,6 +29,7 @@
             margin: 0 auto;
             display: flex;
             align-items: center;
+            justify-content: center;  /* 居中显示 */
             gap: 8px;
             flex-wrap: wrap;
             font-size: 14px;
@@ -41,6 +42,13 @@
             color: #667eea;
             text-decoration: none;
             transition: all 0.3s;
+            max-width: 200px;
+        }
+
+        .breadcrumb-item span {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .breadcrumb-item:hover {
@@ -57,10 +65,26 @@
             color: #ccc;
         }
 
+        /* 可展开的省略号按钮 */
+        .breadcrumb-ellipsis {
+            color: #999;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 5px;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .breadcrumb-ellipsis:hover {
+            background: #f5f5f5;
+            color: #667eea;
+        }
+
         /* 阅读工具栏 */
         .reading-toolbar {
             position: fixed;
-            top: 95px;
+            top: 43px;  /* 初始值，会通过JavaScript动态更新 */
             left: 0;
             right: 0;
             background: white;
@@ -70,6 +94,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            transition: top 0.3s ease;  /* 平滑过渡效果 */
         }
 
         .toolbar-left {
@@ -1397,6 +1422,13 @@
             initBranchCompare(); // 初始化分支对比功能
             initAIRecommend(); // 初始化AI推荐功能
             
+            // 监听窗口大小变化，动态调整工具栏位置
+            window.addEventListener('resize', () => {
+                if (fullBreadcrumbPath) {
+                    updateToolbarPosition();
+                }
+            });
+            
             // 初始化分享按钮
             document.getElementById('shareChapterBtn')?.addEventListener('click', function() {
                 if (currentChapter && storyId) {
@@ -1829,6 +1861,11 @@
             }
         }
 
+        // 全局变量：存储完整路径数据
+        let fullBreadcrumbPath = null;
+        let currentBreadcrumbStory = null;
+        let hiddenNodesCount = 0; // 当前隐藏的节点数量
+
         // 加载面包屑导航
         async function loadBreadcrumbNav(nodeId) {
             try {
@@ -1843,35 +1880,49 @@
                 const data = await response.json();
                 console.log('面包屑路径数据:', data);
                 
+                // 保存完整路径数据
+                fullBreadcrumbPath = data.path;
+                currentBreadcrumbStory = data.story;
+                hiddenNodesCount = 0; // 重置展开状态
+                
                 // 渲染面包屑
-                const breadcrumbContainer = document.getElementById('breadcrumbContainer');
-                const breadcrumbNav = document.getElementById('breadcrumbNav');
-                
-                if (!breadcrumbContainer || !data.path || data.path.length === 0) {
-                    return;
-                }
+                renderBreadcrumb();
 
-                let breadcrumbHTML = '';
-                
-                // 添加故事标题
-                if (data.story) {
-                    breadcrumbHTML += `
-                        <a href="/story?id=${data.story.id}" class="breadcrumb-item">
-                            <i class="fas fa-book"></i>
-                            <span>${data.story.title}</span>
-                        </a>
-                    `;
-                }
-                
-                // 添加路径中的所有节点
-                data.path.forEach((node, index) => {
-                    // 添加分隔符
-                    if (index > 0 || data.story) {
+            } catch (error) {
+                console.error('加载面包屑导航错误:', error);
+            }
+        }
+
+        // 渲染面包屑导航
+        function renderBreadcrumb() {
+            const breadcrumbContainer = document.getElementById('breadcrumbContainer');
+            const breadcrumbNav = document.getElementById('breadcrumbNav');
+            
+            if (!breadcrumbContainer || !fullBreadcrumbPath || fullBreadcrumbPath.length === 0) {
+                return;
+            }
+
+            let breadcrumbHTML = '';
+            const pathLength = fullBreadcrumbPath.length;
+            
+            // 添加故事标题
+            if (currentBreadcrumbStory) {
+                breadcrumbHTML += `
+                    <a href="/story?id=${currentBreadcrumbStory.id}" class="breadcrumb-item">
+                        <i class="fas fa-book"></i>
+                        <span>${currentBreadcrumbStory.title}</span>
+                    </a>
+                `;
+            }
+            
+            // 如果路径很短（≤4个节点），直接显示全部
+            if (pathLength <= 4) {
+                fullBreadcrumbPath.forEach((node, index) => {
+                    if (index > 0 || currentBreadcrumbStory) {
                         breadcrumbHTML += '<span class="breadcrumb-separator"><i class="fas fa-chevron-right"></i></span>';
                     }
                     
-                    // 最后一个节点（当前章节）不可点击
-                    if (index === data.path.length - 1) {
+                    if (index === pathLength - 1) {
                         breadcrumbHTML += `
                             <span class="breadcrumb-item current">
                                 <i class="fas fa-file-alt"></i>
@@ -1887,15 +1938,122 @@
                         `;
                     }
                 });
+            } else {
+                // 路径较长，需要折叠
+                // 首部：始终显示第1个节点
+                // 中间：省略号 + 已展开的节点
+                // 尾部：始终显示最近3个节点 + 当前节点
                 
-                breadcrumbContainer.innerHTML = breadcrumbHTML;
-                breadcrumbNav.style.display = 'block';
+                const tailVisibleCount = 3; // 尾部始终显示3个节点
+                const tailStartIndex = pathLength - tailVisibleCount; // 尾部开始的索引
                 
-                console.log('面包屑导航渲染完成');
-
-            } catch (error) {
-                console.error('加载面包屑导航错误:', error);
+                // 1. 显示首部：第1个节点
+                if (currentBreadcrumbStory) {
+                    breadcrumbHTML += '<span class="breadcrumb-separator"><i class="fas fa-chevron-right"></i></span>';
+                }
+                breadcrumbHTML += `
+                    <a href="/chapter?id=${fullBreadcrumbPath[0].id}" class="breadcrumb-item">
+                        <i class="fas fa-file-alt"></i>
+                        <span>${fullBreadcrumbPath[0].title}</span>
+                    </a>
+                `;
+                
+                // 2. 中间部分：计算隐藏的节点数量
+                // 总的可隐藏节点 = 路径长度 - 1(首部) - tailVisibleCount(尾部)
+                const totalHiddenNodes = pathLength - 1 - tailVisibleCount;
+                
+                // 当前实际隐藏的节点数 = 总隐藏节点 - 已展开的节点数
+                const actualHiddenCount = totalHiddenNodes - hiddenNodesCount;
+                
+                if (actualHiddenCount > 0) {
+                    // 还有隐藏的节点，显示省略号
+                    breadcrumbHTML += '<span class="breadcrumb-separator"><i class="fas fa-chevron-right"></i></span>';
+                    breadcrumbHTML += `
+                        <span class="breadcrumb-ellipsis" onclick="expandBreadcrumb()" title="点击展开更多章节（还有${actualHiddenCount}个隐藏）">
+                            <i class="fas fa-ellipsis-h"></i>
+                        </span>
+                    `;
+                }
+                
+                // 显示已展开的节点（从后往前数）
+                const expandedStartIndex = tailStartIndex - hiddenNodesCount;
+                for (let i = expandedStartIndex; i < tailStartIndex; i++) {
+                    if (i > 0) { // 跳过第0个（已在首部显示）
+                        const node = fullBreadcrumbPath[i];
+                        breadcrumbHTML += '<span class="breadcrumb-separator"><i class="fas fa-chevron-right"></i></span>';
+                        breadcrumbHTML += `
+                            <a href="/chapter?id=${node.id}" class="breadcrumb-item">
+                                <i class="fas fa-file-alt"></i>
+                                <span>${node.title}</span>
+                            </a>
+                        `;
+                    }
+                }
+                
+                // 3. 显示尾部：最近3个节点 + 当前节点
+                for (let i = tailStartIndex; i < pathLength; i++) {
+                    const node = fullBreadcrumbPath[i];
+                    breadcrumbHTML += '<span class="breadcrumb-separator"><i class="fas fa-chevron-right"></i></span>';
+                    
+                    // 最后一个节点（当前章节）不可点击
+                    if (i === pathLength - 1) {
+                        breadcrumbHTML += `
+                            <span class="breadcrumb-item current">
+                                <i class="fas fa-file-alt"></i>
+                                <span>${node.title}</span>
+                            </span>
+                        `;
+                    } else {
+                        breadcrumbHTML += `
+                            <a href="/chapter?id=${node.id}" class="breadcrumb-item">
+                                <i class="fas fa-file-alt"></i>
+                                <span>${node.title}</span>
+                            </a>
+                        `;
+                    }
+                }
             }
+            
+            breadcrumbContainer.innerHTML = breadcrumbHTML;
+            breadcrumbNav.style.display = 'block';
+            
+            // 动态更新工具栏位置，确保紧贴面包屑栏下方
+            updateToolbarPosition();
+            
+            console.log('面包屑导航渲染完成, 已展开节点数:', hiddenNodesCount);
+        }
+
+        // 动态更新工具栏位置
+        function updateToolbarPosition() {
+            // 使用 requestAnimationFrame 确保在DOM更新后计算
+            requestAnimationFrame(() => {
+                const breadcrumbNav = document.getElementById('breadcrumbNav');
+                const toolbar = document.querySelector('.reading-toolbar');
+                
+                if (breadcrumbNav && toolbar) {
+                    // 获取面包屑栏的实际高度
+                    const breadcrumbHeight = breadcrumbNav.offsetHeight;
+                    
+                    // 设置工具栏位置 = 面包屑栏的高度
+                    toolbar.style.top = breadcrumbHeight + 'px';
+                    
+                    console.log('工具栏位置已更新, 面包屑高度:', breadcrumbHeight);
+                }
+            });
+        }
+
+        // 展开面包屑（每次从后往前展开3个节点）
+        function expandBreadcrumb() {
+            const expandStep = 3; // 每次展开3个节点
+            const tailVisibleCount = 3;
+            const totalHiddenNodes = fullBreadcrumbPath.length - 1 - tailVisibleCount;
+            
+            // 增加已展开的节点数，但不超过总隐藏节点数
+            hiddenNodesCount = Math.min(hiddenNodesCount + expandStep, totalHiddenNodes);
+            
+            // 重新渲染面包屑（会自动更新工具栏位置）
+            renderBreadcrumb();
+            console.log('展开面包屑，已展开节点数:', hiddenNodesCount);
         }
 
         // 初始化设置

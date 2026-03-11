@@ -954,6 +954,24 @@
                     </div>
                 </div>
 
+                <!-- 开始润色按钮 -->
+                <div id="startPolishBtnContainer" style="margin-bottom: 25px; text-align: center;">
+                    <button id="startPolishBtn" style="
+                        padding: 15px 40px;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                        border: none;
+                        border-radius: 50px;
+                        font-size: 16px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+                        transition: all 0.3s;
+                    " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <i class="fas fa-wand-magic-sparkles"></i> 开始润色
+                    </button>
+                </div>
+
                 <!-- 加载状态 -->
                 <div class="ai-loading" id="polishLoading" style="display: none;">
                     <i class="fas fa-spinner fa-spin"></i>
@@ -2335,6 +2353,7 @@
             const closePolishModal = document.getElementById('closePolishModal');
             const cancelPolishBtn = document.getElementById('cancelPolishBtn');
             const applyPolishBtn = document.getElementById('applyPolishBtn');
+            const startPolishBtn = document.getElementById('startPolishBtn');
 
             if (!polishModal) {
                 console.error('❌ 润色模态框元素未找到');
@@ -2355,6 +2374,10 @@
             if (applyPolishBtn) {
                 applyPolishBtn.addEventListener('click', applyPolish);
             }
+            if (startPolishBtn) {
+                startPolishBtn.addEventListener('click', performPolish);
+                console.log('✅ 开始润色按钮事件已绑定');
+            }
 
             // 点击模态框背景关闭
             polishModal.addEventListener('click', function(e) {
@@ -2374,10 +2397,7 @@
                     selectedPolishStyle = this.dataset.style;
                     console.log('选择润色风格:', selectedPolishStyle);
                     
-                    // 如果已经有内容，自动重新润色
-                    if (originalContent) {
-                        performPolish();
-                    }
+                    // 移除自动润色逻辑，让用户手动点击"开始润色"按钮
                 });
             });
 
@@ -2421,29 +2441,26 @@
             // 保存原始内容
             originalContent = contentToPolish;
 
-            // 打开模态框
+            // 打开模态框，显示选择器和按钮，不自动开始润色
             polishModal.classList.add('active');
             document.getElementById('polishStyleSelector').style.display = 'block';
+            document.getElementById('startPolishBtnContainer').style.display = 'block';
             document.getElementById('polishLoading').style.display = 'none';
             document.getElementById('polishComparison').style.display = 'none';
             document.getElementById('polishError').style.display = 'none';
             document.getElementById('applyPolishBtn').style.display = 'none';
 
-            // 显示原文
+            // 显示原文预览
             document.getElementById('originalText').textContent = originalContent;
-
-            // 自动开始润色
-            setTimeout(() => {
-                performPolish();
-            }, 300);
         }
 
         // 执行润色
         async function performPolish() {
             console.log('开始执行AI润色，风格:', selectedPolishStyle);
 
-            // 显示加载状态
-            document.getElementById('polishStyleSelector').style.display = 'block';
+            // 隐藏选择器和按钮，显示加载状态
+            document.getElementById('polishStyleSelector').style.display = 'none';
+            document.getElementById('startPolishBtnContainer').style.display = 'none';
             document.getElementById('polishLoading').style.display = 'block';
             document.getElementById('polishComparison').style.display = 'none';
             document.getElementById('polishError').style.display = 'none';
@@ -2563,6 +2580,14 @@
                 // 清空数据
                 originalContent = '';
                 polishedContent = '';
+                
+                // 重置UI状态，确保下次打开时显示选择器
+                document.getElementById('polishStyleSelector').style.display = 'block';
+                document.getElementById('startPolishBtnContainer').style.display = 'block';
+                document.getElementById('polishLoading').style.display = 'none';
+                document.getElementById('polishComparison').style.display = 'none';
+                document.getElementById('polishError').style.display = 'none';
+                document.getElementById('applyPolishBtn').style.display = 'none';
             }
         }
 
