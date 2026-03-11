@@ -293,25 +293,32 @@ router.get('/:id/stories', async (req, res) => {
         },
         _count: {
           select: {
-            nodes: true
+            nodes: true,
+            bookmarks: true  // 收藏数作为点赞数
           }
         },
         nodes: {
-          where: { parent_id: null },
-          take: 1,
           select: {
-            id: true,
-            title: true,
-            rating_avg: true,
-            rating_count: true,
-            read_count: true
+            read_count: true  // 获取所有节点的浏览量
           }
         }
       },
       orderBy: { created_at: 'desc' }
     });
 
-    res.json({ stories });
+    // 处理故事数据，计算总浏览量
+    const processedStories = stories.map(story => {
+      // 计算总浏览量（所有节点read_count之和）
+      const totalViews = story.nodes.reduce((sum, node) => sum + (node.read_count || 0), 0);
+      
+      return {
+        ...story,
+        views: totalViews,  // 添加浏览量字段
+        likes: story._count.bookmarks  // 收藏数作为点赞数
+      };
+    });
+
+    res.json({ stories: processedStories });
   } catch (error) {
     console.error('获取用户故事错误:', error);
     res.status(500).json({ error: 'Failed to fetch user stories' });

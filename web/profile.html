@@ -506,9 +506,9 @@
                 const data = await response.json();
                 console.log('用户统计数据:', data);
                 
-                // 从_count中提取统计数据
-                const storyCount = data.user?._count?.stories || 0;
-                const nodeCount = data.user?._count?.nodes || 0;
+                // 从_count中提取统计数据（注意：后端返回的是authored_stories和authored_nodes）
+                const storyCount = data.user?._count?.authored_stories || 0;
+                const nodeCount = data.user?._count?.authored_nodes || 0;
                 
                 document.getElementById('storyCount').textContent = storyCount;
                 document.getElementById('nodeCount').textContent = nodeCount;
@@ -573,10 +573,10 @@
 
             const storiesHTML = stories.map(story => {
                 // 安全地获取章节数
-                const nodeCount = story._count?.nodes || story.nodes?.length || 0;
+                const nodeCount = story._count?.nodes || 0;
                 
-                // 安全地获取统计数据
-                const likeCount = story._count?.likes || 0;
+                // 获取点赞数（bookmarks）和浏览量
+                const likeCount = story.likes || story._count?.bookmarks || 0;
                 const viewCount = story.views || 0;
                 
                 // 累加到总数
@@ -606,6 +606,8 @@
             // 更新统计卡片中的总点赞数和总浏览量
             document.getElementById('likeCount').textContent = totalLikes;
             document.getElementById('viewCount').textContent = totalViews;
+            
+            console.log('统计更新 - 总点赞:', totalLikes, '总浏览:', totalViews);
         }
 
         // 显示空状态
