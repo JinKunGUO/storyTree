@@ -1308,6 +1308,10 @@
                                 <i class="fas fa-pen"></i>
                                 续写分支
                             </button>
+                            <button class="detail-btn" id="aiCreateChapterBtn" style="display: none; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                                <i class="fas fa-robot"></i>
+                                AI创作章节
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1318,10 +1322,6 @@
                         <div class="section-header">
                             <h2 class="section-title">章节目录</h2>
                             <div class="chapter-sort">
-                                <button class="btn btn-primary" id="aiCreateChapterBtn" style="display: none; margin-right: 15px;">
-                                    <i class="fas fa-robot"></i>
-                                    AI创作章节
-                                </button>
                                 <button class="sort-btn active" data-sort="asc">正序</button>
                                 <button class="sort-btn" data-sort="desc">倒序</button>
                             </div>
@@ -1844,7 +1844,16 @@
                         // 显示AI创作章节按钮
                         const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                         aiCreateBtn.style.display = 'inline-flex';
-                        aiCreateBtn.addEventListener('click', () => openAiChapterModal(story));
+                        aiCreateBtn.addEventListener('click', () => {
+                            // 使用当前选中的节点作为父节点，如果没有选中则使用故事ID
+                            const parentId = window.currentSelectedNodeId;
+                            if (parentId) {
+                                openAiChapterModal(story, parentId);
+                            } else {
+                                // 如果没有选中节点，提示用户先选择一个节点
+                                showError('请先点击分支图中的一个章节，再使用AI创作功能');
+                            }
+                        });
                     }
                 }
             } catch (error) {
@@ -2473,8 +2482,11 @@
         });
 
         // 打开AI创作章节模态框
-        function openAiChapterModal(story) {
-            console.log('打开AI创作章节模态框, 故事:', story);
+        function openAiChapterModal(story, parentId) {
+            console.log('打开AI创作章节模态框, 故事:', story, '父节点ID:', parentId);
+            
+            // 保存父节点ID到全局变量
+            window.aiChapterParentId = parentId;
             
             const modal = document.getElementById('aiChapterModal');
             
@@ -2590,7 +2602,7 @@
                     },
                     body: JSON.stringify({
                         storyId: parseInt(story.id),
-                        nodeId: null, // 从章节目录创作，不指定当前节点
+                        nodeId: window.aiChapterParentId || null, // 使用选中的节点作为父节点
                         context: '', // 不需要当前内容，AI会基于前三章生成
                         style: selectedAiChapterStyle,
                         count: 3,
@@ -3351,6 +3363,10 @@
             // 保存节点ID到按钮
             document.getElementById('readNode').dataset.nodeId = nodeData.id;
             document.getElementById('continueNode').dataset.nodeId = nodeData.id;
+            
+            // 保存当前选中的节点ID到全局变量，供AI创作使用
+            window.currentSelectedNodeId = nodeData.id;
+            console.log('当前选中节点:', nodeData.id, nodeData.name);
 
             detailPanel.classList.add('active');
         }
