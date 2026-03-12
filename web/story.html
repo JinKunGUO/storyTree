@@ -3150,6 +3150,18 @@
                     showNodeDetail(params.data);
                 }
             });
+            
+            // 鼠标悬停事件 - 高亮从根节点到当前节点的路径
+            treeChart.on('mouseover', function(params) {
+                if (params.data && params.data.id) {
+                    highlightPathToRoot(params.data);
+                }
+            });
+            
+            // 鼠标移出事件 - 取消高亮
+            treeChart.on('mouseout', function(params) {
+                downplayAllNodes();
+            });
 
             // 响应式
             window.addEventListener('resize', () => {
@@ -3158,6 +3170,110 @@
 
             // 工具栏事件
             initTreeToolbar();
+        }
+        
+        // 高亮从根节点到当前节点的路径，以及当前节点的所有子分支
+        function highlightPathToRoot(nodeData) {
+            if (!treeChart || !nodeData) return;
+            
+            console.log('开始高亮，节点:', nodeData.name, 'ID:', nodeData.id);
+            
+            // 获取当前图表的 option
+            const option = treeChart.getOption();
+            const seriesData = option.series[0].data[0];
+            
+            // 收集需要高亮的所有节点
+            const nodesToHighlight = new Set();
+            
+            // 1. 收集从根节点到当前节点的路径
+            const pathNodes = [];
+            collectPathNodes(seriesData, nodeData.id, pathNodes);
+            console.log('路径节点数:', pathNodes.length);
+            pathNodes.forEach(node => nodesToHighlight.add(node.name));
+            
+            // 2. 收集当前节点的所有子分支节点
+            const targetNode = findNodeById(seriesData, nodeData.id);
+            if (targetNode) {
+                collectAllDescendants(targetNode, nodesToHighlight);
+            }
+            console.log('总共要高亮的节点:', nodesToHighlight.size, Array.from(nodesToHighlight));
+            
+            // 3. 先取消所有节点的高亮状态
+            treeChart.dispatchAction({
+                type: 'downplay',
+                seriesIndex: 0
+            });
+            
+            // 4. 高亮所有收集到的节点
+            nodesToHighlight.forEach(nodeName => {
+                console.log('高亮节点:', nodeName);
+                treeChart.dispatchAction({
+                    type: 'highlight',
+                    seriesIndex: 0,
+                    name: nodeName
+                });
+            });
+        }
+        
+        // 根据ID查找节点
+        function findNodeById(node, targetId) {
+            if (!node) return null;
+            if (node.id === targetId) return node;
+            
+            if (node.children && node.children.length > 0) {
+                for (let child of node.children) {
+                    const found = findNodeById(child, targetId);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+        
+        // 收集所有子分支节点
+        function collectAllDescendants(node, nodeSet) {
+            if (!node) return;
+            if (node.name) {
+                nodeSet.add(node.name);
+            }
+            
+            if (node.children && node.children.length > 0) {
+                node.children.forEach(child => collectAllDescendants(child, nodeSet));
+            }
+        }
+        
+        // 收集从根节点到目标节点的路径上的所有节点
+        function collectPathNodes(node, targetId, pathNodes) {
+            if (!node) return false;
+            
+            // 如果当前节点就是目标节点，添加到路径
+            if (node.id === targetId) {
+                pathNodes.push(node);
+                return true;
+            }
+            
+            // 递归查找子节点
+            if (node.children && node.children.length > 0) {
+                for (let child of node.children) {
+                    if (collectPathNodes(child, targetId, pathNodes)) {
+                        // 在子树中找到了目标，当前节点也是路径的一部分
+                        pathNodes.unshift(node);
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
+        }
+        
+        // 取消所有节点的高亮
+        function downplayAllNodes() {
+            if (!treeChart) return;
+            
+            console.log('取消所有高亮');
+            treeChart.dispatchAction({
+                type: 'downplay',
+                seriesIndex: 0
+            });
         }
 
         // 获取树状图配置
@@ -3175,6 +3291,9 @@
             } else if (layout === 'horizontal') {
                 orient = 'LR';
             }
+            
+            // 处理树数据：扁平化过长的分支，用省略号简化中间章节
+            const processedData = processTreeDataForDisplay(JSON.parse(JSON.stringify(treeData)));
 
             return {
                 tooltip: {
@@ -3182,6 +3301,13 @@
                     triggerOn: 'mousemove',
                     formatter: function(params) {
                         const data = params.data;
+                        // 如果是省略号节点，显示简化提示
+                        if (data.isEllipsis) {
+                            return `<div style="padding: 10px;">
+                                <div style="font-weight: bold; margin-bottom: 5px;">${data.name}</div>
+                                <div style="color: #999;">中间章节已折叠</div>
+                            </div>`;
+                        }
                         return `<div style="padding: 10px;">
                             <div style="font-weight: bold; margin-bottom: 5px;">${data.name}</div>
                             <div>作者: ${data.author || '未知'}</div>
@@ -3193,7 +3319,7 @@
                 series: [
                     {
                         type: 'tree',
-                        data: [treeData],
+                        data: [processedData],
                         top: '5%',
                         left: '5%',
                         bottom: '5%',
@@ -3201,6 +3327,13 @@
                         symbolSize: symbolSize,
                         orient: orient,
                         layout: layoutOption,
+                        initialTreeDepth: -1, // 默认展开全部节点
+                        roam: true, // 启用鼠标缩放和拖拽
+                        zoom: window.currentZoom || 1, // 使用当前缩放比例
+                        scaleLimit: { // 缩放限制
+                            min: 0.1,
+                            max: 3
+                        },
                         label: {
                             position: isVertical ? 'top' : 'left',
                             verticalAlign: 'middle',
@@ -3220,8 +3353,19 @@
                                 align: isVertical ? 'center' : 'left'
                             }
                         },
+                        // 高亮配置 - 鼠标悬停时加粗显示
                         emphasis: {
-                            focus: 'descendant'
+                            focus: 'none', // 不自动聚焦，手动控制
+                            itemStyle: {
+                                borderWidth: 3
+                            },
+                            lineStyle: {
+                                width: 3
+                            },
+                            label: {
+                                fontWeight: 'bold',
+                                fontSize: 15
+                            }
                         },
                         expandAndCollapse: true,
                         animationDuration: 550,
@@ -3239,6 +3383,179 @@
                 ]
             };
         }
+        
+        // 处理树数据：扁平化过长的分支，用省略号简化中间章节
+        // expandedChains: 已经展开的链的标识集合，值为已显示的前缀节点数量
+        function processTreeDataForDisplay(node, depth = 0, maxChainLength = 5, expandedChains = null) {
+            if (!node) return node;
+            
+            // 初始化已展开链集合
+            if (!expandedChains) {
+                expandedChains = window.expandedEllipsisChains || new Map();
+            }
+            
+            // 创建节点副本
+            const processedNode = { ...node };
+            
+            // 处理子节点
+            if (node.children && node.children.length > 0) {
+                // 如果当前节点只有一个子节点（链式结构）
+                if (node.children.length === 1) {
+                    const child = node.children[0];
+                    
+                    // 检查是否还有孙节点
+                    if (child.children && child.children.length === 1) {
+                        // 计算链的长度
+                        let chainLength = 1;
+                        let current = child;
+                        const chainNodes = [child];
+                        
+                        while (current.children && current.children.length === 1) {
+                            current = current.children[0];
+                            chainNodes.push(current);
+                            chainLength++;
+                        }
+                        
+                        // 检查这条链的展开状态
+                        const chainKey = `chain-${node.id}-${chainNodes[chainNodes.length - 1].id}`;
+                        const expandedCount = expandedChains.get(chainKey) || 0;
+                        const isFullyExpanded = expandedCount >= chainNodes.length - 2;
+                        
+                        // 如果链太长且未完全展开，需要简化
+                        if (chainLength > maxChainLength && !isFullyExpanded) {
+                            // 保留：第一个、最后一个、以及中间的省略号节点
+                            const firstNode = chainNodes[0];
+                            const lastNode = chainNodes[chainNodes.length - 1];
+                            
+                            // 计算要显示的节点
+                            // 前面显示 expandedCount 个，或者默认显示前面1个
+                            const prefixCount = Math.max(1, expandedCount);
+                            const suffixCount = Math.min(3, chainNodes.length - prefixCount - 1);
+                            
+                            // 获取前缀节点（从前往后）
+                            const prefixNodes = chainNodes.slice(0, prefixCount);
+                            // 获取后缀节点（从后往前）
+                            const suffixNodes = chainNodes.slice(-suffixCount - 1, -1);
+                            // 中间仍然隐藏的节点
+                            const remainingHiddenCount = chainNodes.length - prefixCount - suffixCount - 2;
+                            
+                            // 构建新的子节点结构
+                            const newChildren = [];
+                            
+                            // 添加前缀节点
+                            let currentParent = processedNode;
+                            prefixNodes.forEach((node, index) => {
+                                const newNode = { 
+                                    ...node, 
+                                    children: index === prefixNodes.length - 1 ? [] : undefined 
+                                };
+                                if (index === 0) {
+                                    newChildren.push(newNode);
+                                } else {
+                                    // 找到最后一个节点并添加
+                                    let last = newChildren[newChildren.length - 1];
+                                    while (last.children && last.children.length > 0) {
+                                        last = last.children[last.children.length - 1];
+                                    }
+                                    last.children = [newNode];
+                                }
+                                currentParent = newNode;
+                            });
+                            
+                            // 如果还有隐藏的节点，添加省略号节点
+                            if (remainingHiddenCount > 0) {
+                                const ellipsisNode = {
+                                    id: `ellipsis-${depth}-${firstNode.id}`,
+                                    name: `...(${remainingHiddenCount}章)...`,
+                                    value: remainingHiddenCount,
+                                    isEllipsis: true,
+                                    chainKey: chainKey,
+                                    expandedCount: prefixCount, // 记录已展开的数量
+                                    totalNodes: chainNodes.length,
+                                    author: '...',
+                                    readCount: 0,
+                                    branchCount: 0,
+                                    itemStyle: {
+                                        color: '#999',
+                                        borderColor: '#ccc'
+                                    },
+                                    label: {
+                                        color: '#999',
+                                        fontSize: 12
+                                    },
+                                    // 保存所有被折叠的节点信息
+                                    allChainNodes: chainNodes,
+                                    prefixCount: prefixCount,
+                                    suffixCount: suffixCount
+                                };
+                                
+                                // 将省略号节点添加到前缀的最后一个节点
+                                let lastPrefix = newChildren[newChildren.length - 1];
+                                while (lastPrefix.children && lastPrefix.children.length > 0) {
+                                    lastPrefix = lastPrefix.children[lastPrefix.children.length - 1];
+                                }
+                                lastPrefix.children = [ellipsisNode];
+                                currentParent = ellipsisNode;
+                                
+                                // 添加后缀节点到省略号节点
+                                suffixNodes.forEach((node, index) => {
+                                    const newNode = { 
+                                        ...node, 
+                                        children: index === suffixNodes.length - 1 ? [] : undefined 
+                                    };
+                                    if (index === 0) {
+                                        // 确保 children 数组存在
+                                        if (!currentParent.children) {
+                                            currentParent.children = [];
+                                        }
+                                        currentParent.children.push(newNode);
+                                    } else {
+                                        let last = currentParent.children[currentParent.children.length - 1];
+                                        while (last.children && last.children.length > 0) {
+                                            last = last.children[last.children.length - 1];
+                                        }
+                                        last.children = [newNode];
+                                    }
+                                });
+                                
+                                // 将最后一个后缀节点连接到链尾
+                                let lastSuffix = currentParent.children[currentParent.children.length - 1];
+                                while (lastSuffix.children && lastSuffix.children.length > 0) {
+                                    lastSuffix = lastSuffix.children[lastSuffix.children.length - 1];
+                                }
+                                lastSuffix.children = [{
+                                    ...lastNode,
+                                    children: lastNode.children ? lastNode.children.map(c => processTreeDataForDisplay(c, depth + 1, maxChainLength, expandedChains)) : []
+                                }];
+                            } else {
+                                // 没有隐藏节点了，直接连接到最后一个节点
+                                let lastPrefix = newChildren[newChildren.length - 1];
+                                while (lastPrefix.children && lastPrefix.children.length > 0) {
+                                    lastPrefix = lastPrefix.children[lastPrefix.children.length - 1];
+                                }
+                                lastPrefix.children = [{
+                                    ...lastNode,
+                                    children: lastNode.children ? lastNode.children.map(c => processTreeDataForDisplay(c, depth + 1, maxChainLength, expandedChains)) : []
+                                }];
+                            }
+                            
+                            processedNode.children = newChildren;
+                        } else {
+                            // 链不长或已完全展开，正常处理
+                            processedNode.children = node.children.map(c => processTreeDataForDisplay(c, depth + 1, maxChainLength, expandedChains));
+                        }
+                    } else {
+                        // 只有一个子节点但孙节点为空或有多个，正常处理
+                        processedNode.children = node.children.map(c => processTreeDataForDisplay(c, depth + 1, maxChainLength, expandedChains));
+                    }
+                } else {
+                    // 有多个子节点（分支），对每个子节点递归处理
+                    processedNode.children = node.children.map(c => processTreeDataForDisplay(c, depth + 1, maxChainLength, expandedChains));
+                }
+            }
+            
+            return processedNode;
+        }
 
         // 初始化工具栏
         function initTreeToolbar() {
@@ -3253,27 +3570,34 @@
                 setLayout('radial');
             });
 
-            // 缩放控制
+            // 缩放控制 - 使用全局变量记录当前缩放比例
+            window.currentZoom = window.currentZoom || 1;
+            
             document.getElementById('zoomIn')?.addEventListener('click', function() {
-                treeChart && treeChart.dispatchAction({
-                    type: 'dataZoom',
-                    start: 0,
-                    end: 100
+                if (!treeChart) return;
+                window.currentZoom = Math.min(window.currentZoom * 1.2, 3);
+                treeChart.setOption({
+                    series: [{
+                        zoom: window.currentZoom
+                    }]
                 });
             });
 
             document.getElementById('zoomOut')?.addEventListener('click', function() {
-                treeChart && treeChart.dispatchAction({
-                    type: 'dataZoom',
-                    start: 0,
-                    end: 100
+                if (!treeChart) return;
+                window.currentZoom = Math.max(window.currentZoom / 1.2, 0.1);
+                treeChart.setOption({
+                    series: [{
+                        zoom: window.currentZoom
+                    }]
                 });
             });
 
             document.getElementById('resetZoom')?.addEventListener('click', function() {
-                treeChart && treeChart.dispatchAction({
-                    type: 'restore'
-                });
+                if (!treeChart) return;
+                window.currentZoom = 1;
+                // 重新初始化图表以恢复初始位置和缩放
+                initTreeChart();
             });
 
             // 导出图片
@@ -3327,9 +3651,62 @@
             // 重新初始化图表
             initTreeChart();
         }
+        
+        // 展开省略号节点，显示被折叠的中间章节
+        // 每次展开前后各3个节点
+        function expandEllipsisNode(ellipsisNodeData) {
+            if (!ellipsisNodeData.chainKey) {
+                console.log('没有可展开的链标识');
+                return;
+            }
+            
+            // 将链标识保存到全局Map中
+            if (!window.expandedEllipsisChains) {
+                window.expandedEllipsisChains = new Map();
+            }
+            
+            // 获取当前已展开的数量，默认为0
+            const currentExpandedCount = window.expandedEllipsisChains.get(ellipsisNodeData.chainKey) || 0;
+            
+            // 每次增加3个前缀节点
+            const newExpandedCount = currentExpandedCount + 3;
+            
+            // 记录新的展开数量
+            window.expandedEllipsisChains.set(ellipsisNodeData.chainKey, newExpandedCount);
+            
+            console.log('展开链:', ellipsisNodeData.chainKey);
+            console.log('之前展开数量:', currentExpandedCount);
+            console.log('新的展开数量:', newExpandedCount);
+            console.log('已展开的链:', window.expandedEllipsisChains);
+            
+            // 局部更新图表（使用 setOption 而不是重新初始化）
+            if (treeChart) {
+                const option = getTreeOption(window.treeData, currentLayout);
+                treeChart.setOption(option, {
+                    notMerge: false, // 合并配置，实现局部更新
+                    lazyUpdate: false
+                });
+            }
+            
+            // 显示提示
+            const totalNodes = ellipsisNodeData.totalNodes || 0;
+            const remaining = Math.max(0, totalNodes - newExpandedCount - 2);
+            if (remaining > 0) {
+                showSuccess(`已展开前后各3个章节，还剩 ${remaining} 个章节`);
+            } else {
+                showSuccess('已全部展开');
+            }
+        }
 
         // 显示节点详情
         function showNodeDetail(nodeData) {
+            // 如果是省略号节点，展开被折叠的中间章节
+            if (nodeData.isEllipsis) {
+                console.log('点击省略号节点，展开被折叠的章节:', nodeData.collapsedNodes);
+                expandEllipsisNode(nodeData);
+                return;
+            }
+            
             const detailPanel = document.getElementById('nodeDetail');
             
             document.getElementById('nodeTitle').textContent = nodeData.name;
