@@ -3576,6 +3576,12 @@
 
         // 初始化工具栏
         function initTreeToolbar() {
+            // 防止重复绑定事件
+            if (window.treeToolbarInitialized) {
+                return;
+            }
+            window.treeToolbarInitialized = true;
+            
             // 布局切换
             document.getElementById('layoutVertical')?.addEventListener('click', function() {
                 setLayout('vertical');
@@ -3625,23 +3631,46 @@
                 }
                 
                 try {
-                    // 导出当前视图的分支图
-                    const url = treeChart.getDataURL({
-                        type: 'png',
-                        pixelRatio: 2,
-                        backgroundColor: '#fff',
-                        excludeComponents: ['toolbox'] // 排除工具栏
+                    // 保存当前的缩放比例和配置
+                    const currentZoom = window.currentZoom || 1;
+                    const currentOption = treeChart.getOption();
+                    
+                    // 临时重置为完整视图（zoom=1，自动居中）
+                    treeChart.setOption({
+                        series: [{
+                            zoom: 1,
+                            center: null // 重置中心点，让图表自动居中
+                        }]
                     });
                     
-                    // 创建下载链接
-                    const link = document.createElement('a');
-                    const storyTitle = window.currentStory?.title || 'story';
-                    const timestamp = new Date().toISOString().slice(0, 10);
-                    link.download = `${storyTitle}-分支图-${timestamp}.png`;
-                    link.href = url;
-                    link.click();
+                    // 等待图表更新完成后再导出
+                    setTimeout(() => {
+                        // 导出完整的分支图
+                        const url = treeChart.getDataURL({
+                            type: 'png',
+                            pixelRatio: 2,
+                            backgroundColor: '#fff',
+                            excludeComponents: ['toolbox'] // 排除工具栏
+                        });
+                        
+                        // 恢复之前的缩放和位置
+                        treeChart.setOption({
+                            series: [{
+                                zoom: currentZoom
+                            }]
+                        });
+                        
+                        // 创建下载链接
+                        const link = document.createElement('a');
+                        const storyTitle = window.currentStory?.title || 'story';
+                        const timestamp = new Date().toISOString().slice(0, 10);
+                        link.download = `${storyTitle}-分支图-${timestamp}.png`;
+                        link.href = url;
+                        link.click();
+                        
+                        showSuccess('分支图导出成功');
+                    }, 100); // 给图表100ms时间更新
                     
-                    showSuccess('分支图导出成功');
                 } catch (error) {
                     console.error('导出图片失败:', error);
                     showError('导出失败，请重试');
