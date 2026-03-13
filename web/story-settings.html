@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>故事设置 - StoryTree</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .settings-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .settings-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .settings-section h2 {
+            margin: 0 0 20px 0;
+            font-size: 20px;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .form-group select,
+        .form-group input[type="text"],
+        .form-group input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .form-group .help-text {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .toggle-group label {
+            margin: 0;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 26px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background-color: #667eea;
+        }
+
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
+
+        .collaborators-list {
+            margin-top: 20px;
+        }
+
+        .collaborator-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .collaborator-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .collaborator-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #667eea;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .collaborator-role {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #e3f2fd;
+            color: #1976d2;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        .btn-remove {
+            padding: 6px 16px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-remove:hover {
+            background: #d32f2f;
+        }
+
+        .add-collaborator-form {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .add-collaborator-form input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+
+        .btn-primary {
+            padding: 10px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        .btn-secondary {
+            padding: 10px 24px;
+            background: #fff;
+            color: #667eea;
+            border: 1px solid #667eea;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .btn-secondary:hover {
+            background: #f5f5f5;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background: #4caf50;
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast.error {
+            background: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav>
+        <div class="nav-content">
+            <a href="/" class="logo">🌳 StoryTree</a>
+            <div class="nav-links">
+                <a href="/discover.html">发现</a>
+                <a href="/create.html">创作</a>
+                <a href="/profile.html">我的</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="settings-container">
+        <h1 style="margin-bottom: 30px;">故事设置</h1>
+
+        <!-- 基本设置 -->
+        <div class="settings-section">
+            <h2>基本设置</h2>
+            
+            <div class="form-group">
+                <label>可见性</label>
+                <select id="visibility">
+                    <option value="public">公开 - 所有人可见</option>
+                    <option value="friends">关注者可见 - 仅关注我的用户可见</option>
+                    <option value="private">私密 - 仅我和协作者可见</option>
+                </select>
+                <div class="help-text">控制谁可以查看这个故事</div>
+            </div>
+
+            <div class="form-group" id="passwordGroup" style="display: none;">
+                <label>密码保护（可选）</label>
+                <input type="password" id="password" placeholder="设置访问密码">
+                <div class="help-text">设置后，访问者需要输入密码才能查看</div>
+            </div>
+        </div>
+
+        <!-- 权限设置 -->
+        <div class="settings-section">
+            <h2>权限设置</h2>
+            
+            <div class="toggle-group">
+                <div>
+                    <label>允许协作者续写</label>
+                    <div class="help-text">协作者可以从任意章节创建分支</div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="allowBranch" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div class="toggle-group">
+                <div>
+                    <label>允许评论</label>
+                    <div class="help-text">其他用户可以对章节发表评论</div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="allowComment" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <!-- 协作者管理 -->
+        <div class="settings-section">
+            <h2>协作者管理</h2>
+            <p style="color: #888; font-size: 14px; margin-bottom: 15px;">
+                协作者可以续写故事（根据上方"允许协作者续写"设置）
+            </p>
+
+            <div class="collaborators-list" id="collaboratorsList">
+                <!-- 协作者列表将动态加载 -->
+            </div>
+
+            <div class="add-collaborator-form">
+                <input type="number" id="collaboratorUserId" placeholder="输入用户ID">
+                <button class="btn-secondary" onclick="addCollaborator()">添加协作者</button>
+            </div>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="action-buttons">
+            <button class="btn-primary" onclick="saveSettings()">保存设置</button>
+            <button class="btn-secondary" onclick="history.back()">取消</button>
+        </div>
+    </div>
+
+    <!-- Toast 提示 -->
+    <div id="toast" class="toast"></div>
+
+    <script src="auth.js"></script>
+    <script>
+        let storyId;
+        let currentStory;
+
+        // 获取token的辅助函数
+        function getToken() {
+            return localStorage.getItem('token') || sessionStorage.getItem('token');
+        }
+
+        // 从URL获取故事ID
+        const urlParams = new URLSearchParams(window.location.search);
+        storyId = urlParams.get('id');
+
+        if (!storyId) {
+            showToast('缺少故事ID', true);
+            setTimeout(() => history.back(), 2000);
+        }
+
+        // 加载故事设置
+        async function loadSettings() {
+            try {
+                const response = await fetch(`/api/stories/${storyId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${getToken()}`
+                    }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('Not authenticated');
+                    }
+                    throw new Error('Failed to load story');
+                }
+
+                const data = await response.json();
+                currentStory = data.story || data;
+
+                console.log('加载的故事数据:', currentStory);
+
+                // 填充表单 - 处理字段映射
+                const visibility = currentStory.visibility || 'public';
+                const allowBranch = currentStory.allow_branch !== undefined ? currentStory.allow_branch : true;
+                const allowComment = currentStory.allow_comment !== undefined ? currentStory.allow_comment : true;
+
+                console.log('权限设置:', { visibility, allowBranch, allowComment });
+
+                // 设置select元素的值
+                const visibilitySelect = document.getElementById('visibility');
+                visibilitySelect.value = visibility;
+                console.log('设置visibility select:', visibility, '实际值:', visibilitySelect.value);
+
+                // 设置checkbox
+                document.getElementById('allowBranch').checked = allowBranch;
+                document.getElementById('allowComment').checked = allowComment;
+                console.log('设置allowBranch:', allowBranch, '实际值:', document.getElementById('allowBranch').checked);
+                console.log('设置allowComment:', allowComment, '实际值:', document.getElementById('allowComment').checked);
+
+                if (currentStory.password) {
+                    document.getElementById('password').value = currentStory.password;
+                }
+
+                // 加载协作者列表
+                loadCollaborators();
+            } catch (error) {
+                console.error('Load settings error:', error);
+                if (error.message === 'Not authenticated') {
+                    showToast('请先登录', true);
+                    setTimeout(() => {
+                        window.location.href = `/login.html?redirect=${encodeURIComponent(window.location.href)}`;
+                    }, 1500);
+                } else {
+                    showToast('加载设置失败', true);
+                }
+            }
+        }
+
+        // 加载协作者列表
+        async function loadCollaborators() {
+            try {
+                const response = await fetch(`/api/stories/${storyId}/collaborators`, {
+                    headers: {
+                        'Authorization': `Bearer ${getToken()}`
+                    }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('Not authenticated');
+                    }
+                    throw new Error('Failed to load collaborators');
+                }
+
+                const data = await response.json();
+                displayCollaborators(data.collaborators);
+            } catch (error) {
+                console.error('Load collaborators error:', error);
+            }
+        }
+
+        // 显示协作者列表
+        function displayCollaborators(collaborators) {
+            const list = document.getElementById('collaboratorsList');
+            
+            if (!collaborators || collaborators.length === 0) {
+                list.innerHTML = '<p style="color: #888; text-align: center;">暂无协作者</p>';
+                return;
+            }
+
+            list.innerHTML = collaborators.map(c => `
+                <div class="collaborator-item">
+                    <div class="collaborator-info">
+                        <div class="collaborator-avatar">
+                            ${c.user.username.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <div style="font-weight: 500;">${c.user.username}</div>
+                            <span class="collaborator-role">协作者</span>
+                        </div>
+                    </div>
+                    <button class="btn-remove" onclick="removeCollaborator(${c.user.id})">移除</button>
+                </div>
+            `).join('');
+        }
+
+        // 添加协作者
+        async function addCollaborator() {
+            const userId = document.getElementById('collaboratorUserId').value;
+
+            if (!userId) {
+                showToast('请输入用户ID', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/stories/${storyId}/collaborators`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getToken()}`
+                    },
+                    body: JSON.stringify({
+                        user_id: parseInt(userId)
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to add collaborator');
+                }
+
+                showToast('协作者添加成功');
+                document.getElementById('collaboratorUserId').value = '';
+                loadCollaborators();
+            } catch (error) {
+                console.error('Add collaborator error:', error);
+                showToast(error.message, true);
+            }
+        }
+
+        // 移除协作者
+        async function removeCollaborator(userId) {
+            if (!confirm('确定要移除此协作者吗？')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/stories/${storyId}/collaborators/${userId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${getToken()}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to remove collaborator');
+                }
+
+                showToast('协作者已移除');
+                loadCollaborators();
+            } catch (error) {
+                console.error('Remove collaborator error:', error);
+                showToast(error.message, true);
+            }
+        }
+
+        // 保存设置
+        async function saveSettings() {
+            const visibility = document.getElementById('visibility').value;
+            const password = document.getElementById('password').value;
+            const allowBranch = document.getElementById('allowBranch').checked;
+            const allowComment = document.getElementById('allowComment').checked;
+
+            try {
+                const response = await fetch(`/api/stories/${storyId}/settings`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getToken()}`
+                    },
+                    body: JSON.stringify({
+                        visibility,
+                        password: password || null,
+                        allow_branch: allowBranch,
+                        allow_comment: allowComment
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('Not authenticated');
+                    }
+                    throw new Error(data.error || 'Failed to save settings');
+                }
+
+                showToast('设置保存成功');
+                setTimeout(() => {
+                    window.location.href = `/story.html?id=${storyId}`;
+                }, 1500);
+            } catch (error) {
+                console.error('Save settings error:', error);
+                if (error.message === 'Not authenticated') {
+                    showToast('请先登录', true);
+                    setTimeout(() => {
+                        window.location.href = `/login.html?redirect=${encodeURIComponent(window.location.href)}`;
+                    }, 1500);
+                } else {
+                    showToast(error.message, true);
+                }
+            }
+        }
+
+        // Toast 提示
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast show' + (isError ? ' error' : '');
+            
+            setTimeout(() => {
+                toast.className = 'toast';
+            }, 3000);
+        }
+
+        // 页面加载时
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuthStatus();
+            loadSettings();
+        });
+    </script>
+</body>
+</html>
+
