@@ -60,8 +60,37 @@ class CommentSystem {
         const isOwner = currentUser && currentUser.id === comment.user.id;
         const avatar = comment.user.avatar || '/assets/default-avatar.png';
 
+        // 如果是回复评论，使用简化的结构
+        if (isReply) {
+            return `
+                <div class="comment-reply" data-comment-id="${comment.id}">
+                    <div class="comment-avatar">
+                        <img src="${avatar}" alt="${comment.user.username}">
+                    </div>
+                    <div class="comment-content">
+                        <div class="comment-header">
+                            <span class="comment-author">${comment.user.username}</span>
+                            <span class="comment-time">${this.formatTime(comment.created_at)}</span>
+                        </div>
+                        <div class="comment-text">${this.escapeHtml(comment.content)}</div>
+                        <div class="comment-actions">
+                            <button class="btn-reply" data-comment-id="${comment.id}">
+                                <i class="fas fa-reply"></i> 回复
+                            </button>
+                            ${isOwner ? `
+                                <button class="btn-delete" data-comment-id="${comment.id}">
+                                    <i class="fas fa-trash"></i> 删除
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 主评论的完整结构
         return `
-            <div class="comment-item ${isReply ? 'comment-reply' : ''}" data-comment-id="${comment.id}">
+            <div class="comment-item" data-comment-id="${comment.id}">
                 <div class="comment-avatar">
                     <img src="${avatar}" alt="${comment.user.username}">
                 </div>
@@ -84,11 +113,6 @@ class CommentSystem {
                             </button>
                         ` : ''}
                     </div>
-                    ${comment.other_comments && comment.other_comments.length > 0 ? `
-                        <div class="comment-replies">
-                            ${comment.other_comments.map(reply => this.renderComment(reply, true)).join('')}
-                        </div>
-                    ` : ''}
                     <div class="reply-form-container" id="reply-form-${comment.id}" style="display: none;">
                         <textarea class="reply-input" placeholder="写下你的回复..." maxlength="500"></textarea>
                         <div class="reply-form-actions">
@@ -96,6 +120,11 @@ class CommentSystem {
                             <button class="btn-submit-reply" data-parent-id="${comment.id}">发表回复</button>
                         </div>
                     </div>
+                    ${comment.other_comments && comment.other_comments.length > 0 ? `
+                        <div class="comment-replies">
+                            ${comment.other_comments.map(reply => this.renderComment(reply, true)).join('')}
+                        </div>
+                    ` : ''}
                 </div>
             </div>
         `;
