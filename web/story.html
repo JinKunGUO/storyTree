@@ -1193,10 +1193,6 @@
                                 <i class="fas fa-book-open"></i>
                                 开始阅读
                             </button>
-                            <button class="btn btn-primary" id="writeChapterBtn" style="display: none;">
-                                <i class="fas fa-pen"></i>
-                                续写章节
-                            </button>
                             <button class="btn btn-primary" id="editStoryBtn" style="display: none;">
                                 <i class="fas fa-edit"></i>
                                 编辑故事
@@ -1849,14 +1845,6 @@
                         settingsBtn.style.display = 'inline-flex';
                         settingsBtn.addEventListener('click', () => {
                             window.location.href = `/story-settings.html?id=${story.id}`;
-                        });
-                        
-                        // 显示续写章节按钮
-                        const writeBtn = document.getElementById('writeChapterBtn');
-                        writeBtn.style.display = 'inline-flex';
-                        writeBtn.addEventListener('click', () => {
-                            // 跳转到写作页面
-                            window.location.href = `/write?storyId=${story.id}`;
                         });
                         
                         // 显示AI创作章节按钮
@@ -3631,16 +3619,32 @@
 
             // 导出图片
             document.getElementById('exportImage')?.addEventListener('click', function() {
-                if (treeChart) {
+                if (!treeChart) {
+                    showError('请先加载分支图');
+                    return;
+                }
+                
+                try {
+                    // 导出当前视图的分支图
                     const url = treeChart.getDataURL({
                         type: 'png',
                         pixelRatio: 2,
-                        backgroundColor: '#fff'
+                        backgroundColor: '#fff',
+                        excludeComponents: ['toolbox'] // 排除工具栏
                     });
+                    
+                    // 创建下载链接
                     const link = document.createElement('a');
-                    link.download = `story-tree-${window.currentStory?.id || 'export'}.png`;
+                    const storyTitle = window.currentStory?.title || 'story';
+                    const timestamp = new Date().toISOString().slice(0, 10);
+                    link.download = `${storyTitle}-分支图-${timestamp}.png`;
                     link.href = url;
                     link.click();
+                    
+                    showSuccess('分支图导出成功');
+                } catch (error) {
+                    console.error('导出图片失败:', error);
+                    showError('导出失败，请重试');
                 }
             });
 
