@@ -55,15 +55,18 @@ class CommentSystem {
     }
 
     // 渲染单个评论
-    renderComment(comment, isReply = false) {
+    renderComment(comment, isReply = false, rootCommentId = null) {
         const currentUser = this.getCurrentUser();
         const isOwner = currentUser && currentUser.id === comment.user.id;
         const avatar = comment.user.avatar || '/assets/default-avatar.png';
+        
+        // 如果是顶级评论，rootCommentId就是自己的ID
+        const actualRootId = rootCommentId || comment.id;
 
         // 如果是回复评论，使用简化的结构
         if (isReply) {
             return `
-                <div class="comment-reply" data-comment-id="${comment.id}">
+                <div class="comment-reply" data-comment-id="${comment.id}" data-root-id="${actualRootId}">
                     <div class="comment-avatar">
                         <img src="${avatar}" alt="${comment.user.username}">
                     </div>
@@ -74,7 +77,7 @@ class CommentSystem {
                         </div>
                         <div class="comment-text">${this.escapeHtml(comment.content)}</div>
                         <div class="comment-actions">
-                            <button class="btn-reply" data-comment-id="${comment.id}">
+                            <button class="btn-reply" data-comment-id="${comment.id}" data-root-id="${actualRootId}">
                                 <i class="fas fa-reply"></i> 回复
                             </button>
                             ${isOwner ? `
@@ -101,7 +104,7 @@ class CommentSystem {
                     </div>
                     <div class="comment-text">${this.escapeHtml(comment.content)}</div>
                     <div class="comment-actions">
-                        <button class="btn-reply" data-comment-id="${comment.id}">
+                        <button class="btn-reply" data-comment-id="${comment.id}" data-root-id="${comment.id}">
                             <i class="fas fa-reply"></i> 回复
                         </button>
                         ${isOwner ? `
@@ -113,16 +116,16 @@ class CommentSystem {
                             </button>
                         ` : ''}
                     </div>
-                    <div class="reply-form-container" id="reply-form-${comment.id}" style="display: none;">
+                    <div class="reply-form-container" id="reply-form-${comment.id}" style="display: none;" data-root-id="${comment.id}">
                         <textarea class="reply-input" placeholder="写下你的回复..." maxlength="500"></textarea>
                         <div class="reply-form-actions">
                             <button class="btn-cancel-reply">取消</button>
-                            <button class="btn-submit-reply" data-parent-id="${comment.id}">发表回复</button>
+                            <button class="btn-submit-reply" data-parent-id="${comment.id}" data-root-id="${comment.id}">发表回复</button>
                         </div>
                     </div>
                     ${comment.other_comments && comment.other_comments.length > 0 ? `
                         <div class="comment-replies">
-                            ${comment.other_comments.map(reply => this.renderComment(reply, true)).join('')}
+                            ${comment.other_comments.map(reply => this.renderComment(reply, true, comment.id)).join('')}
                         </div>
                     ` : ''}
                 </div>
@@ -185,7 +188,8 @@ class CommentSystem {
             // 回复按钮
             if (target.classList.contains('btn-reply')) {
                 const commentId = target.dataset.commentId;
-                this.showReplyForm(commentId);
+                const rootId = target.dataset.rootId;
+                this.showReplyForm(commentId, rootId);
             }
 
             // 取消回复
@@ -273,19 +277,49 @@ class CommentSystem {
     }
 
     // 显示回复表单
-    showReplyForm(commentId) {
+    showReplyForm(commentId, rootId) {
         // 隐藏所有回复表单
         document.querySelectorAll('.reply-form-container').forEach(form => {
             form.style.display = 'none';
         });
 
-        // 显示当前回复表单
-        const form = document.getElementById(`reply-form-${commentId}`);
-        if (form) {
-            form.style.display = 'block';
-            const textarea = form.querySelector('.reply-input');
+        // 如果点击的是顶级评论的回复按钮，显示原有的表单
+        const existingForm = document.getElementById(`reply-form-${commentId}`);
+        if (existingForm) {
+            existingForm.style.display = 'block';
+            const textarea = existingForm.querySelector('.reply-input');
             if (textarea) textarea.focus();
+            return;
         }
+
+        // 如果点击的是回复评论的回复按钮，需要动态创建表单
+        // 找到被点击的评论元素
+        const commentEl = document.querySelector(`.comment-reply[data-comment-id="${commentId}"]`);
+        if (!commentEl) return;
+
+        // 检查是否已经有动态创建的表单
+        let dynamicForm = commentEl.querySelector('.reply-form-container');
+        if (!dynamicForm) {
+            // 创建新的回复表单
+            dynamicForm = document.createElement('div');
+            dynamicForm.className = 'reply-form-container';
+            dynamicForm.innerHTML = `
+                <textarea class="reply-input" placeholder="写下你的回复..." maxlength="500"></textarea>
+                <div class="reply-form-actions">
+                    <button class="btn-cancel-reply">取消</button>
+                    <button class="btn-submit-reply" data-parent-id="${rootId}">发表回复</button>
+                </div>
+            `;
+            // 插入到评论内容的末尾
+            const contentEl = commentEl.querySelector('.comment-content');
+            if (contentEl) {
+                contentEl.appendChild(dynamicForm);
+            }
+        }
+
+        dynamicForm.style.display = 'block';
+        const textarea = dynamicForm.querySelector('.reply-input');
+        if (textarea) textarea.focus();
     }
 
     // 提交回复
