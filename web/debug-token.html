@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token调试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .debug-box {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #333;
+            margin-top: 0;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Token调试页面</h1>
+
+    <div class="debug-box">
+        <h2>1. Token状态检查</h2>
+        <div id="tokenStatus"></div>
+        <button onclick="checkToken()">刷新Token状态</button>
+    </div>
+
+    <div class="debug-box">
+        <h2>2. 测试API请求</h2>
+        <button onclick="testStoryAPI()">测试 GET /api/stories/1</button>
+        <button onclick="testTreeAPI()">测试 GET /api/stories/1/tree</button>
+        <div id="apiTestResult"></div>
+    </div>
+
+    <div class="debug-box">
+        <h2>3. 重新登录</h2>
+        <input type="text" id="username" placeholder="用户名" style="padding: 10px; margin: 5px; width: 200px;">
+        <input type="password" id="password" placeholder="密码" style="padding: 10px; margin: 5px; width: 200px;">
+        <button onclick="login()">登录</button>
+        <div id="loginResult"></div>
+    </div>
+
+    <div class="debug-box">
+        <h2>4. 快速操作</h2>
+        <button onclick="clearToken()">清除Token</button>
+        <button onclick="window.location.href='/story-settings.html?id=1'">打开故事设置</button>
+        <button onclick="window.location.href='/story.html?id=1'">打开故事页面</button>
+    </div>
+
+    <script>
+        function checkToken() {
+            const localToken = localStorage.getItem('token');
+            const sessionToken = sessionStorage.getItem('token');
+            
+            let html = '';
+            
+            if (localToken) {
+                html += `<div class="status success">
+                    ✅ localStorage中有token<br>
+                    <small>Token: ${localToken.substring(0, 20)}...</small>
+                </div>`;
+            } else {
+                html += `<div class="status error">❌ localStorage中没有token</div>`;
+            }
+            
+            if (sessionToken) {
+                html += `<div class="status success">
+                    ✅ sessionStorage中有token<br>
+                    <small>Token: ${sessionToken.substring(0, 20)}...</small>
+                </div>`;
+            } else {
+                html += `<div class="status info">ℹ️ sessionStorage中没有token（正常）</div>`;
+            }
+            
+            document.getElementById('tokenStatus').innerHTML = html;
+        }
+
+        async function testStoryAPI() {
+            const result = document.getElementById('apiTestResult');
+            result.innerHTML = '<div class="status info">⏳ 正在测试...</div>';
+            
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                if (!token) {
+                    result.innerHTML = '<div class="status error">❌ 没有token，无法测试</div>';
+                    return;
+                }
+                
+                const response = await fetch('/api/stories/1', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    result.innerHTML = `
+                        <div class="status success">
+                            ✅ GET /api/stories/1 成功 (${response.status})<br>
+                            <pre>${JSON.stringify(data, null, 2).substring(0, 500)}...</pre>
+                        </div>
+                    `;
+                } else {
+                    result.innerHTML = `
+                        <div class="status error">
+                            ❌ GET /api/stories/1 失败 (${response.status})<br>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                result.innerHTML = `<div class="status error">❌ 请求失败: ${error.message}</div>`;
+            }
+        }
+
+        async function testTreeAPI() {
+            const result = document.getElementById('apiTestResult');
+            result.innerHTML = '<div class="status info">⏳ 正在测试...</div>';
+            
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                if (!token) {
+                    result.innerHTML = '<div class="status error">❌ 没有token，无法测试</div>';
+                    return;
+                }
+                
+                const response = await fetch('/api/stories/1/tree', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    result.innerHTML = `
+                        <div class="status success">
+                            ✅ GET /api/stories/1/tree 成功 (${response.status})<br>
+                            <pre>${JSON.stringify(data, null, 2).substring(0, 500)}...</pre>
+                        </div>
+                    `;
+                } else {
+                    result.innerHTML = `
+                        <div class="status error">
+                            ❌ GET /api/stories/1/tree 失败 (${response.status})<br>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                result.innerHTML = `<div class="status error">❌ 请求失败: ${error.message}</div>`;
+            }
+        }
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const result = document.getElementById('loginResult');
+            
+            if (!username || !password) {
+                result.innerHTML = '<div class="status error">❌ 请输入用户名和密码</div>';
+                return;
+            }
+            
+            result.innerHTML = '<div class="status info">⏳ 正在登录...</div>';
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.token) {
+                    localStorage.setItem('token', data.token);
+                    result.innerHTML = `
+                        <div class="status success">
+                            ✅ 登录成功！<br>
+                            用户: ${data.user.username} (ID: ${data.user.id})<br>
+                            Token已保存到localStorage
+                        </div>
+                    `;
+                    checkToken();
+                } else {
+                    result.innerHTML = `
+                        <div class="status error">
+                            ❌ 登录失败<br>
+                            ${data.error || '未知错误'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                result.innerHTML = `<div class="status error">❌ 登录失败: ${error.message}</div>`;
+            }
+        }
+
+        function clearToken() {
+            localStorage.removeItem('token');
+            sessionStorage.removeItem('token');
+            alert('Token已清除');
+            checkToken();
+        }
+
+        // 页面加载时自动检查token
+        window.addEventListener('DOMContentLoaded', () => {
+            checkToken();
+        });
+    </script>
+</body>
+</html>
+

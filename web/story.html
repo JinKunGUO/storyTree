@@ -1201,6 +1201,10 @@
                                 <i class="fas fa-edit"></i>
                                 编辑故事
                             </button>
+                            <button class="btn btn-secondary" id="storySettingsBtn" style="display: none;">
+                                <i class="fas fa-cog"></i>
+                                设置
+                            </button>
                             <button class="btn btn-secondary" id="likeBtn">
                                 <i class="far fa-heart"></i>
                                 收藏
@@ -1667,9 +1671,16 @@
             }
 
             try {
+                // 获取token（如果已登录）
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                const headers = {};
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
                 // 加载故事信息
                 console.log('正在请求API...');
-                const response = await fetch(`/api/stories/${storyId}`);
+                const response = await fetch(`/api/stories/${storyId}`, { headers });
                 console.log('API响应状态:', response.status);
                 
                 if (!response.ok) {
@@ -1832,6 +1843,13 @@
                         const editBtn = document.getElementById('editStoryBtn');
                         editBtn.style.display = 'inline-flex';
                         editBtn.addEventListener('click', () => openEditModal(story));
+                        
+                        // 显示设置按钮
+                        const settingsBtn = document.getElementById('storySettingsBtn');
+                        settingsBtn.style.display = 'inline-flex';
+                        settingsBtn.addEventListener('click', () => {
+                            window.location.href = `/story-settings.html?id=${story.id}`;
+                        });
                         
                         // 显示续写章节按钮
                         const writeBtn = document.getElementById('writeChapterBtn');
@@ -3062,9 +3080,18 @@
         // 加载树状图数据
         async function loadTreeData(storyId) {
             try {
-                const response = await fetch(`/api/stories/${storyId}/tree`);
+                // 获取token（如果已登录）
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                const headers = {};
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
+                const response = await fetch(`/api/stories/${storyId}/tree`, { headers });
                 if (!response.ok) {
-                    throw new Error('加载树状图数据失败');
+                    const errorData = await response.json().catch(() => ({}));
+                    console.error('加载树状图失败:', response.status, errorData);
+                    throw new Error(errorData.error || '加载树状图数据失败');
                 }
 
                 const data = await response.json();
@@ -3077,6 +3104,8 @@
                 console.log('树状图数据加载成功:', data);
             } catch (error) {
                 console.error('加载树状图数据错误:', error);
+                // 显示错误提示（可选）
+                // showError('无法加载分支图和统计数据');
             }
         }
 

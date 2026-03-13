@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../index';
 import { needsReview } from '../utils/sensitiveWords';
 import { authenticateToken, optionalAuth, getUserId } from '../utils/middleware';
+import { canViewStory, canEditStory, checkViewPermission, checkEditPermission } from '../utils/permissions';
 
 const router = Router();
 
@@ -133,8 +134,9 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // Get story with full tree
-router.get('/:id', async (req, res) => {
+router.get('/:id', optionalAuth, async (req, res) => {
   const { id } = req.params;
+  const userId = getUserId(req);
 
   try {
     const story = await prisma.stories.findUnique({
@@ -142,12 +144,27 @@ router.get('/:id', async (req, res) => {
       include: {
         author: {
           select: { id: true, username: true }
+        },
+        _count: {
+          select: {
+            nodes: true,
+            bookmarks: true
+          }
         }
       }
     });
 
     if (!story) {
       return res.status(404).json({ error: 'Story not found' });
+    }
+
+    // 检查查看权限：主创作者始终有权限，其他用户需要检查
+    const isAuthor = userId && story.author_id === userId;
+    if (!isAuthor) {
+      const hasPermission = await canViewStory(userId, parseInt(id));
+      if (!hasPermission) {
+        return res.status(403).json({ error: '无权限查看此故事' });
+      }
     }
 
     // Get all nodes for this story
@@ -164,7 +181,20 @@ router.get('/:id', async (req, res) => {
       orderBy: { path: 'asc' }
     });
 
-    res.json({ story, nodes });
+    // 计算统计数据
+    const totalReads = nodes.reduce((sum, n) => sum + (n.read_count || 0), 0);
+    const totalWords = nodes.reduce((sum, n) => sum + (n.content?.length || 0), 0);
+
+    // 添加统计数据到story对象
+    const storyWithStats = {
+      ...story,
+      views: totalReads,
+      likes: story._count.bookmarks,
+      nodeCount: story._count.nodes,
+      wordCount: totalWords
+    };
+
+    res.json({ story: storyWithStats, nodes });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch story' });
@@ -222,8 +252,9 @@ router.put('/:id', authenticateToken, async (req, res) => {
 });
 
 // Get story tree structure for visualization
-router.get('/:id/tree', async (req, res) => {
+router.get('/:id/tree', optionalAuth, async (req, res) => {
   const { id } = req.params;
+  const userId = getUserId(req);
 
   try {
     const story = await prisma.stories.findUnique({
@@ -231,12 +262,22 @@ router.get('/:id/tree', async (req, res) => {
       select: {
         id: true,
         title: true,
-        root_node_id: true
+        root_node_id: true,
+        author_id: true
       }
     });
 
     if (!story) {
       return res.status(404).json({ error: 'Story not found' });
+    }
+
+    // 检查查看权限：主创作者始终有权限，其他用户需要检查
+    const isAuthor = userId && story.author_id === userId;
+    if (!isAuthor) {
+      const hasPermission = await canViewStory(userId, parseInt(id));
+      if (!hasPermission) {
+        return res.status(403).json({ error: '无权限查看此故事' });
+      }
     }
 
     // Get all nodes with their relationships
@@ -377,6 +418,402 @@ router.get('/nodes/:nodeId/path', async (req, res) => {
   } catch (error) {
     console.error('Get node path error:', error);
     res.status(500).json({ error: 'Failed to fetch node path' });
+  }
+});
+
+// ==================== 权限管理API ====================
+
+// 更新故事权限设置
+router.put('/:id/settings', authenticateToken, checkEditPermission, async (req, res) => {
+  const userId = getUserId(req);
+  const { id } = req.params;
+  const { visibility, password, allow_branch, allow_comment, tags } = req.body;
+
+  try {
+    const updatedStory = await prisma.stories.update({
+      where: { id: parseInt(id) },
+      data: {
+        ...(visibility && { visibility }),
+        ...(password !== undefined && { password }),
+        ...(allow_branch !== undefined && { allow_branch }),
+        ...(allow_comment !== undefined && { allow_comment }),
+        ...(tags !== undefined && { tags: JSON.stringify(tags) }),
+        updated_at: new Date()
+      },
+      include: {
+        author: {
+          select: { id: true, username: true }
+        },
+        collaborators: {
+          include: {
+            user: {
+              select: { id: true, username: true, avatar: true }
+            }
+          }
+        }
+      }
+    });
+
+    res.json({
+      story: updatedStory,
+      message: '权限设置已更新'
+    });
+  } catch (error) {
+    console.error('Update story settings error:', error);
+    res.status(500).json({ error: '更新设置失败' });
+  }
+});
+
+// 获取我的故事列表（包含私密故事和协作故事）
+router.get('/my', authenticateToken, async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    // 获取我创建的故事
+    const myStories = await prisma.stories.findMany({
+      where: { author_id: userId },
+      include: {
+        author: {
+          select: { id: true, username: true }
+        },
+        _count: {
+          select: {
+            nodes: true,
+            bookmarks: true
+          }
+        }
+      },
+      orderBy: { created_at: 'desc' }
+    });
+
+    // 获取我协作的故事
+    const collaborations = await prisma.story_collaborators.findMany({
+      where: { 
+        user_id: userId,
+        removed_at: null // 仅获取未被移除的协作
+      },
+      include: {
+        story: {
+          include: {
+            author: {
+              select: { id: true, username: true }
+            },
+            _count: {
+              select: {
+                nodes: true,
+                bookmarks: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // 合并结果，标记是否是作者
+    const stories = [
+      ...myStories.map(s => ({ ...s, isAuthor: true, isCollaborator: false })),
+      ...collaborations.map(c => ({ ...c.story, isAuthor: false, isCollaborator: true }))
+    ];
+
+    // 按创建时间倒序排序
+    stories.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    res.json({ stories });
+  } catch (error) {
+    console.error('Get my stories error:', error);
+    res.status(500).json({ error: 'Failed to fetch stories' });
+  }
+});
+
+// 获取分享给我的故事
+router.get('/shared-with-me', authenticateToken, async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    // 查找我作为协作者的故事（仅未被移除的）
+    const collaborations = await prisma.story_collaborators.findMany({
+      where: { 
+        user_id: userId,
+        removed_at: null
+      },
+      include: {
+        story: {
+          include: {
+            author: {
+              select: { id: true, username: true, avatar: true }
+            },
+            nodes: {
+              where: { parent_id: null },
+              take: 1,
+              select: {
+                id: true,
+                title: true,
+                content: true,
+                rating_avg: true,
+                rating_count: true
+              }
+            },
+            _count: {
+              select: { nodes: true }
+            }
+          }
+        }
+      },
+      orderBy: { created_at: 'desc' }
+    });
+
+    const stories = collaborations.map(c => ({
+      ...c.story,
+      invited_at: c.created_at
+    }));
+
+    res.json({ stories });
+  } catch (error) {
+    console.error('Get shared stories error:', error);
+    res.status(500).json({ error: 'Failed to fetch shared stories' });
+  }
+});
+
+// 添加协作者
+router.post('/:id/collaborators', authenticateToken, async (req, res) => {
+  const userId = getUserId(req);
+  const { id } = req.params;
+  const { user_id } = req.body;
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    // 检查是否是故事作者
+    const story = await prisma.stories.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!story) {
+      return res.status(404).json({ error: 'Story not found' });
+    }
+
+    if (story.author_id !== userId) {
+      return res.status(403).json({ error: '只有故事作者可以添加协作者' });
+    }
+
+    // 不能将作者自己添加为协作者
+    if (story.author_id === user_id) {
+      return res.status(400).json({ error: '不能将作者添加为协作者' });
+    }
+
+    // 检查用户是否存在
+    const targetUser = await prisma.users.findUnique({
+      where: { id: user_id }
+    });
+
+    if (!targetUser) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+
+    // 检查是否已经是协作者（包括被移除的）
+    const existingCollaborator = await prisma.story_collaborators.findUnique({
+      where: {
+        story_id_user_id: {
+          story_id: parseInt(id),
+          user_id: user_id
+        }
+      }
+    });
+
+    let collaborator;
+    if (existingCollaborator) {
+      // 如果之前被移除，重新激活
+      if (existingCollaborator.removed_at) {
+        collaborator = await prisma.story_collaborators.update({
+          where: {
+            story_id_user_id: {
+              story_id: parseInt(id),
+              user_id: user_id
+            }
+          },
+          data: {
+            removed_at: null,
+            removed_by: null
+          },
+          include: {
+            user: {
+              select: { id: true, username: true, avatar: true }
+            }
+          }
+        });
+      } else {
+        return res.status(400).json({ error: '该用户已是协作者' });
+      }
+    } else {
+      // 添加新协作者
+      collaborator = await prisma.story_collaborators.create({
+        data: {
+          story_id: parseInt(id),
+          user_id: user_id,
+          invited_by: userId
+        },
+        include: {
+          user: {
+            select: { id: true, username: true, avatar: true }
+          }
+        }
+      });
+    }
+
+    // 创建通知
+    await prisma.notifications.create({
+      data: {
+        user_id: user_id,
+        type: 'COLLABORATION_INVITE',
+        title: '协作邀请',
+        content: `${story.title} 的作者邀请你成为协作者`,
+        link: `/story?id=${story.id}`
+      }
+    });
+
+    res.json({
+      collaborator,
+      message: '协作者添加成功'
+    });
+  } catch (error: any) {
+    console.error('Add collaborator error:', error);
+    res.status(500).json({ error: '添加协作者失败' });
+  }
+});
+
+// 移除协作者（软删除）
+router.delete('/:id/collaborators/:userId', authenticateToken, async (req, res) => {
+  const currentUserId = getUserId(req);
+  const { id, userId } = req.params;
+
+  if (!currentUserId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    // 检查是否是故事作者
+    const story = await prisma.stories.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!story) {
+      return res.status(404).json({ error: 'Story not found' });
+    }
+
+    if (story.author_id !== currentUserId) {
+      return res.status(403).json({ error: '只有故事作者可以移除协作者' });
+    }
+
+    // 软删除协作者
+    await prisma.story_collaborators.update({
+      where: {
+        story_id_user_id: {
+          story_id: parseInt(id),
+          user_id: parseInt(userId)
+        }
+      },
+      data: {
+        removed_at: new Date(),
+        removed_by: currentUserId
+      }
+    });
+
+    res.json({ message: '协作者已移除' });
+  } catch (error) {
+    console.error('Remove collaborator error:', error);
+    res.status(500).json({ error: '移除协作者失败' });
+  }
+});
+
+// 获取故事的协作者列表（仅未被移除的）
+router.get('/:id/collaborators', authenticateToken, checkViewPermission, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const collaborators = await prisma.story_collaborators.findMany({
+      where: { 
+        story_id: parseInt(id),
+        removed_at: null // 仅获取未被移除的协作者
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            avatar: true,
+            level: true
+          }
+        }
+      },
+      orderBy: { created_at: 'asc' }
+    });
+
+    res.json({ collaborators });
+  } catch (error) {
+    console.error('Get collaborators error:', error);
+    res.status(500).json({ error: 'Failed to fetch collaborators' });
+  }
+});
+
+// 退出协作（软删除）
+router.post('/:id/collaborators/leave', authenticateToken, async (req, res) => {
+  const userId = getUserId(req);
+  const { id } = req.params;
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    // 检查是否是协作者
+    const collaborator = await prisma.story_collaborators.findFirst({
+      where: {
+        story_id: parseInt(id),
+        user_id: userId,
+        removed_at: null
+      }
+    });
+
+    if (!collaborator) {
+      return res.status(404).json({ error: '你不是此故事的协作者' });
+    }
+
+    // 检查是否是作者
+    const story = await prisma.stories.findUnique({
+      where: { id: parseInt(id) },
+      select: { author_id: true }
+    });
+
+    if (story?.author_id === userId) {
+      return res.status(403).json({ error: '作者不能退出自己的故事' });
+    }
+
+    // 软删除协作关系
+    await prisma.story_collaborators.update({
+      where: {
+        story_id_user_id: {
+          story_id: parseInt(id),
+          user_id: userId
+        }
+      },
+      data: {
+        removed_at: new Date(),
+        removed_by: userId // 自己退出
+      }
+    });
+
+    res.json({ message: '已退出协作' });
+  } catch (error) {
+    console.error('Leave collaboration error:', error);
+    res.status(500).json({ error: '退出协作失败' });
   }
 });
 
