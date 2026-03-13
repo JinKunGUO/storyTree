@@ -405,7 +405,7 @@ class CommentSystem {
             return;
         }
 
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
         if (!token) {
             this.showError('请先登录');
             return;
@@ -436,7 +436,7 @@ class CommentSystem {
 
     // 获取当前用户信息
     getCurrentUser() {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
         if (!token) return null;
 
         try {
