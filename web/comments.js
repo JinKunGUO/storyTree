@@ -201,7 +201,7 @@ class CommentSystem {
             // 提交回复
             if (target.classList.contains('btn-submit-reply')) {
                 const parentId = target.dataset.parentId;
-                await this.submitReply(parentId);
+                await this.submitReply(parentId, target);
             }
 
             // 编辑按钮
@@ -323,9 +323,22 @@ class CommentSystem {
     }
 
     // 提交回复
-    async submitReply(parentId) {
-        const form = document.getElementById(`reply-form-${parentId}`);
-        const textarea = form?.querySelector('.reply-input');
+    async submitReply(parentId, buttonElement) {
+        // 从按钮元素向上查找最近的表单容器
+        let form = null;
+        let textarea = null;
+        
+        if (buttonElement) {
+            form = buttonElement.closest('.reply-form-container');
+            textarea = form?.querySelector('.reply-input');
+        }
+        
+        // 如果没有找到，尝试使用ID查找（兼容顶级评论的静态表单）
+        if (!form) {
+            form = document.getElementById(`reply-form-${parentId}`);
+            textarea = form?.querySelector('.reply-input');
+        }
+
         const content = textarea?.value.trim();
 
         if (!content) {
@@ -362,7 +375,13 @@ class CommentSystem {
 
             // 清空输入框并隐藏表单
             if (textarea) textarea.value = '';
-            if (form) form.style.display = 'none';
+            if (form) {
+                form.style.display = 'none';
+                // 如果是动态创建的表单，直接删除
+                if (!form.id) {
+                    form.remove();
+                }
+            }
 
             // 重新加载评论列表
             await this.loadComments(this.currentPage);
