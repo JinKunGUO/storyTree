@@ -82,16 +82,19 @@ router.post('/nodes/:node_id/comments', async (req, res) => {
 
     const node = await prisma.nodes.findUnique({
       where: { id: parseInt(node_id) },
-      include: { story: { select: { id: true, allow_comment: true } } }
+      include: { story: { select: { id: true, allow_comment: true, author_id: true } } }
     });
 
     if (!node) {
       return res.status(404).json({ error: '章节不存在' });
     }
 
-    // 检查故事是否允许评论
+    // 检查故事是否允许评论（故事主创作者不受此限制）
     if (node.story.allow_comment === false) {
-      return res.status(403).json({ error: '该故事已关闭评论功能' });
+      const isStoryAuthor = node.story.author_id === decoded.userId;
+      if (!isStoryAuthor) {
+        return res.status(403).json({ error: '该故事已关闭评论功能' });
+      }
     }
 
     // 验证parent_id是否存在
