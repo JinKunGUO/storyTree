@@ -68,7 +68,7 @@ class CommentSystem {
                 <div class="comment-content">
                     <div class="comment-header">
                         <span class="comment-author">${comment.user.username}</span>
-                        <span class="comment-time">${this.formatTime(comment.createdAt)}</span>
+                        <span class="comment-time">${this.formatTime(comment.created_at)}</span>
                     </div>
                     <div class="comment-text">${this.escapeHtml(comment.content)}</div>
                     <div class="comment-actions">
@@ -84,9 +84,9 @@ class CommentSystem {
                             </button>
                         ` : ''}
                     </div>
-                    ${comment.replies && comment.replies.length > 0 ? `
+                    ${comment.other_comments && comment.other_comments.length > 0 ? `
                         <div class="comment-replies">
-                            ${comment.replies.map(reply => this.renderComment(reply, true)).join('')}
+                            ${comment.other_comments.map(reply => this.renderComment(reply, true)).join('')}
                         </div>
                     ` : ''}
                     <div class="reply-form-container" id="reply-form-${comment.id}" style="display: none;">
