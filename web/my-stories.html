@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的故事 - StoryTree</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .my-stories-container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .page-header {
+            margin-bottom: 30px;
+        }
+
+        .page-header h1 {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .filter-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .filter-tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            color: #666;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+
+        .filter-tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            font-weight: 600;
+        }
+
+        .stories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .story-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+
+        .story-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+
+        .story-cover {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .story-content {
+            padding: 20px;
+        }
+
+        .story-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .story-description {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 12px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        .story-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: #999;
+            margin-bottom: 12px;
+        }
+
+        .story-stats {
+            display: flex;
+            gap: 12px;
+        }
+
+        .story-badges {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-public {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .badge-private {
+            background: #fce4ec;
+            color: #c2185b;
+        }
+
+        .badge-friends {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .badge-protected {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        .story-actions {
+            display: flex;
+            gap: 8px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .action-btn:hover {
+            background: #f5f5f5;
+        }
+
+        .action-btn.primary {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .action-btn.primary:hover {
+            background: #5568d3;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state i {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+            color: #666;
+        }
+
+        .create-story-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background 0.3s;
+        }
+
+        .create-story-btn:hover {
+            background: #5568d3;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <i class="fas fa-tree"></i>
+                StoryTree
+            </a>
+            <div class="nav-links">
+                <a href="/explore.html">探索</a>
+                <a href="/my-stories.html" class="active">我的故事</a>
+                <a href="/profile.html">个人中心</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="my-stories-container">
+        <div class="page-header">
+            <h1>我的故事</h1>
+            <button class="create-story-btn" onclick="window.location.href='/create-story.html'">
+                <i class="fas fa-plus"></i>
+                创建新故事
+            </button>
+        </div>
+
+        <div class="filter-tabs">
+            <button class="filter-tab active" data-filter="all">全部故事</button>
+            <button class="filter-tab" data-filter="created">我创建的</button>
+            <button class="filter-tab" data-filter="collaborated">我协作的</button>
+        </div>
+
+        <div id="storiesContainer" class="stories-grid">
+            <!-- Stories will be loaded here -->
+        </div>
+
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <i class="fas fa-book-open"></i>
+            <h3>还没有故事</h3>
+            <p>开始创建你的第一个故事吧！</p>
+            <button class="create-story-btn" onclick="window.location.href='/create-story.html'">
+                <i class="fas fa-plus"></i>
+                创建故事
+            </button>
+        </div>
+    </div>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        const API_BASE = 'http://localhost:3000';
+        let allStories = [];
+        let currentFilter = 'all';
+
+        // 检查登录状态
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = '/login.html';
+                return false;
+            }
+            return true;
+        }
+
+        // 加载我的故事
+        async function loadMyStories() {
+            if (!checkAuth()) return;
+
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_BASE}/stories/my`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load stories');
+                }
+
+                const data = await response.json();
+                allStories = data.stories || [];
+                
+                renderStories();
+            } catch (error) {
+                console.error('Error loading stories:', error);
+                showError('加载故事失败');
+            }
+        }
+
+        // 渲染故事列表
+        function renderStories() {
+            const container = document.getElementById('storiesContainer');
+            const emptyState = document.getElementById('emptyState');
+            
+            let filteredStories = allStories;
+            
+            // 根据筛选条件过滤
+            if (currentFilter === 'created') {
+                filteredStories = allStories.filter(s => s.isAuthor);
+            } else if (currentFilter === 'collaborated') {
+                filteredStories = allStories.filter(s => !s.isAuthor);
+            }
+
+            if (filteredStories.length === 0) {
+                container.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            container.style.display = 'grid';
+            emptyState.style.display = 'none';
+
+            container.innerHTML = filteredStories.map(story => `
+                <div class="story-card" onclick="viewStory(${story.id})">
+                    <img src="${story.cover_image || 'https://via.placeholder.com/300x180?text=Story'}" 
+                         alt="${story.title}" 
+                         class="story-cover">
+                    <div class="story-content">
+                        <div class="story-title">${escapeHtml(story.title)}</div>
+                        <div class="story-description">${escapeHtml(story.description || '暂无描述')}</div>
+                        
+                        <div class="story-badges">
+                            ${getVisibilityBadge(story.visibility)}
+                            ${story.password ? '<span class="badge badge-protected"><i class="fas fa-lock"></i> 密码保护</span>' : ''}
+                            ${story.isAuthor ? '' : '<span class="badge" style="background: #e8f5e9; color: #2e7d32;"><i class="fas fa-users"></i> 协作</span>'}
+                        </div>
+                        
+                        <div class="story-meta">
+                            <span><i class="far fa-clock"></i> ${formatDate(story.created_at)}</span>
+                            <div class="story-stats">
+                                <span><i class="far fa-eye"></i> ${story.views || 0}</span>
+                                <span><i class="far fa-heart"></i> ${story.likes || 0}</span>
+                            </div>
+                        </div>
+
+                        <div class="story-actions" onclick="event.stopPropagation()">
+                            <button class="action-btn primary" onclick="viewStory(${story.id})">
+                                <i class="fas fa-book-open"></i> 查看
+                            </button>
+                            ${story.isAuthor ? `
+                                <button class="action-btn" onclick="editStory(${story.id})">
+                                    <i class="fas fa-cog"></i> 设置
+                                </button>
+                                <button class="action-btn" onclick="deleteStory(${story.id}, '${escapeHtml(story.title)}')">
+                                    <i class="fas fa-trash"></i> 删除
+                                </button>
+                            ` : `
+                                <button class="action-btn" onclick="leaveCollaboration(${story.id})">
+                                    <i class="fas fa-sign-out-alt"></i> 退出协作
+                                </button>
+                            `}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 获取可见性徽章
+        function getVisibilityBadge(visibility) {
+            const badges = {
+                'public': '<span class="badge badge-public"><i class="fas fa-globe"></i> 公开</span>',
+                'private': '<span class="badge badge-private"><i class="fas fa-lock"></i> 私密</span>',
+                'friends': '<span class="badge badge-friends"><i class="fas fa-user-friends"></i> 仅好友</span>'
+            };
+            return badges[visibility] || badges['public'];
+        }
+
+        // 查看故事
+        function viewStory(storyId) {
+            window.location.href = `/story.html?id=${storyId}`;
+        }
+
+        // 编辑故事设置
+        function editStory(storyId) {
+            window.location.href = `/story-settings.html?id=${storyId}`;
+        }
+
+        // 删除故事
+        async function deleteStory(storyId, title) {
+            if (!confirm(`确定要删除故事《${title}》吗？此操作不可恢复！`)) {
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_BASE}/stories/${storyId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to delete story');
+                }
+
+                showSuccess('故事已删除');
+                loadMyStories(); // 重新加载列表
+            } catch (error) {
+                console.error('Error deleting story:', error);
+                showError('删除失败');
+            }
+        }
+
+        // 退出协作
+        async function leaveCollaboration(storyId) {
+            if (!confirm('确定要退出此故事的协作吗？')) {
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_BASE}/stories/${storyId}/collaborators/leave`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to leave collaboration');
+                }
+
+                showSuccess('已退出协作');
+                loadMyStories();
+            } catch (error) {
+                console.error('Error leaving collaboration:', error);
+                showError('操作失败');
+            }
+        }
+
+        // 工具函数
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const now = new Date();
+            const diff = now - date;
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            
+            if (days === 0) return '今天';
+            if (days === 1) return '昨天';
+            if (days < 7) return `${days}天前`;
+            if (days < 30) return `${Math.floor(days / 7)}周前`;
+            if (days < 365) return `${Math.floor(days / 30)}个月前`;
+            return `${Math.floor(days / 365)}年前`;
+        }
+
+        function showSuccess(message) {
+            alert(message); // TODO: 使用更好的通知组件
+        }
+
+        function showError(message) {
+            alert(message); // TODO: 使用更好的通知组件
+        }
+
+        // 筛选标签切换
+        document.querySelectorAll('.filter-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentFilter = tab.dataset.filter;
+                renderStories();
+            });
+        });
+
+        // 页面加载时初始化
+        loadMyStories();
+    </script>
+</body>
+</html>
+

@@ -20,6 +20,7 @@ import shareRoutes from './routes/shares';
 import pointsRoutes from './routes/points';
 import paymentRoutes from './routes/payment';
 import systemRoutes from './routes/system';
+import collaborationRequestRoutes from './routes/collaboration-requests';
 import { closeQueues } from './utils/queue';
 
 dotenv.config();
@@ -56,6 +57,7 @@ app.use('/api/shares', shareRoutes);
 app.use('/api/points', pointsRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/system', systemRoutes);
+app.use('/api/collaboration-requests', collaborationRequestRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

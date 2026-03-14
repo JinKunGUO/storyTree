@@ -546,6 +546,39 @@ router.post('/continuation/accept', async (req, res) => {
 
     const selectedOption = options[optionIndex];
 
+    // 权限验证：检查用户是否有权限为该故事创建章节
+    if (task.story_id) {
+      const story = await prisma.stories.findUnique({
+        where: { id: task.story_id }
+      });
+
+      if (!story) {
+        return res.status(404).json({ error: '故事不存在' });
+      }
+
+      const isAuthor = story.author_id === userId;
+      const collaborator = await prisma.story_collaborators.findFirst({
+        where: { 
+          story_id: task.story_id, 
+          user_id: userId,
+          removed_at: null // 未被移除
+        }
+      });
+      const isValidCollaborator = !!collaborator;
+
+      // 如果不是作者也不是有效协作者，拒绝
+      if (!isAuthor && !isValidCollaborator) {
+        return res.status(403).json({ error: '无权限为此故事创建章节' });
+      }
+
+      // 如果是协作者，检查是否允许续写
+      if (isValidCollaborator && !isAuthor) {
+        if (!story.allow_branch) {
+          return res.status(403).json({ error: '故事作者已关闭协作者续写权限' });
+        }
+      }
+    }
+
     // 确定父节点ID
     let parentNodeId = task.node_id;
     

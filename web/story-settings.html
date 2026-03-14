@@ -63,12 +63,24 @@
             background: #f8f9fa;
             border-radius: 8px;
             margin-bottom: 10px;
+            transition: opacity 0.3s;
+        }
+
+        .toggle-group.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+            background: #e9ecef;
         }
 
         .toggle-group label {
             margin: 0;
             font-weight: 500;
             color: #333;
+        }
+
+        .toggle-group.disabled label,
+        .toggle-group.disabled .help-text {
+            color: #999;
         }
 
         .toggle-switch {
@@ -243,6 +255,76 @@
         .toast.error {
             background: #f44336;
         }
+
+        .request-item {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #ffa726;
+        }
+
+        .request-info {
+            flex: 1;
+        }
+
+        .request-user {
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .request-message {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .request-time {
+            color: #999;
+            font-size: 12px;
+        }
+
+        .request-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-approve {
+            padding: 6px 16px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-approve:hover {
+            background: #45a049;
+        }
+
+        .btn-reject {
+            padding: 6px 16px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-reject:hover {
+            background: #d32f2f;
+        }
+
+        .empty-requests {
+            text-align: center;
+            padding: 30px;
+            color: #888;
+        }
     </style>
 </head>
 <body>
@@ -307,6 +389,17 @@
                     <span class="toggle-slider"></span>
                 </label>
             </div>
+
+            <div class="toggle-group" id="autoApproveGroup">
+                <div>
+                    <label>自动批准协作申请</label>
+                    <div class="help-text">开启后，用户申请协作将自动通过</div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="autoApproveCollaborators">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
         </div>
 
         <!-- 协作者管理 -->
@@ -323,6 +416,18 @@
             <div class="add-collaborator-form">
                 <input type="number" id="collaboratorUserId" placeholder="输入用户ID">
                 <button class="btn-secondary" onclick="addCollaborator()">添加协作者</button>
+            </div>
+        </div>
+
+        <!-- 协作申请管理 -->
+        <div class="settings-section">
+            <h2>协作申请管理</h2>
+            <p style="color: #888; font-size: 14px; margin-bottom: 15px;">
+                管理其他用户的协作申请
+            </p>
+
+            <div id="collaborationRequestsList">
+                <!-- 申请列表将动态加载 -->
             </div>
         </div>
 
@@ -380,8 +485,9 @@
                 const visibility = currentStory.visibility || 'public';
                 const allowBranch = currentStory.allow_branch !== undefined ? currentStory.allow_branch : true;
                 const allowComment = currentStory.allow_comment !== undefined ? currentStory.allow_comment : true;
+                const autoApproveCollaborators = currentStory.auto_approve_collaborators || false;
 
-                console.log('权限设置:', { visibility, allowBranch, allowComment });
+                console.log('权限设置:', { visibility, allowBranch, allowComment, autoApproveCollaborators });
 
                 // 设置select元素的值
                 const visibilitySelect = document.getElementById('visibility');
@@ -391,8 +497,13 @@
                 // 设置checkbox
                 document.getElementById('allowBranch').checked = allowBranch;
                 document.getElementById('allowComment').checked = allowComment;
+                document.getElementById('autoApproveCollaborators').checked = autoApproveCollaborators;
                 console.log('设置allowBranch:', allowBranch, '实际值:', document.getElementById('allowBranch').checked);
                 console.log('设置allowComment:', allowComment, '实际值:', document.getElementById('allowComment').checked);
+                console.log('设置autoApproveCollaborators:', autoApproveCollaborators);
+
+                // 初始化联动逻辑
+                updateAutoApproveState();
 
                 if (currentStory.password) {
                     document.getElementById('password').value = currentStory.password;
@@ -400,6 +511,9 @@
 
                 // 加载协作者列表
                 loadCollaborators();
+                
+                // 加载协作申请列表
+                loadCollaborationRequests();
             } catch (error) {
                 console.error('Load settings error:', error);
                 if (error.message === 'Not authenticated') {
@@ -525,12 +639,113 @@
             }
         }
 
+        // 加载协作申请列表
+        async function loadCollaborationRequests() {
+            try {
+                const response = await fetch(`/api/collaboration-requests/story/${storyId}?status=pending`, {
+                    headers: {
+                        'Authorization': `Bearer ${getToken()}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load collaboration requests');
+                }
+
+                const data = await response.json();
+                console.log('API返回的数据:', data);
+                displayCollaborationRequests(data.requests);
+            } catch (error) {
+                console.error('Load collaboration requests error:', error);
+            }
+        }
+
+        // 显示协作申请列表
+        function displayCollaborationRequests(requests) {
+            const list = document.getElementById('collaborationRequestsList');
+            
+            console.log('收到的协作申请数据:', requests);
+            
+            if (!requests || requests.length === 0) {
+                list.innerHTML = '<div class="empty-requests">暂无待处理的协作申请</div>';
+                return;
+            }
+
+            list.innerHTML = requests.map(r => `
+                <div class="request-item">
+                    <div class="request-info">
+                        <div class="request-user">
+                            ${r.user.username} 申请成为协作者
+                        </div>
+                        <div class="request-message">
+                            ${r.message || '无留言'}
+                        </div>
+                        <div class="request-time">
+                            ${new Date(r.created_at).toLocaleString('zh-CN')}
+                        </div>
+                    </div>
+                    <div class="request-actions">
+                        <button class="btn-approve" onclick="approveRequest(${r.id})">通过</button>
+                        <button class="btn-reject" onclick="rejectRequest(${r.id})">拒绝</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 批准协作申请
+        async function approveRequest(requestId) {
+            try {
+                const response = await fetch(`/api/collaboration-requests/${requestId}/approve`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${getToken()}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to approve request');
+                }
+
+                showToast('已批准申请');
+                loadCollaborationRequests();
+                loadCollaborators();
+            } catch (error) {
+                console.error('Approve request error:', error);
+                showToast(error.message, true);
+            }
+        }
+
+        // 拒绝协作申请
+        async function rejectRequest(requestId) {
+            try {
+                const response = await fetch(`/api/collaboration-requests/${requestId}/reject`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${getToken()}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to reject request');
+                }
+
+                showToast('已拒绝申请');
+                loadCollaborationRequests();
+            } catch (error) {
+                console.error('Reject request error:', error);
+                showToast(error.message, true);
+            }
+        }
+
         // 保存设置
         async function saveSettings() {
             const visibility = document.getElementById('visibility').value;
             const password = document.getElementById('password').value;
             const allowBranch = document.getElementById('allowBranch').checked;
             const allowComment = document.getElementById('allowComment').checked;
+            const autoApproveCollaborators = document.getElementById('autoApproveCollaborators').checked;
 
             try {
                 const response = await fetch(`/api/stories/${storyId}/settings`, {
@@ -543,7 +758,8 @@
                         visibility,
                         password: password || null,
                         allow_branch: allowBranch,
-                        allow_comment: allowComment
+                        allow_comment: allowComment,
+                        auto_approve_collaborators: autoApproveCollaborators
                     })
                 });
 
@@ -584,10 +800,31 @@
             }, 3000);
         }
 
+        // 更新自动批准协作申请的状态
+        function updateAutoApproveState() {
+            const allowBranch = document.getElementById('allowBranch').checked;
+            const autoApproveGroup = document.getElementById('autoApproveGroup');
+            const autoApproveCheckbox = document.getElementById('autoApproveCollaborators');
+
+            if (!allowBranch) {
+                // 允许协作者续写为否时,禁用自动批准协作申请
+                autoApproveGroup.classList.add('disabled');
+                autoApproveCheckbox.checked = false;
+                autoApproveCheckbox.disabled = true;
+            } else {
+                // 允许协作者续写为真时,启用自动批准协作申请
+                autoApproveGroup.classList.remove('disabled');
+                autoApproveCheckbox.disabled = false;
+            }
+        }
+
         // 页面加载时
         document.addEventListener('DOMContentLoaded', () => {
             checkAuthStatus();
             loadSettings();
+            
+            // 监听"允许协作者续写"开关的变化
+            document.getElementById('allowBranch').addEventListener('change', updateAutoApproveState);
         });
     </script>
 </body>

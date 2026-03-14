@@ -159,6 +159,25 @@
             color: #667eea;
         }
 
+        .toolbar-btn.publish-draft-btn {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: none;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .toolbar-btn.publish-draft-btn:hover {
+            background: linear-gradient(135deg, #45a049 0%, #388e3c 100%);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+        }
+
         /* 阅读容器 */
         .reading-container {
             max-width: 800px;
@@ -978,6 +997,10 @@
             </div>
         </div>
         <div class="toolbar-right">
+            <button class="toolbar-btn publish-draft-btn" id="publishDraftBtn" title="发布草稿">
+                <i class="fas fa-paper-plane"></i>
+                发布草稿
+            </button>
             <button class="toolbar-btn" id="aiRecommendBtn" style="display: none;" title="AI推荐分支">
                 <i class="fas fa-magic"></i>
             </button>
@@ -1606,6 +1629,60 @@
             checkIfAuthor(chapter);
         }
 
+        // 发布草稿章节
+        async function publishDraft(chapterId) {
+            if (!confirm('确定要发布这个草稿章节吗？\n\n发布后，其他用户将可以看到这个章节。')) {
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                const publishBtn = document.getElementById('publishDraftBtn');
+                
+                // 禁用按钮并显示加载状态
+                publishBtn.disabled = true;
+                publishBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 发布中...';
+
+                const response = await fetch(`/api/nodes/${chapterId}/publish`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || '发布失败');
+                }
+
+                const data = await response.json();
+                console.log('发布成功:', data);
+
+                // 更新当前章节状态
+                currentChapter.is_published = true;
+
+                // 显示成功消息
+                showSuccess(data.message || '章节发布成功！');
+
+                // 隐藏发布按钮
+                publishBtn.style.display = 'none';
+
+                // 刷新页面以显示最新状态
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+
+            } catch (error) {
+                console.error('发布失败:', error);
+                showError(error.message || '发布失败，请稍后重试');
+                
+                // 恢复按钮状态
+                const publishBtn = document.getElementById('publishDraftBtn');
+                publishBtn.disabled = false;
+                publishBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 发布草稿';
+            }
+        }
+
         // 检查是否是作者
         async function checkIfAuthor(chapter) {
             try {
@@ -1630,38 +1707,73 @@
 
                 const userData = await response.json();
                 console.log('当前用户:', userData.user);
-                console.log('章节作者ID:', chapter.author_id);  // 修改为 author_id
+                console.log('章节作者ID:', chapter.author_id);
 
-                // 所有登录用户都可以创建分支
-                console.log('✅ 已登录，显示创建分支按钮');
-                const createBranchBtn = document.getElementById('createBranchBtn');
-                
-                // 判断是否为叶子节点（无子分支）
-                const isLeafNode = !chapter.branches || chapter.branches.length === 0;
-                
-                if (isLeafNode) {
-                    // 叶子节点：显示为"续写"
-                    createBranchBtn.innerHTML = '<i class="fas fa-pen"></i>';
-                    createBranchBtn.title = '续写';
-                    console.log('✅ 叶子节点，按钮显示为"续写"');
-                } else {
-                    // 中间节点：显示为"创建分支"
-                    createBranchBtn.innerHTML = '<i class="fas fa-code-branch"></i>';
-                    createBranchBtn.title = '创建分支';
-                    console.log('✅ 中间节点，按钮显示为"创建分支"，子分支数:', chapter.branches.length);
+                // 获取用户在故事中的角色
+                const roleResponse = await fetch(`/api/stories/${storyId}/role`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                let canCreateBranch = false;
+                if (roleResponse.ok) {
+                    const roleData = await roleResponse.json();
+                    console.log('用户角色:', roleData);
+                    
+                    // 只有作者和有效协作者才能创建分支
+                    if (roleData.is_author) {
+                        canCreateBranch = true;
+                        console.log('✅ 是作者，可以创建分支');
+                    } else if (roleData.is_collaborator && roleData.allow_branch) {
+                        canCreateBranch = true;
+                        console.log('✅ 是协作者且允许续写，可以创建分支');
+                    } else if (roleData.is_collaborator && !roleData.allow_branch) {
+                        console.log('❌ 是协作者但不允许续写，不能创建分支');
+                    } else {
+                        console.log('❌ 不是作者也不是协作者，不能创建分支');
+                    }
                 }
-                
-                createBranchBtn.style.display = 'block';
-                
-                // 添加创建分支按钮的点击事件
-                createBranchBtn.onclick = () => {
-                    window.location.href = `/write?storyId=${storyId}&parentId=${chapter.id}`;
-                };
+
+                // 显示创建分支按钮（如果有权限）
+                if (canCreateBranch) {
+                    const createBranchBtn = document.getElementById('createBranchBtn');
+                    
+                    // 判断是否为叶子节点（无子分支）
+                    const isLeafNode = !chapter.branches || chapter.branches.length === 0;
+                    
+                    if (isLeafNode) {
+                        // 叶子节点：显示为"续写"
+                        createBranchBtn.innerHTML = '<i class="fas fa-pen"></i>';
+                        createBranchBtn.title = '续写';
+                        console.log('✅ 叶子节点，按钮显示为"续写"');
+                    } else {
+                        // 中间节点：显示为"创建分支"
+                        createBranchBtn.innerHTML = '<i class="fas fa-code-branch"></i>';
+                        createBranchBtn.title = '创建分支';
+                        console.log('✅ 中间节点，按钮显示为"创建分支"，子分支数:', chapter.branches.length);
+                    }
+                    
+                    createBranchBtn.style.display = 'block';
+                    
+                    // 添加创建分支按钮的点击事件
+                    createBranchBtn.onclick = () => {
+                        window.location.href = `/write?storyId=${storyId}&parentId=${chapter.id}`;
+                    };
+                }
 
                 // 比对用户ID，只有作者可以编辑
-                if (userData.user && userData.user.id === chapter.author_id) {  // 修改为 author_id
+                if (userData.user && userData.user.id === chapter.author_id) {
                     console.log('✅ 是作者，显示编辑按钮');
                     document.getElementById('editChapterBtn').style.display = 'block';
+                    
+                    // 如果是草稿状态，显示发布按钮
+                    if (!chapter.is_published) {
+                        console.log('✅ 是草稿，显示发布按钮');
+                        const publishBtn = document.getElementById('publishDraftBtn');
+                        publishBtn.style.display = 'flex';
+                        publishBtn.onclick = () => publishDraft(chapter.id);
+                    }
                 } else {
                     console.log('❌ 不是作者，不显示编辑按钮');
                 }

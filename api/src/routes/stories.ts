@@ -427,7 +427,7 @@ router.get('/nodes/:nodeId/path', async (req, res) => {
 router.put('/:id/settings', authenticateToken, checkEditPermission, async (req, res) => {
   const userId = getUserId(req);
   const { id } = req.params;
-  const { visibility, password, allow_branch, allow_comment, tags } = req.body;
+  const { visibility, password, allow_branch, allow_comment, auto_approve_collaborators, tags } = req.body;
 
   try {
     const updatedStory = await prisma.stories.update({
@@ -437,6 +437,7 @@ router.put('/:id/settings', authenticateToken, checkEditPermission, async (req, 
         ...(password !== undefined && { password }),
         ...(allow_branch !== undefined && { allow_branch }),
         ...(allow_comment !== undefined && { allow_comment }),
+        ...(auto_approve_collaborators !== undefined && { auto_approve_collaborators }),
         ...(tags !== undefined && { tags: JSON.stringify(tags) }),
         updated_at: new Date()
       },
@@ -814,6 +815,280 @@ router.post('/:id/collaborators/leave', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Leave collaboration error:', error);
     res.status(500).json({ error: '退出协作失败' });
+  }
+});
+
+// ==================== 故事粉丝API ====================
+
+// 关注故事
+router.post('/:id/follow', authenticateToken, async (req, res) => {
+  const userId = getUserId(req);
+  const { id } = req.params;
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    // 检查故事是否存在
+    const story = await prisma.stories.findUnique({
+      where: { id: parseInt(id) },
+      select: { id: true, title: true, author_id: true }
+    });
+
+    if (!story) {
+      return res.status(404).json({ error: 'Story not found' });
+    }
+
+    // 检查是否有查看权限
+    const hasPermission = await canViewStory(userId, parseInt(id));
+    if (!hasPermission) {
+      return res.status(403).json({ error: '无权限查看此故事' });
+    }
+
+    // 检查是否已经关注
+    const existingFollow = await prisma.story_followers.findUnique({
+      where: {
+        story_id_user_id: {
+          story_id: parseInt(id),
+          user_id: userId
+        }
+      }
+    });
+
+    if (existingFollow) {
+      return res.status(400).json({ error: '已经关注过此故事' });
+    }
+
+    // 创建关注记录
+    await prisma.story_followers.create({
+      data: {
+        story_id: parseInt(id),
+        user_id: userId
+      }
+    });
+
+    res.json({ message: '关注成功' });
+  } catch (error) {
+    console.error('Follow story error:', error);
+    res.status(500).json({ error: '关注失败' });
+  }
+});
+
+// 取消关注故事
+router.delete('/:id/follow', authenticateToken, async (req, res) => {
+  const userId = getUserId(req);
+  const { id } = req.params;
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    // 删除关注记录
+    await prisma.story_followers.delete({
+      where: {
+        story_id_user_id: {
+          story_id: parseInt(id),
+          user_id: userId
+        }
+      }
+    });
+
+    res.json({ message: '已取消关注' });
+  } catch (error) {
+    console.error('Unfollow story error:', error);
+    res.status(500).json({ error: '取消关注失败' });
+  }
+});
+
+// 获取故事的粉丝列表
+router.get('/:id/followers', optionalAuth, async (req, res) => {
+  const userId = getUserId(req);
+  const { id } = req.params;
+  const page = parseInt(req.query.page as string) || 1;
+  const pageSize = parseInt(req.query.pageSize as string) || 20;
+
+  try {
+    // 检查查看权限
+    const hasPermission = await canViewStory(userId, parseInt(id));
+    if (!hasPermission) {
+      return res.status(403).json({ error: '无权限查看此故事' });
+    }
+
+    // 获取粉丝总数
+    const total = await prisma.story_followers.count({
+      where: { story_id: parseInt(id) }
+    });
+
+    // 获取粉丝列表（分页）
+    const followers = await prisma.story_followers.findMany({
+      where: { story_id: parseInt(id) },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            avatar: true,
+            level: true
+          }
+        }
+      },
+      orderBy: { created_at: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize
+    });
+
+    res.json({
+      followers,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize)
+      }
+    });
+  } catch (error) {
+    console.error('Get followers error:', error);
+    res.status(500).json({ error: 'Failed to fetch followers' });
+  }
+});
+
+// 获取用户关注的故事列表
+router.get('/user/:userId/followed-stories', optionalAuth, async (req, res) => {
+  const currentUserId = getUserId(req);
+  const { userId } = req.params;
+  const page = parseInt(req.query.page as string) || 1;
+  const pageSize = parseInt(req.query.pageSize as string) || 20;
+
+  try {
+    // 获取关注总数
+    const total = await prisma.story_followers.count({
+      where: { user_id: parseInt(userId) }
+    });
+
+    // 获取关注的故事列表（分页）
+    const follows = await prisma.story_followers.findMany({
+      where: { user_id: parseInt(userId) },
+      include: {
+        story: {
+          include: {
+            author: {
+              select: { id: true, username: true, avatar: true }
+            },
+            _count: {
+              select: {
+                nodes: true,
+                bookmarks: true,
+                followers: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: { created_at: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize
+    });
+
+    // 过滤掉当前用户无权查看的故事
+    const visibleFollows = [];
+    for (const follow of follows) {
+      const hasPermission = await canViewStory(currentUserId, follow.story_id);
+      if (hasPermission) {
+        visibleFollows.push(follow);
+      }
+    }
+
+    res.json({
+      follows: visibleFollows,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize)
+      }
+    });
+  } catch (error) {
+    console.error('Get followed stories error:', error);
+    res.status(500).json({ error: 'Failed to fetch followed stories' });
+  }
+});
+
+// 获取当前用户在故事中的角色
+router.get('/:id/role', authenticateToken, async (req, res) => {
+  const userId = getUserId(req);
+  const { id } = req.params;
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const story = await prisma.stories.findUnique({
+      where: { id: parseInt(id) },
+      select: { 
+        author_id: true,
+        allow_branch: true,
+        allow_comment: true
+      }
+    });
+
+    if (!story) {
+      return res.status(404).json({ error: 'Story not found' });
+    }
+
+    // 检查是否是主创
+    const is_author = story.author_id === userId;
+
+    // 检查是否是协作者(未被移除)
+    const collaborator = await prisma.story_collaborators.findFirst({
+      where: {
+        story_id: parseInt(id),
+        user_id: userId,
+        removed_at: null // 关键：只查询未被移除的协作者
+      }
+    });
+    const is_collaborator = !!collaborator;
+
+    // 检查是否是粉丝
+    const follower = await prisma.story_followers.findUnique({
+      where: {
+        story_id_user_id: {
+          story_id: parseInt(id),
+          user_id: userId
+        }
+      }
+    });
+    const is_follower = !!follower;
+
+    // 检查是否有待处理的协作申请
+    const pendingRequest = await prisma.collaboration_requests.findFirst({
+      where: {
+        story_id: parseInt(id),
+        user_id: userId,
+        status: 'pending'
+      }
+    });
+    const has_pending_request = !!pendingRequest;
+
+    // 获取故事粉丝数
+    const follower_count = await prisma.story_followers.count({
+      where: { story_id: parseInt(id) }
+    });
+
+    res.json({
+      is_author,
+      is_collaborator,
+      is_follower,
+      has_pending_request,
+      follower_count,
+      allow_branch: story.allow_branch,  // 添加故事设置
+      allow_comment: story.allow_comment // 添加故事设置
+    });
+  } catch (error) {
+    console.error('Get my role error:', error);
+    res.status(500).json({ error: 'Failed to get role' });
   }
 });
 

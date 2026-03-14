@@ -274,6 +274,79 @@
             to { transform: rotate(360deg); }
         }
 
+        .request-item {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            padding: 20px;
+            border: 2px solid #f0f0f0;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .request-item.pending {
+            border-left: 4px solid #ffa726;
+        }
+
+        .request-item.approved {
+            border-left: 4px solid #4caf50;
+            background: #f1f8f4;
+        }
+
+        .request-item.rejected {
+            border-left: 4px solid #f44336;
+            background: #fff5f5;
+        }
+
+        .request-info {
+            flex: 1;
+        }
+
+        .request-story {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .request-message {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 8px;
+            line-height: 1.6;
+        }
+
+        .request-meta {
+            display: flex;
+            gap: 15px;
+            color: #999;
+            font-size: 13px;
+        }
+
+        .request-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: #fff3e0;
+            color: #ff9800;
+        }
+
+        .status-approved {
+            background: #e8f5e9;
+            color: #4caf50;
+        }
+
+        .status-rejected {
+            background: #ffebee;
+            color: #f44336;
+        }
+
         /* 响应式设计 */
         @media (max-width: 768px) {
             .profile-header {
@@ -369,6 +442,30 @@
                 </div>
             </div>
         </div>
+
+        <!-- 我关注的故事 -->
+        <div class="content-section">
+            <div class="section-header">
+                <h2 class="section-title"><i class="fas fa-star"></i> 我关注的故事</h2>
+            </div>
+            <div class="stories-list" id="followedStoriesList">
+                <div class="loading">
+                    <i class="fas fa-spinner"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 我的协作申请 -->
+        <div class="content-section">
+            <div class="section-header">
+                <h2 class="section-title"><i class="fas fa-user-plus"></i> 我的协作申请</h2>
+            </div>
+            <div id="collaborationRequestsList">
+                <div class="loading">
+                    <i class="fas fa-spinner"></i>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -433,6 +530,8 @@
                 displayUserProfile(data.user);
                 loadUserStats(data.user.id);
                 loadUserStories(data.user.id);
+                loadFollowedStories(data.user.id);
+                loadCollaborationRequests(data.user.id);
             } catch (error) {
                 console.error('加载用户信息错误:', error);
                 alert('加载失败，请重新登录');
@@ -646,6 +745,153 @@
             if (days < 30) return `${days}天前`;
             
             return date.toLocaleDateString('zh-CN');
+        }
+
+        // 加载关注的故事
+        async function loadFollowedStories(userId) {
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                const response = await fetch(`/api/stories/user/${userId}/followed-stories`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('加载关注的故事失败');
+                }
+
+                const data = await response.json();
+                displayFollowedStories(data.stories);
+            } catch (error) {
+                console.error('加载关注的故事错误:', error);
+                showEmptyFollowedStories();
+            }
+        }
+
+        // 显示关注的故事
+        function displayFollowedStories(stories) {
+            const list = document.getElementById('followedStoriesList');
+            
+            if (!stories || stories.length === 0) {
+                showEmptyFollowedStories();
+                return;
+            }
+
+            const storiesHTML = stories.map(story => {
+                const nodeCount = story._count?.nodes || 0;
+                const likeCount = story._count?.bookmarks || 0;
+                const viewCount = story.views || 0;
+                const authorName = story.author?.username || '未知作者';
+                
+                return `
+                    <div class="story-item" onclick="window.location.href='/story?id=${story.id}'">
+                        <div class="story-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <div class="story-details">
+                            <div class="story-title">${escapeHtml(story.title)}</div>
+                            <div class="story-meta">
+                                <span><i class="fas fa-user"></i> ${escapeHtml(authorName)}</span>
+                                <span><i class="fas fa-file-alt"></i> ${nodeCount} 章节</span>
+                                <span><i class="fas fa-heart"></i> ${likeCount} 点赞</span>
+                                <span><i class="fas fa-eye"></i> ${viewCount} 浏览</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            list.innerHTML = storiesHTML;
+        }
+
+        // 显示空的关注列表
+        function showEmptyFollowedStories() {
+            const list = document.getElementById('followedStoriesList');
+            list.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-star"></i>
+                    <p>还没有关注任何故事</p>
+                    <a href="/discover" class="btn btn-primary">
+                        <i class="fas fa-search"></i> 去发现故事
+                    </a>
+                </div>
+            `;
+        }
+
+        // 加载协作申请
+        async function loadCollaborationRequests(userId) {
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                const response = await fetch('/api/collaboration-requests/my-requests', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('加载协作申请失败');
+                }
+
+                const data = await response.json();
+                displayCollaborationRequests(data.requests);
+            } catch (error) {
+                console.error('加载协作申请错误:', error);
+                showEmptyRequests();
+            }
+        }
+
+        // 显示协作申请列表
+        function displayCollaborationRequests(requests) {
+            const list = document.getElementById('collaborationRequestsList');
+            
+            if (!requests || requests.length === 0) {
+                showEmptyRequests();
+                return;
+            }
+
+            const requestsHTML = requests.map(request => {
+                const statusClass = request.status.toLowerCase();
+                const statusText = {
+                    'pending': '待审核',
+                    'approved': '已通过',
+                    'rejected': '已拒绝'
+                }[request.status.toLowerCase()] || request.status;
+                
+                return `
+                    <div class="request-item ${statusClass}">
+                        <div class="request-info">
+                            <div class="request-story">
+                                ${escapeHtml(request.story.title)}
+                            </div>
+                            <div class="request-message">
+                                申请留言: ${escapeHtml(request.message || '无')}
+                            </div>
+                            <div class="request-meta">
+                                <span><i class="fas fa-clock"></i> ${formatDate(request.created_at)}</span>
+                                <span class="request-status status-${statusClass}">
+                                    ${statusText}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            list.innerHTML = requestsHTML;
+        }
+
+        // 显示空的申请列表
+        function showEmptyRequests() {
+            const list = document.getElementById('collaborationRequestsList');
+            list.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-user-plus"></i>
+                    <p>还没有提交任何协作申请</p>
+                </div>
+            `;
         }
 
         // 页面加载

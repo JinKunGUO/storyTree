@@ -123,6 +123,32 @@
             margin-top: 5px;
         }
 
+        /* 用户角色标识 */
+        .user-role-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .user-role-badge.role-author {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            color: #333;
+        }
+
+        .user-role-badge.role-collaborator {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .user-role-badge.role-follower {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
         .story-actions {
             display: flex;
             gap: 15px;
@@ -1176,6 +1202,10 @@
                                 <div class="stat-label">阅读量</div>
                             </div>
                             <div class="stat-item">
+                                <div class="stat-value" id="followerCount">0</div>
+                                <div class="stat-label">粉丝数</div>
+                            </div>
+                            <div class="stat-item">
                                 <div class="stat-value" id="likeCount">0</div>
                                 <div class="stat-label">点赞数</div>
                             </div>
@@ -1188,6 +1218,12 @@
                                 <div class="stat-label">字数</div>
                             </div>
                         </div>
+                        <!-- 用户角色标识 -->
+                        <div class="user-role-badge" id="userRoleBadge" style="display: none; margin-bottom: 15px;">
+                            <i class="fas fa-crown"></i>
+                            <span id="userRoleText">主创</span>
+                        </div>
+                        
                         <div class="story-actions">
                             <button class="btn btn-primary" id="startReadBtn">
                                 <i class="fas fa-book-open"></i>
@@ -1197,9 +1233,32 @@
                                 <i class="fas fa-edit"></i>
                                 编辑故事
                             </button>
-                            <button class="btn btn-secondary" id="storySettingsBtn" style="display: none;">
+                            <button class="btn btn-secondary" id="storySettingsBtn" style="display: none; position: relative;">
                                 <i class="fas fa-cog"></i>
                                 设置
+                                <span class="request-badge" id="settingsBadge" style="
+                                    position: absolute;
+                                    top: -5px;
+                                    right: -5px;
+                                    background: #f44336;
+                                    color: white;
+                                    border-radius: 50%;
+                                    width: 20px;
+                                    height: 20px;
+                                    display: none;
+                                    align-items: center;
+                                    justify-content: center;
+                                    font-size: 12px;
+                                    font-weight: bold;
+                                "></span>
+                            </button>
+                            <button class="btn btn-secondary" id="followStoryBtn" style="display: none;">
+                                <i class="fas fa-star"></i>
+                                关注故事
+                            </button>
+                            <button class="btn btn-secondary" id="applyCollaborationBtn" style="display: none;">
+                                <i class="fas fa-user-plus"></i>
+                                申请协作
                             </button>
                             <button class="btn btn-secondary" id="likeBtn">
                                 <i class="far fa-heart"></i>
@@ -1596,6 +1655,34 @@
         </div>
     </div>
 
+    <!-- 协作申请模态框 -->
+    <div class="edit-modal" id="applyCollaborationModal">
+        <div class="edit-modal-content">
+            <div class="edit-modal-header">
+                <h2>
+                    <i class="fas fa-user-plus"></i>
+                    申请成为协作者
+                </h2>
+                <button class="close-btn" id="closeApplyCollaborationModal">×</button>
+            </div>
+            <div class="edit-modal-body">
+                <div class="form-group">
+                    <label for="collaborationMessage">申请留言</label>
+                    <textarea id="collaborationMessage" placeholder="向主创说明你的协作意向..." 
+                              maxlength="500" rows="6"></textarea>
+                    <div class="form-hint">最多500个字符，说明你为什么想参与这个故事的创作</div>
+                </div>
+            </div>
+            <div class="edit-modal-footer">
+                <button class="btn-cancel" id="cancelApplyCollaboration">取消</button>
+                <button class="btn-save" id="submitCollaborationRequest">
+                    <i class="fas fa-paper-plane"></i>
+                    提交申请
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="auth.js"></script>
     <script src="share.js"></script>
     <script>
@@ -1819,10 +1906,27 @@
             }
         }
 
-        // 检查是否是作者
+        // 检查是否是作者,并获取用户在故事中的角色
         async function checkIfAuthor(story) {
             const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-            if (!token) return;
+            if (!token) {
+                // 未登录用户显示关注和申请协作按钮
+                const followBtn = document.getElementById('followStoryBtn');
+                const applyBtn = document.getElementById('applyCollaborationBtn');
+                
+                followBtn.style.display = 'inline-flex';
+                applyBtn.style.display = 'inline-flex';
+                
+                followBtn.addEventListener('click', () => {
+                    showError('请先登录');
+                    setTimeout(() => window.location.href = '/login', 1500);
+                });
+                applyBtn.addEventListener('click', () => {
+                    showError('请先登录');
+                    setTimeout(() => window.location.href = '/login', 1500);
+                });
+                return;
+            }
 
             try {
                 const response = await fetch('/api/auth/me', {
@@ -1833,39 +1937,315 @@
                     const userData = await response.json();
                     const currentUserId = userData.user.id;
 
-                    // 如果当前用户是故事作者，显示编辑和续写按钮
-                    if (story.authorId === currentUserId || story.author?.id === currentUserId) {
-                        // 显示编辑故事按钮
-                        const editBtn = document.getElementById('editStoryBtn');
-                        editBtn.style.display = 'inline-flex';
-                        editBtn.addEventListener('click', () => openEditModal(story));
+                    // 获取用户在故事中的角色
+                    const roleResponse = await fetch(`/api/stories/${story.id}/role`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+
+                    if (roleResponse.ok) {
+                        const roleData = await roleResponse.json();
                         
-                        // 显示设置按钮
-                        const settingsBtn = document.getElementById('storySettingsBtn');
-                        settingsBtn.style.display = 'inline-flex';
-                        settingsBtn.addEventListener('click', () => {
-                            window.location.href = `/story-settings.html?id=${story.id}`;
-                        });
+                        // 显示角色标识
+                        const roleBadge = document.getElementById('userRoleBadge');
+                        const roleText = document.getElementById('userRoleText');
                         
-                        // 显示AI创作章节按钮
-                        const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
-                        aiCreateBtn.style.display = 'inline-flex';
-                        aiCreateBtn.addEventListener('click', () => {
-                            // 使用当前选中的节点作为父节点，如果没有选中则使用故事ID
-                            const parentId = window.currentSelectedNodeId;
-                            if (parentId) {
-                                openAiChapterModal(story, parentId);
+                        if (roleData.is_author) {
+                            roleBadge.style.display = 'inline-flex';
+                            roleBadge.className = 'user-role-badge role-author';
+                            roleText.innerHTML = '<i class="fas fa-crown"></i> 主创';
+                            
+                            // 显示编辑和设置按钮
+                            const editBtn = document.getElementById('editStoryBtn');
+                            editBtn.style.display = 'inline-flex';
+                            editBtn.addEventListener('click', () => openEditModal(story));
+                            
+                            const settingsBtn = document.getElementById('storySettingsBtn');
+                            settingsBtn.style.display = 'inline-flex';
+                            settingsBtn.addEventListener('click', () => {
+                                window.location.href = `/story-settings.html?id=${story.id}`;
+                            });
+                            
+                            // 加载待处理的协作申请数量，显示在设置按钮上
+                            loadPendingRequestsCount(story.id);
+                            
+                            const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
+                            aiCreateBtn.style.display = 'inline-flex';
+                            aiCreateBtn.addEventListener('click', () => {
+                                const parentId = window.currentSelectedNodeId;
+                                if (parentId) {
+                                    openAiChapterModal(story, parentId);
+                                } else {
+                                    showError('请先点击分支图中的一个章节，再使用AI创作功能');
+                                }
+                            });
+                            
+                            // 作者不需要看到关注和申请协作按钮
+                            document.getElementById('followStoryBtn').style.display = 'none';
+                            document.getElementById('applyCollaborationBtn').style.display = 'none';
+                        } else if (roleData.is_collaborator) {
+                            roleBadge.style.display = 'inline-flex';
+                            roleBadge.className = 'user-role-badge role-collaborator';
+                            roleText.innerHTML = '<i class="fas fa-users"></i> 共创者';
+                            
+                            // 只有在允许续写时，协作者才能使用AI续写章节功能
+                            if (roleData.allow_branch) {
+                                const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
+                                aiCreateBtn.style.display = 'inline-flex';
+                                aiCreateBtn.addEventListener('click', () => {
+                                    const parentId = window.currentSelectedNodeId;
+                                    if (parentId) {
+                                        openAiChapterModal(story, parentId);
+                                    } else {
+                                        showError('请先点击分支图中的一个章节，再使用AI创作功能');
+                                    }
+                                });
+                                console.log('✅ 协作者-允许续写，显示AI续写按钮');
                             } else {
-                                // 如果没有选中节点，提示用户先选择一个节点
-                                showError('请先点击分支图中的一个章节，再使用AI创作功能');
+                                console.log('❌ 协作者-故事已关闭续写功能，不显示AI续写按钮');
                             }
-                        });
+                        } else if (roleData.is_follower) {
+                            roleBadge.style.display = 'inline-flex';
+                            roleBadge.className = 'user-role-badge role-follower';
+                            roleText.innerHTML = '<i class="fas fa-star"></i> 粉丝';
+                        }
+                        
+                        // 根据角色显示相应按钮
+                        if (!roleData.is_author && !roleData.is_collaborator) {
+                            // 显示关注按钮
+                            const followBtn = document.getElementById('followStoryBtn');
+                            followBtn.style.display = 'inline-flex';
+                            
+                            if (roleData.is_follower) {
+                                followBtn.innerHTML = '<i class="fas fa-star"></i> 已关注';
+                                followBtn.style.background = '#f093fb';
+                                followBtn.style.color = 'white';
+                            } else {
+                                followBtn.innerHTML = '<i class="far fa-star"></i> 关注故事';
+                            }
+                            
+                            followBtn.addEventListener('click', () => toggleFollowStory(story.id));
+                            
+                            // 只有在允许续写且没有待处理申请时，才显示申请协作按钮
+                            if (roleData.allow_branch && !roleData.has_pending_request) {
+                                const applyBtn = document.getElementById('applyCollaborationBtn');
+                                applyBtn.style.display = 'inline-flex';
+                                applyBtn.addEventListener('click', () => openApplyCollaborationModal(story.id));
+                                console.log('✅ 允许协作，显示申请按钮');
+                            } else if (!roleData.allow_branch) {
+                                console.log('❌ 故事已关闭协作功能，不显示申请按钮');
+                            } else if (roleData.has_pending_request) {
+                                console.log('⏳ 已有待处理申请，不显示申请按钮');
+                            }
+                        }
+                        
+                        // 更新粉丝数
+                        if (roleData.follower_count !== undefined) {
+                            document.getElementById('followerCount').textContent = roleData.follower_count;
+                        }
                     }
                 }
             } catch (error) {
                 console.error('检查作者权限错误:', error);
             }
         }
+
+        // 加载待处理的协作申请数量
+        async function loadPendingRequestsCount(storyId) {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) return;
+
+            try {
+                const response = await fetch(`/api/collaboration-requests/story/${storyId}?status=pending`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) return;
+
+                const data = await response.json();
+                console.log('徽章-API返回的数据:', data);
+                const pendingRequests = data.requests || [];
+                const pendingCount = pendingRequests.length;
+
+                // 更新设置按钮上的徽章显示
+                const badge = document.getElementById('settingsBadge');
+                if (pendingCount > 0) {
+                    badge.textContent = pendingCount > 99 ? '99+' : pendingCount;
+                    badge.style.display = 'flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('加载协作申请数量失败:', error);
+            }
+        }
+
+        // 切换关注故事状态
+        async function toggleFollowStory(storyId) {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) {
+                showError('请先登录');
+                setTimeout(() => window.location.href = '/login', 1500);
+                return;
+            }
+
+            const followBtn = document.getElementById('followStoryBtn');
+            const isFollowing = followBtn.innerHTML.includes('已关注');
+            followBtn.disabled = true;
+
+            try {
+                if (isFollowing) {
+                    const response = await fetch(`/api/stories/${storyId}/follow`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+
+                    if (!response.ok) throw new Error('取消关注失败');
+
+                    followBtn.innerHTML = '<i class="far fa-star"></i> 关注故事';
+                    followBtn.style.background = '';
+                    followBtn.style.color = '';
+                    showSuccess('已取消关注');
+                    
+                    // 更新粉丝数
+                    const count = parseInt(document.getElementById('followerCount').textContent);
+                    document.getElementById('followerCount').textContent = Math.max(0, count - 1);
+                } else {
+                    const response = await fetch(`/api/stories/${storyId}/follow`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+
+                    if (!response.ok) throw new Error('关注失败');
+
+                    followBtn.innerHTML = '<i class="fas fa-star"></i> 已关注';
+                    followBtn.style.background = '#f093fb';
+                    followBtn.style.color = 'white';
+                    showSuccess('关注成功');
+                    
+                    // 更新粉丝数
+                    const count = parseInt(document.getElementById('followerCount').textContent);
+                    document.getElementById('followerCount').textContent = count + 1;
+                }
+            } catch (error) {
+                console.error('关注操作失败:', error);
+                showError(error.message || '操作失败，请重试');
+            } finally {
+                followBtn.disabled = false;
+            }
+        }
+
+        // 打开协作申请模态框
+        async function openApplyCollaborationModal(storyId) {
+            // 先检查故事是否允许协作者续写
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                if (!token) {
+                    showError('请先登录');
+                    setTimeout(() => window.location.href = '/login', 1500);
+                    return;
+                }
+
+                // 获取故事的角色信息（包含allow_branch字段）
+                const roleResponse = await fetch(`/api/stories/${storyId}/role`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (roleResponse.ok) {
+                    const roleData = await roleResponse.json();
+                    console.log('故事设置:', roleData);
+                    
+                    // 检查是否允许协作者续写
+                    if (!roleData.allow_branch) {
+                        showError('抱歉，该故事主创已关闭协作功能，暂不接受新的协作申请');
+                        console.log('❌ 故事已关闭协作功能，拒绝申请');
+                        return;
+                    }
+                }
+
+                // 允许续写，打开申请模态框
+                window.currentApplyStoryId = storyId;
+                document.getElementById('collaborationMessage').value = '';
+                document.getElementById('applyCollaborationModal').classList.add('active');
+            } catch (error) {
+                console.error('检查协作设置失败:', error);
+                showError('无法获取故事信息，请稍后重试');
+            }
+        }
+
+        // 关闭协作申请模态框
+        function closeApplyCollaborationModal() {
+            document.getElementById('applyCollaborationModal').classList.remove('active');
+        }
+
+        // 提交协作申请
+        async function submitCollaborationRequest() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) {
+                showError('请先登录');
+                return;
+            }
+
+            const message = document.getElementById('collaborationMessage').value.trim();
+            if (!message) {
+                showError('请填写申请留言');
+                return;
+            }
+
+            const submitBtn = document.getElementById('submitCollaborationRequest');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 提交中...';
+
+            try {
+                const response = await fetch('/api/collaboration-requests', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        story_id: window.currentApplyStoryId,
+                        message: message
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || '提交失败');
+                }
+
+                const data = await response.json();
+                
+                if (data.auto_approved) {
+                    showSuccess('申请已自动通过！现在你是这个故事的协作者了');
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    showSuccess('申请已提交，请等待主创审核');
+                    closeApplyCollaborationModal();
+                    
+                    // 隐藏申请按钮
+                    document.getElementById('applyCollaborationBtn').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('提交申请失败:', error);
+                showError(error.message || '提交失败，请重试');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 提交申请';
+            }
+        }
+
+        // 初始化协作申请模态框事件
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('closeApplyCollaborationModal')?.addEventListener('click', closeApplyCollaborationModal);
+            document.getElementById('cancelApplyCollaboration')?.addEventListener('click', closeApplyCollaborationModal);
+            document.getElementById('submitCollaborationRequest')?.addEventListener('click', submitCollaborationRequest);
+            
+            document.getElementById('applyCollaborationModal')?.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeApplyCollaborationModal();
+                }
+            });
+        });
 
         // 打开编辑模态框
         function openEditModal(story) {
@@ -3761,7 +4141,7 @@
         }
 
         // 显示节点详情
-        function showNodeDetail(nodeData) {
+        async function showNodeDetail(nodeData) {
             // 如果是省略号节点，展开被折叠的中间章节
             if (nodeData.isEllipsis) {
                 console.log('点击省略号节点，展开被折叠的章节:', nodeData.collapsedNodes);
@@ -3806,6 +4186,56 @@
             // 保存当前选中的节点ID到全局变量，供AI创作使用
             window.currentSelectedNodeId = nodeData.id;
             console.log('当前选中节点:', nodeData.id, nodeData.name);
+
+            // 检查用户权限，决定是否显示"续写分支"按钮
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            const continueBtn = document.getElementById('continueNode');
+            
+            if (!token) {
+                // 未登录，隐藏续写按钮
+                continueBtn.style.display = 'none';
+                console.log('未登录，隐藏续写分支按钮');
+            } else {
+                // 已登录，检查权限
+                try {
+                    const storyId = window.currentStory?.id;
+                    if (!storyId) {
+                        continueBtn.style.display = 'none';
+                        console.log('故事ID不存在，隐藏续写分支按钮');
+                    } else {
+                        const roleResponse = await fetch(`/api/stories/${storyId}/role`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+
+                        if (roleResponse.ok) {
+                            const roleData = await roleResponse.json();
+                            console.log('用户角色:', roleData);
+                            
+                            // 只有作者或有效协作者才能续写
+                            if (roleData.is_author) {
+                                continueBtn.style.display = 'block';
+                                console.log('✅ 是作者，显示续写分支按钮');
+                            } else if (roleData.is_collaborator && roleData.allow_branch) {
+                                continueBtn.style.display = 'block';
+                                console.log('✅ 是协作者且允许续写，显示续写分支按钮');
+                            } else {
+                                continueBtn.style.display = 'none';
+                                if (roleData.is_collaborator && !roleData.allow_branch) {
+                                    console.log('❌ 是协作者但不允许续写，隐藏续写分支按钮');
+                                } else {
+                                    console.log('❌ 不是作者也不是协作者，隐藏续写分支按钮');
+                                }
+                            }
+                        } else {
+                            continueBtn.style.display = 'none';
+                            console.log('获取角色失败，隐藏续写分支按钮');
+                        }
+                    }
+                } catch (error) {
+                    console.error('检查权限失败:', error);
+                    continueBtn.style.display = 'none';
+                }
+            }
 
             detailPanel.classList.add('active');
         }

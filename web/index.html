@@ -400,6 +400,9 @@
             <div class="nav-menu" id="navMenu">
                 <a href="/" class="nav-link">首页</a>
                 <a href="/discover" class="nav-link">发现故事</a>
+                <a href="/my-stories.html" class="nav-link" id="myStoriesLink" style="display: none;">
+                    <i class="fas fa-book"></i> 我的故事
+                </a>
                 <a href="/create" class="nav-link">开始创作</a>
                 <a href="/login" class="nav-link" id="loginLink">登录</a>
                 <a href="/register" class="nav-link primary" id="registerLink">注册</a>
@@ -467,17 +470,20 @@
             const registerLink = document.getElementById('registerLink');
             const profileLink = document.getElementById('profileLink');
             const logoutLink = document.getElementById('logoutLink');
+            const myStoriesLink = document.getElementById('myStoriesLink');
             
             if (token) {
                 loginLink.style.display = 'none';
                 registerLink.style.display = 'none';
                 profileLink.style.display = 'block';
                 logoutLink.style.display = 'block';
+                if (myStoriesLink) myStoriesLink.style.display = 'block';
             } else {
                 loginLink.style.display = 'block';
                 registerLink.style.display = 'block';
                 profileLink.style.display = 'none';
                 logoutLink.style.display = 'none';
+                if (myStoriesLink) myStoriesLink.style.display = 'none';
             }
         }
 

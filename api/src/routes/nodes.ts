@@ -32,6 +32,29 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Story not found' });
     }
 
+    // 权限验证：检查用户是否是作者或有效的协作者
+    const isAuthor = story.author_id === userId;
+    const collaborator = await prisma.story_collaborators.findFirst({
+      where: { 
+        story_id: parseInt(storyId), 
+        user_id: userId,
+        removed_at: null // 未被移除
+      }
+    });
+    const isValidCollaborator = !!collaborator;
+
+    // 如果不是作者也不是有效协作者，拒绝
+    if (!isAuthor && !isValidCollaborator) {
+      return res.status(403).json({ error: '无权限为此故事创建章节' });
+    }
+
+    // 如果是协作者，检查是否允许续写
+    if (isValidCollaborator && !isAuthor) {
+      if (!story.allow_branch) {
+        return res.status(403).json({ error: '故事作者已关闭协作者续写权限' });
+      }
+    }
+
     // 检查用户已发布节点数
     const userNodeCount = await prisma.nodes.count({
       where: { author_id: userId }
@@ -85,6 +108,28 @@ router.post('/', authenticateToken, async (req, res) => {
         data: { root_node_id: node.id }
       });
 
+      // 如果是发布状态且审核通过，通知粉丝
+      if (shouldPublish && !reviewCheck.needReview) {
+        // 获取故事粉丝列表
+        const followers = await prisma.story_followers.findMany({
+          where: { story_id: parseInt(storyId) },
+          select: { user_id: true }
+        });
+
+        // 批量创建通知
+        if (followers.length > 0) {
+          await prisma.notifications.createMany({
+            data: followers.map(follower => ({
+              user_id: follower.user_id,
+              type: 'STORY_UPDATE',
+              title: '故事更新',
+              content: `《${node.story.title}》发布了新章节：${title}`,
+              link: `/chapter?id=${node.id}`
+            }))
+          });
+        }
+      }
+
       const statusMessage = shouldPublish 
         ? (reviewCheck.needReview ? `内容需要审核：${reviewCheck.reason}` : '第一章创建成功')
         : '草稿保存成功';
@@ -133,6 +178,28 @@ router.post('/', authenticateToken, async (req, res) => {
         }
       }
     });
+
+    // 如果是发布状态且审核通过，通知粉丝
+    if (shouldPublish && !reviewCheck.needReview) {
+      // 获取故事粉丝列表
+      const followers = await prisma.story_followers.findMany({
+        where: { story_id: parseInt(storyId) },
+        select: { user_id: true }
+      });
+
+      // 批量创建通知
+      if (followers.length > 0) {
+        await prisma.notifications.createMany({
+          data: followers.map(follower => ({
+            user_id: follower.user_id,
+            type: 'STORY_UPDATE',
+            title: '故事更新',
+            content: `《${node.story.title}》发布了新章节：${title}`,
+            link: `/chapter?id=${node.id}`
+          }))
+        });
+      }
+    }
 
     const statusMessage = shouldPublish 
       ? (reviewCheck.needReview ? `内容需要审核：${reviewCheck.reason}` : '分支创建成功')
@@ -221,6 +288,103 @@ router.put('/:id', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('更新节点错误:', error);
     res.status(500).json({ error: 'Failed to update node' });
+  }
+});
+
+// Publish draft chapter (发布草稿章节)
+router.post('/:id/publish', authenticateToken, async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { id } = req.params;
+
+  try {
+    // 检查节点是否存在
+    const node = await prisma.nodes.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        story: {
+          select: { id: true, title: true }
+        }
+      }
+    });
+
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+
+    // 检查是否是作者
+    if (node.author_id !== userId) {
+      return res.status(403).json({ error: 'Not authorized to publish this node' });
+    }
+
+    // 检查是否已经发布
+    if (node.is_published) {
+      return res.status(400).json({ error: 'Node is already published' });
+    }
+
+    // 检查用户已发布节点数
+    const userNodeCount = await prisma.nodes.count({
+      where: { author_id: userId, is_published: true }
+    });
+
+    // 审核检查
+    const reviewCheck = needsReview(node.content, userNodeCount);
+
+    // 更新节点为已发布状态
+    const updatedNode = await prisma.nodes.update({
+      where: { id: parseInt(id) },
+      data: {
+        is_published: true,
+        review_status: reviewCheck.needReview ? 'PENDING' : 'APPROVED',
+        updated_at: new Date()
+      },
+      include: {
+        author: {
+          select: { id: true, username: true }
+        },
+        story: {
+          select: { id: true, title: true }
+        }
+      }
+    });
+
+    // 如果审核通过，通知粉丝
+    if (!reviewCheck.needReview) {
+      // 获取故事粉丝列表
+      const followers = await prisma.story_followers.findMany({
+        where: { story_id: node.story_id },
+        select: { user_id: true }
+      });
+
+      // 批量创建通知
+      if (followers.length > 0) {
+        await prisma.notifications.createMany({
+          data: followers.map(follower => ({
+            user_id: follower.user_id,
+            type: 'STORY_UPDATE',
+            title: '故事更新',
+            content: `《${node.story.title}》发布了新章节：${node.title}`,
+            link: `/chapter?id=${node.id}`
+          }))
+        });
+      }
+    }
+
+    const statusMessage = reviewCheck.needReview 
+      ? `章节已发布，内容需要审核：${reviewCheck.reason}`
+      : '章节发布成功';
+
+    res.json({
+      node: updatedNode,
+      reviewStatus: reviewCheck.needReview ? 'pending' : 'approved',
+      message: statusMessage
+    });
+  } catch (error) {
+    console.error('发布章节错误:', error);
+    res.status(500).json({ error: 'Failed to publish node' });
   }
 });
 
@@ -476,6 +640,29 @@ router.post('/:id/branches', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Parent node not found' });
     }
 
+    // 权限验证：检查用户是否是作者或有效的协作者
+    const isAuthor = parentNode.story.author_id === userId;
+    const collaborator = await prisma.story_collaborators.findFirst({
+      where: { 
+        story_id: parentNode.story_id, 
+        user_id: userId,
+        removed_at: null // 未被移除
+      }
+    });
+    const isValidCollaborator = !!collaborator;
+
+    // 如果不是作者也不是有效协作者，拒绝
+    if (!isAuthor && !isValidCollaborator) {
+      return res.status(403).json({ error: '无权限为此故事创建分支' });
+    }
+
+    // 如果是协作者，检查是否允许续写
+    if (isValidCollaborator && !isAuthor) {
+      if (!parentNode.story.allow_branch) {
+        return res.status(403).json({ error: '故事作者已关闭协作者续写权限' });
+      }
+    }
+
     // 检查用户已发布节点数
     const userNodeCount = await prisma.nodes.count({
       where: { author_id: userId }
@@ -513,6 +700,28 @@ router.post('/:id/branches', authenticateToken, async (req, res) => {
         }
       }
     });
+
+    // 如果是发布状态且审核通过，通知粉丝
+    if (shouldPublish && !reviewCheck.needReview) {
+      // 获取故事粉丝列表
+      const followers = await prisma.story_followers.findMany({
+        where: { story_id: parentNode.story_id },
+        select: { user_id: true }
+      });
+
+      // 批量创建通知
+      if (followers.length > 0) {
+        await prisma.notifications.createMany({
+          data: followers.map(follower => ({
+            user_id: follower.user_id,
+            type: 'STORY_UPDATE',
+            title: '故事更新',
+            content: `《${node.story.title}》发布了新章节：${title}`,
+            link: `/chapter?id=${node.id}`
+          }))
+        });
+      }
+    }
 
     const statusMessage = shouldPublish 
       ? (reviewCheck.needReview ? `内容需要审核：${reviewCheck.reason}` : '发布成功')

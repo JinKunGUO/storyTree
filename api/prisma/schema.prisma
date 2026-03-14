@@ -82,6 +82,7 @@ model nodes {
   ratings        ratings[]
   reports        reports[]
   shares         shares[]
+  delete_requests delete_requests[]
 
   @@index([review_status])
   @@index([path])
@@ -152,53 +153,69 @@ model shares {
 }
 
 model stories {
-  id           Int         @id @default(autoincrement())
-  title        String
-  description  String?
-  cover_image  String?
-  author_id    Int
-  root_node_id Int?
-  created_at   DateTime    @default(now())
-  updated_at   DateTime
-  bookmarks    bookmarks[]
-  nodes        nodes[]
-  shares       shares[]
-  author       users       @relation("StoryAuthor", fields: [author_id], references: [id])
+  id                         Int                   @id @default(autoincrement())
+  title                      String
+  description                String?
+  cover_image                String?
+  author_id                  Int
+  root_node_id               Int?
+  visibility                 String                @default("public") // public, private, friends
+  password                   String? // 密码保护（可选）
+  allow_branch               Boolean               @default(true) // 是否允许协作者续写
+  allow_comment              Boolean               @default(true) // 是否允许评论
+  require_collaborator_review Boolean              @default(false) // 协作者内容是否需要审核
+  auto_approve_collaborators Boolean               @default(false) // 是否自动通过协作申请
+  tags                       String? // JSON数组: ["科幻", "悬疑"]
+  created_at                 DateTime              @default(now())
+  updated_at                 DateTime
+  bookmarks                  bookmarks[]
+  nodes                      nodes[]
+  shares                     shares[]
+  author                     users                 @relation("StoryAuthor", fields: [author_id], references: [id])
+  collaborators              story_collaborators[]
+  followers                  story_followers[]
+  collaboration_requests     collaboration_requests[]
 }
 
 model users {
-  id                       Int             @id @default(autoincrement())
-  username                 String          @unique
-  email                    String          @unique
+  id                       Int                   @id @default(autoincrement())
+  username                 String                @unique
+  email                    String                @unique
   password                 String
   avatar                   String?
   bio                      String?
-  level                    Int             @default(1)
-  points                   Int             @default(0)
+  level                    Int                   @default(1)
+  points                   Int                   @default(0)
   subscription_type        String?
   subscription_expires     DateTime?
-  isAdmin                  Boolean         @default(false) @map("is_admin")
-  emailVerified            Boolean         @default(false) @map("email_verified")
-  emailVerificationToken   String?         @map("email_verification_token")
-  emailVerificationExpires DateTime?       @map("email_verification_expires")
-  passwordResetToken       String?         @map("password_reset_token")
-  passwordResetExpires     DateTime?       @map("password_reset_expires")
-  createdAt                DateTime        @default(now()) @map("created_at")
-  updatedAt                DateTime        @map("updated_at")
+  isAdmin                  Boolean               @default(false) @map("is_admin")
+  emailVerified            Boolean               @default(false) @map("email_verified")
+  emailVerificationToken   String?               @map("email_verification_token")
+  emailVerificationExpires DateTime?             @map("email_verification_expires")
+  passwordResetToken       String?               @map("password_reset_token")
+  passwordResetExpires     DateTime?             @map("password_reset_expires")
+  createdAt                DateTime              @default(now()) @map("created_at")
+  updatedAt                DateTime              @map("updated_at")
   ai_usage_logs            ai_usage_logs[]
   ai_tasks                 ai_tasks[]
   point_transactions       point_transactions[]
   orders                   orders[]
   bookmarks                bookmarks[]
   comments                 comments[]
-  following                follows[]       @relation("follows_following_idTousers")
-  followers                follows[]       @relation("follows_follower_idTousers")
-  authored_nodes           nodes[]         @relation("NodeAuthor")
+  following                follows[]             @relation("follows_following_idTousers")
+  followers                follows[]             @relation("follows_follower_idTousers")
+  authored_nodes           nodes[]               @relation("NodeAuthor")
   notifications            notifications[]
   ratings                  ratings[]
   reports                  reports[]
   shares                   shares[]
-  authored_stories         stories[]       @relation("StoryAuthor")
+  authored_stories         stories[]             @relation("StoryAuthor")
+  collaborations           story_collaborators[]
+  story_follows            story_followers[]
+  collaboration_requests   collaboration_requests[] @relation("collaboration_request_user")
+  collaboration_reviews    collaboration_requests[] @relation("collaboration_request_reviewer")
+  delete_requests_made     delete_requests[]     @relation("delete_request_requester")
+  delete_requests_reviewed delete_requests[]     @relation("delete_request_reviewer")
 }
 
 model ai_usage_logs {
@@ -276,4 +293,74 @@ model orders {
   @@index([user_id])
   @@index([status])
   @@index([created_at])
+}
+
+// 故事协作者表（简化版，仅标识协作者身份）
+model story_collaborators {
+  id         Int       @id @default(autoincrement())
+  story_id   Int
+  user_id    Int
+  invited_by Int
+  created_at DateTime  @default(now())
+  removed_at DateTime? // 软删除：移除时间
+  removed_by Int?      // 软删除：谁移除的
+  story      stories   @relation(fields: [story_id], references: [id], onDelete: Cascade)
+  user       users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([story_id, user_id])
+  @@index([user_id])
+  @@index([story_id])
+}
+
+// 章节删除请求表（协作者删除有子节点的章节时需要审核）
+model delete_requests {
+  id           Int       @id @default(autoincrement())
+  node_id      Int
+  requester_id Int
+  reason       String?
+  status       String    @default("pending") // pending, approved, rejected
+  created_at   DateTime  @default(now())
+  reviewed_by  Int?
+  reviewed_at  DateTime?
+  node         nodes     @relation(fields: [node_id], references: [id], onDelete: Cascade)
+  requester    users     @relation("delete_request_requester", fields: [requester_id], references: [id], onDelete: Cascade)
+  reviewer     users?    @relation("delete_request_reviewer", fields: [reviewed_by], references: [id])
+
+  @@index([node_id])
+  @@index([requester_id])
+  @@index([status])
+}
+
+// 故事粉丝表（用户关注故事）
+model story_followers {
+  id         Int      @id @default(autoincrement())
+  story_id   Int
+  user_id    Int
+  created_at DateTime @default(now())
+  story      stories  @relation(fields: [story_id], references: [id], onDelete: Cascade)
+  user       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  @@unique([story_id, user_id])
+  @@index([user_id])
+  @@index([story_id])
+}
+
+// 协作申请表
+model collaboration_requests {
+  id          Int       @id @default(autoincrement())
+  story_id    Int
+  user_id     Int
+  message     String?   // 申请理由
+  status      String    @default("pending") // pending, approved, rejected
+  created_at  DateTime  @default(now())
+  reviewed_by Int?
+  reviewed_at DateTime?
+  story       stories   @relation(fields: [story_id], references: [id], onDelete: Cascade)
+  user        users     @relation("collaboration_request_user", fields: [user_id], references: [id], onDelete: Cascade)
+  reviewer    users?    @relation("collaboration_request_reviewer", fields: [reviewed_by], references: [id])
+  
+  @@unique([story_id, user_id])
+  @@index([story_id])
+  @@index([user_id])
+  @@index([status])
 }
