@@ -2164,7 +2164,44 @@
 
                 // 允许续写，打开申请模态框
                 window.currentApplyStoryId = storyId;
-                document.getElementById('collaborationMessage').value = '';
+                
+                // 设置默认留言文字
+                const textarea = document.getElementById('collaborationMessage');
+                const defaultMessage = '您好！我对这个故事很感兴趣，希望能参与共同创作。我会认真对待每一个章节，为故事增添精彩内容。期待与您一起创作！';
+                textarea.value = defaultMessage;
+                
+                // 标记这是默认文字
+                textarea.dataset.isDefault = 'true';
+                
+                // 添加焦点事件：用户点击时清除默认文字
+                const handleFocus = function() {
+                    if (textarea.dataset.isDefault === 'true') {
+                        textarea.value = '';
+                        textarea.dataset.isDefault = 'false';
+                        textarea.style.color = '#333'; // 恢复正常文字颜色
+                    }
+                };
+                
+                // 添加失焦事件：如果用户没有输入任何内容，恢复默认文字
+                const handleBlur = function() {
+                    if (textarea.value.trim() === '') {
+                        textarea.value = defaultMessage;
+                        textarea.dataset.isDefault = 'true';
+                        textarea.style.color = '#999'; // 设置为灰色表示是默认文字
+                    }
+                };
+                
+                // 移除旧的事件监听器（如果存在）
+                textarea.removeEventListener('focus', handleFocus);
+                textarea.removeEventListener('blur', handleBlur);
+                
+                // 添加新的事件监听器
+                textarea.addEventListener('focus', handleFocus);
+                textarea.addEventListener('blur', handleBlur);
+                
+                // 初始设置为灰色
+                textarea.style.color = '#999';
+                
                 document.getElementById('applyCollaborationModal').classList.add('active');
             } catch (error) {
                 console.error('检查协作设置失败:', error);

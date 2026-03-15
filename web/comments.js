@@ -1,8 +1,9 @@
 // 评论系统前端逻辑
 
 class CommentSystem {
-    constructor(nodeId) {
+    constructor(nodeId, storyInfo = null) {
         this.nodeId = nodeId;
+        this.storyInfo = storyInfo; // 存储故事信息（包括author_id和allow_comment）
         this.currentPage = 1;
         this.limit = 20;
         this.comments = [];
@@ -81,6 +82,13 @@ class CommentSystem {
             // 如果有replyToUsername，说明是回复子评论，需要添加@前缀
             const contentPrefix = replyToUsername ? `<span class="reply-to">@${replyToUsername}：</span>` : '';
             
+            // 判断是否可以编辑/删除：
+            // 1. 必须是评论作者本人
+            // 2. 如果评论功能关闭（allow_comment=false），只有主创可以编辑/删除
+            const isStoryAuthor = this.storyInfo && currentUser && this.storyInfo.author_id === currentUser.id;
+            const allowCommentEnabled = !this.storyInfo || this.storyInfo.allow_comment !== false;
+            const canEditDelete = isOwner && !isDeleted && (allowCommentEnabled || isStoryAuthor);
+            
             return `
                 <div class="comment-reply" data-comment-id="${comment.id}" data-root-id="${actualRootId}">
                     <div class="comment-avatar">
@@ -99,7 +107,7 @@ class CommentSystem {
                                     <i class="fas fa-reply"></i> 回复
                                 </button>
                             ` : ''}
-                            ${isOwner && !isDeleted ? `
+                            ${canEditDelete ? `
                                 <button class="btn-edit" data-comment-id="${comment.id}">
                                     <i class="fas fa-edit"></i> 编辑
                                 </button>
@@ -137,6 +145,13 @@ class CommentSystem {
         
         const visibleReplies = showCollapse ? allRepliesFlat.slice(0, 3) : allRepliesFlat;
         
+        // 判断是否可以编辑/删除：
+        // 1. 必须是评论作者本人
+        // 2. 如果评论功能关闭（allow_comment=false），只有主创可以编辑/删除
+        const isStoryAuthor = this.storyInfo && currentUser && this.storyInfo.author_id === currentUser.id;
+        const allowCommentEnabled = !this.storyInfo || this.storyInfo.allow_comment !== false;
+        const canEditDelete = isOwner && !isDeleted && (allowCommentEnabled || isStoryAuthor);
+        
         return `
             <div class="comment-item" data-comment-id="${comment.id}">
                 <div class="comment-avatar">
@@ -155,7 +170,7 @@ class CommentSystem {
                                 <i class="fas fa-reply"></i> 回复
                             </button>
                         ` : ''}
-                        ${isOwner && !isDeleted ? `
+                        ${canEditDelete ? `
                             <button class="btn-edit" data-comment-id="${comment.id}">
                                 <i class="fas fa-edit"></i> 编辑
                             </button>

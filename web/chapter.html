@@ -1664,8 +1664,21 @@
                 
                 renderChapter(currentChapter);
                 
-                // 初始化评论系统
-                commentSystem = new CommentSystem(chapterId);
+                // 获取故事信息（包括allow_comment设置）
+                let storyInfo = null;
+                try {
+                    const storyResponse = await fetch(`/api/stories/${storyId}`);
+                    if (storyResponse.ok) {
+                        const storyData = await storyResponse.json();
+                        storyInfo = storyData.story;
+                        console.log('故事信息:', storyInfo);
+                    }
+                } catch (error) {
+                    console.error('获取故事信息失败:', error);
+                }
+                
+                // 初始化评论系统，传入故事信息
+                commentSystem = new CommentSystem(chapterId, storyInfo);
                 await commentSystem.init();
 
                 // 更新评论数
