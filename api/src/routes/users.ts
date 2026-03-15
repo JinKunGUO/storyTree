@@ -1,16 +1,12 @@
 import { Router } from 'express';
 import { prisma } from '../index';
 import { createNotification } from './notifications';
+import { authenticateToken, optionalAuth, getUserId } from '../utils/middleware';
 
 const router = Router();
 
-const getUserId = (req: any): number | null => {
-  const userId = req.headers['x-user-id'];
-  return userId ? parseInt(userId as string) : null;
-};
-
 // 获取用户信息
-router.get('/:id', async (req, res) => {
+router.get('/:id', optionalAuth, async (req, res) => {
   const { id } = req.params;
   const currentUserId = getUserId(req);
 
@@ -38,6 +34,11 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // 手动计算关注者数量（修复Prisma _count问题）
+    const followersCount = await prisma.follows.count({
+      where: { following_id: parseInt(id) }
+    });
+
     // 检查当前用户是否已关注
     let isFollowing = false;
     if (currentUserId) {
@@ -55,6 +56,10 @@ router.get('/:id', async (req, res) => {
     res.json({
       user: {
         ...user,
+        _count: {
+          ...user._count,
+          followers: followersCount  // 使用手动计数覆盖
+        },
         isFollowing,
         isSelf: currentUserId === parseInt(id)
       }
@@ -66,7 +71,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // 关注用户
-router.post('/:id/follow', async (req, res) => {
+router.post('/:id/follow', authenticateToken, async (req, res) => {
   const userId = getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
@@ -115,7 +120,7 @@ router.post('/:id/follow', async (req, res) => {
 });
 
 // 取消关注
-router.delete('/:id/follow', async (req, res) => {
+router.delete('/:id/follow', authenticateToken, async (req, res) => {
   const userId = getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
@@ -144,7 +149,7 @@ router.delete('/:id/follow', async (req, res) => {
 });
 
 // 更新个人资料
-router.put('/profile', async (req, res) => {
+router.put('/profile', authenticateToken, async (req, res) => {
   const userId = getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
@@ -242,7 +247,7 @@ router.get('/:id/followers', async (req, res) => {
 });
 
 // 获取动态流
-router.get('/feed/me', async (req, res) => {
+router.get('/feed/me', authenticateToken, async (req, res) => {
   const userId = getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });

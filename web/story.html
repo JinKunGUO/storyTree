@@ -1206,10 +1206,6 @@
                                 <div class="stat-label">粉丝数</div>
                             </div>
                             <div class="stat-item">
-                                <div class="stat-value" id="likeCount">0</div>
-                                <div class="stat-label">点赞数</div>
-                            </div>
-                            <div class="stat-item">
                                 <div class="stat-value" id="chapterCount">0</div>
                                 <div class="stat-label">章节数</div>
                             </div>
@@ -1254,15 +1250,11 @@
                             </button>
                             <button class="btn btn-secondary" id="followStoryBtn" style="display: none;">
                                 <i class="fas fa-star"></i>
-                                关注故事
+                                追更
                             </button>
                             <button class="btn btn-secondary" id="applyCollaborationBtn" style="display: none;">
                                 <i class="fas fa-user-plus"></i>
                                 申请协作
-                            </button>
-                            <button class="btn btn-secondary" id="likeBtn">
-                                <i class="far fa-heart"></i>
-                                收藏
                             </button>
                             <button class="btn btn-secondary" id="shareBtn">
                                 <i class="fas fa-share-alt"></i>
@@ -1860,7 +1852,6 @@
                 
                 // 统计数据
                 document.getElementById('viewCount').textContent = story.views || 0;
-                document.getElementById('likeCount').textContent = story.likes || 0;
                 document.getElementById('chapterCount').textContent = story.nodeCount || 0;
                 document.getElementById('wordCount').textContent = calculateWordCount(story);
 
@@ -1875,13 +1866,16 @@
                     if (story.author.avatar) {
                         document.getElementById('authorAvatar').src = story.author.avatar;
                     }
+                    
+                    // 加载作者统计信息
+                    loadAuthorStats(story.author.id);
+                    
+                    // 初始化关注作者按钮
+                    initFollowAuthorButton(story.author.id);
                 }
 
                 // 检查是否是作者，显示编辑按钮
                 checkIfAuthor(story);
-                
-                // 检查收藏状态并初始化收藏按钮
-                checkBookmarkStatus(story.id);
 
                 // 开始阅读按钮
                 const startReadBtn = document.getElementById('startReadBtn');
@@ -1906,9 +1900,192 @@
             }
         }
 
+        // 加载作者统计信息
+        async function loadAuthorStats(authorId) {
+            try {
+                console.log('🔄 开始加载作者统计信息, authorId:', authorId);
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                const headers = {};
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
+                // 获取作者信息
+                const response = await fetch(`/api/users/${authorId}`, { headers });
+                console.log('📡 API响应状态:', response.status);
+                
+                if (!response.ok) {
+                    console.error('❌ API请求失败:', response.status);
+                    return;
+                }
+
+                const data = await response.json();
+                console.log('📦 API返回数据:', data);
+                const user = data.user;
+
+                // 更新作者统计信息
+                if (user._count) {
+                    const storiesCount = user._count.authored_stories || 0;
+                    const followersCount = user._count.followers || 0;
+                    
+                    console.log('📊 作者统计:', {
+                        作品数: storiesCount,
+                        关注者数: followersCount
+                    });
+                    
+                    document.getElementById('authorStories').textContent = storiesCount;
+                    document.getElementById('authorFollowers').textContent = followersCount;
+                    
+                    console.log('✅ 作者统计信息更新完成');
+                } else {
+                    console.warn('⚠️ API返回数据中没有_count字段');
+                }
+            } catch (error) {
+                console.error('❌ 加载作者统计信息失败:', error);
+            }
+        }
+
+        // 初始化关注作者按钮
+        async function initFollowAuthorButton(authorId) {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            const followBtn = document.getElementById('followBtn');
+            
+            if (!token) {
+                // 未登录用户
+                followBtn.addEventListener('click', () => {
+                    showError('请先登录');
+                    setTimeout(() => window.location.href = '/login', 1500);
+                });
+                return;
+            }
+
+            try {
+                // 检查当前用户
+                const meResponse = await fetch('/api/auth/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!meResponse.ok) return;
+
+                const userData = await meResponse.json();
+                const currentUserId = userData.user.id;
+
+                // 如果是作者本人，隐藏关注按钮
+                if (currentUserId === authorId) {
+                    followBtn.style.display = 'none';
+                    return;
+                }
+
+                // 检查是否已关注作者
+                const userResponse = await fetch(`/api/users/${authorId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (userResponse.ok) {
+                    const userInfo = await userResponse.json();
+                    updateFollowAuthorButton(userInfo.user.isFollowing, authorId);
+                }
+            } catch (error) {
+                console.error('初始化关注按钮失败:', error);
+            }
+        }
+
+        // 更新关注作者按钮状态
+        function updateFollowAuthorButton(isFollowing, authorId) {
+            const followBtn = document.getElementById('followBtn');
+            
+            if (isFollowing) {
+                followBtn.innerHTML = '<i class="fas fa-check"></i> 已关注';
+                followBtn.style.background = '#667eea';
+                followBtn.style.color = 'white';
+            } else {
+                followBtn.innerHTML = '<i class="fas fa-plus"></i> 关注';
+                followBtn.style.background = '';
+                followBtn.style.color = '';
+            }
+
+            // 移除旧的事件监听器
+            const newFollowBtn = followBtn.cloneNode(true);
+            followBtn.parentNode.replaceChild(newFollowBtn, followBtn);
+
+            // 添加新的事件监听器
+            newFollowBtn.addEventListener('click', () => toggleFollowAuthor(authorId));
+        }
+
+        // 切换关注作者状态
+        async function toggleFollowAuthor(authorId) {
+            console.log('🎯 toggleFollowAuthor 被调用, authorId:', authorId);
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) {
+                showError('请先登录');
+                setTimeout(() => window.location.href = '/login', 1500);
+                return;
+            }
+
+            const followBtn = document.getElementById('followBtn');
+            const isFollowing = followBtn.innerHTML.includes('已关注');
+            console.log('📌 当前关注状态:', isFollowing ? '已关注' : '未关注');
+            followBtn.disabled = true;
+
+            try {
+                if (isFollowing) {
+                    // 取消关注
+                    console.log('📤 发送取消关注请求...');
+                    const response = await fetch(`/api/users/${authorId}/follow`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+
+                    if (!response.ok) throw new Error('取消关注失败');
+
+                    followBtn.innerHTML = '<i class="fas fa-plus"></i> 关注';
+                    followBtn.style.background = '';
+                    followBtn.style.color = '';
+                    showSuccess('已取消关注');
+                    console.log('✅ 取消关注成功');
+                } else {
+                    // 关注
+                    console.log('📤 发送关注请求...');
+                    const response = await fetch(`/api/users/${authorId}/follow`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.error || '关注失败');
+                    }
+
+                    followBtn.innerHTML = '<i class="fas fa-check"></i> 已关注';
+                    followBtn.style.background = '#667eea';
+                    followBtn.style.color = 'white';
+                    showSuccess('关注成功');
+                    console.log('✅ 关注成功');
+                }
+                
+                // 重新加载作者统计信息以获取准确的关注者数量
+                console.log('🔄 准备重新加载作者统计信息...');
+                await loadAuthorStats(authorId);
+            } catch (error) {
+                console.error('❌ 关注操作失败:', error);
+                showError(error.message || '操作失败，请重试');
+            } finally {
+                followBtn.disabled = false;
+            }
+        }
+
         // 检查是否是作者,并获取用户在故事中的角色
         async function checkIfAuthor(story) {
             const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            
+            // 先隐藏所有按钮，避免重复显示
+            document.getElementById('followStoryBtn').style.display = 'none';
+            document.getElementById('applyCollaborationBtn').style.display = 'none';
+            document.getElementById('editStoryBtn').style.display = 'none';
+            document.getElementById('storySettingsBtn').style.display = 'none';
+            document.getElementById('aiCreateChapterBtn').style.display = 'none';
+            document.getElementById('userRoleBadge').style.display = 'none';
+            
             if (!token) {
                 // 未登录用户显示关注和申请协作按钮
                 const followBtn = document.getElementById('followStoryBtn');
@@ -1917,11 +2094,17 @@
                 followBtn.style.display = 'inline-flex';
                 applyBtn.style.display = 'inline-flex';
                 
-                followBtn.addEventListener('click', () => {
+                // 使用克隆节点的方式移除所有旧的事件监听器
+                const newFollowBtn = followBtn.cloneNode(true);
+                const newApplyBtn = applyBtn.cloneNode(true);
+                followBtn.parentNode.replaceChild(newFollowBtn, followBtn);
+                applyBtn.parentNode.replaceChild(newApplyBtn, applyBtn);
+                
+                newFollowBtn.addEventListener('click', () => {
                     showError('请先登录');
                     setTimeout(() => window.location.href = '/login', 1500);
                 });
-                applyBtn.addEventListener('click', () => {
+                newApplyBtn.addEventListener('click', () => {
                     showError('请先登录');
                     setTimeout(() => window.location.href = '/login', 1500);
                 });
@@ -1987,6 +2170,28 @@
                             roleBadge.className = 'user-role-badge role-collaborator';
                             roleText.innerHTML = '<i class="fas fa-users"></i> 共创者';
                             
+                            // 协作者显示"已追更"按钮（协作者默认关注故事）
+                            const followBtn = document.getElementById('followStoryBtn');
+                            const newFollowBtn = followBtn.cloneNode(true);
+                            followBtn.parentNode.replaceChild(newFollowBtn, followBtn);
+                            
+                            newFollowBtn.style.display = 'inline-flex';
+                            newFollowBtn.innerHTML = '<i class="fas fa-star"></i> 已追更';
+                            newFollowBtn.style.background = '#f093fb';
+                            newFollowBtn.style.color = 'white';
+                            newFollowBtn.addEventListener('click', () => toggleFollowStory(story.id));
+                            
+                            // 协作者显示"退出协作"按钮
+                            const applyBtn = document.getElementById('applyCollaborationBtn');
+                            const newApplyBtn = applyBtn.cloneNode(true);
+                            applyBtn.parentNode.replaceChild(newApplyBtn, applyBtn);
+                            
+                            newApplyBtn.style.display = 'inline-flex';
+                            newApplyBtn.innerHTML = '<i class="fas fa-user-times"></i> 退出协作';
+                            newApplyBtn.style.background = '#ff6b6b';
+                            newApplyBtn.style.color = 'white';
+                            newApplyBtn.addEventListener('click', () => quitCollaboration(story.id));
+                            
                             // 只有在允许续写时，协作者才能使用AI续写章节功能
                             if (roleData.allow_branch) {
                                 const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
@@ -2011,25 +2216,31 @@
                         
                         // 根据角色显示相应按钮
                         if (!roleData.is_author && !roleData.is_collaborator) {
-                            // 显示关注按钮
+                            // 显示关注按钮 - 先克隆以移除旧事件
                             const followBtn = document.getElementById('followStoryBtn');
-                            followBtn.style.display = 'inline-flex';
+                            const newFollowBtn = followBtn.cloneNode(true);
+                            followBtn.parentNode.replaceChild(newFollowBtn, followBtn);
+                            
+                            newFollowBtn.style.display = 'inline-flex';
                             
                             if (roleData.is_follower) {
-                                followBtn.innerHTML = '<i class="fas fa-star"></i> 已关注';
-                                followBtn.style.background = '#f093fb';
-                                followBtn.style.color = 'white';
+                                newFollowBtn.innerHTML = '<i class="fas fa-star"></i> 已追更';
+                                newFollowBtn.style.background = '#f093fb';
+                                newFollowBtn.style.color = 'white';
                             } else {
-                                followBtn.innerHTML = '<i class="far fa-star"></i> 关注故事';
+                                newFollowBtn.innerHTML = '<i class="far fa-star"></i> 追更';
                             }
                             
-                            followBtn.addEventListener('click', () => toggleFollowStory(story.id));
+                            newFollowBtn.addEventListener('click', () => toggleFollowStory(story.id));
                             
                             // 只有在允许续写且没有待处理申请时，才显示申请协作按钮
                             if (roleData.allow_branch && !roleData.has_pending_request) {
                                 const applyBtn = document.getElementById('applyCollaborationBtn');
-                                applyBtn.style.display = 'inline-flex';
-                                applyBtn.addEventListener('click', () => openApplyCollaborationModal(story.id));
+                                const newApplyBtn = applyBtn.cloneNode(true);
+                                applyBtn.parentNode.replaceChild(newApplyBtn, applyBtn);
+                                
+                                newApplyBtn.style.display = 'inline-flex';
+                                newApplyBtn.addEventListener('click', () => openApplyCollaborationModal(story.id));
                                 console.log('✅ 允许协作，显示申请按钮');
                             } else if (!roleData.allow_branch) {
                                 console.log('❌ 故事已关闭协作功能，不显示申请按钮');
@@ -2101,7 +2312,7 @@
 
                     if (!response.ok) throw new Error('取消关注失败');
 
-                    followBtn.innerHTML = '<i class="far fa-star"></i> 关注故事';
+                    followBtn.innerHTML = '<i class="far fa-star"></i> 追更';
                     followBtn.style.background = '';
                     followBtn.style.color = '';
                     showSuccess('已取消关注');
@@ -2117,7 +2328,7 @@
 
                     if (!response.ok) throw new Error('关注失败');
 
-                    followBtn.innerHTML = '<i class="fas fa-star"></i> 已关注';
+                    followBtn.innerHTML = '<i class="fas fa-star"></i> 已追更';
                     followBtn.style.background = '#f093fb';
                     followBtn.style.color = 'white';
                     showSuccess('关注成功');
@@ -2259,8 +2470,11 @@
                     showSuccess('申请已提交，请等待主创审核');
                     closeApplyCollaborationModal();
                     
-                    // 隐藏申请按钮
-                    document.getElementById('applyCollaborationBtn').style.display = 'none';
+                    // 重新检查用户角色，更新按钮状态
+                    // 申请提交后，用户会有待处理的申请，需要重新加载角色信息
+                    setTimeout(() => {
+                        checkIfAuthor(window.currentStory);
+                    }, 500);
                 }
             } catch (error) {
                 console.error('提交申请失败:', error);
@@ -2268,6 +2482,44 @@
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 提交申请';
+            }
+        }
+
+        // 退出协作
+        async function quitCollaboration(storyId) {
+            // 弹出确认对话框
+            if (!confirm('确定要退出协作吗？\n\n退出后：\n• 你将失去共创者身份\n• 无法再续写新的章节\n• 已创作的章节不会被删除\n• 可以重新申请成为协作者')) {
+                return;
+            }
+
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) {
+                showError('请先登录');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/stories/${storyId}/collaborators/leave`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || '退出协作失败');
+                }
+
+                showSuccess('已退出协作');
+                
+                // 1.5秒后刷新页面，更新按钮状态
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } catch (error) {
+                console.error('退出协作失败:', error);
+                showError(error.message || '退出协作失败，请重试');
             }
         }
 
@@ -2604,123 +2856,6 @@
                 messageEl.classList.add('fade-out');
                 setTimeout(() => messageEl.remove(), 300);
             }, 3000);
-        }
-
-        // 检查收藏状态
-        async function checkBookmarkStatus(storyId) {
-            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-            const likeBtn = document.getElementById('likeBtn');
-            
-            if (!token) {
-                // 未登录，显示登录提示
-                likeBtn.addEventListener('click', () => {
-                    showError('请先登录');
-                    setTimeout(() => {
-                        window.location.href = '/login';
-                    }, 1500);
-                });
-                return;
-            }
-
-            try {
-                const response = await fetch(`/api/bookmarks/check/${storyId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    updateBookmarkButton(data.isBookmarked);
-                }
-            } catch (error) {
-                console.error('检查收藏状态失败:', error);
-            }
-
-            // 添加点击事件
-            likeBtn.addEventListener('click', () => toggleBookmark(storyId));
-        }
-
-        // 更新收藏按钮状态
-        function updateBookmarkButton(isBookmarked) {
-            const likeBtn = document.getElementById('likeBtn');
-            const icon = likeBtn.querySelector('i');
-            
-            if (isBookmarked) {
-                icon.classList.remove('far');
-                icon.classList.add('fas');
-                likeBtn.innerHTML = '<i class="fas fa-heart"></i> 已收藏';
-                likeBtn.style.background = '#ff6b6b';
-                likeBtn.style.color = 'white';
-            } else {
-                icon.classList.remove('fas');
-                icon.classList.add('far');
-                likeBtn.innerHTML = '<i class="far fa-heart"></i> 收藏';
-                likeBtn.style.background = '';
-                likeBtn.style.color = '';
-            }
-        }
-
-        // 切换收藏状态
-        async function toggleBookmark(storyId) {
-            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-            
-            if (!token) {
-                showError('请先登录');
-                setTimeout(() => {
-                    window.location.href = '/login';
-                }, 1500);
-                return;
-            }
-
-            const likeBtn = document.getElementById('likeBtn');
-            const icon = likeBtn.querySelector('i');
-            const isBookmarked = icon.classList.contains('fas');
-
-            // 禁用按钮防止重复点击
-            likeBtn.disabled = true;
-
-            try {
-                if (isBookmarked) {
-                    // 取消收藏
-                    const response = await fetch(`/api/bookmarks/${storyId}`, {
-                        method: 'DELETE',
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('取消收藏失败');
-                    }
-
-                    updateBookmarkButton(false);
-                    showSuccess('已取消收藏');
-                } else {
-                    // 添加收藏
-                    const response = await fetch('/api/bookmarks', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({ storyId: parseInt(storyId) })
-                    });
-
-                    if (!response.ok) {
-                        const error = await response.json();
-                        throw new Error(error.error || '收藏失败');
-                    }
-
-                    updateBookmarkButton(true);
-                    showSuccess('收藏成功');
-                }
-            } catch (error) {
-                console.error('收藏操作失败:', error);
-                showError(error.message || '操作失败，请重试');
-            } finally {
-                likeBtn.disabled = false;
-            }
         }
 
         // ============================================
@@ -4344,4 +4479,3 @@
     </script>
 </body>
 </html>
-
