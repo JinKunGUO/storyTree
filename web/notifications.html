@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>消息通知 - StoryTree</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        /* 导航栏 */
+        .navbar {
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+        }
+
+        .navbar-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            height: 70px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-brand {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: #333;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .nav-link:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .notification-icon {
+            position: relative;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .notification-icon:hover {
+            background: #f0f0f0;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: 0;
+            right: 8px;
+            background: #ff4757;
+            color: white;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 11px;
+            font-weight: bold;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        /* 主要内容 */
+        .main-content {
+            max-width: 800px;
+            margin: 100px auto 40px;
+            padding: 0 20px;
+        }
+
+        .page-header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .page-header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        /* 通知列表 */
+        .notifications-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .notification-item {
+            padding: 20px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+
+        .notification-item:hover {
+            background: #f8f9ff;
+        }
+
+        .notification-item.unread {
+            background: #f0f4ff;
+        }
+
+        .notification-item.unread::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 60%;
+            background: #667eea;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .notification-title {
+            font-weight: bold;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .notification-time {
+            color: #999;
+            font-size: 12px;
+            white-space: nowrap;
+            margin-left: 10px;
+        }
+
+        .notification-content {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .notification-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .notification-action-btn {
+            padding: 5px 12px;
+            font-size: 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .mark-read-btn {
+            background: #e8f0ff;
+            color: #667eea;
+        }
+
+        .mark-read-btn:hover {
+            background: #d0e0ff;
+        }
+
+        .delete-btn {
+            background: #ffe8e8;
+            color: #ff4757;
+        }
+
+        .delete-btn:hover {
+            background: #ffd0d0;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state i {
+            font-size: 64px;
+            margin-bottom: 20px;
+            color: #ddd;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .loading i {
+            font-size: 32px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* 消息提示 */
+        .message {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            background: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 2000;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .message-success {
+            border-left: 4px solid #2ecc71;
+        }
+
+        .message-error {
+            border-left: 4px solid #e74c3c;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                margin-top: 90px;
+            }
+
+            .page-header {
+                padding: 20px;
+            }
+
+            .header-actions {
+                flex-direction: column;
+            }
+
+            .notification-header {
+                flex-direction: column;
+            }
+
+            .notification-time {
+                margin-left: 0;
+                margin-top: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="/" class="nav-brand">
+                <i class="fas fa-tree"></i>
+                StoryTree
+            </a>
+            <div class="nav-menu">
+                <a href="/" class="nav-link">首页</a>
+                <a href="/discover" class="nav-link">发现故事</a>
+                <a href="/my-stories.html" class="nav-link" id="myStoriesLink" style="display: none;">
+                    <i class="fas fa-book"></i> 我的故事
+                </a>
+                <div class="notification-icon" id="notificationIcon">
+                    <i class="fas fa-bell" style="font-size: 18px;"></i>
+                    <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                </div>
+                <a href="/profile" class="nav-link" id="profileLink" style="display: none;">
+                    <i class="fas fa-user"></i> 个人中心
+                </a>
+                <a href="/login" class="nav-link" id="loginLink">登录</a>
+                <a href="#" class="nav-link" id="logoutLink" style="display: none;" onclick="logout(event)">
+                    <i class="fas fa-sign-out-alt"></i> 退出
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要内容 -->
+    <div class="main-content">
+        <!-- 页面标题 -->
+        <div class="page-header">
+            <h1><i class="fas fa-bell"></i> 消息通知</h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="markAllAsRead()">
+                    <i class="fas fa-check-double"></i> 全部标为已读
+                </button>
+                <button class="btn btn-secondary" onclick="filterNotifications('all')" id="filterAll">
+                    全部
+                </button>
+                <button class="btn btn-secondary" onclick="filterNotifications('unread')" id="filterUnread">
+                    未读
+                </button>
+            </div>
+        </div>
+
+        <!-- 通知列表 -->
+        <div class="notifications-container">
+            <div class="loading" id="loading">
+                <i class="fas fa-spinner"></i>
+                <p>加载中...</p>
+            </div>
+            <div id="notificationsList" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        let allNotifications = [];
+        let currentFilter = 'all';
+
+        // 检查登录状态
+        function checkAuth() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) {
+                window.location.href = '/login';
+                return false;
+            }
+            return true;
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!checkAuth()) return;
+            
+            updateNavbar();
+            loadNotifications();
+        });
+
+        // 更新导航栏
+        function updateNavbar() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (token) {
+                document.getElementById('loginLink').style.display = 'none';
+                document.getElementById('logoutLink').style.display = 'block';
+                document.getElementById('profileLink').style.display = 'block';
+                document.getElementById('myStoriesLink').style.display = 'block';
+            }
+        }
+
+        // 加载通知列表
+        async function loadNotifications() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            
+            try {
+                const response = await fetch('/api/notifications', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('加载通知失败');
+                }
+
+                const data = await response.json();
+                allNotifications = data.notifications || [];
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('notificationsList').style.display = 'block';
+                
+                renderNotifications();
+                updateBadge(data.unreadCount || 0);
+            } catch (error) {
+                console.error('加载通知失败:', error);
+                document.getElementById('loading').innerHTML = '<p>加载失败，请刷新重试</p>';
+            }
+        }
+
+        // 渲染通知列表
+        function renderNotifications() {
+            const container = document.getElementById('notificationsList');
+            
+            let filteredNotifications = allNotifications;
+            if (currentFilter === 'unread') {
+                filteredNotifications = allNotifications.filter(n => !n.is_read);
+            }
+
+            if (filteredNotifications.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-bell-slash"></i>
+                        <p>${currentFilter === 'unread' ? '暂无未读通知' : '暂无通知'}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filteredNotifications.map(notification => `
+                <div class="notification-item ${notification.is_read ? '' : 'unread'}" data-id="${notification.id}">
+                    <div class="notification-header">
+                        <div class="notification-title">${notification.title}</div>
+                        <div class="notification-time">${formatTime(notification.created_at)}</div>
+                    </div>
+                    <div class="notification-content">${notification.content}</div>
+                    <div class="notification-actions">
+                        ${notification.link ? `<button class="notification-action-btn mark-read-btn" onclick="handleNotificationClick(${notification.id}, '${notification.link}')">查看详情</button>` : ''}
+                        ${!notification.is_read ? `<button class="notification-action-btn mark-read-btn" onclick="markAsRead(${notification.id})">标为已读</button>` : ''}
+                        <button class="notification-action-btn delete-btn" onclick="deleteNotification(${notification.id})">删除</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 格式化时间
+        function formatTime(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diff = now - date;
+            const seconds = Math.floor(diff / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+
+            if (days > 7) {
+                return date.toLocaleDateString('zh-CN');
+            } else if (days > 0) {
+                return `${days}天前`;
+            } else if (hours > 0) {
+                return `${hours}小时前`;
+            } else if (minutes > 0) {
+                return `${minutes}分钟前`;
+            } else {
+                return '刚刚';
+            }
+        }
+
+        // 处理通知点击
+        async function handleNotificationClick(id, link) {
+            await markAsRead(id);
+            if (link) {
+                window.location.href = link;
+            }
+        }
+
+        // 标记为已读
+        async function markAsRead(id) {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            
+            try {
+                const response = await fetch(`/api/notifications/${id}/read`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    // 更新本地数据
+                    const notification = allNotifications.find(n => n.id === id);
+                    if (notification) {
+                        notification.is_read = true;
+                    }
+                    renderNotifications();
+                    updateBadge();
+                }
+            } catch (error) {
+                console.error('标记失败:', error);
+            }
+        }
+
+        // 全部标为已读
+        async function markAllAsRead() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            
+            try {
+                const response = await fetch('/api/notifications/read-all', {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    allNotifications.forEach(n => n.is_read = true);
+                    renderNotifications();
+                    updateBadge();
+                    showMessage('已全部标为已读', 'success');
+                }
+            } catch (error) {
+                console.error('操作失败:', error);
+                showMessage('操作失败，请重试', 'error');
+            }
+        }
+
+        // 删除通知
+        async function deleteNotification(id) {
+            if (!confirm('确定要删除这条通知吗？')) {
+                return;
+            }
+
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            
+            try {
+                const response = await fetch(`/api/notifications/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    allNotifications = allNotifications.filter(n => n.id !== id);
+                    renderNotifications();
+                    updateBadge();
+                    showMessage('删除成功', 'success');
+                }
+            } catch (error) {
+                console.error('删除失败:', error);
+                showMessage('删除失败，请重试', 'error');
+            }
+        }
+
+        // 筛选通知
+        function filterNotifications(filter) {
+            currentFilter = filter;
+            
+            // 更新按钮样式
+            document.getElementById('filterAll').className = filter === 'all' ? 'btn btn-primary' : 'btn btn-secondary';
+            document.getElementById('filterUnread').className = filter === 'unread' ? 'btn btn-primary' : 'btn btn-secondary';
+            
+            renderNotifications();
+        }
+
+        // 更新未读计数徽章
+        function updateBadge(count) {
+            if (count === undefined) {
+                count = allNotifications.filter(n => !n.is_read).length;
+            }
+            
+            const badge = document.getElementById('notificationBadge');
+            if (count > 0) {
+                badge.textContent = count > 99 ? '99+' : count;
+                badge.style.display = 'block';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        // 显示消息
+        function showMessage(message, type = 'success') {
+            const messageEl = document.createElement('div');
+            messageEl.className = `message message-${type}`;
+            messageEl.innerHTML = `
+                <i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'}"></i>
+                <span>${message}</span>
+            `;
+            document.body.appendChild(messageEl);
+            
+            setTimeout(() => {
+                messageEl.remove();
+            }, 3000);
+        }
+
+        // 退出登录
+        function logout(event) {
+            event.preventDefault();
+            localStorage.removeItem('token');
+            sessionStorage.removeItem('token');
+            window.location.href = '/login';
+        }
+    </script>
+</body>
+</html>
+

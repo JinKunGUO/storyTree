@@ -669,6 +669,21 @@ router.post('/:id/collaborators', authenticateToken, async (req, res) => {
       });
     }
 
+    // 自动将协作者添加为故事粉丝（追更）
+    await prisma.story_followers.upsert({
+      where: {
+        story_id_user_id: {
+          story_id: parseInt(id),
+          user_id: user_id
+        }
+      },
+      create: {
+        story_id: parseInt(id),
+        user_id: user_id
+      },
+      update: {} // 如果已存在则不做修改
+    });
+
     // 创建通知
     await prisma.notifications.create({
       data: {

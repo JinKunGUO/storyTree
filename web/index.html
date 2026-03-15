@@ -88,6 +88,35 @@
             background: linear-gradient(135deg, #764ba2, #667eea);
         }
 
+        /* 通知图标 */
+        .notification-icon {
+            position: relative;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: #333;
+        }
+
+        .notification-icon:hover {
+            background: #f0f0f0;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: 2px;
+            right: 8px;
+            background: #ff4757;
+            color: white;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 11px;
+            font-weight: bold;
+            min-width: 18px;
+            text-align: center;
+        }
+
         /* 移动端菜单 */
         .mobile-menu-toggle {
             display: none;
@@ -404,6 +433,10 @@
                     <i class="fas fa-book"></i> 我的故事
                 </a>
                 <a href="/create" class="nav-link">开始创作</a>
+                <a href="/notifications.html" class="notification-icon" id="notificationIcon" style="display: none;">
+                    <i class="fas fa-bell" style="font-size: 18px;"></i>
+                    <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                </a>
                 <a href="/login" class="nav-link" id="loginLink">登录</a>
                 <a href="/register" class="nav-link primary" id="registerLink">注册</a>
                 <a href="/profile" class="nav-link" id="profileLink" style="display: none;">
@@ -471,6 +504,7 @@
             const profileLink = document.getElementById('profileLink');
             const logoutLink = document.getElementById('logoutLink');
             const myStoriesLink = document.getElementById('myStoriesLink');
+            const notificationIcon = document.getElementById('notificationIcon');
             
             if (token) {
                 loginLink.style.display = 'none';
@@ -478,12 +512,42 @@
                 profileLink.style.display = 'block';
                 logoutLink.style.display = 'block';
                 if (myStoriesLink) myStoriesLink.style.display = 'block';
+                if (notificationIcon) {
+                    notificationIcon.style.display = 'block';
+                    loadUnreadCount();
+                }
             } else {
                 loginLink.style.display = 'block';
                 registerLink.style.display = 'block';
                 profileLink.style.display = 'none';
                 logoutLink.style.display = 'none';
                 if (myStoriesLink) myStoriesLink.style.display = 'none';
+                if (notificationIcon) notificationIcon.style.display = 'none';
+            }
+        }
+
+        // 加载未读通知数量
+        async function loadUnreadCount() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) return;
+
+            try {
+                const response = await fetch('/api/notifications', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const badge = document.getElementById('notificationBadge');
+                    if (badge && data.unreadCount > 0) {
+                        badge.textContent = data.unreadCount > 99 ? '99+' : data.unreadCount;
+                        badge.style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.error('加载未读通知数失败:', error);
             }
         }
 

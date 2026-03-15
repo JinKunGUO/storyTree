@@ -133,6 +133,21 @@ router.post('/', authenticateToken, async (req, res) => {
             });
           }
 
+          // 自动将协作者添加为故事粉丝（追更）
+          await prisma.story_followers.upsert({
+            where: {
+              story_id_user_id: {
+                story_id: story_id,
+                user_id: userId
+              }
+            },
+            create: {
+              story_id: story_id,
+              user_id: userId
+            },
+            update: {} // 如果已存在则不做修改
+          });
+
           // 通知申请人
           await prisma.notifications.create({
             data: {
@@ -224,6 +239,21 @@ router.post('/', authenticateToken, async (req, res) => {
           }
         });
       }
+
+      // 自动将协作者添加为故事粉丝（追更）
+      await prisma.story_followers.upsert({
+        where: {
+          story_id_user_id: {
+            story_id: story_id,
+            user_id: userId
+          }
+        },
+        create: {
+          story_id: story_id,
+          user_id: userId
+        },
+        update: {} // 如果已存在则不做修改
+      });
 
       // 通知申请人
       await prisma.notifications.create({
@@ -394,6 +424,21 @@ router.put('/:id/approve', authenticateToken, async (req, res) => {
         }
       });
     }
+
+    // 自动将协作者添加为故事粉丝（追更）
+    await prisma.story_followers.upsert({
+      where: {
+        story_id_user_id: {
+          story_id: request.story_id,
+          user_id: request.user_id
+        }
+      },
+      create: {
+        story_id: request.story_id,
+        user_id: request.user_id
+      },
+      update: {} // 如果已存在则不做修改
+    });
 
     // 通知申请人
     await prisma.notifications.create({

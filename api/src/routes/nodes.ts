@@ -108,27 +108,41 @@ router.post('/', authenticateToken, async (req, res) => {
         data: { root_node_id: node.id }
       });
 
-      // 如果是发布状态且审核通过，通知粉丝
-      if (shouldPublish && !reviewCheck.needReview) {
-        // 获取故事粉丝列表
-        const followers = await prisma.story_followers.findMany({
-          where: { story_id: parseInt(storyId) },
-          select: { user_id: true }
-        });
+    // 如果是发布状态且审核通过，通知粉丝
+    if (shouldPublish && !reviewCheck.needReview) {
+      // 获取故事粉丝列表
+      const storyFollowers = await prisma.story_followers.findMany({
+        where: { story_id: parseInt(storyId) },
+        select: { user_id: true }
+      });
 
-        // 批量创建通知
-        if (followers.length > 0) {
-          await prisma.notifications.createMany({
-            data: followers.map(follower => ({
-              user_id: follower.user_id,
-              type: 'STORY_UPDATE',
-              title: '故事更新',
-              content: `《${node.story.title}》发布了新章节：${title}`,
-              link: `/chapter?id=${node.id}`
-            }))
-          });
-        }
+      // 获取作者粉丝列表
+      const authorFollowers = await prisma.follows.findMany({
+        where: { following_id: userId },
+        select: { follower_id: true }
+      });
+
+      // 合并并去重用户ID（避免重复通知）
+      const notifyUserIds = new Set<number>();
+      storyFollowers.forEach(f => notifyUserIds.add(f.user_id));
+      authorFollowers.forEach(f => notifyUserIds.add(f.follower_id));
+      
+      // 排除作者自己
+      notifyUserIds.delete(userId);
+
+      // 批量创建通知
+      if (notifyUserIds.size > 0) {
+        await prisma.notifications.createMany({
+          data: Array.from(notifyUserIds).map(user_id => ({
+            user_id,
+            type: 'STORY_UPDATE',
+            title: '故事更新',
+            content: `《${node.story.title}》发布了新章节：${title}`,
+            link: `/chapter?id=${node.id}`
+          }))
+        });
       }
+    }
 
       const statusMessage = shouldPublish 
         ? (reviewCheck.needReview ? `内容需要审核：${reviewCheck.reason}` : '第一章创建成功')
@@ -182,16 +196,30 @@ router.post('/', authenticateToken, async (req, res) => {
     // 如果是发布状态且审核通过，通知粉丝
     if (shouldPublish && !reviewCheck.needReview) {
       // 获取故事粉丝列表
-      const followers = await prisma.story_followers.findMany({
+      const storyFollowers = await prisma.story_followers.findMany({
         where: { story_id: parseInt(storyId) },
         select: { user_id: true }
       });
 
+      // 获取作者粉丝列表
+      const authorFollowers = await prisma.follows.findMany({
+        where: { following_id: node.author_id },
+        select: { follower_id: true }
+      });
+
+      // 合并并去重用户ID（避免重复通知）
+      const notifyUserIds = new Set<number>();
+      storyFollowers.forEach(f => notifyUserIds.add(f.user_id));
+      authorFollowers.forEach(f => notifyUserIds.add(f.follower_id));
+      
+      // 排除作者自己
+      notifyUserIds.delete(node.author_id);
+
       // 批量创建通知
-      if (followers.length > 0) {
+      if (notifyUserIds.size > 0) {
         await prisma.notifications.createMany({
-          data: followers.map(follower => ({
-            user_id: follower.user_id,
+          data: Array.from(notifyUserIds).map(user_id => ({
+            user_id,
             type: 'STORY_UPDATE',
             title: '故事更新',
             content: `《${node.story.title}》发布了新章节：${title}`,
@@ -354,16 +382,30 @@ router.post('/:id/publish', authenticateToken, async (req, res) => {
     // 如果审核通过，通知粉丝
     if (!reviewCheck.needReview) {
       // 获取故事粉丝列表
-      const followers = await prisma.story_followers.findMany({
+      const storyFollowers = await prisma.story_followers.findMany({
         where: { story_id: node.story_id },
         select: { user_id: true }
       });
 
+      // 获取作者粉丝列表
+      const authorFollowers = await prisma.follows.findMany({
+        where: { following_id: userId },
+        select: { follower_id: true }
+      });
+
+      // 合并并去重用户ID（避免重复通知）
+      const notifyUserIds = new Set<number>();
+      storyFollowers.forEach(f => notifyUserIds.add(f.user_id));
+      authorFollowers.forEach(f => notifyUserIds.add(f.follower_id));
+      
+      // 排除作者自己
+      notifyUserIds.delete(userId);
+
       // 批量创建通知
-      if (followers.length > 0) {
+      if (notifyUserIds.size > 0) {
         await prisma.notifications.createMany({
-          data: followers.map(follower => ({
-            user_id: follower.user_id,
+          data: Array.from(notifyUserIds).map(user_id => ({
+            user_id,
             type: 'STORY_UPDATE',
             title: '故事更新',
             content: `《${node.story.title}》发布了新章节：${node.title}`,
@@ -704,16 +746,30 @@ router.post('/:id/branches', authenticateToken, async (req, res) => {
     // 如果是发布状态且审核通过，通知粉丝
     if (shouldPublish && !reviewCheck.needReview) {
       // 获取故事粉丝列表
-      const followers = await prisma.story_followers.findMany({
+      const storyFollowers = await prisma.story_followers.findMany({
         where: { story_id: parentNode.story_id },
         select: { user_id: true }
       });
 
+      // 获取作者粉丝列表
+      const authorFollowers = await prisma.follows.findMany({
+        where: { following_id: userId },
+        select: { follower_id: true }
+      });
+
+      // 合并并去重用户ID（避免重复通知）
+      const notifyUserIds = new Set<number>();
+      storyFollowers.forEach(f => notifyUserIds.add(f.user_id));
+      authorFollowers.forEach(f => notifyUserIds.add(f.follower_id));
+      
+      // 排除作者自己
+      notifyUserIds.delete(userId);
+
       // 批量创建通知
-      if (followers.length > 0) {
+      if (notifyUserIds.size > 0) {
         await prisma.notifications.createMany({
-          data: followers.map(follower => ({
-            user_id: follower.user_id,
+          data: Array.from(notifyUserIds).map(user_id => ({
+            user_id,
             type: 'STORY_UPDATE',
             title: '故事更新',
             content: `《${node.story.title}》发布了新章节：${title}`,
