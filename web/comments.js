@@ -55,16 +55,32 @@ class CommentSystem {
     }
 
     // 渲染单个评论
-    renderComment(comment, isReply = false, rootCommentId = null) {
+    renderComment(comment, isReply = false, rootCommentId = null, replyToUsername = null) {
         const currentUser = this.getCurrentUser();
         const isOwner = currentUser && currentUser.id === comment.user.id;
         const avatar = comment.user.avatar || '/assets/default-avatar.png';
+        const isDeleted = comment.is_deleted || false;
         
         // 如果是顶级评论，rootCommentId就是自己的ID
         const actualRootId = rootCommentId || comment.id;
 
-        // 如果是回复评论，使用简化的结构
+        // 点赞/踩按钮HTML（已删除的评论不显示）
+        const voteButtons = isDeleted ? '' : `
+            <button class="btn-vote btn-like ${comment.userVote === 'like' ? 'active' : ''}" data-comment-id="${comment.id}" data-vote-type="like">
+                <i class="fas fa-thumbs-up"></i>
+                <span class="vote-count">${comment.likeCount || 0}</span>
+            </button>
+            <button class="btn-vote btn-dislike ${comment.userVote === 'dislike' ? 'active' : ''}" data-comment-id="${comment.id}" data-vote-type="dislike">
+                <i class="fas fa-thumbs-down"></i>
+                <span class="vote-count">${comment.dislikeCount || 0}</span>
+            </button>
+        `;
+
+        // 如果是回复评论，使用简化的结构（不再递归，所有回复都在同一层级）
         if (isReply) {
+            // 如果有replyToUsername，说明是回复子评论，需要添加@前缀
+            const contentPrefix = replyToUsername ? `<span class="reply-to">@${replyToUsername}：</span>` : '';
+            
             return `
                 <div class="comment-reply" data-comment-id="${comment.id}" data-root-id="${actualRootId}">
                     <div class="comment-avatar">
@@ -75,12 +91,18 @@ class CommentSystem {
                             <span class="comment-author">${comment.user.username}</span>
                             <span class="comment-time">${this.formatTime(comment.created_at)}</span>
                         </div>
-                        <div class="comment-text">${this.escapeHtml(comment.content)}</div>
+                        <div class="comment-text ${isDeleted ? 'deleted-text' : ''}">${contentPrefix}${this.escapeHtml(comment.content)}</div>
                         <div class="comment-actions">
-                            <button class="btn-reply" data-comment-id="${comment.id}" data-root-id="${actualRootId}">
-                                <i class="fas fa-reply"></i> 回复
-                            </button>
-                            ${isOwner ? `
+                            ${voteButtons}
+                            ${!isDeleted ? `
+                                <button class="btn-reply" data-comment-id="${comment.id}" data-root-id="${actualRootId}" data-author="${comment.user.username}">
+                                    <i class="fas fa-reply"></i> 回复
+                                </button>
+                            ` : ''}
+                            ${isOwner && !isDeleted ? `
+                                <button class="btn-edit" data-comment-id="${comment.id}">
+                                    <i class="fas fa-edit"></i> 编辑
+                                </button>
                                 <button class="btn-delete" data-comment-id="${comment.id}">
                                     <i class="fas fa-trash"></i> 删除
                                 </button>
@@ -92,6 +114,29 @@ class CommentSystem {
         }
 
         // 主评论的完整结构
+        // 扁平化所有回复，并保存被回复用户的信息
+        const flattenReplies = (replies, parentComment = null) => {
+            let result = [];
+            replies.forEach(reply => {
+                // 添加当前回复，记录被回复的用户名
+                result.push({
+                    comment: reply,
+                    replyTo: parentComment ? parentComment.user.username : null
+                });
+                // 递归处理子回复
+                if (reply.other_comments && reply.other_comments.length > 0) {
+                    result = result.concat(flattenReplies(reply.other_comments, reply));
+                }
+            });
+            return result;
+        };
+
+        const allRepliesFlat = comment.other_comments ? flattenReplies(comment.other_comments) : [];
+        const replyCount = allRepliesFlat.length;
+        const showCollapse = replyCount > 3; // 超过3条回复时显示折叠
+        
+        const visibleReplies = showCollapse ? allRepliesFlat.slice(0, 3) : allRepliesFlat;
+        
         return `
             <div class="comment-item" data-comment-id="${comment.id}">
                 <div class="comment-avatar">
@@ -102,12 +147,15 @@ class CommentSystem {
                         <span class="comment-author">${comment.user.username}</span>
                         <span class="comment-time">${this.formatTime(comment.created_at)}</span>
                     </div>
-                    <div class="comment-text">${this.escapeHtml(comment.content)}</div>
+                    <div class="comment-text ${isDeleted ? 'deleted-text' : ''}">${this.escapeHtml(comment.content)}</div>
                     <div class="comment-actions">
-                        <button class="btn-reply" data-comment-id="${comment.id}" data-root-id="${comment.id}">
-                            <i class="fas fa-reply"></i> 回复
-                        </button>
-                        ${isOwner ? `
+                        ${voteButtons}
+                        ${!isDeleted ? `
+                            <button class="btn-reply" data-comment-id="${comment.id}" data-root-id="${comment.id}" data-author="${comment.user.username}">
+                                <i class="fas fa-reply"></i> 回复
+                            </button>
+                        ` : ''}
+                        ${isOwner && !isDeleted ? `
                             <button class="btn-edit" data-comment-id="${comment.id}">
                                 <i class="fas fa-edit"></i> 编辑
                             </button>
@@ -123,11 +171,24 @@ class CommentSystem {
                             <button class="btn-submit-reply" data-parent-id="${comment.id}" data-root-id="${comment.id}">发表回复</button>
                         </div>
                     </div>
-                    ${comment.other_comments && comment.other_comments.length > 0 ? `
-                        <div class="comment-replies">
-                            ${comment.other_comments.map(reply => this.renderComment(reply, true, comment.id)).join('')}
+                    ${allRepliesFlat.length > 0 ? `
+                        <div class="comment-replies" id="replies-${comment.id}">
+                            ${visibleReplies.map(item => this.renderComment(item.comment, true, comment.id, item.replyTo)).join('')}
+                            ${showCollapse ? `
+                                <div class="hidden-replies" style="display: none;">
+                                    ${allRepliesFlat.slice(3).map(item => this.renderComment(item.comment, true, comment.id, item.replyTo)).join('')}
+                                </div>
+                                <div class="replies-toolbar" data-comment-id="${comment.id}">
+                                    <button class="btn-toggle-replies">
+                                        <span class="toggle-text">共${replyCount}条回复，点击查看全部</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                </div>
+                            ` : ''}
                         </div>
-                    ` : ''}
+                    ` : `
+                        <div class="comment-replies" id="replies-${comment.id}" style="display: none;"></div>
+                    `}
                 </div>
             </div>
         `;
@@ -184,6 +245,48 @@ class CommentSystem {
         document.addEventListener('click', async (e) => {
             const target = e.target.closest('button');
             if (!target) return;
+
+            // 点赞/踩按钮
+            if (target.classList.contains('btn-vote')) {
+                const commentId = target.dataset.commentId;
+                const voteType = target.dataset.voteType;
+                await this.voteComment(commentId, voteType, target);
+            }
+
+            // 展开/折叠回复
+            if (target.classList.contains('btn-toggle-replies')) {
+                const toolbar = target.closest('.replies-toolbar');
+                const repliesContainer = toolbar.closest('.comment-replies');
+                const hiddenReplies = repliesContainer.querySelector('.hidden-replies');
+                
+                if (hiddenReplies) {
+                    const commentId = toolbar.dataset.commentId;
+                    const comment = this.comments.find(c => c.id === parseInt(commentId));
+                    
+                    // 扁平化计算总回复数
+                    const flattenReplies = (replies) => {
+                        let result = [];
+                        replies.forEach(reply => {
+                            result.push(reply);
+                            if (reply.other_comments && reply.other_comments.length > 0) {
+                                result = result.concat(flattenReplies(reply.other_comments));
+                            }
+                        });
+                        return result;
+                    };
+                    const replyCount = comment?.other_comments ? flattenReplies(comment.other_comments).length : 0;
+                    
+                    if (hiddenReplies.style.display === 'none') {
+                        hiddenReplies.style.display = 'block';
+                        target.querySelector('.toggle-text').textContent = '收起回复';
+                        target.querySelector('i').className = 'fas fa-chevron-up';
+                    } else {
+                        hiddenReplies.style.display = 'none';
+                        target.querySelector('.toggle-text').textContent = `共${replyCount}条回复，点击查看全部`;
+                        target.querySelector('i').className = 'fas fa-chevron-down';
+                    }
+                }
+            }
 
             // 回复按钮
             if (target.classList.contains('btn-reply')) {
@@ -278,48 +381,52 @@ class CommentSystem {
 
     // 显示回复表单
     showReplyForm(commentId, rootId) {
+        const author = event.target.dataset.author || '';
+        
         // 隐藏所有回复表单
         document.querySelectorAll('.reply-form-container').forEach(form => {
-            form.style.display = 'none';
+            if (!form.id) { // 只隐藏动态创建的表单
+                form.remove();
+            } else {
+                form.style.display = 'none';
+            }
         });
 
-        // 如果点击的是顶级评论的回复按钮，显示原有的表单
-        const existingForm = document.getElementById(`reply-form-${commentId}`);
-        if (existingForm) {
-            existingForm.style.display = 'block';
-            const textarea = existingForm.querySelector('.reply-input');
-            if (textarea) textarea.focus();
+        // 找到顶级评论的回复区域
+        const repliesContainer = document.getElementById(`replies-${rootId}`);
+        if (!repliesContainer) {
+            console.error('找不到回复容器:', rootId);
             return;
         }
 
-        // 如果点击的是回复评论的回复按钮，需要动态创建表单
-        // 找到被点击的评论元素
-        const commentEl = document.querySelector(`.comment-reply[data-comment-id="${commentId}"]`);
-        if (!commentEl) return;
+        // 确保回复容器可见
+        repliesContainer.style.display = 'block';
 
-        // 检查是否已经有动态创建的表单
-        let dynamicForm = commentEl.querySelector('.reply-form-container');
-        if (!dynamicForm) {
-            // 创建新的回复表单
-            dynamicForm = document.createElement('div');
-            dynamicForm.className = 'reply-form-container';
-            dynamicForm.innerHTML = `
-                <textarea class="reply-input" placeholder="写下你的回复..." maxlength="500"></textarea>
-                <div class="reply-form-actions">
-                    <button class="btn-cancel-reply">取消</button>
-                    <button class="btn-submit-reply" data-parent-id="${rootId}">发表回复</button>
-                </div>
-            `;
-            // 插入到评论内容的末尾
-            const contentEl = commentEl.querySelector('.comment-content');
-            if (contentEl) {
-                contentEl.appendChild(dynamicForm);
-            }
+        // 创建新的回复表单
+        // 注意：这里使用 commentId 作为 parent-id，而不是 rootId
+        // 这样回复子评论时，parent_id 会指向被回复的子评论ID
+        const dynamicForm = document.createElement('div');
+        dynamicForm.className = 'reply-form-container active-reply-form';
+        dynamicForm.innerHTML = `
+            <div class="reply-to-hint">回复 @${author}</div>
+            <textarea class="reply-input" placeholder="写下你的回复..." maxlength="500"></textarea>
+            <div class="reply-form-actions">
+                <button class="btn-cancel-reply">取消</button>
+                <button class="btn-submit-reply" data-parent-id="${commentId}" data-root-id="${rootId}">发表回复</button>
+            </div>
+        `;
+
+        // 将表单添加到回复区域的末尾
+        repliesContainer.appendChild(dynamicForm);
+
+        // 聚焦到文本框
+        const textarea = dynamicForm.querySelector('.reply-input');
+        if (textarea) {
+            textarea.focus();
         }
 
-        dynamicForm.style.display = 'block';
-        const textarea = dynamicForm.querySelector('.reply-input');
-        if (textarea) textarea.focus();
+        // 滚动到表单位置
+        dynamicForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     // 提交回复
@@ -365,7 +472,7 @@ class CommentSystem {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ content, parentId })
+                body: JSON.stringify({ content, parent_id: parentId })
             });
 
             if (!response.ok) {
@@ -394,9 +501,96 @@ class CommentSystem {
     }
 
     // 编辑评论
-    editComment(commentId) {
-        // TODO: 实现编辑功能
-        console.log('编辑评论:', commentId);
+    async editComment(commentId) {
+        // 找到评论元素
+        const commentItem = document.querySelector(`[data-comment-id="${commentId}"]`);
+        if (!commentItem) return;
+
+        // 找到评论文本元素
+        const commentText = commentItem.querySelector('.comment-text');
+        if (!commentText) return;
+
+        // 获取原始评论内容
+        const originalContent = commentText.textContent;
+
+        // 创建编辑表单
+        const editForm = document.createElement('div');
+        editForm.className = 'edit-form-container';
+        editForm.innerHTML = `
+            <textarea class="edit-input" maxlength="500">${this.escapeHtml(originalContent)}</textarea>
+            <div class="edit-form-actions">
+                <button class="btn-cancel-edit">取消</button>
+                <button class="btn-save-edit" data-comment-id="${commentId}">保存</button>
+            </div>
+        `;
+
+        // 隐藏原始文本，显示编辑表单
+        commentText.style.display = 'none';
+        commentText.parentNode.insertBefore(editForm, commentText.nextSibling);
+
+        // 聚焦到文本框
+        const textarea = editForm.querySelector('.edit-input');
+        textarea.focus();
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+
+        // 取消编辑
+        editForm.querySelector('.btn-cancel-edit').addEventListener('click', () => {
+            commentText.style.display = 'block';
+            editForm.remove();
+        });
+
+        // 保存编辑
+        editForm.querySelector('.btn-save-edit').addEventListener('click', async () => {
+            const newContent = textarea.value.trim();
+
+            if (!newContent) {
+                this.showError('评论内容不能为空');
+                return;
+            }
+
+            if (newContent.length > 500) {
+                this.showError('评论内容不能超过500字符');
+                return;
+            }
+
+            if (newContent === originalContent) {
+                commentText.style.display = 'block';
+                editForm.remove();
+                return;
+            }
+
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) {
+                this.showError('请先登录');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/comments/comments/${commentId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ content: newContent })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || '更新失败');
+                }
+
+                // 更新显示的评论内容
+                commentText.textContent = newContent;
+                commentText.style.display = 'block';
+                editForm.remove();
+
+                this.showSuccess('评论已更新！');
+            } catch (error) {
+                console.error('更新评论错误:', error);
+                this.showError(error.message || '更新失败，请稍后重试');
+            }
+        });
     }
 
     // 删除评论
@@ -431,6 +625,78 @@ class CommentSystem {
         } catch (error) {
             console.error('删除评论错误:', error);
             this.showError(error.message || '删除失败，请稍后重试');
+        }
+    }
+
+    // 点赞或踩评论
+    async voteComment(commentId, voteType, buttonElement) {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        if (!token) {
+            this.showError('请先登录');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/comments/comments/${commentId}/vote`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ voteType })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || '操作失败');
+            }
+
+            const data = await response.json();
+
+            // 更新UI - 查找评论元素
+            const commentEl = buttonElement.closest('[data-comment-id]');
+            if (!commentEl) {
+                console.error('找不到评论元素');
+                // 重新加载评论列表以更新UI
+                await this.loadComments(this.currentPage);
+                return;
+            }
+
+            const likeBtn = commentEl.querySelector('.btn-like');
+            const dislikeBtn = commentEl.querySelector('.btn-dislike');
+
+            if (!likeBtn || !dislikeBtn) {
+                console.error('找不到点赞/踩按钮');
+                await this.loadComments(this.currentPage);
+                return;
+            }
+
+            // 获取最新的投票统计
+            const voteResponse = await fetch(`/api/comments/comments/${commentId}/votes`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (voteResponse.ok) {
+                const voteData = await voteResponse.json();
+                
+                // 更新点赞数
+                const likeCount = likeBtn.querySelector('.vote-count');
+                if (likeCount) likeCount.textContent = voteData.likeCount;
+
+                // 更新踩数
+                const dislikeCount = dislikeBtn.querySelector('.vote-count');
+                if (dislikeCount) dislikeCount.textContent = voteData.dislikeCount;
+
+                // 更新按钮状态
+                likeBtn.classList.toggle('active', voteData.userVote === 'like');
+                dislikeBtn.classList.toggle('active', voteData.userVote === 'dislike');
+            }
+
+        } catch (error) {
+            console.error('投票错误:', error);
+            this.showError(error.message || '操作失败，请稍后重试');
         }
     }
 

@@ -422,9 +422,24 @@
             margin-bottom: 10px;
         }
 
+        /* 已删除评论内容样式 */
+        .deleted-text {
+            color: #999;
+            font-style: italic;
+            opacity: 0.6;
+        }
+
+        /* @回复用户名样式 */
+        .reply-to {
+            color: #4A90E2;
+            font-weight: 500;
+            margin-right: 4px;
+        }
+
         .comment-actions {
             display: flex;
             gap: 15px;
+            align-items: center;
         }
 
         .comment-actions button {
@@ -434,10 +449,141 @@
             cursor: pointer;
             font-size: 14px;
             transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
 
         .comment-actions button:hover {
             color: #667eea;
+        }
+
+        /* 点赞/踩按钮样式 */
+        .btn-vote {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            border-radius: 15px;
+            transition: all 0.3s;
+        }
+
+        .btn-vote:hover {
+            background: #f0f0f0;
+        }
+
+        .btn-vote.active {
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .btn-like.active {
+            color: #4caf50;
+            background: rgba(76, 175, 80, 0.1);
+        }
+
+        .btn-dislike.active {
+            color: #f44336;
+            background: rgba(244, 67, 54, 0.1);
+        }
+
+        .vote-count {
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        /* 回复工具栏样式 */
+        .replies-toolbar {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .btn-toggle-replies {
+            background: none;
+            border: none;
+            color: #667eea;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 8px 16px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 4px;
+        }
+
+        .btn-toggle-replies:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .btn-toggle-replies i {
+            font-size: 11px;
+        }
+
+        .hidden-replies {
+            /* 隐藏的回复不需要额外样式 */
+        }
+
+        /* 回复提示 */
+        .reply-to-hint {
+            font-size: 13px;
+            color: #667eea;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        /* 编辑表单样式 */
+        .edit-form-container {
+            margin-top: 10px;
+        }
+
+        .edit-input {
+            width: 100%;
+            min-height: 80px;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            resize: vertical;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .edit-form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn-cancel-edit,
+        .btn-save-edit {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .btn-cancel-edit {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .btn-save-edit {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-cancel-edit:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-save-edit:hover {
+            background: #764ba2;
         }
 
         .reply-form-container {

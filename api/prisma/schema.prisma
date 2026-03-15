@@ -21,17 +21,19 @@ model bookmarks {
 }
 
 model comments {
-  id             Int        @id @default(autoincrement())
+  id             Int             @id @default(autoincrement())
   content        String
   node_id        Int
   user_id        Int
   parent_id      Int?
-  created_at     DateTime   @default(now())
+  is_deleted     Boolean         @default(false)
+  created_at     DateTime        @default(now())
   updated_at     DateTime
-  comments       comments?  @relation("commentsTocomments", fields: [parent_id], references: [id])
-  other_comments comments[] @relation("commentsTocomments")
-  user           users      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  node           nodes      @relation(fields: [node_id], references: [id], onDelete: Cascade)
+  comments       comments?       @relation("commentsTocomments", fields: [parent_id], references: [id])
+  other_comments comments[]      @relation("commentsTocomments")
+  user           users           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  node           nodes           @relation(fields: [node_id], references: [id], onDelete: Cascade)
+  votes          comment_votes[]
 
   @@index([created_at])
   @@index([parent_id])
@@ -202,6 +204,7 @@ model users {
   orders                   orders[]
   bookmarks                bookmarks[]
   comments                 comments[]
+  comment_votes            comment_votes[]
   following                follows[]             @relation("follows_following_idTousers")
   followers                follows[]             @relation("follows_follower_idTousers")
   authored_nodes           nodes[]               @relation("NodeAuthor")
@@ -363,4 +366,19 @@ model collaboration_requests {
   @@index([story_id])
   @@index([user_id])
   @@index([status])
+}
+
+// 评论点赞/踩表
+model comment_votes {
+  id         Int      @id @default(autoincrement())
+  comment_id Int
+  user_id    Int
+  vote_type  String   // 'like' 或 'dislike'
+  created_at DateTime @default(now())
+  comment    comments @relation(fields: [comment_id], references: [id], onDelete: Cascade)
+  user       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  @@unique([comment_id, user_id])
+  @@index([comment_id])
+  @@index([user_id])
 }
