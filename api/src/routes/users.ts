@@ -105,7 +105,7 @@ router.post('/:id/follow', authenticateToken, async (req, res) => {
         'follow',
         '新粉丝',
         `${follower.username} 关注了你`,
-        `/user/${userId}`
+        `/profile.html?id=${userId}`
       );
     }
 

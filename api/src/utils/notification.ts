@@ -45,14 +45,18 @@ export async function createNotification(
 export async function notifyAiContinuationReady(
   userId: number,
   taskId: number,
-  storyTitle: string
+  storyTitle: string,
+  storyId?: number
 ) {
+  // 如果有storyId，直接跳转到故事分支图；否则跳转到AI任务页面
+  const link = storyId ? `/story.html?id=${storyId}` : `/ai-tasks.html?id=${taskId}`;
+  
   await createNotification(
     userId,
     NotificationType.AI_CONTINUATION_READY,
     '🎉 您的故事有了新的分支！',
     `《${storyTitle}》的AI续写已完成，快来查看吧！`,
-    `/api/ai/tasks/${taskId}`
+    link
   );
 }
 
@@ -68,7 +72,7 @@ export async function notifyAiPolishReady(
     NotificationType.AI_POLISH_READY,
     '✨ 文字润色完成！',
     `您的文字已经过AI精心润色，效果更佳！`,
-    `/api/ai/tasks/${taskId}`
+    `/ai-tasks.html?id=${taskId}`
   );
 }
 
@@ -85,7 +89,7 @@ export async function notifyAiIllustrationReady(
     NotificationType.AI_ILLUSTRATION_READY,
     '🎨 精美插图已生成！',
     `《${chapterTitle}》的AI插图已完成，快来欣赏吧！`,
-    `/api/ai/tasks/${taskId}`
+    `/ai-tasks.html?id=${taskId}`
   );
 }
 
@@ -102,7 +106,7 @@ export async function notifyLevelUp(
     NotificationType.LEVEL_UP,
     '🎊 恭喜升级！',
     `您已升级至 Lv${newLevel} ${levelName}，解锁更多AI功能！`,
-    '/profile'
+    '/profile.html'
   );
 }
 
@@ -119,7 +123,7 @@ export async function notifyPointsEarned(
     NotificationType.POINTS_EARNED,
     '💰 获得积分奖励',
     `${reason}，获得 ${points} 积分！`,
-    '/profile'
+    '/profile.html'
   );
 }
 

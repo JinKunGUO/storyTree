@@ -435,12 +435,16 @@ XXX` : ''}`;
         } else {
           // 立即任务，发送通知等待用户确认
           console.log(`📋 等待用户手动确认: ${task.id} - ${options[0].title}`);
-          await notifyAiContinuationReady(userId, taskId, storyTitle);
+          await notifyAiContinuationReady(userId, taskId, storyTitle, task.story_id || undefined);
         }
       }
     } else {
       // 这是立即任务，发送通知让用户手动接受
-      await notifyAiContinuationReady(userId, taskId, storyTitle);
+      const taskInfo = await prisma.ai_tasks.findUnique({
+        where: { id: taskId },
+        select: { story_id: true }
+      });
+      await notifyAiContinuationReady(userId, taskId, storyTitle, taskInfo?.story_id || undefined);
     }
 
     console.log(`✅ AI续写任务完成: ${taskId}`);

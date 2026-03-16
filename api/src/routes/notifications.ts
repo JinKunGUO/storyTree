@@ -1,12 +1,8 @@
 import { Router } from 'express';
 import { prisma } from '../index';
+import { authenticateToken, getUserId } from '../utils/middleware';
 
 const router = Router();
-
-const getUserId = (req: any): number | null => {
-  const user_id = req.headers['x-user-id'];
-  return user_id ? parseInt(user_id as string) : null;
-};
 
 // 创建通知的辅助函数
 export async function createNotification(
@@ -32,7 +28,7 @@ export async function createNotification(
 }
 
 // 获取用户通知列表
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   const user_id = getUserId(req);
   if (!user_id) {
     return res.status(401).json({ error: 'Not authenticated' });
@@ -57,7 +53,7 @@ router.get('/', async (req, res) => {
 });
 
 // 标记通知为已读
-router.put('/:id/read', async (req, res) => {
+router.put('/:id/read', authenticateToken, async (req, res) => {
   const user_id = getUserId(req);
   if (!user_id) {
     return res.status(401).json({ error: 'Not authenticated' });
@@ -91,7 +87,7 @@ router.put('/:id/read', async (req, res) => {
 });
 
 // 标记所有通知为已读
-router.put('/read-all', async (req, res) => {
+router.put('/read-all', authenticateToken, async (req, res) => {
   const user_id = getUserId(req);
   if (!user_id) {
     return res.status(401).json({ error: 'Not authenticated' });
@@ -111,7 +107,7 @@ router.put('/read-all', async (req, res) => {
 });
 
 // 删除通知
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   const user_id = getUserId(req);
   if (!user_id) {
     return res.status(401).json({ error: 'Not authenticated' });

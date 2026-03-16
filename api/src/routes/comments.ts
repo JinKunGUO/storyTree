@@ -215,7 +215,7 @@ router.post('/nodes/:node_id/comments', async (req, res) => {
             type: 'comment_reply',
             title: '评论回复',
             content: `${decoded.username || '用户'} 回复了你的评论`,
-            link: `/nodes/${node_id}`
+            link: `/story.html?id=${node.story.id}&node=${node_id}#comment-${comment.id}`
           }
         });
       }
@@ -229,7 +229,7 @@ router.post('/nodes/:node_id/comments', async (req, res) => {
           type: 'comment',
           title: '新评论',
           content: `${decoded.username || '用户'} 评论了你的章节`,
-          link: `/nodes/${node_id}`
+          link: `/story.html?id=${node.story.id}&node=${node_id}#comment-${comment.id}`
         }
       });
     }

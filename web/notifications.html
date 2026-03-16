@@ -515,7 +515,62 @@
         async function handleNotificationClick(id, link) {
             await markAsRead(id);
             if (link) {
-                window.location.href = link;
+                let finalLink = link;
+                
+                // === 兼容旧格式链接 ===
+                
+                // 1. /user/:id → /profile.html?id=:id
+                if (link.startsWith('/user/')) {
+                    const userId = link.replace('/user/', '');
+                    finalLink = `/profile.html?id=${userId}`;
+                    console.log(`🔄 转换链接: ${link} → ${finalLink}`);
+                }
+                
+                // 2. /nodes/:id → /story.html?id=:story_id&node=:id
+                else if (link.startsWith('/nodes/')) {
+                    const nodeId = link.replace('/nodes/', '');
+                    try {
+                        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                        const response = await fetch(`/api/nodes/${nodeId}`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        if (!response.ok) throw new Error('节点不存在');
+                        const data = await response.json();
+                        finalLink = `/story.html?id=${data.node.story_id}&node=${nodeId}`;
+                        console.log(`🔄 转换链接: ${link} → ${finalLink}`);
+                    } catch (error) {
+                        console.error('获取节点信息失败:', error);
+                        showMessage('无法打开链接', 'error');
+                        return;
+                    }
+                }
+                
+                // 3. /api/ai/tasks/:id → /ai-tasks.html?id=:id
+                else if (link.startsWith('/api/ai/tasks/')) {
+                    const taskId = link.replace('/api/ai/tasks/', '');
+                    finalLink = `/ai-tasks.html?id=${taskId}`;
+                    console.log(`🔄 转换链接: ${link} → ${finalLink}`);
+                }
+                
+                // 4. /profile → /profile.html
+                else if (link === '/profile') {
+                    finalLink = '/profile.html';
+                    console.log(`🔄 转换链接: ${link} → ${finalLink}`);
+                }
+                
+                // 5. /story?id= → /story.html?id=
+                else if (link.startsWith('/story?')) {
+                    finalLink = link.replace('/story?', '/story.html?');
+                    console.log(`🔄 转换链接: ${link} → ${finalLink}`);
+                }
+                
+                // 6. /story-settings?id= → /story-settings.html?id=
+                else if (link.startsWith('/story-settings?')) {
+                    finalLink = link.replace('/story-settings?', '/story-settings.html?');
+                    console.log(`🔄 转换链接: ${link} → ${finalLink}`);
+                }
+                
+                window.location.href = finalLink;
             }
         }
 
