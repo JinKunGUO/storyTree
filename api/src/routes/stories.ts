@@ -585,7 +585,7 @@ router.get('/shared-with-me', authenticateToken, async (req, res) => {
 router.post('/:id/collaborators', authenticateToken, async (req, res) => {
   const userId = getUserId(req);
   const { id } = req.params;
-  const { user_id } = req.body;
+  const { user_id, username } = req.body;
 
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
@@ -605,18 +605,31 @@ router.post('/:id/collaborators', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: '只有故事作者可以添加协作者' });
     }
 
-    // 不能将作者自己添加为协作者
-    if (story.author_id === user_id) {
-      return res.status(400).json({ error: '不能将作者添加为协作者' });
+    // 查找目标用户（支持username或user_id）
+    let targetUser;
+    if (username) {
+      // 通过用户名查找
+      targetUser = await prisma.users.findUnique({
+        where: { username: username.trim() }
+      });
+      if (!targetUser) {
+        return res.status(404).json({ error: `用户 "${username}" 不存在` });
+      }
+    } else if (user_id) {
+      // 通过ID查找（向后兼容）
+      targetUser = await prisma.users.findUnique({
+        where: { id: user_id }
+      });
+      if (!targetUser) {
+        return res.status(404).json({ error: '用户不存在' });
+      }
+    } else {
+      return res.status(400).json({ error: '请提供用户名或用户ID' });
     }
 
-    // 检查用户是否存在
-    const targetUser = await prisma.users.findUnique({
-      where: { id: user_id }
-    });
-
-    if (!targetUser) {
-      return res.status(404).json({ error: '用户不存在' });
+    // 不能将作者自己添加为协作者
+    if (story.author_id === targetUser.id) {
+      return res.status(400).json({ error: '不能将作者添加为协作者' });
     }
 
     // 检查是否已经是协作者（包括被移除的）
@@ -624,7 +637,7 @@ router.post('/:id/collaborators', authenticateToken, async (req, res) => {
       where: {
         story_id_user_id: {
           story_id: parseInt(id),
-          user_id: user_id
+          user_id: targetUser.id
         }
       }
     });
@@ -637,7 +650,7 @@ router.post('/:id/collaborators', authenticateToken, async (req, res) => {
           where: {
             story_id_user_id: {
               story_id: parseInt(id),
-              user_id: user_id
+              user_id: targetUser.id
             }
           },
           data: {
@@ -658,7 +671,7 @@ router.post('/:id/collaborators', authenticateToken, async (req, res) => {
       collaborator = await prisma.story_collaborators.create({
         data: {
           story_id: parseInt(id),
-          user_id: user_id,
+          user_id: targetUser.id,
           invited_by: userId
         },
         include: {
@@ -674,12 +687,12 @@ router.post('/:id/collaborators', authenticateToken, async (req, res) => {
       where: {
         story_id_user_id: {
           story_id: parseInt(id),
-          user_id: user_id
+          user_id: targetUser.id
         }
       },
       create: {
         story_id: parseInt(id),
-        user_id: user_id
+        user_id: targetUser.id
       },
       update: {} // 如果已存在则不做修改
     });
@@ -687,7 +700,7 @@ router.post('/:id/collaborators', authenticateToken, async (req, res) => {
     // 创建通知
     await prisma.notifications.create({
       data: {
-        user_id: user_id,
+        user_id: targetUser.id,
         type: 'COLLABORATION_INVITE',
         title: '协作邀请',
         content: `${story.title} 的作者邀请你成为协作者`,

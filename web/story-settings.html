@@ -415,7 +415,7 @@
             </div>
 
             <div class="add-collaborator-form">
-                <input type="number" id="collaboratorUserId" placeholder="输入用户ID">
+                <input type="text" id="collaboratorUsername" placeholder="输入用户名（例如：zhangsan）">
                 <button class="btn-secondary" onclick="addCollaborator()">添加协作者</button>
             </div>
         </div>
@@ -578,10 +578,10 @@
 
         // 添加协作者
         async function addCollaborator() {
-            const userId = document.getElementById('collaboratorUserId').value;
+            const username = document.getElementById('collaboratorUsername').value.trim();
 
-            if (!userId) {
-                showToast('请输入用户ID', true);
+            if (!username) {
+                showToast('请输入用户名', true);
                 return;
             }
 
@@ -593,7 +593,7 @@
                         'Authorization': `Bearer ${getToken()}`
                     },
                     body: JSON.stringify({
-                        user_id: parseInt(userId)
+                        username: username
                     })
                 });
 
@@ -604,7 +604,7 @@
                 }
 
                 showToast('协作者添加成功');
-                document.getElementById('collaboratorUserId').value = '';
+                document.getElementById('collaboratorUsername').value = '';
                 loadCollaborators();
             } catch (error) {
                 console.error('Add collaborator error:', error);
