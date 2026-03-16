@@ -359,4 +359,66 @@ router.get('/:id/nodes', async (req, res) => {
   }
 });
 
+// 获取用户协作的故事列表
+router.get('/:id/collaborated-stories', optionalAuth, async (req, res) => {
+  const { id } = req.params;
+  const page = parseInt(req.query.page as string) || 1;
+  const pageSize = parseInt(req.query.pageSize as string) || 100;
+
+  try {
+    // 获取协作故事（未被移除）
+    const collaborations = await prisma.story_collaborators.findMany({
+      where: {
+        user_id: parseInt(id),
+        removed_at: null // 仅未被移除的
+      },
+      include: {
+        story: {
+          include: {
+            author: {
+              select: { id: true, username: true, avatar: true }
+            },
+            _count: {
+              select: {
+                nodes: true,
+                bookmarks: true,
+                followers: true
+              }
+            },
+            nodes: {
+              select: {
+                read_count: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: { created_at: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize
+    });
+
+    // 处理故事数据，计算总浏览量
+    const stories = collaborations.map(collab => {
+      const story = collab.story;
+      const totalViews = story.nodes.reduce((sum, node) => sum + (node.read_count || 0), 0);
+      
+      return {
+        ...story,
+        views: totalViews,
+        likes: story._count.bookmarks,
+        collaborated_at: collab.created_at
+      };
+    });
+
+    res.json({
+      stories,
+      total: collaborations.length
+    });
+  } catch (error) {
+    console.error('Get collaborated stories error:', error);
+    res.status(500).json({ error: 'Failed to fetch collaborated stories' });
+  }
+});
+
 export default router;

@@ -371,6 +371,35 @@
                 flex-direction: column;
             }
         }
+
+        /* 协作故事和追更故事的视觉区分 */
+        .icon-collaborated {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        }
+
+        .icon-followed {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+        }
+
+        .story-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            font-size: 12px;
+            border-radius: 12px;
+            margin-left: 10px;
+            font-weight: 600;
+            vertical-align: middle;
+        }
+
+        .badge-collaborated {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .badge-followed {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -752,18 +781,66 @@
             try {
                 const token = localStorage.getItem('token') || sessionStorage.getItem('token');
                 
-                const response = await fetch(`/api/stories/user/${userId}/followed-stories`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                // 1. 获取追更故事
+                const followedResponse = await fetch(`/api/stories/user/${userId}/followed-stories`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
-
-                if (!response.ok) {
+                
+                if (!followedResponse.ok) {
                     throw new Error('加载关注的故事失败');
                 }
-
-                const data = await response.json();
-                displayFollowedStories(data.stories);
+                
+                const followedData = await followedResponse.json();
+                
+                // 2. 获取协作故事
+                const collaboratedResponse = await fetch(`/api/users/${userId}/collaborated-stories`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                let collaboratedStories = [];
+                if (collaboratedResponse.ok) {
+                    const collaboratedData = await collaboratedResponse.json();
+                    collaboratedStories = collaboratedData.stories || [];
+                }
+                
+                // 3. 合并和标记
+                const followedStories = (followedData.follows || []).map(f => ({
+                    ...f.story,
+                    is_collaborated: false,
+                    is_followed: true
+                }));
+                
+                // 标记协作故事
+                const storyMap = new Map();
+                followedStories.forEach(story => {
+                    storyMap.set(story.id, story);
+                });
+                
+                collaboratedStories.forEach(story => {
+                    if (storyMap.has(story.id)) {
+                        // 已存在，标记为协作
+                        storyMap.get(story.id).is_collaborated = true;
+                    } else {
+                        // 新增协作故事
+                        storyMap.set(story.id, {
+                            ...story,
+                            is_collaborated: true,
+                            is_followed: false
+                        });
+                    }
+                });
+                
+                // 4. 转换为数组并排序
+                const allStories = Array.from(storyMap.values());
+                allStories.sort((a, b) => {
+                    // 协作故事优先
+                    if (a.is_collaborated && !b.is_collaborated) return -1;
+                    if (!a.is_collaborated && b.is_collaborated) return 1;
+                    // 按更新时间排序
+                    return new Date(b.updated_at || b.createdAt) - new Date(a.updated_at || a.createdAt);
+                });
+                
+                displayFollowedStories(allStories);
             } catch (error) {
                 console.error('加载关注的故事错误:', error);
                 showEmptyFollowedStories();
@@ -781,17 +858,34 @@
 
             const storiesHTML = stories.map(story => {
                 const nodeCount = story._count?.nodes || 0;
-                const likeCount = story._count?.bookmarks || 0;
+                const likeCount = story._count?.bookmarks || story.likes || 0;
                 const viewCount = story.views || 0;
                 const authorName = story.author?.username || '未知作者';
                 
+                // 确定图标和标签
+                let icon, badge, badgeClass, iconClass;
+                if (story.is_collaborated) {
+                    icon = 'fa-users';
+                    badge = '协作中';
+                    badgeClass = 'badge-collaborated';
+                    iconClass = 'icon-collaborated';
+                } else {
+                    icon = 'fa-star';
+                    badge = '追更中';
+                    badgeClass = 'badge-followed';
+                    iconClass = 'icon-followed';
+                }
+                
                 return `
                     <div class="story-item" onclick="window.location.href='/story?id=${story.id}'">
-                        <div class="story-icon">
-                            <i class="fas fa-star"></i>
+                        <div class="story-icon ${iconClass}">
+                            <i class="fas ${icon}"></i>
                         </div>
                         <div class="story-details">
-                            <div class="story-title">${escapeHtml(story.title)}</div>
+                            <div class="story-title">
+                                ${escapeHtml(story.title)}
+                                <span class="story-badge ${badgeClass}">${badge}</span>
+                            </div>
                             <div class="story-meta">
                                 <span><i class="fas fa-user"></i> ${escapeHtml(authorName)}</span>
                                 <span><i class="fas fa-file-alt"></i> ${nodeCount} 章节</span>
