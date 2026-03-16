@@ -2464,18 +2464,16 @@
                 const data = await response.json();
                 
                 if (data.auto_approved) {
-                    showSuccess('申请已自动通过！现在你是这个故事的协作者了');
-                    setTimeout(() => window.location.reload(), 1500);
+                    showSuccess('申请已自动通过！现在你是这个故事的协作者了，页面即将刷新');
                 } else {
-                    showSuccess('申请已提交，请等待主创审核');
-                    closeApplyCollaborationModal();
-                    
-                    // 重新检查用户角色，更新按钮状态
-                    // 申请提交后，用户会有待处理的申请，需要重新加载角色信息
-                    setTimeout(() => {
-                        checkIfAuthor(window.currentStory);
-                    }, 500);
+                    showSuccess('申请已提交，请等待主创审核，页面即将刷新');
                 }
+                
+                // ✅ 统一处理：无论自动通过还是需要审核，都刷新页面
+                // 这样确保所有按钮状态（包括续写按钮）都能正确更新
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
             } catch (error) {
                 console.error('提交申请失败:', error);
                 showError(error.message || '提交失败，请重试');
