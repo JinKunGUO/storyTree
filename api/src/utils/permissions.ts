@@ -69,10 +69,17 @@ export async function isStoryFollower(userId: number | null, storyId: number): P
 
 /**
  * 检查用户是否可以查看故事
- * 规则：
- * - public: 任何人可见
- * - friends: 粉丝、关注者、协作者、作者可见
- * - private: 仅作者和协作者可见
+ * 
+ * 四级可见性规则：
+ * - author_only: 仅主创可见（私密）
+ * - collaborators: 主创和协作者可见
+ * - followers: 主创、协作者、故事粉丝、作者粉丝可见
+ * - public: 所有人可见（包括未登录用户，默认）
+ * 
+ * 注意：
+ * - 主创始终可以查看自己的故事（任何可见性级别）
+ * - 协作者指未被移除的协作者（removed_at = null）
+ * - 关注者包括：故事粉丝（story_followers）和作者粉丝（follows）
  */
 export async function canViewStory(userId: number | null, storyId: number): Promise<boolean> {
   const story = await prisma.stories.findUnique({
@@ -82,28 +89,39 @@ export async function canViewStory(userId: number | null, storyId: number): Prom
   
   if (!story) return false;
   
-  // 公开故事（包括未设置visibility的旧故事），任何人可见
-  if (!story.visibility || story.visibility === 'public') return true;
+  // 主创始终可见（优先级最高）
+  if (userId && story.author_id === userId) return true;
   
-  // 未登录用户不能查看非公开故事
-  if (!userId) return false;
-  
-  // 作者始终可见
-  if (story.author_id === userId) return true;
-  
-  // 协作者始终可见
-  if (await isCollaborator(userId, storyId)) return true;
-  
-  // 仅关注者可见的故事
-  if (story.visibility === 'friends') {
-    // 检查是否是故事粉丝
-    if (await isStoryFollower(userId, storyId)) return true;
-    // 检查是否关注了作者
-    return await isFollowingAuthor(userId, storyId);
+  // 根据可见性级别判断
+  switch (story.visibility) {
+    case 'author_only':
+      // 仅主创可见（已在上面处理）
+      return false;
+    
+    case 'collaborators':
+      // 主创 + 协作者可见
+      if (!userId) return false;
+      return await isCollaborator(userId, storyId);
+    
+    case 'followers':
+      // 主创 + 协作者 + 故事粉丝 + 作者粉丝可见
+      if (!userId) return false;
+      
+      // 协作者可见
+      if (await isCollaborator(userId, storyId)) return true;
+      
+      // 故事粉丝可见
+      if (await isStoryFollower(userId, storyId)) return true;
+      
+      // 作者粉丝可见
+      return await isFollowingAuthor(userId, storyId);
+    
+    case 'public':
+    default:
+      // 所有人可见（包括未登录用户）
+      // 对于未知的visibility值，也默认为public（向后兼容）
+      return true;
   }
-  
-  // 私密故事，其他人不可见
-  return false;
 }
 
 /**

@@ -161,8 +161,13 @@ model stories {
   cover_image                String?
   author_id                  Int
   root_node_id               Int?
-  visibility                 String                @default("public") // public, private, friends
-  password                   String? // 密码保护（可选）
+  visibility                 String                @default("public") 
+  // 可见性级别（四级）：
+  // - author_only: 仅主创可见（私密）
+  // - collaborators: 主创和协作者可见
+  // - followers: 主创、协作者、故事粉丝、作者粉丝可见
+  // - public: 所有人可见（包括未登录用户，默认）
+  password                   String? // 密码保护（可选，暂未实现）
   allow_branch               Boolean               @default(true) // 是否允许协作者续写
   allow_comment              Boolean               @default(true) // 是否允许评论
   require_collaborator_review Boolean              @default(false) // 协作者内容是否需要审核

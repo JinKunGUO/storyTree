@@ -377,8 +377,9 @@
         function getVisibilityBadge(visibility) {
             const badges = {
                 'public': '<span class="badge badge-public"><i class="fas fa-globe"></i> 公开</span>',
-                'private': '<span class="badge badge-private"><i class="fas fa-lock"></i> 私密</span>',
-                'friends': '<span class="badge badge-friends"><i class="fas fa-user-friends"></i> 仅好友</span>'
+                'followers': '<span class="badge badge-friends"><i class="fas fa-user-friends"></i> 关注者可见</span>',
+                'collaborators': '<span class="badge badge-private"><i class="fas fa-users"></i> 仅协作者</span>',
+                'author_only': '<span class="badge badge-private"><i class="fas fa-lock"></i> 私密</span>'
             };
             return badges[visibility] || badges['public'];
         }
