@@ -101,6 +101,172 @@
             border-color: #667eea;
         }
 
+        .stories-section {
+            margin-bottom: 50px;
+        }
+
+        .section-title {
+            color: white;
+            font-size: 28px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title i {
+            color: #ffd700;
+        }
+
+        /* 热门故事特殊布局 */
+        .hot-stories-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .featured-story {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .featured-story:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+        }
+
+        .featured-story .story-cover {
+            height: 350px;
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            position: relative;
+        }
+
+        .featured-badge {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+        }
+
+        .featured-badge i {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        .hot-stats {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .hot-stat-item {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .top-stories-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .top-story-item {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .top-story-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .top-rank {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .top-rank.rank-1 {
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            color: white;
+        }
+
+        .top-rank.rank-2 {
+            background: linear-gradient(135deg, #c0c0c0, #808080);
+            color: white;
+        }
+
+        .top-rank.rank-3 {
+            background: linear-gradient(135deg, #cd7f32, #8b4513);
+            color: white;
+        }
+
+        .top-rank.rank-other {
+            background: #f5f5f5;
+            color: #999;
+        }
+
+        .top-story-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .top-story-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .top-story-meta {
+            font-size: 12px;
+            color: #999;
+            display: flex;
+            gap: 10px;
+        }
+
+        /* 普通故事网格 */
         .stories-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -220,6 +386,65 @@
             margin-bottom: 10px;
         }
 
+        /* 特色功能区 */
+        .features-section {
+            margin-top: 80px;
+            padding-top: 60px;
+            border-top: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+            background: white;
+        }
+
+        .feature-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        .feature-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .feature-description {
+            color: #666;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 1024px) {
+            .hot-stories-container {
+                grid-template-columns: 1fr;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
         /* 响应式设计 */
         @media (max-width: 768px) {
             .page-header h1 {
@@ -280,11 +505,68 @@
             </div>
         </div>
 
-        <!-- 故事列表 -->
-        <div class="stories-grid" id="storiesGrid">
-            <div class="loading">
-                <i class="fas fa-spinner"></i>
-                <p>正在加载精彩故事...</p>
+        <!-- 热门故事（特殊布局） -->
+        <div class="stories-section" id="hotStoriesSection" style="display: none;">
+            <h2 class="section-title">
+                <i class="fas fa-fire"></i>
+                热门故事
+            </h2>
+            <div class="hot-stories-container" id="hotStoriesContainer">
+                <!-- 左侧：最热门故事大卡片 -->
+                <div id="featuredStoryCard"></div>
+                <!-- 右侧：TOP 2-5排行榜 -->
+                <div class="top-stories-list" id="topStoriesList"></div>
+            </div>
+        </div>
+
+        <!-- 全部故事列表 -->
+        <div class="stories-section">
+            <h2 class="section-title">
+                <i class="fas fa-book"></i>
+                <span id="storiesListTitle">全部故事</span>
+            </h2>
+            <div class="stories-grid" id="storiesGrid">
+                <div class="loading">
+                    <i class="fas fa-spinner"></i>
+                    <p>正在加载精彩故事...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 特色功能区（移到底部） -->
+        <div class="features-section">
+            <div class="page-header">
+                <h2 style="font-size: 32px; margin-bottom: 10px;">探索StoryTree的无限可能</h2>
+                <p>三大特色功能，助力你的创作之旅</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-pen-nib"></i>
+                    </div>
+                    <div class="feature-title">创作故事</div>
+                    <div class="feature-description">
+                        创建属于你自己的故事，每个章节都可以有无限可能，让想象自由飞翔。
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="feature-title">AI辅助创作</div>
+                    <div class="feature-description">
+                        使用AI智能续写功能，为你的故事提供灵感和创意，让创作更加轻松。
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <div class="feature-title">社区互动</div>
+                    <div class="feature-description">
+                        与读者和作者互动，评论、点赞、分享，共同构建活跃的故事社区。
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -315,6 +597,12 @@
                 
                 if (data.stories && data.stories.length > 0) {
                     allStories = data.stories;
+                    
+                    // 显示热门故事（如果有足够的故事）
+                    if (allStories.length >= 3) {
+                        displayHotStories(allStories);
+                    }
+                    
                     displayStories(allStories);
                 } else {
                     showEmptyState();
@@ -323,6 +611,69 @@
                 console.error('加载故事失败:', error);
                 showError();
             }
+        }
+
+        // 显示热门故事（特殊布局）
+        function displayHotStories(stories) {
+            // 按章节数排序，取前5个
+            const hotStories = [...stories]
+                .sort((a, b) => (b._count?.nodes || 0) - (a._count?.nodes || 0))
+                .slice(0, 5);
+
+            if (hotStories.length === 0) return;
+
+            // 显示热门故事区域
+            document.getElementById('hotStoriesSection').style.display = 'block';
+
+            // 第1名：大卡片
+            const topStory = hotStories[0];
+            const featuredCard = document.getElementById('featuredStoryCard');
+            featuredCard.innerHTML = `
+                <div class="featured-story" onclick="window.location.href='/story?id=${topStory.id}'">
+                    <div class="story-cover">
+                        <i class="fas fa-crown"></i>
+                        <div class="featured-badge">
+                            <i class="fas fa-trophy"></i>
+                            <span>最热门</span>
+                        </div>
+                        <div class="hot-stats">
+                            <span class="hot-stat-item"><i class="fas fa-book"></i> ${topStory._count?.nodes || 0}章</span>
+                            <span class="hot-stat-item"><i class="fas fa-heart"></i> ${topStory._count?.bookmarks || 0}收藏</span>
+                        </div>
+                    </div>
+                    <div class="story-content">
+                        <div class="story-title">${escapeHtml(topStory.title)}</div>
+                        <div class="story-description">${escapeHtml(topStory.description || '暂无描述')}</div>
+                        <div class="story-meta">
+                            <div class="story-author">
+                                <i class="fas fa-user-circle"></i>
+                                <span>${escapeHtml(topStory.author?.username || '未知作者')}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // 第2-5名：排行榜
+            const topList = document.getElementById('topStoriesList');
+            const topListHTML = hotStories.slice(1, 5).map((story, index) => {
+                const rank = index + 2;
+                const rankClass = rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
+                return `
+                    <div class="top-story-item" onclick="window.location.href='/story?id=${story.id}'">
+                        <div class="top-rank ${rankClass}">${rank}</div>
+                        <div class="top-story-content">
+                            <div class="top-story-title">${escapeHtml(story.title)}</div>
+                            <div class="top-story-meta">
+                                <span><i class="fas fa-user"></i> ${escapeHtml(story.author?.username || '未知')}</span>
+                                <span><i class="fas fa-book"></i> ${story._count?.nodes || 0}章</span>
+                                <span><i class="fas fa-heart"></i> ${story._count?.bookmarks || 0}收藏</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            topList.innerHTML = topListHTML;
         }
 
         // 显示故事
@@ -390,14 +741,33 @@
 
             let filtered = [...allStories];
 
+            // 根据筛选条件显示/隐藏热门故事区域
+            const hotSection = document.getElementById('hotStoriesSection');
+            const listTitle = document.getElementById('storiesListTitle');
+
             switch(filter) {
+                case 'all':
+                    // 显示热门故事区域
+                    if (allStories.length >= 3) {
+                        hotSection.style.display = 'block';
+                    }
+                    listTitle.textContent = '全部故事';
+                    break;
                 case 'popular':
-                    filtered.sort((a, b) => (b.views || 0) - (a.views || 0));
+                    // 隐藏热门故事区域（避免重复）
+                    hotSection.style.display = 'none';
+                    listTitle.textContent = '热门故事';
+                    // 按章节数排序
+                    filtered.sort((a, b) => (b._count?.nodes || 0) - (a._count?.nodes || 0));
                     break;
                 case 'new':
-                    filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                    hotSection.style.display = 'none';
+                    listTitle.textContent = '最新故事';
+                    filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
                     break;
                 case 'completed':
+                    hotSection.style.display = 'none';
+                    listTitle.textContent = '已完结故事';
                     filtered = filtered.filter(s => s.status === 'COMPLETED');
                     break;
             }

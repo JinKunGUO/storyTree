@@ -18,12 +18,9 @@ router.get('/', optionalAuth, async (req, res) => {
         },
         nodes: {
           where: {
-            parent_id: null,
-            // 只显示已通过审核的节点，或者用户自己的节点
-            OR: [
-              { review_status: 'APPROVED' },
-              ...(userId ? [{ author_id: userId }] : [])
-            ]
+            parent_id: null
+            // 发现页面显示所有故事，不受审核状态限制
+            // 审核机制只影响节点内容的详细显示，不影响故事列表
           },
           take: 1,
           select: {
@@ -34,12 +31,18 @@ router.get('/', optionalAuth, async (req, res) => {
             rating_count: true,
             review_status: true
           }
+        },
+        _count: {
+          select: {
+            nodes: true,
+            bookmarks: true
+          }
         }
       },
       orderBy: { created_at: 'desc' }
     });
 
-    // 过滤掉没有可见节点的故事
+    // 过滤掉没有根节点的故事（只创建了故事但还没有添加第一章）
     const filteredStories = stories.filter(s => s.nodes.length > 0);
 
     res.json({ stories: filteredStories });

@@ -461,8 +461,22 @@
             </div>
         </section>
 
-        <!-- 功能介绍 -->
-        <section class="features">
+        <!-- 热门故事 -->
+        <section class="stories-section">
+            <div class="section-header">
+                <h2>热门故事</h2>
+                <p>发现最受欢迎的故事</p>
+            </div>
+            <div class="stories-grid" id="storiesGrid">
+                <div class="loading">
+                    <i class="fas fa-spinner"></i>
+                    <p>正在加载精彩故事...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 功能介绍（移到底部） -->
+        <section class="features" style="margin-top: 80px; padding-top: 60px; border-top: 2px solid rgba(255, 255, 255, 0.2);">
             <div class="feature-card">
                 <i class="fas fa-pen-fancy"></i>
                 <h3>创作故事</h3>
@@ -477,20 +491,6 @@
                 <i class="fas fa-comments"></i>
                 <h3>社区互动</h3>
                 <p>与读者和作者互动，评论、点赞、分享，共同构建活跃的故事社区。</p>
-            </div>
-        </section>
-
-        <!-- 热门故事 -->
-        <section class="stories-section">
-            <div class="section-header">
-                <h2>热门故事</h2>
-                <p>发现最受欢迎的故事</p>
-            </div>
-            <div class="stories-grid" id="storiesGrid">
-                <div class="loading">
-                    <i class="fas fa-spinner"></i>
-                    <p>正在加载精彩故事...</p>
-                </div>
             </div>
         </section>
     </div>
@@ -569,7 +569,12 @@
                 
                 const storiesGrid = document.getElementById('storiesGrid');
                 if (data.stories && data.stories.length > 0) {
-                    const storiesHTML = data.stories.slice(0, 6).map(story => `
+                    // 按章节数排序，取前6个
+                    const hotStories = [...data.stories]
+                        .sort((a, b) => (b._count?.nodes || 0) - (a._count?.nodes || 0))
+                        .slice(0, 6);
+                    
+                    const storiesHTML = hotStories.map(story => `
                         <div class="story-card" onclick="window.location.href='/story/${story.id}'">
                             <div class="story-image">
                                 <i class="fas fa-book-open"></i>
