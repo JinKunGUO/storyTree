@@ -24,10 +24,18 @@
             border-radius: 20px;
             padding: 40px;
             margin-bottom: 30px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             display: flex;
-            align-items: center;
             gap: 30px;
+            align-items: flex-start;
+            position: relative;
+        }
+        
+        .profile-main-content {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+            flex: 1;
         }
 
         .profile-avatar {
@@ -532,6 +540,199 @@
             color: #667eea;
             font-size: 18px;
         }
+        
+        /* 紧凑版签到框（完整功能） */
+        .compact-checkin-widget {
+            width: 340px;
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            flex-shrink: 0;
+        }
+        
+        .compact-checkin-header {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: #333;
+        }
+        
+        .compact-checkin-header i {
+            color: #667eea;
+        }
+        
+        .compact-checkin-header strong {
+            color: #667eea;
+        }
+        
+        .compact-checkin-btn {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            color: white;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            margin-bottom: 10px;
+        }
+        
+        .compact-checkin-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .compact-checkin-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .compact-checkin-btn small {
+            font-size: 11px;
+            opacity: 0.9;
+        }
+        
+        .compact-checkin-message {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            font-size: 12px;
+            text-align: center;
+            display: none;
+        }
+        
+        .compact-checkin-message.show {
+            display: block;
+        }
+        
+        .compact-checkin-message.success {
+            background: #e8f5e9;
+            color: #4caf50;
+        }
+        
+        .compact-checkin-message.error {
+            background: #ffebee;
+            color: #f44336;
+        }
+        
+        .compact-checkin-message.info {
+            background: #e3f2fd;
+            color: #2196f3;
+        }
+        
+        /* 紧凑版日历 */
+        .compact-calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .compact-calendar-nav-btn {
+            background: transparent;
+            border: 1px solid #667eea;
+            color: #667eea;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+        
+        .compact-calendar-nav-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .compact-calendar-month {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .compact-calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+        
+        .compact-calendar-day-header {
+            text-align: center;
+            padding: 6px 0;
+            font-weight: 600;
+            color: #999;
+            font-size: 11px;
+        }
+        
+        .compact-calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            background: #f8f9fa;
+        }
+        
+        .compact-calendar-day.other-month {
+            color: #ccc;
+            background: transparent;
+        }
+        
+        .compact-calendar-day.today {
+            background: #e3f2fd;
+            color: #2196f3;
+            box-shadow: 0 0 0 2px #2196f3;
+        }
+        
+        .compact-calendar-day.checked {
+            background: linear-gradient(135deg, #4caf50, #66bb6a);
+            color: white;
+        }
+        
+        .compact-calendar-day.makeup {
+            background: linear-gradient(135deg, #ff9800, #ffa726);
+            color: white;
+        }
+        
+        .compact-calendar-day.checked::after {
+            content: '✓';
+            position: absolute;
+            bottom: 1px;
+            right: 2px;
+            font-size: 8px;
+        }
+        
+        .compact-calendar-day.can-makeup {
+            border: 2px dashed #ff9800;
+            color: #ff9800;
+            background: #fff3e0;
+        }
+        
+        .compact-calendar-day.can-makeup:hover {
+            background: #ff9800;
+            color: white;
+            transform: scale(1.1);
+        }
 
         .checkin-container {
             display: flex;
@@ -817,8 +1018,8 @@
             </div>
         </div>
 
-        <!-- 签到日历 -->
-        <div class="content-section">
+        <!-- 签到日历（隐藏） -->
+        <div class="content-section" style="display: none;">
             <div class="section-header">
                 <h2 class="section-title"><i class="fas fa-calendar-check"></i> 每日签到</h2>
                 <div class="checkin-stats">
@@ -1172,31 +1373,75 @@
             }
             
             profileHeader.innerHTML = `
-                <div class="profile-avatar">
-                    <i class="fas fa-user"></i>
+                <div class="profile-main-content">
+                    <div class="profile-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="profile-info">
+                        <div class="profile-name">
+                            ${escapeHtml(user.username)}
+                        </div>
+                        <div class="profile-email">
+                            <i class="fas fa-envelope"></i>
+                            ${escapeHtml(user.email)}
+                        </div>
+                        <div class="profile-points">
+                            <i class="fas fa-star"></i>
+                            积分: ${points.toLocaleString()}
+                            <span style="margin-left: 15px;"><i class="fas fa-pen-fancy"></i> 码字: ${wordCount.toLocaleString()}字</span>
+                            <span style="margin-left: 15px;"><i class="fas fa-calendar-check"></i> 补签: ${makeupChances}次</span>
+                        </div>
+                        ${badgesHTML}${nextMilestoneHTML}
+                        <div class="profile-bio">
+                            ${escapeHtml(user.bio || '这个人很懒，还没有写个人简介...')}
+                        </div>
+                        <div class="profile-actions">
+                            <a href="/create" class="btn btn-primary">
+                                <i class="fas fa-pen"></i> 创作新故事
+                            </a>
+                        </div>
+                    </div>
                 </div>
-                <div class="profile-info">
-                    <div class="profile-name">
-                        ${escapeHtml(user.username)}
+                
+                <!-- 紧凑版签到框（完整功能） -->
+                <div class="compact-checkin-widget" id="compactCheckinWidget">
+                    <div class="compact-checkin-header">
+                        <span><i class="fas fa-calendar-check"></i> 每日签到</span>
+                        <div style="display: flex; gap: 15px; font-size: 12px; font-weight: normal;">
+                            <span><i class="fas fa-fire"></i> 连续 <strong id="compactConsecutiveDays">0</strong> 天</span>
+                            <span><i class="fas fa-ticket-alt"></i> 补签 <strong id="compactMakeupChances">0</strong> 次</span>
+                        </div>
                     </div>
-                    <div class="profile-email">
-                        <i class="fas fa-envelope"></i>
-                        ${escapeHtml(user.email)}
+                    
+                    <button id="compactCheckinBtn" class="compact-checkin-btn" onclick="dailyCheckin()">
+                        <i class="fas fa-calendar-check"></i>
+                        <span id="compactCheckinText">今日签到</span>
+                        <small id="compactCheckinReward">+10积分</small>
+                    </button>
+                    
+                    <div class="compact-checkin-message" id="compactCheckinMessage"></div>
+                    
+                    <!-- 月份选择器 -->
+                    <div class="compact-calendar-header">
+                        <button class="compact-calendar-nav-btn" onclick="changeMonth(-1)">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <div class="compact-calendar-month" id="compactCalendarMonth">2026年3月</div>
+                        <button class="compact-calendar-nav-btn" onclick="changeMonth(1)">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
                     </div>
-                    <div class="profile-points">
-                        <i class="fas fa-star"></i>
-                        积分: ${points.toLocaleString()}
-                        <span style="margin-left: 15px;"><i class="fas fa-pen-fancy"></i> 码字: ${wordCount.toLocaleString()}字</span>
-                        <span style="margin-left: 15px;"><i class="fas fa-calendar-check"></i> 补签: ${makeupChances}次</span>
-                    </div>
-                    ${badgesHTML}${nextMilestoneHTML}
-                    <div class="profile-bio">
-                        ${escapeHtml(user.bio || '这个人很懒，还没有写个人简介...')}
-                    </div>
-                    <div class="profile-actions">
-                        <a href="/create" class="btn btn-primary">
-                            <i class="fas fa-pen"></i> 创作新故事
-                        </a>
+                    
+                    <!-- 日历 -->
+                    <div class="compact-calendar-grid" id="compactCalendarGrid">
+                        <div class="compact-calendar-day-header">日</div>
+                        <div class="compact-calendar-day-header">一</div>
+                        <div class="compact-calendar-day-header">二</div>
+                        <div class="compact-calendar-day-header">三</div>
+                        <div class="compact-calendar-day-header">四</div>
+                        <div class="compact-calendar-day-header">五</div>
+                        <div class="compact-calendar-day-header">六</div>
+                        <!-- 日期将通过JavaScript动态生成 -->
                     </div>
                 </div>
             `;
@@ -2015,8 +2260,10 @@
                 }
 
                 const data = await response.json();
+                const codes = data.codes || [];
+                const stats = data.stats || {};
                 
-                if (!data.codes || data.codes.length === 0) {
+                if (codes.length === 0) {
                     invitationSection.innerHTML = `
                         <div class="empty-state">
                             <i class="fas fa-gift"></i>
@@ -2026,13 +2273,13 @@
                     `;
                     return;
                 }
-
-                const code = data.codes[0];
-                const stats = data.stats || {};
+                
+                // 主邀请码（第一个）
+                const mainCode = codes[0];
                 
                 invitationSection.innerHTML = `
                     <div style="padding: 20px;">
-                        <!-- 邀请码展示 -->
+                        <!-- 主邀请码展示 -->
                         <div style="
                             background: linear-gradient(135deg, #667eea, #764ba2);
                             border-radius: 15px;
@@ -2040,108 +2287,282 @@
                             color: white;
                             margin-bottom: 20px;
                             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+                            position: relative;
+                            overflow: hidden;
                         ">
-                            <div style="font-size: 14px; opacity: 0.9; margin-bottom: 10px;">我的邀请码</div>
-                            <div style="
-                                font-size: 32px;
-                                font-weight: 700;
-                                letter-spacing: 4px;
-                                margin-bottom: 15px;
-                                font-family: 'Courier New', monospace;
-                            ">${code.code}</div>
-                            <div style="display: flex; gap: 10px;">
-                                <button onclick="copyInviteCode('${code.code}')" style="
-                                    flex: 1;
-                                    padding: 10px;
-                                    background: rgba(255, 255, 255, 0.2);
-                                    border: 1px solid rgba(255, 255, 255, 0.3);
-                                    color: white;
-                                    border-radius: 8px;
-                                    cursor: pointer;
-                                    font-size: 14px;
-                                    font-weight: 600;
-                                    transition: all 0.3s;
-                                " onmouseover="this.style.background='rgba(255,255,255,0.3)'" 
-                                   onmouseout="this.style.background='rgba(255,255,255,0.2)'">
-                                    <i class="fas fa-copy"></i> 复制
-                                </button>
-                                <button onclick="shareInviteCode('${code.code}')" style="
-                                    flex: 1;
-                                    padding: 10px;
-                                    background: rgba(255, 255, 255, 0.2);
-                                    border: 1px solid rgba(255, 255, 255, 0.3);
-                                    color: white;
-                                    border-radius: 8px;
-                                    cursor: pointer;
-                                    font-size: 14px;
-                                    font-weight: 600;
-                                    transition: all 0.3s;
-                                " onmouseover="this.style.background='rgba(255,255,255,0.3)'" 
-                                   onmouseout="this.style.background='rgba(255,255,255,0.2)'">
-                                    <i class="fas fa-share-alt"></i> 分享
-                                </button>
+                            <div style="position: absolute; top: -20px; right: -20px; font-size: 100px; opacity: 0.1;">
+                                <i class="fas fa-gift"></i>
+                            </div>
+                            <div style="position: relative; z-index: 1;">
+                                <div style="font-size: 14px; opacity: 0.9; margin-bottom: 10px;">
+                                    <i class="fas fa-star"></i> 我的专属邀请码
+                                </div>
+                                <div style="
+                                    font-size: 36px;
+                                    font-weight: 700;
+                                    letter-spacing: 6px;
+                                    margin-bottom: 15px;
+                                    font-family: 'Courier New', monospace;
+                                    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                                ">${mainCode.code}</div>
+                                <div style="display: flex; gap: 10px;">
+                                    <button onclick="copyInviteCode('${mainCode.code}')" style="
+                                        flex: 1;
+                                        padding: 12px;
+                                        background: rgba(255, 255, 255, 0.2);
+                                        border: 1px solid rgba(255, 255, 255, 0.3);
+                                        color: white;
+                                        border-radius: 10px;
+                                        cursor: pointer;
+                                        font-size: 14px;
+                                        font-weight: 600;
+                                        transition: all 0.3s;
+                                    " onmouseover="this.style.background='rgba(255,255,255,0.35)'" 
+                                       onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                                        <i class="fas fa-copy"></i> 复制邀请码
+                                    </button>
+                                    <button onclick="shareInviteCode('${mainCode.code}')" style="
+                                        flex: 1;
+                                        padding: 12px;
+                                        background: rgba(255, 255, 255, 0.2);
+                                        border: 1px solid rgba(255, 255, 255, 0.3);
+                                        color: white;
+                                        border-radius: 10px;
+                                        cursor: pointer;
+                                        font-size: 14px;
+                                        font-weight: 600;
+                                        transition: all 0.3s;
+                                    " onmouseover="this.style.background='rgba(255,255,255,0.35)'" 
+                                       onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                                        <i class="fas fa-share-alt"></i> 分享链接
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
                         <!-- 邀请统计 -->
-                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
                             <div style="
-                                padding: 15px;
-                                background: #f8f9fa;
-                                border-radius: 10px;
+                                padding: 18px 12px;
+                                background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+                                border-radius: 12px;
                                 text-align: center;
-                            ">
-                                <div style="font-size: 24px; font-weight: 700; color: #667eea; margin-bottom: 5px;">
+                                border: 2px solid #e9ecef;
+                                transition: all 0.3s;
+                            " onmouseover="this.style.borderColor='#667eea'; this.style.transform='translateY(-2px)'" 
+                               onmouseout="this.style.borderColor='#e9ecef'; this.style.transform='translateY(0)'">
+                                <div style="font-size: 28px; font-weight: 700; color: #667eea; margin-bottom: 5px;">
                                     ${stats.totalInvited || 0}
                                 </div>
-                                <div style="color: #999; font-size: 14px;">邀请人数</div>
+                                <div style="color: #666; font-size: 13px; font-weight: 600;">
+                                    <i class="fas fa-users"></i> 邀请人数
+                                </div>
                             </div>
                             <div style="
-                                padding: 15px;
-                                background: #f8f9fa;
-                                border-radius: 10px;
+                                padding: 18px 12px;
+                                background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+                                border-radius: 12px;
                                 text-align: center;
-                            ">
-                                <div style="font-size: 24px; font-weight: 700; color: #4caf50; margin-bottom: 5px;">
+                                border: 2px solid #e9ecef;
+                                transition: all 0.3s;
+                            " onmouseover="this.style.borderColor='#4caf50'; this.style.transform='translateY(-2px)'" 
+                               onmouseout="this.style.borderColor='#e9ecef'; this.style.transform='translateY(0)'">
+                                <div style="font-size: 28px; font-weight: 700; color: #4caf50; margin-bottom: 5px;">
                                     ${stats.totalRewards || 0}
                                 </div>
-                                <div style="color: #999; font-size: 14px;">获得积分</div>
+                                <div style="color: #666; font-size: 13px; font-weight: 600;">
+                                    <i class="fas fa-coins"></i> 获得积分
+                                </div>
+                            </div>
+                            <div style="
+                                padding: 18px 12px;
+                                background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+                                border-radius: 12px;
+                                text-align: center;
+                                border: 2px solid #e9ecef;
+                                transition: all 0.3s;
+                            " onmouseover="this.style.borderColor='#ff9800'; this.style.transform='translateY(-2px)'" 
+                               onmouseout="this.style.borderColor='#e9ecef'; this.style.transform='translateY(0)'">
+                                <div style="font-size: 28px; font-weight: 700; color: #ff9800; margin-bottom: 5px;">
+                                    ${codes.length}
+                                </div>
+                                <div style="color: #666; font-size: 13px; font-weight: 600;">
+                                    <i class="fas fa-ticket-alt"></i> 邀请码数
+                                </div>
                             </div>
                         </div>
 
+                        <!-- 邀请码列表 -->
+                        <div style="
+                            background: white;
+                            border: 2px solid #e9ecef;
+                            border-radius: 12px;
+                            padding: 20px;
+                            margin-bottom: 20px;
+                        ">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                <h3 style="margin: 0; color: #333; font-size: 16px;">
+                                    <i class="fas fa-list-ul"></i> 我的邀请码列表
+                                </h3>
+                                ${currentUser && currentUser.isAdmin ? `
+                                    <button onclick="showGenerateInviteCodeDialog()" style="
+                                        padding: 8px 16px;
+                                        background: linear-gradient(135deg, #667eea, #764ba2);
+                                        color: white;
+                                        border: none;
+                                        border-radius: 8px;
+                                        cursor: pointer;
+                                        font-size: 13px;
+                                        font-weight: 600;
+                                        transition: all 0.3s;
+                                        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+                                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'" 
+                                       onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102, 126, 234, 0.3)'">
+                                        <i class="fas fa-plus"></i> 生成新邀请码
+                                    </button>
+                                ` : ''}
+                            </div>
+                            <div style="max-height: 300px; overflow-y: auto;">
+                                ${codes.map((code, index) => `
+                                    <div style="
+                                        padding: 15px;
+                                        background: ${index === 0 ? 'linear-gradient(135deg, #fff5f5, #fff)' : '#f8f9fa'};
+                                        border: 2px solid ${index === 0 ? '#667eea' : '#e9ecef'};
+                                        border-radius: 10px;
+                                        margin-bottom: 10px;
+                                        transition: all 0.3s;
+                                    " onmouseover="this.style.borderColor='#667eea'; this.style.transform='translateX(5px)'" 
+                                       onmouseout="this.style.borderColor='${index === 0 ? '#667eea' : '#e9ecef'}'; this.style.transform='translateX(0)'">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                                            <div style="display: flex; align-items: center; gap: 10px;">
+                                                ${index === 0 ? '<span style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;">主邀请码</span>' : ''}
+                                                <span style="
+                                                    font-family: 'Courier New', monospace;
+                                                    font-size: 20px;
+                                                    font-weight: 700;
+                                                    color: #333;
+                                                    letter-spacing: 2px;
+                                                ">${code.code}</span>
+                                            </div>
+                                            <span style="
+                                                padding: 4px 12px;
+                                                background: ${code.is_active ? '#4caf50' : '#999'};
+                                                color: white;
+                                                border-radius: 12px;
+                                                font-size: 11px;
+                                                font-weight: 600;
+                                            ">${code.is_active ? '可用' : '已禁用'}</span>
+                                        </div>
+                                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 13px; color: #666;">
+                                            <div>
+                                                <i class="fas fa-gift" style="color: #ff9800;"></i>
+                                                奖励: <strong style="color: #333;">${code.bonus_points}积分</strong>
+                                            </div>
+                                            <div>
+                                                <i class="fas fa-check-circle" style="color: #4caf50;"></i>
+                                                已用: <strong style="color: #333;">${code.used_count}次</strong>
+                                            </div>
+                                            <div>
+                                                <i class="fas fa-infinity" style="color: #2196f3;"></i>
+                                                限制: <strong style="color: #333;">${code.max_uses === -1 ? '无限' : code.max_uses + '次'}</strong>
+                                            </div>
+                                        </div>
+                                        ${code.expires_at ? `
+                                            <div style="margin-top: 8px; font-size: 12px; color: #999;">
+                                                <i class="fas fa-clock"></i> 
+                                                过期时间: ${new Date(code.expires_at).toLocaleDateString('zh-CN')}
+                                            </div>
+                                        ` : ''}
+                                        <div style="display: flex; gap: 8px; margin-top: 12px;">
+                                            <button onclick="copyInviteCode('${code.code}')" style="
+                                                flex: 1;
+                                                padding: 8px;
+                                                background: white;
+                                                border: 2px solid #667eea;
+                                                color: #667eea;
+                                                border-radius: 8px;
+                                                cursor: pointer;
+                                                font-size: 12px;
+                                                font-weight: 600;
+                                                transition: all 0.3s;
+                                            " onmouseover="this.style.background='#667eea'; this.style.color='white'" 
+                                               onmouseout="this.style.background='white'; this.style.color='#667eea'">
+                                                <i class="fas fa-copy"></i> 复制
+                                            </button>
+                                            <button onclick="shareInviteCode('${code.code}')" style="
+                                                flex: 1;
+                                                padding: 8px;
+                                                background: white;
+                                                border: 2px solid #4caf50;
+                                                color: #4caf50;
+                                                border-radius: 8px;
+                                                cursor: pointer;
+                                                font-size: 12px;
+                                                font-weight: 600;
+                                                transition: all 0.3s;
+                                            " onmouseover="this.style.background='#4caf50'; this.style.color='white'" 
+                                               onmouseout="this.style.background='white'; this.style.color='#4caf50'">
+                                                <i class="fas fa-share-alt"></i> 分享
+                                            </button>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <!-- 最近邀请 -->
                         ${data.invitedUsers && data.invitedUsers.length > 0 ? `
-                            <div style="margin-top: 20px;">
-                                <div style="color: #666; font-size: 14px; font-weight: 600; margin-bottom: 10px;">
-                                    最近邀请
-                                </div>
+                            <div style="
+                                background: white;
+                                border: 2px solid #e9ecef;
+                                border-radius: 12px;
+                                padding: 20px;
+                            ">
+                                <h3 style="margin: 0 0 15px 0; color: #333; font-size: 16px;">
+                                    <i class="fas fa-user-check"></i> 最近邀请
+                                </h3>
                                 ${data.invitedUsers.slice(0, 5).map(user => `
                                     <div style="
                                         display: flex;
                                         align-items: center;
-                                        gap: 10px;
-                                        padding: 10px;
+                                        gap: 12px;
+                                        padding: 12px;
                                         background: #f8f9fa;
-                                        border-radius: 8px;
-                                        margin-bottom: 8px;
-                                    ">
+                                        border-radius: 10px;
+                                        margin-bottom: 10px;
+                                        border: 2px solid transparent;
+                                        transition: all 0.3s;
+                                    " onmouseover="this.style.borderColor='#667eea'; this.style.background='#fff'" 
+                                       onmouseout="this.style.borderColor='transparent'; this.style.background='#f8f9fa'">
                                         <div style="
-                                            width: 32px;
-                                            height: 32px;
+                                            width: 40px;
+                                            height: 40px;
                                             background: linear-gradient(135deg, #667eea, #764ba2);
                                             border-radius: 50%;
                                             display: flex;
                                             align-items: center;
                                             justify-content: center;
                                             color: white;
-                                            font-size: 14px;
+                                            font-size: 16px;
+                                            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
                                         ">
                                             <i class="fas fa-user"></i>
                                         </div>
                                         <div style="flex: 1;">
-                                            <div style="font-weight: 600; color: #333;">${escapeHtml(user.username)}</div>
-                                            <div style="font-size: 12px; color: #999;">${formatDate(user.createdAt)}</div>
+                                            <div style="font-weight: 600; color: #333; margin-bottom: 2px;">${escapeHtml(user.username)}</div>
+                                            <div style="font-size: 12px; color: #999;">
+                                                <i class="fas fa-clock"></i> ${formatDate(user.createdAt)}
+                                            </div>
                                         </div>
-                                        <div style="color: #4caf50; font-weight: 600;">+${user.reward || 0}</div>
+                                        <div style="
+                                            padding: 6px 12px;
+                                            background: linear-gradient(135deg, #4caf50, #66bb6a);
+                                            color: white;
+                                            border-radius: 15px;
+                                            font-weight: 700;
+                                            font-size: 13px;
+                                            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+                                        ">+${user.reward || 0}</div>
                                     </div>
                                 `).join('')}
                             </div>
@@ -2156,6 +2577,186 @@
                         <p>加载失败</p>
                     </div>
                 `;
+            }
+        }
+        
+        // 显示生成邀请码对话框
+        function showGenerateInviteCodeDialog() {
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                animation: fadeIn 0.3s;
+            `;
+            
+            overlay.innerHTML = `
+                <div style="
+                    background: white;
+                    border-radius: 20px;
+                    padding: 30px;
+                    max-width: 500px;
+                    width: 90%;
+                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                    animation: slideUp 0.3s;
+                ">
+                    <h2 style="margin: 0 0 20px 0; color: #333;">
+                        <i class="fas fa-plus-circle" style="color: #667eea;"></i> 
+                        生成新邀请码
+                    </h2>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; color: #666; font-weight: 600; margin-bottom: 8px;">
+                            生成数量
+                        </label>
+                        <input type="number" id="inviteCodeCount" value="1" min="1" max="100" style="
+                            width: 100%;
+                            padding: 12px;
+                            border: 2px solid #e0e0e0;
+                            border-radius: 10px;
+                            font-size: 16px;
+                            box-sizing: border-box;
+                        ">
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; color: #666; font-weight: 600; margin-bottom: 8px;">
+                            奖励积分
+                        </label>
+                        <input type="number" id="inviteCodeBonus" value="50" min="10" max="1000" style="
+                            width: 100%;
+                            padding: 12px;
+                            border: 2px solid #e0e0e0;
+                            border-radius: 10px;
+                            font-size: 16px;
+                            box-sizing: border-box;
+                        ">
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; color: #666; font-weight: 600; margin-bottom: 8px;">
+                            最大使用次数（-1为无限）
+                        </label>
+                        <input type="number" id="inviteCodeMaxUses" value="-1" min="-1" style="
+                            width: 100%;
+                            padding: 12px;
+                            border: 2px solid #e0e0e0;
+                            border-radius: 10px;
+                            font-size: 16px;
+                            box-sizing: border-box;
+                        ">
+                    </div>
+                    
+                    <div style="margin-bottom: 25px;">
+                        <label style="display: block; color: #666; font-weight: 600; margin-bottom: 8px;">
+                            有效天数（0为永久）
+                        </label>
+                        <input type="number" id="inviteCodeExpireDays" value="0" min="0" style="
+                            width: 100%;
+                            padding: 12px;
+                            border: 2px solid #e0e0e0;
+                            border-radius: 10px;
+                            font-size: 16px;
+                            box-sizing: border-box;
+                        ">
+                    </div>
+                    
+                    <div style="display: flex; gap: 15px;">
+                        <button onclick="this.closest('div').parentElement.parentElement.remove()" style="
+                            flex: 1;
+                            padding: 12px;
+                            background: #f5f5f5;
+                            color: #666;
+                            border: none;
+                            border-radius: 10px;
+                            font-size: 16px;
+                            font-weight: 600;
+                            cursor: pointer;
+                        ">取消</button>
+                        <button onclick="generateInviteCodes()" style="
+                            flex: 1;
+                            padding: 12px;
+                            background: linear-gradient(135deg, #667eea, #764ba2);
+                            color: white;
+                            border: none;
+                            border-radius: 10px;
+                            font-size: 16px;
+                            font-weight: 600;
+                            cursor: pointer;
+                        ">生成</button>
+                    </div>
+                </div>
+            `;
+            
+            overlay.onclick = (e) => {
+                if (e.target === overlay) {
+                    overlay.remove();
+                }
+            };
+            
+            document.body.appendChild(overlay);
+        }
+        
+        // 生成邀请码
+        async function generateInviteCodes() {
+            const count = parseInt(document.getElementById('inviteCodeCount').value);
+            const bonusPoints = parseInt(document.getElementById('inviteCodeBonus').value);
+            const maxUses = parseInt(document.getElementById('inviteCodeMaxUses').value);
+            const expiresInDays = parseInt(document.getElementById('inviteCodeExpireDays').value);
+            
+            if (!count || count < 1) {
+                alert('请输入有效的生成数量');
+                return;
+            }
+            
+            if (!bonusPoints || bonusPoints < 10) {
+                alert('奖励积分不能少于10');
+                return;
+            }
+            
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                const response = await fetch('/api/invitations/admin/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        count,
+                        bonusPoints,
+                        maxUses,
+                        expiresInDays
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // 移除对话框
+                document.querySelectorAll('body > div').forEach(div => {
+                    if (div.style.position === 'fixed') {
+                        div.remove();
+                    }
+                });
+                
+                if (response.ok) {
+                    alert(`✅ 成功生成 ${data.count} 个邀请码！`);
+                    // 刷新邀请码列表
+                    await loadInvitationCodes();
+                } else {
+                    alert('❌ ' + (data.error || '生成邀请码失败'));
+                }
+            } catch (error) {
+                console.error('生成邀请码失败:', error);
+                alert('生成失败，请稍后重试');
             }
         }
 
@@ -2728,12 +3329,42 @@
                 const data = await response.json();
                 checkinStatus = data;
                 
-                // 更新签到信息显示
+                // 更新原签到信息显示（隐藏的大版本）
                 document.getElementById('consecutiveDays').textContent = data.consecutiveDays || 0;
                 document.getElementById('makeupChancesDisplay').textContent = data.makeupChances || 0;
                 document.getElementById('checkinReward').textContent = `+${data.nextReward || 10}积分`;
                 
-                // 更新签到按钮状态
+                // 更新紧凑版签到框
+                const compactConsecutiveDays = document.getElementById('compactConsecutiveDays');
+                const compactMakeupChances = document.getElementById('compactMakeupChances');
+                const compactCheckinBtn = document.getElementById('compactCheckinBtn');
+                const compactCheckinText = document.getElementById('compactCheckinText');
+                const compactCheckinReward = document.getElementById('compactCheckinReward');
+                const compactCheckinMessage = document.getElementById('compactCheckinMessage');
+                
+                if (compactConsecutiveDays) compactConsecutiveDays.textContent = data.consecutiveDays || 0;
+                if (compactMakeupChances) compactMakeupChances.textContent = data.makeupChances || 0;
+                if (compactCheckinReward) compactCheckinReward.textContent = `+${data.nextReward || 10}积分`;
+                
+                if (compactCheckinBtn && compactCheckinText && compactCheckinMessage) {
+                    if (!data.canCheckin) {
+                        compactCheckinBtn.disabled = true;
+                        compactCheckinText.textContent = '已签到';
+                        compactCheckinMessage.className = 'compact-checkin-message info show';
+                        compactCheckinMessage.textContent = '今天已签到';
+                    } else if (data.isMissed) {
+                        compactCheckinBtn.disabled = false;
+                        compactCheckinText.textContent = '今日签到';
+                        compactCheckinMessage.className = 'compact-checkin-message info show';
+                        compactCheckinMessage.textContent = '连续已中断';
+                    } else {
+                        compactCheckinBtn.disabled = false;
+                        compactCheckinText.textContent = '今日签到';
+                        compactCheckinMessage.className = 'compact-checkin-message';
+                    }
+                }
+                
+                // 更新原签到按钮状态
                 const checkinBtn = document.getElementById('checkinBtn');
                 const checkinMessage = document.getElementById('checkinMessage');
                 
@@ -2747,7 +3378,7 @@
                     checkinMessage.textContent = '连续签到已中断，今天签到将重新开始计算';
                 }
                 
-                // 加载签到历史
+                // 加载签到历史（同时更新大日历和紧凑日历）
                 await loadCheckinHistory(currentCalendarYear, currentCalendarMonth);
             } catch (error) {
                 console.error('加载签到状态错误:', error);
@@ -2842,11 +3473,17 @@
 
         // 渲染日历
         function renderCalendar(year, month) {
+            // 渲染大日历
             const calendarGrid = document.getElementById('calendarGrid');
             const calendarMonth = document.getElementById('calendarMonth');
             
+            // 渲染紧凑版日历
+            const compactCalendarGrid = document.getElementById('compactCalendarGrid');
+            const compactCalendarMonth = document.getElementById('compactCalendarMonth');
+            
             // 更新月份显示
-            calendarMonth.textContent = `${year}年${month}月`;
+            if (calendarMonth) calendarMonth.textContent = `${year}年${month}月`;
+            if (compactCalendarMonth) compactCalendarMonth.textContent = `${year}年${month}月`;
             
             // 获取当月第一天和最后一天
             const firstDay = new Date(year, month - 1, 1);
@@ -2854,19 +3491,37 @@
             const daysInMonth = lastDay.getDate();
             const firstDayOfWeek = firstDay.getDay(); // 0-6 (周日-周六)
             
-            // 清空现有日期（保留星期标题）
-            const dayHeaders = Array.from(calendarGrid.children).slice(0, 7);
-            calendarGrid.innerHTML = '';
-            dayHeaders.forEach(header => calendarGrid.appendChild(header));
+            // 渲染大日历
+            if (calendarGrid) {
+                // 清空现有日期（保留星期标题）
+                const dayHeaders = Array.from(calendarGrid.children).slice(0, 7);
+                calendarGrid.innerHTML = '';
+                dayHeaders.forEach(header => calendarGrid.appendChild(header));
+                
+                renderCalendarDays(calendarGrid, year, month, firstDayOfWeek, daysInMonth, 'calendar-day');
+            }
             
+            // 渲染紧凑版日历
+            if (compactCalendarGrid) {
+                // 清空现有日期（保留星期标题）
+                const compactHeaders = Array.from(compactCalendarGrid.children).slice(0, 7);
+                compactCalendarGrid.innerHTML = '';
+                compactHeaders.forEach(header => compactCalendarGrid.appendChild(header));
+                
+                renderCalendarDays(compactCalendarGrid, year, month, firstDayOfWeek, daysInMonth, 'compact-calendar-day');
+            }
+        }
+        
+        // 渲染日历天数（通用函数）
+        function renderCalendarDays(gridElement, year, month, firstDayOfWeek, daysInMonth, dayClass) {
             // 填充上个月的日期
             const prevMonthLastDay = new Date(year, month - 1, 0).getDate();
             for (let i = firstDayOfWeek - 1; i >= 0; i--) {
                 const day = prevMonthLastDay - i;
                 const dayElement = document.createElement('div');
-                dayElement.className = 'calendar-day other-month';
+                dayElement.className = `${dayClass} other-month`;
                 dayElement.textContent = day;
-                calendarGrid.appendChild(dayElement);
+                gridElement.appendChild(dayElement);
             }
             
             // 填充当月日期
@@ -2875,7 +3530,7 @@
             
             for (let day = 1; day <= daysInMonth; day++) {
                 const dayElement = document.createElement('div');
-                dayElement.className = 'calendar-day';
+                dayElement.className = dayClass;
                 dayElement.textContent = day;
                 
                 const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -2913,16 +3568,16 @@
                     }
                 }
                 
-                calendarGrid.appendChild(dayElement);
+                gridElement.appendChild(dayElement);
             }
             
             // 填充下个月的日期
             const remainingDays = 42 - (firstDayOfWeek + daysInMonth); // 6行7列=42个格子
             for (let day = 1; day <= remainingDays; day++) {
                 const dayElement = document.createElement('div');
-                dayElement.className = 'calendar-day other-month';
+                dayElement.className = `${dayClass} other-month`;
                 dayElement.textContent = day;
-                calendarGrid.appendChild(dayElement);
+                gridElement.appendChild(dayElement);
             }
         }
 
@@ -3072,4 +3727,3 @@
     </script>
 </body>
 </html>
-
