@@ -146,31 +146,34 @@ router.post('/', authenticateToken, async (req, res) => {
         });
       }
 
-      // 码字统计：仅统计非AI生成的已发布章节
-      const wordCount = content.length;
-      
-      // 实时码字奖励：每1000字奖励10积分
-      const wordReward = Math.floor(wordCount / 1000) * WORD_REWARD_RATE;
-      if (wordReward > 0) {
-        await addPoints(userId, wordReward, 'word_count', `码字奖励（${wordCount}字）`);
-      }
+// 码字统计：仅统计非 AI 生成的已发布章节
+      if (shouldPublish && !node.ai_generated) {
+        const wordCount = content.length;
+        
+        // 实时码字奖励：每 1000 字奖励 10 积分
+        const wordReward = Math.floor(wordCount / 1000) * WORD_REWARD_RATE;
+        if (wordReward > 0) {
+          // 章节作者获得全部奖励
+          await addPoints(userId, wordReward, 'word_count', `创作章节《${title}》（${wordCount}字）`);
+        }
 
-      // 补签机会奖励：每1000字获得1次补签机会
-      const makeupChances = Math.floor(wordCount / MAKEUP_CHANCE_RATE);
-      if (makeupChances > 0) {
-        await prisma.users.update({
-          where: { id: userId },
-          data: {
-            makeup_chances: { increment: makeupChances }
-          }
-        });
-      }
+        // 补签机会奖励：每 1000 字获得 1 次补签机会
+        const makeupChances = Math.floor(wordCount / MAKEUP_CHANCE_RATE);
+        if (makeupChances > 0) {
+          await prisma.users.update({
+            where: { id: userId },
+            data: {
+              makeup_chances: { increment: makeupChances }
+            }
+          });
+        }
 
-      // 更新码字数并检查里程碑
-      try {
-        await updateWordCountAndCheckMilestones(userId, wordCount);
-      } catch (error) {
-        console.error('更新码字统计失败:', error);
+        // 更新码字数并检查里程碑（只统计章节作者）
+        try {
+          await updateWordCountAndCheckMilestones(userId, wordCount);
+        } catch (error) {
+          console.error('更新码字统计失败:', error);
+        }
       }
     }
 
@@ -237,7 +240,7 @@ router.post('/', authenticateToken, async (req, res) => {
         select: { follower_id: true }
       });
 
-      // 合并并去重用户ID（避免重复通知）
+      // 合并并去重用户 ID（避免重复通知）
       const notifyUserIds = new Set<number>();
       storyFollowers.forEach(f => notifyUserIds.add(f.user_id));
       authorFollowers.forEach(f => notifyUserIds.add(f.follower_id));
@@ -257,33 +260,35 @@ router.post('/', authenticateToken, async (req, res) => {
           }))
         });
       }
+    }
 
-      // 码字统计：仅统计非AI生成的已发布章节
-      const wordCount = content.length;
-      
-      // 实时码字奖励：每1000字奖励10积分
-      const wordReward = Math.floor(wordCount / 1000) * WORD_REWARD_RATE;
-      if (wordReward > 0) {
-        await addPoints(userId, wordReward, 'word_count', `码字奖励（${wordCount}字）`);
-      }
+    // 码字统计：仅统计非 AI 生成的已发布章节
+    if (shouldPublish && !node.ai_generated) {
+        const wordCount = content.length;
+        
+        // 实时码字奖励：每 1000 字奖励 10 积分
+        const wordReward = Math.floor(wordCount / 1000) * WORD_REWARD_RATE;
+        if (wordReward > 0) {
+          await addPoints(userId, wordReward, 'word_count', `创作章节《${title}》（${wordCount}字）`);
+        }
 
-      // 补签机会奖励：每1000字获得1次补签机会
-      const makeupChances = Math.floor(wordCount / MAKEUP_CHANCE_RATE);
-      if (makeupChances > 0) {
-        await prisma.users.update({
-          where: { id: userId },
-          data: {
-            makeup_chances: { increment: makeupChances }
-          }
-        });
-      }
+        // 补签机会奖励：每 1000 字获得 1 次补签机会
+        const makeupChances = Math.floor(wordCount / MAKEUP_CHANCE_RATE);
+        if (makeupChances > 0) {
+          await prisma.users.update({
+            where: { id: userId },
+            data: {
+              makeup_chances: { increment: makeupChances }
+            }
+          });
+        }
 
-      // 更新码字数并检查里程碑
-      try {
-        await updateWordCountAndCheckMilestones(userId, wordCount);
-      } catch (error) {
-        console.error('更新码字统计失败:', error);
-      }
+        // 更新码字数并检查里程碑
+        try {
+          await updateWordCountAndCheckMilestones(userId, wordCount);
+        } catch (error) {
+          console.error('更新码字统计失败:', error);
+        }
     }
 
     const statusMessage = shouldPublish 

@@ -61,6 +61,13 @@ router.post('/register', async (req, res) => {
       }
     }
 
+// 加密密码
+    const hashedPassword = await hashPassword(password);
+
+    // 生成邮箱验证 token
+    const verificationToken = generateToken();
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 小时
+
     // 验证邀请码（如果提供）
     let inviteCodeData = null;
     let inviterUser = null;
@@ -81,6 +88,7 @@ router.post('/register', async (req, res) => {
         return res.status(400).json({ error: '邀请码已过期' });
       }
 
+      // 检查使用次数（在事务中再次检查，防止并发）
       if (inviteCodeData.max_uses !== -1 && inviteCodeData.used_count >= inviteCodeData.max_uses) {
         return res.status(400).json({ error: '邀请码已达到最大使用次数' });
       }
@@ -90,13 +98,6 @@ router.post('/register', async (req, res) => {
         where: { id: inviteCodeData.created_by_id }
       });
     }
-
-    // 加密密码
-    const hashedPassword = await hashPassword(password);
-
-    // 生成邮箱验证token
-    const verificationToken = generateToken();
-    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24小时
 
     // 使用事务创建用户并处理邀请奖励
     const result = await prisma.$transaction(async (tx) => {
@@ -126,13 +127,31 @@ router.post('/register', async (req, res) => {
 
       // 如果使用了邀请码，处理邀请奖励
       if (inviteCodeData && inviterUser) {
-        // 更新邀请码使用次数
-        await tx.invitation_codes.update({
-          where: { code: inviteCodeData.code },
-          data: { used_count: { increment: 1 } }
-        });
+        // 使用乐观锁更新邀请码使用次数
+        try {
+          await tx.invitation_codes.update({
+            where: { 
+              code: inviteCodeData.code,
+              used_count: inviteCodeData.used_count // 乐观锁：确保使用次数未变
+            },
+            data: { 
+              used_count: { increment: 1 }
+            }
+          });
+        } catch (error: any) {
+          // 如果更新失败（可能是并发导致），再次检查
+          if (error?.code === 'P2025') {
+            const recheck = await tx.invitation_codes.findUnique({
+              where: { code: inviteCodeData.code }
+            });
+            if (recheck && recheck.max_uses !== -1 && recheck.used_count >= recheck.max_uses) {
+              throw new Error('邀请码已达到最大使用次数');
+            }
+          }
+          throw error;
+        }
 
-        // 给邀请人奖励积分（新用户奖励的50%）
+        // 给邀请人奖励积分（新用户奖励的 50%）
         const inviterReward = Math.floor(inviteCodeData.bonus_points * 0.5);
         await tx.users.update({
           where: { id: inviterUser.id },

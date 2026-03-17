@@ -51,9 +51,7 @@ export async function checkAndAwardMilestones(userId: number, newWordCount: numb
       await prisma.users.update({
         where: { id: userId },
         data: { 
-          badges: JSON.stringify(newBadges),
-          // 如果解锁邀请码权限
-          can_generate_invite: milestone.unlockInvite ? true : undefined
+          badges: JSON.stringify(newBadges)
         }
       });
 
@@ -72,7 +70,7 @@ export async function checkAndAwardMilestones(userId: number, newWordCount: numb
         `🎉 恭喜解锁徽章「${milestone.badge.emoji} ${milestone.badge.name}」，奖励${milestone.reward}积分！`
       );
 
-      console.log(`用户 ${userId} 达成里程碑: ${milestone.badge.name}`);
+      console.log(`用户 ${userId} 达成里程碑：${milestone.badge.name}`);
     }
   }
 }
@@ -117,4 +115,3 @@ export async function updateWordCountAndCheckMilestones(
     });
   }
 }
-

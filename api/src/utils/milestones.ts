@@ -13,45 +13,43 @@ export interface Milestone {
   words: number;
   reward: number;
   badge: Badge;
-  unlockInvite?: boolean;
 }
 
 export const WORD_MILESTONES: Milestone[] = [
   { 
     words: 10000, 
     reward: 50, 
-    badge: { id: 'rookie', name: '初出茅庐', emoji: '🌱', description: '创作满1万字' }
+    badge: { id: 'rookie', name: '初出茅庐', emoji: '🌱', description: '创作满 1 万字' }
   },
   { 
     words: 50000, 
     reward: 200, 
-    badge: { id: 'achiever', name: '小有成就', emoji: '📝', description: '创作满5万字' }
+    badge: { id: 'achiever', name: '小有成就', emoji: '📝', description: '创作满 5 万字' }
   },
   { 
     words: 100000, 
     reward: 500, 
-    badge: { id: 'diligent', name: '笔耕不辍', emoji: '✍️', description: '创作满10万字' }
+    badge: { id: 'diligent', name: '笔耕不辍', emoji: '✍️', description: '创作满 10 万字' }
   },
   { 
     words: 200000, 
     reward: 1200, 
-    badge: { id: 'professional', name: '专业作者', emoji: '📚', description: '创作满20万字' },
-    unlockInvite: true // 解锁邀请码生成权限
+    badge: { id: 'professional', name: '专业作者', emoji: '📚', description: '创作满 20 万字' }
   },
   { 
     words: 500000, 
     reward: 3500, 
-    badge: { id: 'signed', name: '签约作者', emoji: '🎖️', description: '创作满50万字' }
+    badge: { id: 'signed', name: '签约作者', emoji: '🎖️', description: '创作满 50 万字' }
   },
   { 
     words: 1000000, 
     reward: 10000, 
-    badge: { id: 'master', name: '大神作者', emoji: '👑', description: '创作满100万字' }
+    badge: { id: 'master', name: '大神作者', emoji: '👑', description: '创作满 100 万字' }
   },
   { 
     words: 2000000, 
     reward: 25000, 
-    badge: { id: 'legend', name: '殿堂作者', emoji: '🏆', description: '创作满200万字' }
+    badge: { id: 'legend', name: '殿堂作者', emoji: '🏆', description: '创作满 200 万字' }
   }
 ];
 
@@ -86,4 +84,3 @@ export function getNextMilestone(currentWordCount: number): Milestone | null {
   }
   return null; // 已达成所有里程碑
 }
-

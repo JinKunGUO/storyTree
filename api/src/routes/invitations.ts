@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
+import { checkCanGenerateInviteCode, generateUserInviteCode } from '../utils/invite-permission-checker';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -113,10 +114,12 @@ router.get('/my-codes', authenticateToken, async (req: any, res) => {
     const user = await prisma.users.findUnique({
       where: { id: req.userId },
       select: {
-        invitation_code: true,
-        can_generate_invite: true,
+        username: true,
         word_count: true,
-        badges: true
+        badges: true,
+        isAdmin: true,
+        createdAt: true,
+        consecutive_days: true
       }
     });
 
@@ -124,33 +127,16 @@ router.get('/my-codes', authenticateToken, async (req: any, res) => {
       return res.status(404).json({ error: '用户不存在' });
     }
 
-    // 如果用户还没有邀请码，检查是否符合生成条件
-    if (!user.invitation_code && user.can_generate_invite) {
-      // 自动生成邀请码
-      const newCode = generateInviteCode();
-      
-      await prisma.$transaction(async (tx) => {
-        // 更新用户的邀请码
-        await tx.users.update({
-          where: { id: req.userId },
-          data: { invitation_code: newCode }
-        });
+    // 检查是否可以生成新的邀请码
+    const canGenerateResult = await checkCanGenerateInviteCode(req.userId);
 
-        // 创建邀请码记录
-        await tx.invitation_codes.create({
-          data: {
-            code: newCode,
-            created_by_id: req.userId,
-            type: 'user',
-            bonus_points: 50, // 默认奖励50积分
-            max_uses: -1, // 无限使用
-            is_active: true
-          }
-        });
-      });
-
-      user.invitation_code = newCode;
-    }
+    // 获取用户的所有邀请码
+    const codes = await prisma.invitation_codes.findMany({
+      where: {
+        created_by_id: req.userId
+      },
+      orderBy: { created_at: 'desc' }
+    });
 
     // 获取邀请统计
     const inviteStats = await prisma.invitation_records.findMany({
@@ -181,8 +167,10 @@ router.get('/my-codes', authenticateToken, async (req: any, res) => {
     }, 0);
 
     res.json({
-      invitationCode: user.invitation_code,
-      canGenerate: user.can_generate_invite,
+      codes: codes,
+      canGenerate: canGenerateResult.canGenerate,
+      availableCount: canGenerateResult.availableCount,
+      generateReason: canGenerateResult.reason,
       totalInvites: inviteStats.length,
       totalRewards,
       inviteRecords: inviteStats.map(record => ({
@@ -196,6 +184,29 @@ router.get('/my-codes', authenticateToken, async (req: any, res) => {
   } catch (error) {
     console.error('获取邀请码失败:', error);
     res.status(500).json({ error: '获取邀请码失败' });
+  }
+});
+
+// 2.5 【用户】生成新的邀请码
+router.post('/generate', authenticateToken, async (req: any, res) => {
+  try {
+    const result = await generateUserInviteCode(req.userId);
+    
+    if (result.success) {
+      res.json({
+        success: true,
+        code: result.code,
+        message: '邀请码生成成功'
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        error: result.error
+      });
+    }
+  } catch (error) {
+    console.error('生成邀请码失败:', error);
+    res.status(500).json({ error: '生成邀请码失败' });
   }
 });
 
@@ -331,7 +342,7 @@ router.get('/admin/stats', authenticateToken, requireAdmin, async (req: any, res
     });
     const totalInvites = await prisma.invitation_records.count();
     
-    // 最近30天的邀请趋势
+    // 最近 30 天的邀请趋势
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
@@ -341,7 +352,7 @@ router.get('/admin/stats', authenticateToken, requireAdmin, async (req: any, res
       }
     });
 
-    // Top邀请者
+    // Top 邀请者
     const topInviters = await prisma.invitation_records.groupBy({
       by: ['inviter_id'],
       _count: { invitee_id: true },
@@ -376,5 +387,89 @@ router.get('/admin/stats', authenticateToken, requireAdmin, async (req: any, res
   }
 });
 
-export default router;
+// 7. 【管理员】授予用户邀请码权限
+router.post('/admin/grant-permission', authenticateToken, requireAdmin, async (req: any, res) => {
+  try {
+    const { userId } = req.body;
 
+    if (!userId) {
+      return res.status(400).json({ error: '需要提供用户 ID' });
+    }
+
+    const user = await prisma.users.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+
+    // 直接为用户生成一个邀请码（管理员特批）
+    const newCode = generateInviteCode();
+    await prisma.invitation_codes.create({
+      data: {
+        code: newCode,
+        created_by_id: userId,
+        type: 'user',
+        bonus_points: 50,
+        max_uses: 1, // 只能使用 1 次
+        is_active: true
+      }
+    });
+
+    console.log(`管理员 ${req.userId} 为用户 ${userId} 生成邀请码：${newCode}`);
+
+    res.json({
+      success: true,
+      message: `已为用户 ${user.username} 生成邀请码：${newCode}`
+    });
+  } catch (error) {
+    console.error('授予邀请码权限失败:', error);
+    res.status(500).json({ error: '授予邀请码权限失败' });
+  }
+});
+
+// 8. 【用户】申请邀请码权限（用于管理员审核）
+router.post('/request-permission', authenticateToken, async (req: any, res) => {
+  try {
+    const user = await prisma.users.findUnique({
+      where: { id: req.userId },
+      select: {
+        word_count: true,
+        consecutive_days: true,
+        username: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+
+    // 检查是否符合生成条件
+    const canGenerateResult = await checkCanGenerateInviteCode(req.userId);
+    
+    if (canGenerateResult.canGenerate) {
+      return res.json({
+        success: true,
+        message: `您已满足条件（${canGenerateResult.reason}），可以生成${canGenerateResult.availableCount}个邀请码`,
+        canGenerate: true,
+        availableCount: canGenerateResult.availableCount
+      });
+    }
+
+    // 如果不符合条件，返回缺失的条件
+    res.json({
+      success: false,
+      message: '您暂未满足邀请码生成条件',
+      canGenerate: false,
+      missingConditions: ['码字 1 万字 或 连续签到 7 天'],
+      currentWordCount: user.word_count,
+      currentConsecutiveDays: user.consecutive_days
+    });
+  } catch (error) {
+    console.error('申请邀请码权限失败:', error);
+    res.status(500).json({ error: '申请邀请码权限失败' });
+  }
+});
+
+export default router;

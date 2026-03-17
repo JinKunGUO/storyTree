@@ -196,13 +196,11 @@ model users {
   level                    Int                   @default(1)
   points                   Int                   @default(0)
   word_count               Int                   @default(0) // 累计码字数
-  badges                   String?               // JSON数组：已解锁的徽章列表
+  badges                   String?               // JSON 数组：已解锁的徽章列表
   consecutive_days         Int                   @default(0) // 连续签到天数
   last_checkin_date        DateTime?             // 最后签到日期
   makeup_chances           Int                   @default(0) // 补签机会次数
-  invitation_code          String?               @unique // 用户专属邀请码
   invited_by_code          String?               // 被哪个邀请码邀请
-  can_generate_invite      Boolean               @default(false) // 是否有权限生成邀请码
   earnings_balance         Int                   @default(0) // 收益余额
   subscription_type        String?
   subscription_expires     DateTime?
@@ -409,15 +407,16 @@ model comment_votes {
 model invitation_codes {
   id              Int                  @id @default(autoincrement())
   code            String               @unique
-  created_by_id   Int                  // 创建者ID
+  created_by_id   Int                  // 创建者 ID
   created_by      users                @relation(fields: [created_by_id], references: [id], onDelete: Cascade)
   type            String               // 'admin' | 'user'
   bonus_points    Int                  // 受邀人获得的积分
-  max_uses        Int                  // 最大使用次数（-1为无限）
+  max_uses        Int                  // 最大使用次数（-1 为无限，用户码固定为 1）
   used_count      Int                  @default(0)
   expires_at      DateTime?            // 过期时间
   created_at      DateTime             @default(now())
   is_active       Boolean              @default(true)
+  version         Int                  @default(0) // 乐观锁版本号
   
   @@index([code])
   @@index([created_by_id])

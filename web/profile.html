@@ -2233,7 +2233,7 @@
             `;
         }
 
-        // ========== 邀请码系统 ==========
+// ========== 邀请码系统 ==========
         
         // 加载邀请码
         async function loadInvitationCodes() {
@@ -2253,26 +2253,58 @@
                         <div class="empty-state">
                             <i class="fas fa-lock"></i>
                             <p>暂无邀请码权限</p>
-                            <p style="color: #999; font-size: 14px;">达成20万字里程碑后即可获得邀请码权限</p>
+                            <p style="color: #999; font-size: 14px;">满足以下任一条件即可获得邀请码权限：</p>
+                            <ul style="text-align: left; margin-top: 15px; padding-left: 20px; color: #666;">
+                                <li>📝 创作满 <strong>1 万字</strong></li>
+                                <li>📅 连续签到 <strong>7 天</strong></li>
+                                <li>📚 发布 1 个故事且章节数 <strong>≥ 3 章</strong></li>
+                                <li>🎖️ 管理员直接授予</li>
+                            </ul>
                         </div>
                     `;
                     return;
                 }
 
                 const data = await response.json();
-                const codes = data.codes || [];
-                const stats = data.stats || {};
                 
-                if (codes.length === 0) {
+                // 适配后端 API 返回的数据结构
+                const codes = data.codes || [];
+                const invitationCode = data.invitationCode;
+                const canGenerate = data.canGenerate;
+                const totalInvites = data.totalInvites || 0;
+                const totalRewards = data.totalRewards || 0;
+                const inviteRecords = data.inviteRecords || [];
+                
+if (codes.length === 0) {
                     invitationSection.innerHTML = `
                         <div class="empty-state">
                             <i class="fas fa-gift"></i>
                             <p>暂无邀请码</p>
-                            <p style="color: #999; font-size: 14px;">达成里程碑后将自动生成邀请码</p>
+                            <p style="color: #999; font-size: 14px;">满足条件后将自动生成邀请码：</p>
+                            <ul style="text-align: left; margin-top: 15px; padding-left: 20px; color: #666;">
+                                <li>📝 创作满 <strong>1 万字</strong></li>
+                                <li>📅 连续签到 <strong>7 天</strong></li>
+                                <li>📚 发布 1 个故事且章节数 <strong>≥ 3 章</strong></li>
+                                <li>🎖️ 管理员直接授予</li>
+                            </ul>
                         </div>
                     `;
                     return;
                 }
+                
+                // 构建邀请用户列表
+                const invitedUsers = inviteRecords.map(record => ({
+                    username: record.inviteeUsername,
+                    wordCount: record.inviteeWordCount,
+                    reward: record.bonusPoints,
+                    createdAt: record.invitedAt
+                }));
+                
+                // 统计数据
+                const stats = {
+                    totalInvited: totalInvites,
+                    totalRewards: totalRewards
+                };
                 
                 // 主邀请码（第一个）
                 const mainCode = codes[0];
@@ -2511,7 +2543,7 @@
                         </div>
 
                         <!-- 最近邀请 -->
-                        ${data.invitedUsers && data.invitedUsers.length > 0 ? `
+                        ${invitedUsers && invitedUsers.length > 0 ? `
                             <div style="
                                 background: white;
                                 border: 2px solid #e9ecef;
@@ -2521,7 +2553,7 @@
                                 <h3 style="margin: 0 0 15px 0; color: #333; font-size: 16px;">
                                     <i class="fas fa-user-check"></i> 最近邀请
                                 </h3>
-                                ${data.invitedUsers.slice(0, 5).map(user => `
+                                ${invitedUsers.slice(0, 5).map(user => `
                                     <div style="
                                         display: flex;
                                         align-items: center;
