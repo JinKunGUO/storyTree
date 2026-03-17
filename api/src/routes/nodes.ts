@@ -2,6 +2,9 @@ import { Router } from 'express';
 import { prisma } from '../index';
 import { needsReview } from '../utils/sensitiveWords';
 import { authenticateToken, getUserId } from '../utils/middleware';
+import { updateWordCountAndCheckMilestones } from '../utils/milestone-checker';
+import { addPoints } from '../utils/points';
+import { WORD_REWARD_RATE, MAKEUP_CHANCE_RATE } from '../utils/milestones';
 
 const router = Router();
 
@@ -142,6 +145,33 @@ router.post('/', authenticateToken, async (req, res) => {
           }))
         });
       }
+
+      // 码字统计：仅统计非AI生成的已发布章节
+      const wordCount = content.length;
+      
+      // 实时码字奖励：每1000字奖励10积分
+      const wordReward = Math.floor(wordCount / 1000) * WORD_REWARD_RATE;
+      if (wordReward > 0) {
+        await addPoints(userId, wordReward, 'word_count', `码字奖励（${wordCount}字）`);
+      }
+
+      // 补签机会奖励：每1000字获得1次补签机会
+      const makeupChances = Math.floor(wordCount / MAKEUP_CHANCE_RATE);
+      if (makeupChances > 0) {
+        await prisma.users.update({
+          where: { id: userId },
+          data: {
+            makeup_chances: { increment: makeupChances }
+          }
+        });
+      }
+
+      // 更新码字数并检查里程碑
+      try {
+        await updateWordCountAndCheckMilestones(userId, wordCount);
+      } catch (error) {
+        console.error('更新码字统计失败:', error);
+      }
     }
 
       const statusMessage = shouldPublish 
@@ -226,6 +256,33 @@ router.post('/', authenticateToken, async (req, res) => {
             link: `/chapter?id=${node.id}`
           }))
         });
+      }
+
+      // 码字统计：仅统计非AI生成的已发布章节
+      const wordCount = content.length;
+      
+      // 实时码字奖励：每1000字奖励10积分
+      const wordReward = Math.floor(wordCount / 1000) * WORD_REWARD_RATE;
+      if (wordReward > 0) {
+        await addPoints(userId, wordReward, 'word_count', `码字奖励（${wordCount}字）`);
+      }
+
+      // 补签机会奖励：每1000字获得1次补签机会
+      const makeupChances = Math.floor(wordCount / MAKEUP_CHANCE_RATE);
+      if (makeupChances > 0) {
+        await prisma.users.update({
+          where: { id: userId },
+          data: {
+            makeup_chances: { increment: makeupChances }
+          }
+        });
+      }
+
+      // 更新码字数并检查里程碑
+      try {
+        await updateWordCountAndCheckMilestones(userId, wordCount);
+      } catch (error) {
+        console.error('更新码字统计失败:', error);
       }
     }
 
@@ -412,6 +469,35 @@ router.post('/:id/publish', authenticateToken, async (req, res) => {
             link: `/chapter?id=${node.id}`
           }))
         });
+      }
+    }
+
+    // 码字统计：仅统计非AI生成的已发布章节
+    if (!node.ai_generated && !reviewCheck.needReview) {
+      const wordCount = node.content.length;
+      
+      // 实时码字奖励：每1000字奖励10积分
+      const wordReward = Math.floor(wordCount / 1000) * WORD_REWARD_RATE;
+      if (wordReward > 0) {
+        await addPoints(userId, wordReward, 'word_count', `码字奖励（${wordCount}字）`, parseInt(id));
+      }
+
+      // 补签机会奖励：每1000字获得1次补签机会
+      const makeupChances = Math.floor(wordCount / MAKEUP_CHANCE_RATE);
+      if (makeupChances > 0) {
+        await prisma.users.update({
+          where: { id: userId },
+          data: {
+            makeup_chances: { increment: makeupChances }
+          }
+        });
+      }
+
+      // 更新码字数并检查里程碑
+      try {
+        await updateWordCountAndCheckMilestones(userId, wordCount);
+      } catch (error) {
+        console.error('更新码字统计失败:', error);
       }
     }
 

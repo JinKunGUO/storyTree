@@ -176,6 +176,11 @@ router.get('/me', async (req, res) => {
         avatar: true,
         bio: true,
         emailVerified: true,
+        points: true,
+        word_count: true,
+        makeup_chances: true,
+        badges: true,
+        level: true,
         createdAt: true,
       }
     });

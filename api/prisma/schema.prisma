@@ -85,6 +85,8 @@ model nodes {
   reports        reports[]
   shares         shares[]
   delete_requests delete_requests[]
+  paid_node      paid_nodes?
+  node_unlocks   node_unlocks[]
 
   @@index([review_status])
   @@index([path])
@@ -193,6 +195,15 @@ model users {
   bio                      String?
   level                    Int                   @default(1)
   points                   Int                   @default(0)
+  word_count               Int                   @default(0) // 累计码字数
+  badges                   String?               // JSON数组：已解锁的徽章列表
+  consecutive_days         Int                   @default(0) // 连续签到天数
+  last_checkin_date        DateTime?             // 最后签到日期
+  makeup_chances           Int                   @default(0) // 补签机会次数
+  invitation_code          String?               @unique // 用户专属邀请码
+  invited_by_code          String?               // 被哪个邀请码邀请
+  can_generate_invite      Boolean               @default(false) // 是否有权限生成邀请码
+  earnings_balance         Int                   @default(0) // 收益余额
   subscription_type        String?
   subscription_expires     DateTime?
   isAdmin                  Boolean               @default(false) @map("is_admin")
@@ -224,6 +235,12 @@ model users {
   collaboration_reviews    collaboration_requests[] @relation("collaboration_request_reviewer")
   delete_requests_made     delete_requests[]     @relation("delete_request_requester")
   delete_requests_reviewed delete_requests[]     @relation("delete_request_reviewer")
+  checkin_records          checkin_records[]
+  node_unlocks             node_unlocks[]
+  withdrawal_requests      withdrawal_requests[]
+  invitation_records_inviter invitation_records[] @relation("invitation_inviter")
+  invitation_records_invitee invitation_records[] @relation("invitation_invitee")
+  created_invitation_codes invitation_codes[]
 }
 
 model ai_usage_logs {
@@ -386,4 +403,103 @@ model comment_votes {
   @@unique([comment_id, user_id])
   @@index([comment_id])
   @@index([user_id])
+}
+
+// 邀请码表
+model invitation_codes {
+  id              Int                  @id @default(autoincrement())
+  code            String               @unique
+  created_by_id   Int                  // 创建者ID
+  created_by      users                @relation(fields: [created_by_id], references: [id], onDelete: Cascade)
+  type            String               // 'admin' | 'user'
+  bonus_points    Int                  // 受邀人获得的积分
+  max_uses        Int                  // 最大使用次数（-1为无限）
+  used_count      Int                  @default(0)
+  expires_at      DateTime?            // 过期时间
+  created_at      DateTime             @default(now())
+  is_active       Boolean              @default(true)
+  
+  @@index([code])
+  @@index([created_by_id])
+  @@index([is_active])
+}
+
+// 邀请记录表
+model invitation_records {
+  id              Int      @id @default(autoincrement())
+  inviter_id      Int      // 邀请人
+  invitee_id      Int      // 被邀请人
+  invitation_code String   // 使用的邀请码
+  bonus_points    Int      // 获得的积分
+  milestone_rewards String? // JSON：里程碑奖励记录
+  created_at      DateTime @default(now())
+  inviter         users    @relation("invitation_inviter", fields: [inviter_id], references: [id], onDelete: Cascade)
+  invitee         users    @relation("invitation_invitee", fields: [invitee_id], references: [id], onDelete: Cascade)
+  
+  @@index([inviter_id])
+  @@index([invitee_id])
+  @@index([invitation_code])
+}
+
+// 签到记录表
+model checkin_records {
+  id              Int      @id @default(autoincrement())
+  user_id         Int
+  user            users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  checkin_date    DateTime @default(now())
+  consecutive_days Int     // 当时的连续天数
+  points_earned   Int      // 获得的积分
+  is_makeup       Boolean  @default(false) // 是否补签
+  
+  @@unique([user_id, checkin_date])
+  @@index([user_id])
+  @@index([checkin_date])
+}
+
+// 付费章节表
+model paid_nodes {
+  id              Int      @id @default(autoincrement())
+  node_id         Int      @unique
+  node            nodes    @relation(fields: [node_id], references: [id], onDelete: Cascade)
+  unlock_price    Int      // 解锁价格（积分）
+  is_member_free  Boolean  @default(false) // 会员是否免费
+  total_earnings  Int      @default(0) // 总收益
+  unlock_count    Int      @default(0) // 解锁次数
+  created_at      DateTime @default(now())
+  
+  @@index([node_id])
+}
+
+// 章节解锁记录表
+model node_unlocks {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  user       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  node_id    Int
+  node       nodes    @relation(fields: [node_id], references: [id], onDelete: Cascade)
+  cost       Int      // 花费积分（会员为0）
+  created_at DateTime @default(now())
+  
+  @@unique([user_id, node_id])
+  @@index([user_id])
+  @@index([node_id])
+}
+
+// 收益提现表
+model withdrawal_requests {
+  id              Int       @id @default(autoincrement())
+  user_id         Int
+  user            users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  amount          Int       // 提现积分数
+  status          String    @default("pending") // 'pending' | 'approved' | 'rejected'
+  payment_method  String    // 提现方式
+  payment_account String    // 提现账号
+  admin_note      String?   // 管理员备注
+  created_at      DateTime  @default(now())
+  processed_at    DateTime?
+  processed_by    Int?      // 处理人
+  
+  @@index([user_id])
+  @@index([status])
+  @@index([created_at])
 }

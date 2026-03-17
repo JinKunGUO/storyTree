@@ -20,6 +20,7 @@ import pointsRoutes from './routes/points';
 import paymentRoutes from './routes/payment';
 import systemRoutes from './routes/system';
 import collaborationRequestRoutes from './routes/collaboration-requests';
+import badgesRoutes from './routes/badges';
 import { closeQueues } from './utils/queue';
 
 dotenv.config();
@@ -56,6 +57,7 @@ app.use('/api/points', pointsRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/system', systemRoutes);
 app.use('/api/collaboration-requests', collaborationRequestRoutes);
+app.use('/api/badges', badgesRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

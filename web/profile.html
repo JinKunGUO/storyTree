@@ -491,6 +491,23 @@
                 max-height: 300px;
             }
         }
+        
+        /* 弹窗动画 */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
     </style>
 </head>
 <body>
@@ -708,11 +725,105 @@
         function displayUserProfile(user) {
             const profileHeader = document.getElementById('profileHeader');
             
-            // 获取等级信息
-            const level = user.level || 1;
+            console.log('显示用户信息:', user);
+            console.log('用户字段详情:');
+            console.log('  - points:', user.points, typeof user.points);
+            console.log('  - word_count:', user.word_count, typeof user.word_count);
+            console.log('  - makeup_chances:', user.makeup_chances, typeof user.makeup_chances);
+            console.log('  - badges:', user.badges, typeof user.badges);
+            
+            // 获取数据
             const points = user.points || 0;
-            const levelNames = ['新手作者', '初级作者', '中级作者', '高级作者'];
-            const levelName = levelNames[level - 1] || '新手作者';
+            const wordCount = user.word_count || 0;
+            const makeupChances = user.makeup_chances || 0;
+            
+            // 获取徽章信息和下一个里程碑
+            let badgesHTML = '';
+            let nextMilestoneHTML = '';
+            
+            if (user.badges) {
+                try {
+                    const badges = typeof user.badges === 'string' ? JSON.parse(user.badges) : user.badges;
+                    if (badges && badges.length > 0) {
+                        badgesHTML = `
+                            <div class="profile-badges" style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                                <span style="color: #666; font-size: 14px; font-weight: 600;">里程碑成就:</span>
+                                ${badges.map(badgeId => getBadgeDisplay(badgeId)).join('')}
+                                <button onclick="showMilestoneInfo()" style="
+                                    background: none;
+                                    border: 1px solid #ccc;
+                                    border-radius: 50%;
+                                    width: 24px;
+                                    height: 24px;
+                                    cursor: pointer;
+                                    color: #666;
+                                    font-size: 14px;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    transition: all 0.3s;
+                                " onmouseover="this.style.borderColor='#667eea'; this.style.color='#667eea';" 
+                                   onmouseout="this.style.borderColor='#ccc'; this.style.color='#666';" 
+                                   title="查看里程碑说明">?</button>
+                            </div>
+                        `;
+                    } else {
+                        // 没有徽章时显示下一个里程碑
+                        nextMilestoneHTML = `
+                            <div class="profile-badges" style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
+                                <span style="color: #999; font-size: 14px;">
+                                    <i class="fas fa-trophy"></i> 
+                                    继续创作，解锁你的第一个里程碑徽章！（1万字）
+                                </span>
+                                <button onclick="showMilestoneInfo()" style="
+                                    background: none;
+                                    border: 1px solid #ccc;
+                                    border-radius: 50%;
+                                    width: 24px;
+                                    height: 24px;
+                                    cursor: pointer;
+                                    color: #666;
+                                    font-size: 14px;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    transition: all 0.3s;
+                                " onmouseover="this.style.borderColor='#667eea'; this.style.color='#667eea';" 
+                                   onmouseout="this.style.borderColor='#ccc'; this.style.color='#666';" 
+                                   title="查看里程碑说明">?</button>
+                            </div>
+                        `;
+                    }
+                } catch (e) {
+                    console.error('解析徽章数据失败:', e);
+                }
+            } else {
+                // 没有badges字段时也显示提示
+                nextMilestoneHTML = `
+                    <div class="profile-badges" style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
+                        <span style="color: #999; font-size: 14px;">
+                            <i class="fas fa-trophy"></i> 
+                            继续创作，解锁你的第一个里程碑徽章！（1万字）
+                        </span>
+                        <button onclick="showMilestoneInfo()" style="
+                            background: none;
+                            border: 1px solid #ccc;
+                            border-radius: 50%;
+                            width: 24px;
+                            height: 24px;
+                            cursor: pointer;
+                            color: #666;
+                            font-size: 14px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            transition: all 0.3s;
+                        " onmouseover="this.style.borderColor='#667eea'; this.style.color='#667eea';" 
+                           onmouseout="this.style.borderColor='#ccc'; this.style.color='#666';" 
+                           title="查看里程碑说明">?</button>
+                    </div>
+                `;
+            }
             
             profileHeader.innerHTML = `
                 <div class="profile-avatar">
@@ -721,7 +832,6 @@
                 <div class="profile-info">
                     <div class="profile-name">
                         ${escapeHtml(user.username)}
-                        <span class="level-badge">Lv${level} ${levelName}</span>
                     </div>
                     <div class="profile-email">
                         <i class="fas fa-envelope"></i>
@@ -729,8 +839,11 @@
                     </div>
                     <div class="profile-points">
                         <i class="fas fa-star"></i>
-                        积分: ${points}
+                        积分: ${points.toLocaleString()}
+                        <span style="margin-left: 15px;"><i class="fas fa-pen-fancy"></i> 码字: ${wordCount.toLocaleString()}字</span>
+                        <span style="margin-left: 15px;"><i class="fas fa-calendar-check"></i> 补签: ${makeupChances}次</span>
                     </div>
+                    ${badgesHTML}${nextMilestoneHTML}
                     <div class="profile-bio">
                         ${escapeHtml(user.bio || '这个人很懒，还没有写个人简介...')}
                     </div>
@@ -738,11 +851,153 @@
                         <a href="/create" class="btn btn-primary">
                             <i class="fas fa-pen"></i> 创作新故事
                         </a>
-                        <button class="btn btn-secondary" onclick="alert('编辑功能开发中...')">
-                            <i class="fas fa-edit"></i> 编辑资料
-                        </button>
                     </div>
                 </div>
+            `;
+        }
+        
+        // 显示里程碑说明弹窗
+        function showMilestoneInfo() {
+            const milestones = [
+                { words: '1万字', reward: '50积分', badge: '🌱 初出茅庐' },
+                { words: '5万字', reward: '200积分', badge: '📝 小有成就' },
+                { words: '10万字', reward: '500积分', badge: '✍️ 笔耕不辍' },
+                { words: '20万字', reward: '1200积分 + 邀请码权限', badge: '📚 专业作者' },
+                { words: '50万字', reward: '3500积分', badge: '🎖️ 签约作者' },
+                { words: '100万字', reward: '10000积分', badge: '👑 大神作者' },
+                { words: '200万字', reward: '25000积分', badge: '🏆 殿堂作者' }
+            ];
+            
+            const milestoneList = milestones.map(m => 
+                `<tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #f0f0f0;">${m.badge}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #f0f0f0;">${m.words}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #f0f0f0; color: #667eea; font-weight: 600;">${m.reward}</td>
+                </tr>`
+            ).join('');
+            
+            const overlay = document.createElement('div');
+            overlay.id = 'milestoneOverlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                animation: fadeIn 0.3s;
+            `;
+            
+            overlay.innerHTML = `
+                <div style="
+                    background: white;
+                    border-radius: 20px;
+                    padding: 30px;
+                    max-width: 600px;
+                    width: 90%;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                    animation: slideUp 0.3s;
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 style="margin: 0; color: #333;">
+                            <i class="fas fa-trophy" style="color: #ffd700;"></i> 
+                            里程碑体系
+                        </h2>
+                        <button onclick="document.getElementById('milestoneOverlay').remove()" style="
+                            background: none;
+                            border: none;
+                            font-size: 24px;
+                            cursor: pointer;
+                            color: #999;
+                            padding: 0;
+                            width: 32px;
+                            height: 32px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            border-radius: 50%;
+                            transition: all 0.3s;
+                        " onmouseover="this.style.background='#f0f0f0'; this.style.color='#333';" 
+                           onmouseout="this.style.background='none'; this.style.color='#999';">
+                            ×
+                        </button>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 10px; border-left: 4px solid #667eea;">
+                        <p style="margin: 0; color: #666; line-height: 1.6;">
+                            <i class="fas fa-info-circle" style="color: #667eea;"></i>
+                            <strong>码字奖励：</strong>每码1000字获得10积分和1次补签机会
+                        </p>
+                    </div>
+                    
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f8f9fa;">
+                                <th style="padding: 12px 8px; text-align: left; font-weight: 600; color: #333;">徽章</th>
+                                <th style="padding: 12px 8px; text-align: left; font-weight: 600; color: #333;">达成条件</th>
+                                <th style="padding: 12px 8px; text-align: left; font-weight: 600; color: #333;">奖励</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${milestoneList}
+                        </tbody>
+                    </table>
+                    
+                    <div style="margin-top: 20px; padding: 15px; background: #fff3e0; border-radius: 10px; border-left: 4px solid #ff9800;">
+                        <p style="margin: 0; color: #666; line-height: 1.6;">
+                            <i class="fas fa-lightbulb" style="color: #ff9800;"></i>
+                            <strong>提示：</strong>只统计非AI生成的已发布章节字数
+                        </p>
+                    </div>
+                </div>
+            `;
+            
+            overlay.onclick = (e) => {
+                if (e.target === overlay) {
+                    overlay.remove();
+                }
+            };
+            
+            document.body.appendChild(overlay);
+        }
+        
+        // 获取徽章显示HTML
+        function getBadgeDisplay(badgeId) {
+            const badgeMap = {
+                'rookie': { emoji: '🌱', name: '初出茅庐', color: '#4caf50' },
+                'achiever': { emoji: '📝', name: '小有成就', color: '#2196f3' },
+                'diligent': { emoji: '✍️', name: '笔耕不辍', color: '#9c27b0' },
+                'professional': { emoji: '📚', name: '专业作者', color: '#ff9800' },
+                'signed': { emoji: '🎖️', name: '签约作者', color: '#f44336' },
+                'master': { emoji: '👑', name: '大神作者', color: '#ffd700' },
+                'legend': { emoji: '🏆', name: '殿堂作者', color: '#e91e63' }
+            };
+            
+            const badge = badgeMap[badgeId];
+            if (!badge) return '';
+            
+            return `
+                <span class="badge-display" style="
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 5px;
+                    padding: 4px 12px;
+                    background: ${badge.color};
+                    color: white;
+                    border-radius: 15px;
+                    font-size: 13px;
+                    font-weight: 600;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                " title="${badge.name}">
+                    <span style="font-size: 16px;">${badge.emoji}</span>
+                    <span>${badge.name}</span>
+                </span>
             `;
         }
 
@@ -777,8 +1032,7 @@
                 document.getElementById('storyCount').textContent = storyCount;
                 document.getElementById('nodeCount').textContent = nodeCount;
                 
-                // 点赞数和浏览量需要从故事中计算，先显示为0
-                // 这些数据会在loadUserStories中更新
+                // 点赞数和浏览量会在loadUserStories中更新
                 document.getElementById('likeCount').textContent = 0;
                 document.getElementById('viewCount').textContent = 0;
             } catch (error) {
@@ -858,7 +1112,7 @@
                                 <span><i class="fas fa-file-alt"></i> ${nodeCount} 章节</span>
                                 <span><i class="fas fa-heart"></i> ${likeCount} 点赞</span>
                                 <span><i class="fas fa-eye"></i> ${viewCount} 浏览</span>
-                                <span><i class="fas fa-clock"></i> ${formatDate(story.createdAt)}</span>
+                                <span><i class="fas fa-clock"></i> ${formatDate(story.updated_at || story.createdAt)}</span>
                             </div>
                         </div>
                     </div>
@@ -868,8 +1122,15 @@
             storiesList.innerHTML = storiesHTML;
             
             // 更新统计卡片中的总点赞数和总浏览量
-            document.getElementById('likeCount').textContent = totalLikes;
-            document.getElementById('viewCount').textContent = totalViews;
+            const likeCountElement = document.getElementById('likeCount');
+            if (likeCountElement) {
+                likeCountElement.textContent = totalLikes;
+            }
+            
+            const viewCountElement = document.getElementById('viewCount');
+            if (viewCountElement) {
+                viewCountElement.textContent = totalViews;
+            }
             
             console.log('统计更新 - 总点赞:', totalLikes, '总浏览:', totalViews);
         }
@@ -897,14 +1158,29 @@
 
         // 格式化日期
         function formatDate(dateString) {
+            if (!dateString) return '未知时间';
+            
             const date = new Date(dateString);
+            
+            // 检查日期是否有效
+            if (isNaN(date.getTime())) {
+                console.warn('无效的日期:', dateString);
+                return '未知时间';
+            }
+            
             const now = new Date();
             const diff = now - date;
+            
+            // 如果是未来时间，显示完整日期
+            if (diff < 0) {
+                return date.toLocaleDateString('zh-CN');
+            }
             
             const minutes = Math.floor(diff / 60000);
             const hours = Math.floor(diff / 3600000);
             const days = Math.floor(diff / 86400000);
             
+            if (minutes < 1) return '刚刚';
             if (minutes < 60) return `${minutes}分钟前`;
             if (hours < 24) return `${hours}小时前`;
             if (days < 30) return `${days}天前`;
