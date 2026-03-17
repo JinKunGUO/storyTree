@@ -22,6 +22,9 @@ import systemRoutes from './routes/system';
 import collaborationRequestRoutes from './routes/collaboration-requests';
 import badgesRoutes from './routes/badges';
 import invitationRoutes from './routes/invitations';
+import checkinRoutes from './routes/checkin';
+import paidNodesRoutes from './routes/paid-nodes';
+import withdrawalRoutes from './routes/withdrawals';
 import { closeQueues } from './utils/queue';
 
 dotenv.config();
@@ -60,6 +63,9 @@ app.use('/api/system', systemRoutes);
 app.use('/api/collaboration-requests', collaborationRequestRoutes);
 app.use('/api/badges', badgesRoutes);
 app.use('/api/invitations', invitationRoutes);
+app.use('/api/checkin', checkinRoutes);
+app.use('/api/paid-nodes', paidNodesRoutes);
+app.use('/api/withdrawals', withdrawalRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

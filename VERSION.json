@@ -1,10 +1,10 @@
 {
   "name": "storytree",
-  "version": "1.0.75",
+  "version": "1.0.76",
   "codename": "M4-BranchCompare",
   "stage": "MVP+",
-  "buildDate": "2026-03-17T03:57:17.459Z",
-  "commitHash": "54ee60d",
+  "buildDate": "2026-03-17T04:56:10.839Z",
+  "commitHash": "aeec2c8",
   "branch": "feature/m3-user-auth",
   "repository": "storytree",
   "description": "分支式AI协作小说创作平台",
@@ -611,6 +611,12 @@
       ]
     },
     "1.0.75": {
+      "date": "2026-03-17",
+      "changes": [
+        "版本更新"
+      ]
+    },
+    "1.0.76": {
       "date": "2026-03-17",
       "changes": [
         "版本更新"

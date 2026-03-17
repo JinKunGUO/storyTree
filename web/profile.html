@@ -508,6 +508,254 @@
                 transform: translateY(0);
             }
         }
+
+        /* 签到日历样式 */
+        .checkin-stats {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .checkin-stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .checkin-stat-item i {
+            color: #ff9800;
+        }
+
+        .checkin-stat-item strong {
+            color: #667eea;
+            font-size: 18px;
+        }
+
+        .checkin-container {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .checkin-action {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 15px;
+        }
+
+        .checkin-btn {
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .checkin-btn:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(102, 126, 234, 0.5);
+        }
+
+        .checkin-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .checkin-btn i {
+            font-size: 24px;
+        }
+
+        .checkin-btn small {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .checkin-message {
+            flex: 1;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .checkin-message.success {
+            display: block;
+            background: #e8f5e9;
+            color: #4caf50;
+            border-left: 4px solid #4caf50;
+        }
+
+        .checkin-message.error {
+            display: block;
+            background: #ffebee;
+            color: #f44336;
+            border-left: 4px solid #f44336;
+        }
+
+        .checkin-message.info {
+            display: block;
+            background: #e3f2fd;
+            color: #2196f3;
+            border-left: 4px solid #2196f3;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+        }
+
+        .calendar-nav-btn {
+            background: transparent;
+            border: 2px solid #667eea;
+            color: #667eea;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .calendar-nav-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .calendar-month {
+            font-size: 20px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .calendar-day-header {
+            text-align: center;
+            padding: 10px;
+            font-weight: 600;
+            color: #999;
+            font-size: 14px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .calendar-day.other-month {
+            color: #ccc;
+        }
+
+        .calendar-day.today {
+            background: #e3f2fd;
+            color: #2196f3;
+            box-shadow: 0 0 0 2px #2196f3;
+        }
+
+        .calendar-day.checked {
+            background: linear-gradient(135deg, #4caf50, #66bb6a);
+            color: white;
+        }
+
+        .calendar-day.makeup {
+            background: linear-gradient(135deg, #ff9800, #ffa726);
+            color: white;
+        }
+
+        .calendar-day.checked::after {
+            content: '✓';
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            font-size: 10px;
+        }
+
+        .calendar-day.can-makeup {
+            border: 2px dashed #ff9800;
+            color: #ff9800;
+        }
+
+        .calendar-day.can-makeup:hover {
+            background: #fff3e0;
+        }
+
+        .checkin-summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .summary-label {
+            color: #999;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .checkin-stats {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .checkin-action {
+                flex-direction: column;
+            }
+
+            .checkin-summary {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .calendar-day {
+                font-size: 12px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -566,6 +814,74 @@
                 <div class="stat-icon"><i class="fas fa-eye"></i></div>
                 <div class="stat-value" id="viewCount">-</div>
                 <div class="stat-label">总浏览量</div>
+            </div>
+        </div>
+
+        <!-- 签到日历 -->
+        <div class="content-section">
+            <div class="section-header">
+                <h2 class="section-title"><i class="fas fa-calendar-check"></i> 每日签到</h2>
+                <div class="checkin-stats">
+                    <span class="checkin-stat-item">
+                        <i class="fas fa-fire"></i> 
+                        连续 <strong id="consecutiveDays">0</strong> 天
+                    </span>
+                    <span class="checkin-stat-item">
+                        <i class="fas fa-ticket-alt"></i> 
+                        补签 <strong id="makeupChancesDisplay">0</strong> 次
+                    </span>
+                </div>
+            </div>
+            
+            <div class="checkin-container">
+                <!-- 签到按钮 -->
+                <div class="checkin-action">
+                    <button id="checkinBtn" class="checkin-btn" onclick="dailyCheckin()">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>今日签到</span>
+                        <small id="checkinReward">+10积分</small>
+                    </button>
+                    <div class="checkin-message" id="checkinMessage"></div>
+                </div>
+
+                <!-- 月份选择器 -->
+                <div class="calendar-header">
+                    <button class="calendar-nav-btn" onclick="changeMonth(-1)">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="calendar-month" id="calendarMonth">2026年3月</div>
+                    <button class="calendar-nav-btn" onclick="changeMonth(1)">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+
+                <!-- 日历 -->
+                <div class="calendar-grid" id="calendarGrid">
+                    <div class="calendar-day-header">日</div>
+                    <div class="calendar-day-header">一</div>
+                    <div class="calendar-day-header">二</div>
+                    <div class="calendar-day-header">三</div>
+                    <div class="calendar-day-header">四</div>
+                    <div class="calendar-day-header">五</div>
+                    <div class="calendar-day-header">六</div>
+                    <!-- 日期将通过JavaScript动态生成 -->
+                </div>
+
+                <!-- 签到统计 -->
+                <div class="checkin-summary">
+                    <div class="summary-item">
+                        <div class="summary-value" id="totalCheckins">0</div>
+                        <div class="summary-label">累计签到</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" id="totalCheckinPoints">0</div>
+                        <div class="summary-label">签到积分</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" id="makeupCount">0</div>
+                        <div class="summary-label">补签次数</div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -708,6 +1024,7 @@
                 
                 displayUserProfile(data.user);
                 loadUserStats(data.user.id);
+                loadCheckinStatus(); // 加载签到状态
                 loadUserStories(data.user.id);
                 loadFollowedStories(data.user.id);
                 loadFollowers(data.user.id);
@@ -1640,6 +1957,366 @@
                     <p style="color: #999; font-size: 14px;">继续创作精彩内容，吸引读者追更吧！</p>
                 </div>
             `;
+        }
+
+        // ========== 签到系统 ==========
+        let currentCalendarYear = new Date().getFullYear();
+        let currentCalendarMonth = new Date().getMonth() + 1;
+        let checkinRecords = [];
+        let checkinStatus = null;
+
+        // 加载签到状态
+        async function loadCheckinStatus() {
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                const response = await fetch('/api/checkin/status', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    console.error('加载签到状态失败');
+                    return;
+                }
+
+                const data = await response.json();
+                checkinStatus = data;
+                
+                // 更新签到信息显示
+                document.getElementById('consecutiveDays').textContent = data.consecutiveDays || 0;
+                document.getElementById('makeupChancesDisplay').textContent = data.makeupChances || 0;
+                document.getElementById('checkinReward').textContent = `+${data.nextReward || 10}积分`;
+                
+                // 更新签到按钮状态
+                const checkinBtn = document.getElementById('checkinBtn');
+                const checkinMessage = document.getElementById('checkinMessage');
+                
+                if (!data.canCheckin) {
+                    checkinBtn.disabled = true;
+                    checkinBtn.querySelector('span').textContent = '已签到';
+                    checkinMessage.className = 'checkin-message info';
+                    checkinMessage.textContent = data.reason || '今天已经签到过了';
+                } else if (data.isMissed) {
+                    checkinMessage.className = 'checkin-message info';
+                    checkinMessage.textContent = '连续签到已中断，今天签到将重新开始计算';
+                }
+                
+                // 加载签到历史
+                await loadCheckinHistory(currentCalendarYear, currentCalendarMonth);
+            } catch (error) {
+                console.error('加载签到状态错误:', error);
+            }
+        }
+
+        // 每日签到
+        async function dailyCheckin() {
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                const checkinBtn = document.getElementById('checkinBtn');
+                checkinBtn.disabled = true;
+                checkinBtn.querySelector('span').textContent = '签到中...';
+                
+                const response = await fetch('/api/checkin/daily', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+                const checkinMessage = document.getElementById('checkinMessage');
+                
+                if (response.ok) {
+                    checkinMessage.className = 'checkin-message success';
+                    let message = `🎉 ${data.message} 获得 ${data.data.pointsEarned} 积分！`;
+                    
+                    if (data.data.bonusPoints > 0) {
+                        message += ` 🎁 ${data.data.milestoneMessage}额外奖励 ${data.data.bonusPoints} 积分！`;
+                    }
+                    
+                    if (data.data.bonusMakeupChances > 0) {
+                        message += ` 🎁 获得 ${data.data.bonusMakeupChances} 次补签机会！`;
+                    }
+                    
+                    checkinMessage.textContent = message;
+                    checkinBtn.querySelector('span').textContent = '已签到';
+                    
+                    // 刷新签到状态和日历
+                    await loadCheckinStatus();
+                    await loadUserProfile(); // 刷新用户信息（更新积分）
+                } else {
+                    checkinMessage.className = 'checkin-message error';
+                    checkinMessage.textContent = data.error || '签到失败';
+                    checkinBtn.disabled = false;
+                    checkinBtn.querySelector('span').textContent = '今日签到';
+                }
+            } catch (error) {
+                console.error('签到失败:', error);
+                const checkinMessage = document.getElementById('checkinMessage');
+                checkinMessage.className = 'checkin-message error';
+                checkinMessage.textContent = '签到失败，请稍后重试';
+                
+                const checkinBtn = document.getElementById('checkinBtn');
+                checkinBtn.disabled = false;
+                checkinBtn.querySelector('span').textContent = '今日签到';
+            }
+        }
+
+        // 加载签到历史
+        async function loadCheckinHistory(year, month) {
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                const response = await fetch(`/api/checkin/history?year=${year}&month=${month}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    console.error('加载签到历史失败');
+                    return;
+                }
+
+                const data = await response.json();
+                checkinRecords = data.records || [];
+                
+                // 更新统计信息
+                document.getElementById('totalCheckins').textContent = data.stats.totalCheckins || 0;
+                document.getElementById('totalCheckinPoints').textContent = data.stats.totalPoints || 0;
+                document.getElementById('makeupCount').textContent = data.stats.makeupCount || 0;
+                
+                // 渲染日历
+                renderCalendar(year, month);
+            } catch (error) {
+                console.error('加载签到历史错误:', error);
+            }
+        }
+
+        // 渲染日历
+        function renderCalendar(year, month) {
+            const calendarGrid = document.getElementById('calendarGrid');
+            const calendarMonth = document.getElementById('calendarMonth');
+            
+            // 更新月份显示
+            calendarMonth.textContent = `${year}年${month}月`;
+            
+            // 获取当月第一天和最后一天
+            const firstDay = new Date(year, month - 1, 1);
+            const lastDay = new Date(year, month, 0);
+            const daysInMonth = lastDay.getDate();
+            const firstDayOfWeek = firstDay.getDay(); // 0-6 (周日-周六)
+            
+            // 清空现有日期（保留星期标题）
+            const dayHeaders = Array.from(calendarGrid.children).slice(0, 7);
+            calendarGrid.innerHTML = '';
+            dayHeaders.forEach(header => calendarGrid.appendChild(header));
+            
+            // 填充上个月的日期
+            const prevMonthLastDay = new Date(year, month - 1, 0).getDate();
+            for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+                const day = prevMonthLastDay - i;
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day other-month';
+                dayElement.textContent = day;
+                calendarGrid.appendChild(dayElement);
+            }
+            
+            // 填充当月日期
+            const today = new Date();
+            const isCurrentMonth = today.getFullYear() === year && today.getMonth() + 1 === month;
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day';
+                dayElement.textContent = day;
+                
+                const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const record = checkinRecords.find(r => {
+                    const recordDate = new Date(r.checkin_date);
+                    return recordDate.getFullYear() === year &&
+                           recordDate.getMonth() + 1 === month &&
+                           recordDate.getDate() === day;
+                });
+                
+                // 今天
+                if (isCurrentMonth && day === today.getDate()) {
+                    dayElement.classList.add('today');
+                }
+                
+                // 已签到
+                if (record) {
+                    if (record.is_makeup) {
+                        dayElement.classList.add('makeup');
+                        dayElement.title = `补签 +${record.points_earned}积分`;
+                    } else {
+                        dayElement.classList.add('checked');
+                        dayElement.title = `已签到 +${record.points_earned}积分`;
+                    }
+                } else {
+                    // 可补签的日期（最近7天内，且有补签机会）
+                    const dayDate = new Date(year, month - 1, day);
+                    const diffTime = today - dayDate;
+                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    if (diffDays > 0 && diffDays <= 7 && checkinStatus?.makeupChances > 0) {
+                        dayElement.classList.add('can-makeup');
+                        dayElement.title = '点击补签';
+                        dayElement.onclick = () => showMakeupDialog(dateStr);
+                    }
+                }
+                
+                calendarGrid.appendChild(dayElement);
+            }
+            
+            // 填充下个月的日期
+            const remainingDays = 42 - (firstDayOfWeek + daysInMonth); // 6行7列=42个格子
+            for (let day = 1; day <= remainingDays; day++) {
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day other-month';
+                dayElement.textContent = day;
+                calendarGrid.appendChild(dayElement);
+            }
+        }
+
+        // 切换月份
+        function changeMonth(delta) {
+            currentCalendarMonth += delta;
+            
+            if (currentCalendarMonth > 12) {
+                currentCalendarMonth = 1;
+                currentCalendarYear++;
+            } else if (currentCalendarMonth < 1) {
+                currentCalendarMonth = 12;
+                currentCalendarYear--;
+            }
+            
+            loadCheckinHistory(currentCalendarYear, currentCalendarMonth);
+        }
+
+        // 显示补签对话框
+        function showMakeupDialog(date) {
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                animation: fadeIn 0.3s;
+            `;
+            
+            overlay.innerHTML = `
+                <div style="
+                    background: white;
+                    border-radius: 20px;
+                    padding: 30px;
+                    max-width: 400px;
+                    width: 90%;
+                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                    animation: slideUp 0.3s;
+                ">
+                    <h2 style="margin: 0 0 20px 0; color: #333;">
+                        <i class="fas fa-calendar-check" style="color: #ff9800;"></i> 
+                        补签确认
+                    </h2>
+                    
+                    <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">
+                        确定要补签 <strong style="color: #667eea;">${new Date(date).toLocaleDateString('zh-CN')}</strong> 吗？
+                    </p>
+                    
+                    <p style="color: #999; font-size: 14px; margin-bottom: 25px;">
+                        <i class="fas fa-info-circle"></i>
+                        消耗1次补签机会，当前剩余 <strong style="color: #ff9800;">${checkinStatus?.makeupChances || 0}</strong> 次
+                    </p>
+                    
+                    <div style="display: flex; gap: 15px;">
+                        <button onclick="this.closest('div').parentElement.remove()" style="
+                            flex: 1;
+                            padding: 12px;
+                            background: #f5f5f5;
+                            color: #666;
+                            border: none;
+                            border-radius: 10px;
+                            font-size: 16px;
+                            font-weight: 600;
+                            cursor: pointer;
+                        ">取消</button>
+                        <button onclick="performMakeup('${date}')" style="
+                            flex: 1;
+                            padding: 12px;
+                            background: linear-gradient(135deg, #ff9800, #ffa726);
+                            color: white;
+                            border: none;
+                            border-radius: 10px;
+                            font-size: 16px;
+                            font-weight: 600;
+                            cursor: pointer;
+                        ">确认补签</button>
+                    </div>
+                </div>
+            `;
+            
+            overlay.onclick = (e) => {
+                if (e.target === overlay) {
+                    overlay.remove();
+                }
+            };
+            
+            document.body.appendChild(overlay);
+        }
+
+        // 执行补签
+        async function performMakeup(date) {
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                const response = await fetch('/api/checkin/makeup', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ date })
+                });
+
+                const data = await response.json();
+                
+                // 移除对话框
+                document.querySelectorAll('body > div').forEach(div => {
+                    if (div.style.position === 'fixed') {
+                        div.remove();
+                    }
+                });
+                
+                if (response.ok) {
+                    // 显示成功消息
+                    const checkinMessage = document.getElementById('checkinMessage');
+                    checkinMessage.className = 'checkin-message success';
+                    checkinMessage.textContent = `🎉 ${data.message} 获得 ${data.data.pointsEarned} 积分！剩余补签机会: ${data.data.remainingMakeupChances}`;
+                    
+                    // 刷新签到状态和日历
+                    await loadCheckinStatus();
+                    await loadUserProfile(); // 刷新用户信息（更新积分）
+                } else {
+                    const checkinMessage = document.getElementById('checkinMessage');
+                    checkinMessage.className = 'checkin-message error';
+                    checkinMessage.textContent = data.error || '补签失败';
+                }
+            } catch (error) {
+                console.error('补签失败:', error);
+                const checkinMessage = document.getElementById('checkinMessage');
+                checkinMessage.className = 'checkin-message error';
+                checkinMessage.textContent = '补签失败，请稍后重试';
+            }
         }
 
         // 页面加载
