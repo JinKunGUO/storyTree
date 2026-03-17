@@ -197,6 +197,169 @@
             color: #333;
         }
 
+        /* 付费解锁 */
+        .paid-lock-overlay {
+            position: relative;
+            background: white;
+            border-radius: 10px;
+            padding: 60px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .paid-lock-icon {
+            font-size: 64px;
+            color: #f39c12;
+            margin-bottom: 20px;
+            animation: lockShake 2s ease-in-out infinite;
+        }
+
+        @keyframes lockShake {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-5deg); }
+            75% { transform: rotate(5deg); }
+        }
+
+        .paid-lock-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .paid-lock-desc {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 30px;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        .paid-lock-info {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .paid-lock-info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .paid-lock-info-item:last-child {
+            border-bottom: none;
+        }
+
+        .paid-lock-info-label {
+            color: #666;
+            font-size: 15px;
+        }
+
+        .paid-lock-info-value {
+            font-weight: 700;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .paid-lock-price {
+            font-size: 36px;
+            font-weight: 700;
+            color: #f39c12;
+            margin-bottom: 10px;
+        }
+
+        .paid-lock-vip-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: white;
+            border-radius: 15px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .paid-lock-actions {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .btn-unlock {
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-unlock:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(243, 156, 18, 0.4);
+        }
+
+        .btn-unlock:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-back-story {
+            padding: 15px 30px;
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-back-story:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .paid-lock-stats {
+            color: #999;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .paid-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+            border-radius: 15px;
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
         .chapter-title {
             font-size: 32px;
             font-weight: bold;
@@ -1661,6 +1824,9 @@
                 console.log('当前章节:', currentChapter);
                 console.log('子分支数量:', currentChapter.branches.length);
                 console.log('故事ID:', storyId);
+
+                // 检查付费状态
+                await checkPaidStatus(currentChapter);
                 
                 renderChapter(currentChapter);
                 
@@ -1712,6 +1878,95 @@
             }
         }
 
+        // ========== 付费章节系统 ==========
+
+        // 检查付费状态
+        async function checkPaidStatus(chapter) {
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                // 检查章节是否设置为付费
+                const response = await fetch(`/api/paid-nodes/${chapter.id}/status`, {
+                    headers: token ? {
+                        'Authorization': `Bearer ${token}`
+                    } : {}
+                });
+
+                if (!response.ok) {
+                    // 如果接口返回404，说明不是付费章节
+                    chapter.isPaid = false;
+                    chapter.isUnlocked = true;
+                    return;
+                }
+
+                const data = await response.json();
+                console.log('付费状态:', data);
+                
+                chapter.isPaid = data.isPaid;
+                chapter.isUnlocked = data.isUnlocked;
+                chapter.paidInfo = data.paidInfo;
+                chapter.unlockInfo = data.unlockInfo;
+
+            } catch (error) {
+                console.error('检查付费状态错误:', error);
+                // 出错时默认为免费章节
+                chapter.isPaid = false;
+                chapter.isUnlocked = true;
+            }
+        }
+
+        // 解锁付费章节
+        async function unlockChapter(nodeId) {
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                if (!token) {
+                    showError('请先登录');
+                    setTimeout(() => {
+                        window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.href);
+                    }, 1500);
+                    return;
+                }
+
+                const unlockBtn = document.getElementById('unlockBtn');
+                if (unlockBtn) {
+                    unlockBtn.disabled = true;
+                    unlockBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 解锁中...';
+                }
+
+                const response = await fetch(`/api/paid-nodes/${nodeId}/unlock`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showSuccess('✅ ' + data.message);
+                    // 刷新页面显示解锁后的内容
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    showError('❌ ' + (data.error || '解锁失败'));
+                    if (unlockBtn) {
+                        unlockBtn.disabled = false;
+                        unlockBtn.innerHTML = '<i class="fas fa-unlock"></i> 立即解锁';
+                    }
+                }
+            } catch (error) {
+                console.error('解锁章节错误:', error);
+                showError('解锁失败，请稍后重试');
+                const unlockBtn = document.getElementById('unlockBtn');
+                if (unlockBtn) {
+                    unlockBtn.disabled = false;
+                    unlockBtn.innerHTML = '<i class="fas fa-unlock"></i> 立即解锁';
+                }
+            }
+        }
+
         // 渲染章节
         function renderChapter(chapter) {
             // 调试：输出章节数据
@@ -1721,6 +1976,10 @@
                 aiGenerated: chapter.aiGenerated
             });
             console.log('插图字段:', chapter.image);
+            console.log('付费状态:', {
+                isPaid: chapter.isPaid,
+                isUnlocked: chapter.isUnlocked
+            });
             
             // 设置标题，如果是AI生成则添加标记
             const titleElement = document.getElementById('chapterTitle');
@@ -1728,23 +1987,36 @@
             
             console.log('AI生成标记:', aiGenerated);
             
+            let titleHTML = chapter.title;
+            
+            // 添加AI标记
             if (aiGenerated) {
-                titleElement.innerHTML = `
-                    ${chapter.title}
-                    <span class="ai-badge"><i class="fas fa-robot"></i> AI创作</span>
-                `;
-            } else {
-                titleElement.textContent = chapter.title;
+                titleHTML += ' <span class="ai-badge"><i class="fas fa-robot"></i> AI创作</span>';
             }
+            
+            // 添加付费标记
+            if (chapter.isPaid) {
+                titleHTML += ' <span class="paid-badge"><i class="fas fa-lock"></i> 付费章节</span>';
+            }
+            
+            titleElement.innerHTML = titleHTML;
             
             document.getElementById('chapterAuthor').textContent = chapter.author?.username || '未知作者';
             document.getElementById('chapterDate').textContent = new Date(chapter.created_at).toLocaleDateString('zh-CN');
             document.getElementById('chapterWords').textContent = `${chapter.content?.length || 0}字`;
             
-            // 渲染章节内容，如果有插图则显示插图
+            // 渲染章节内容
             const chapterTextEl = document.getElementById('chapterText');
             const content = chapter.content || '暂无内容';
             
+            // 检查是否为付费章节且未解锁
+            if (chapter.isPaid && !chapter.isUnlocked) {
+                // 显示付费解锁界面
+                renderPaidLockUI(chapter);
+                return;
+            }
+            
+            // 正常显示章节内容
             if (chapter.image) {
                 // 有插图：在内容中间插入插图
                 const contentLength = content.length;
@@ -1786,6 +2058,81 @@
 
             // 检查是否是作者
             checkIfAuthor(chapter);
+        }
+
+        // 渲染付费锁定UI
+        function renderPaidLockUI(chapter) {
+            const chapterContent = document.querySelector('.chapter-content');
+            const paidInfo = chapter.paidInfo || {};
+            
+            // 判断是否是会员免费
+            const isMemberFree = paidInfo.member_free;
+            
+            chapterContent.innerHTML = `
+                <div class="paid-lock-overlay">
+                    <div class="paid-lock-icon">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <div class="paid-lock-title">
+                        这是一个付费章节
+                    </div>
+                    <div class="paid-lock-desc">
+                        ${isMemberFree ? '会员可免费阅读，或使用积分解锁' : '使用积分解锁后即可阅读完整内容'}
+                    </div>
+                    
+                    <div class="paid-lock-info">
+                        <div class="paid-lock-info-item">
+                            <div class="paid-lock-info-label">章节名称</div>
+                            <div class="paid-lock-info-value">${escapeHtml(chapter.title)}</div>
+                        </div>
+                        <div class="paid-lock-info-item">
+                            <div class="paid-lock-info-label">作者</div>
+                            <div class="paid-lock-info-value">${escapeHtml(chapter.author?.username || '未知')}</div>
+                        </div>
+                        <div class="paid-lock-info-item">
+                            <div class="paid-lock-info-label">字数</div>
+                            <div class="paid-lock-info-value">${chapter.content?.length || 0}字</div>
+                        </div>
+                        <div class="paid-lock-info-item">
+                            <div class="paid-lock-info-label">
+                                解锁价格
+                                ${isMemberFree ? '<span class="paid-lock-vip-badge"><i class="fas fa-crown"></i> 会员免费</span>' : ''}
+                            </div>
+                            <div class="paid-lock-info-value">
+                                <span class="paid-lock-price">${paidInfo.price || 0}</span> 积分
+                            </div>
+                        </div>
+                        ${paidInfo.unlock_count ? `
+                            <div class="paid-lock-info-item">
+                                <div class="paid-lock-info-label">已有人解锁</div>
+                                <div class="paid-lock-info-value">${paidInfo.unlock_count} 人</div>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="paid-lock-actions">
+                        <button id="unlockBtn" class="btn-unlock" onclick="unlockChapter(${chapter.id})">
+                            <i class="fas fa-unlock"></i>
+                            立即解锁
+                        </button>
+                        <button class="btn-back-story" onclick="window.location.href='/story?id=${storyId}'">
+                            <i class="fas fa-arrow-left"></i>
+                            返回故事
+                        </button>
+                    </div>
+                    
+                    <div class="paid-lock-stats">
+                        解锁后可永久阅读此章节
+                    </div>
+                </div>
+            `;
+        }
+
+        // HTML转义函数
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // 发布草稿章节
