@@ -90,6 +90,97 @@
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
     .empty { text-align: center; padding: 60px; color: #999; }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #e0e0e0;
+    }
+    .tab {
+      padding: 12px 24px;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      color: #666;
+      transition: all 0.3s;
+    }
+    .tab:hover { color: #2c3e50; }
+    .tab.active {
+      color: #2c3e50;
+      border-bottom-color: #3498db;
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .withdrawal-item {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .withdrawal-item .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .withdrawal-item .amount {
+      font-size: 28px;
+      font-weight: 700;
+      color: #27ae60;
+    }
+    .withdrawal-item .status {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .withdrawal-item .status.pending { background: #fff3cd; color: #856404; }
+    .withdrawal-item .status.approved { background: #d4edda; color: #155724; }
+    .withdrawal-item .status.rejected { background: #f8d7da; color: #721c24; }
+    .withdrawal-item .info {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+      padding: 16px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+    .withdrawal-item .info-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .withdrawal-item .info-item .label {
+      color: #666;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+    .withdrawal-item .info-item .value {
+      color: #2c3e50;
+      font-weight: 600;
+    }
+    .withdrawal-item .actions {
+      display: flex;
+      gap: 10px;
+    }
+    .withdrawal-item textarea {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      font-size: 14px;
+      margin-bottom: 12px;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 60px;
+    }
   </style>
 </head>
 <body>
@@ -105,8 +196,23 @@
     <h2 style="margin-bottom: 20px;">📊 审核统计</h2>
     <div class="stats" id="stats"></div>
 
-    <h2 style="margin-bottom: 20px;">📝 待审核内容</h2>
-    <div id="reviewQueue"></div>
+    <!-- 选项卡导航 -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('content')">📝 内容审核</button>
+      <button class="tab" onclick="switchTab('withdrawal')">💰 提现审核</button>
+    </div>
+
+    <!-- 内容审核 -->
+    <div id="contentTab" class="tab-content active">
+      <h2 style="margin-bottom: 20px;">📝 待审核内容</h2>
+      <div id="reviewQueue"></div>
+    </div>
+
+    <!-- 提现审核 -->
+    <div id="withdrawalTab" class="tab-content">
+      <h2 style="margin-bottom: 20px;">💰 提现审核</h2>
+      <div id="withdrawalQueue"></div>
+    </div>
   </div>
 
   <script>
@@ -157,6 +263,7 @@
         // 加载数据
         loadStats();
         loadReviewQueue();
+        loadWithdrawalQueue();
       } catch (e) {
         alert('登录失败: ' + e.message);
         location.href = 'index.html';
@@ -166,25 +273,43 @@
     // 加载统计数据
     async function loadStats() {
       try {
-        const res = await apiRequest('GET', '/admin/review-queue');
-        const stats = res.stats;
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        
+        // 加载内容审核统计
+        const reviewRes = await apiRequest('GET', '/admin/review-queue');
+        const reviewStats = reviewRes.stats;
+
+        // 加载提现统计
+        let withdrawalStats = { pending: 0, approved: 0, rejected: 0, totalAmount: 0 };
+        try {
+          const withdrawalRes = await fetch(`${API_BASE}/withdrawals/admin/stats`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (withdrawalRes.ok) {
+            withdrawalStats = await withdrawalRes.json();
+          }
+        } catch (e) {
+          console.error('Failed to load withdrawal stats:', e);
+        }
 
         document.getElementById('stats').innerHTML = `
           <div class="stat-card">
-            <div class="label">待审核</div>
-            <div class="value">${stats.pending}</div>
+            <div class="label">待审核内容</div>
+            <div class="value">${reviewStats.pending}</div>
           </div>
           <div class="stat-card">
-            <div class="label">已通过</div>
-            <div class="value" style="color: #27ae60;">${stats.approved}</div>
+            <div class="label">待审核提现</div>
+            <div class="value" style="color: #f39c12;">${withdrawalStats.pending || 0}</div>
           </div>
           <div class="stat-card">
-            <div class="label">已驳回</div>
-            <div class="value" style="color: #e74c3c;">${stats.rejected}</div>
+            <div class="label">已通过提现</div>
+            <div class="value" style="color: #27ae60;">${withdrawalStats.approved || 0}</div>
           </div>
           <div class="stat-card">
-            <div class="label">已下架</div>
-            <div class="value" style="color: #f39c12;">${stats.hidden}</div>
+            <div class="label">提现总额</div>
+            <div class="value" style="color: #3498db;">${withdrawalStats.totalAmount || 0}</div>
           </div>
         `;
       } catch (e) {
@@ -268,6 +393,256 @@
       } catch (e) {
         alert('加载举报详情失败: ' + e.message);
       }
+    }
+
+    // ========== 提现审核系统 ==========
+
+    // 切换选项卡
+    function switchTab(tab) {
+      // 更新选项卡样式
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+
+      // 显示对应内容
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      if (tab === 'content') {
+        document.getElementById('contentTab').classList.add('active');
+      } else if (tab === 'withdrawal') {
+        document.getElementById('withdrawalTab').classList.add('active');
+      }
+    }
+
+    // 加载提现审核队列
+    async function loadWithdrawalQueue() {
+      const queueDiv = document.getElementById('withdrawalQueue');
+      queueDiv.innerHTML = '<div class="loading"></div>';
+
+      try {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        
+        const response = await fetch(`${API_BASE}/withdrawals/admin/all`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('加载提现队列失败');
+        }
+
+        const data = await response.json();
+        const requests = data.requests || [];
+        
+        if (requests.length === 0) {
+          queueDiv.innerHTML = '<div class="empty">暂无提现申请</div>';
+          return;
+        }
+
+        const statusMap = {
+          pending: { text: '待审核', class: 'pending' },
+          approved: { text: '已通过', class: 'approved' },
+          rejected: { text: '已拒绝', class: 'rejected' }
+        };
+
+        queueDiv.innerHTML = requests.map(req => {
+          const status = statusMap[req.status] || { text: req.status, class: '' };
+          return `
+            <div class="withdrawal-item">
+              <div class="header">
+                <div class="amount">${req.amount} 积分</div>
+                <span class="status ${status.class}">${status.text}</span>
+              </div>
+              
+              <div class="info">
+                <div class="info-item">
+                  <div class="label">申请用户</div>
+                  <div class="value">${escapeHtml(req.user.username)}</div>
+                </div>
+                <div class="info-item">
+                  <div class="label">提现方式</div>
+                  <div class="value">${escapeHtml(req.payment_method)}</div>
+                </div>
+                <div class="info-item">
+                  <div class="label">提现账号</div>
+                  <div class="value">${escapeHtml(req.payment_account)}</div>
+                </div>
+                <div class="info-item">
+                  <div class="label">申请时间</div>
+                  <div class="value">${new Date(req.created_at).toLocaleString('zh-CN')}</div>
+                </div>
+                ${req.processed_at ? `
+                  <div class="info-item">
+                    <div class="label">处理时间</div>
+                    <div class="value">${new Date(req.processed_at).toLocaleString('zh-CN')}</div>
+                  </div>
+                ` : ''}
+                ${req.admin_note ? `
+                  <div class="info-item" style="grid-column: 1 / -1;">
+                    <div class="label">审核备注</div>
+                    <div class="value">${escapeHtml(req.admin_note)}</div>
+                  </div>
+                ` : ''}
+              </div>
+
+              ${req.status === 'pending' ? `
+                <div id="noteArea${req.id}" style="display: none;">
+                  <textarea id="note${req.id}" placeholder="请输入审核备注（可选）"></textarea>
+                </div>
+                <div class="actions">
+                  <button class="btn btn-success" onclick="approveWithdrawal(${req.id})">
+                    ✅ 通过
+                  </button>
+                  <button class="btn btn-danger" onclick="showRejectNote(${req.id})">
+                    ❌ 拒绝
+                  </button>
+                  <button class="btn" style="background: #95a5a6; color: white;" onclick="viewUserEarnings(${req.user_id})">
+                    📊 查看用户收益
+                  </button>
+                </div>
+              ` : ''}
+            </div>
+          `;
+        }).join('');
+      } catch (e) {
+        queueDiv.innerHTML = `<p style="color: red;">加载失败: ${e.message}</p>`;
+      }
+    }
+
+    // 显示拒绝备注输入框
+    function showRejectNote(requestId) {
+      const noteArea = document.getElementById(`noteArea${requestId}`);
+      const currentDisplay = noteArea.style.display;
+      
+      if (currentDisplay === 'none') {
+        noteArea.style.display = 'block';
+        // 修改按钮文字
+        event.target.textContent = '❌ 确认拒绝';
+        event.target.onclick = () => rejectWithdrawal(requestId);
+      }
+    }
+
+    // 通过提现
+    async function approveWithdrawal(requestId) {
+      if (!confirm('确定要通过这个提现申请吗？')) {
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        
+        const response = await fetch(`${API_BASE}/withdrawals/admin/${requestId}/review`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            approved: true,
+            note: document.getElementById(`note${requestId}`)?.value || ''
+          })
+        });
+
+        const data = await response.json();
+        
+        if (response.ok) {
+          alert('✅ ' + data.message);
+          loadWithdrawalQueue();
+          loadStats();
+        } else {
+          alert('❌ ' + (data.error || '审核失败'));
+        }
+      } catch (e) {
+        alert('操作失败: ' + e.message);
+      }
+    }
+
+    // 拒绝提现
+    async function rejectWithdrawal(requestId) {
+      const note = document.getElementById(`note${requestId}`).value.trim();
+      
+      if (!note) {
+        alert('拒绝提现时必须填写备注说明原因');
+        return;
+      }
+
+      if (!confirm('确定要拒绝这个提现申请吗？金额将退回到用户的收益余额。')) {
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        
+        const response = await fetch(`${API_BASE}/withdrawals/admin/${requestId}/review`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            approved: false,
+            note: note
+          })
+        });
+
+        const data = await response.json();
+        
+        if (response.ok) {
+          alert('✅ ' + data.message);
+          loadWithdrawalQueue();
+          loadStats();
+        } else {
+          alert('❌ ' + (data.error || '审核失败'));
+        }
+      } catch (e) {
+        alert('操作失败: ' + e.message);
+      }
+    }
+
+    // 查看用户收益详情
+    async function viewUserEarnings(userId) {
+      try {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        
+        const response = await fetch(`${API_BASE}/withdrawals/admin/user-earnings/${userId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('加载用户收益失败');
+        }
+
+        const data = await response.json();
+        
+        let infoText = `用户收益详情\n\n`;
+        infoText += `用户：${data.user.username}\n`;
+        infoText += `收益余额：${data.earningsBalance} 积分\n`;
+        infoText += `总收益：${data.totalEarnings} 积分\n`;
+        infoText += `已提现：${data.withdrawnAmount} 积分\n`;
+        infoText += `待审核：${data.pendingAmount} 积分\n`;
+        infoText += `解锁次数：${data.unlockCount} 次\n\n`;
+        
+        if (data.recentUnlocks && data.recentUnlocks.length > 0) {
+          infoText += `最近解锁记录：\n`;
+          data.recentUnlocks.forEach((unlock, idx) => {
+            infoText += `${idx + 1}. ${unlock.node.title} - ${unlock.unlock_price}积分\n`;
+            infoText += `   解锁人：${unlock.user.username}\n`;
+            infoText += `   时间：${new Date(unlock.unlocked_at).toLocaleString('zh-CN')}\n`;
+          });
+        }
+
+        alert(infoText);
+      } catch (e) {
+        alert('加载用户收益失败: ' + e.message);
+      }
+    }
+
+    // HTML转义函数
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
     }
 
     // 启动
