@@ -1117,6 +1117,52 @@
                         <i class="fas fa-spinner"></i>
                     </div>
                 </div>
+                
+                <!-- 兑换邀请码输入框 -->
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+                    <h3 style="margin: 0 0 15px 0; color: #333; font-size: 16px;">
+                        <i class="fas fa-ticket-alt"></i> 兑换邀请码
+                    </h3>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input 
+                            type="text" 
+                            id="inviteCodeInput" 
+                            placeholder="请输入 8 位邀请码"
+                            maxlength="8"
+                            style="
+                                flex: 1;
+                                padding: 12px 15px;
+                                border: 2px solid #e0e0e0;
+                                border-radius: 8px;
+                                font-size: 14px;
+                                transition: all 0.3s;
+                                outline: none;
+                            "
+                            onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)';"
+                            onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none';"
+                        />
+                        <button 
+                            onclick="redeemInviteCode()"
+                            style="
+                                padding: 12px 25px;
+                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                color: white;
+                                border: none;
+                                border-radius: 8px;
+                                font-size: 14px;
+                                font-weight: 600;
+                                cursor: pointer;
+                                transition: all 0.3s;
+                                white-space: nowrap;
+                            "
+                            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 5px 15px rgba(102, 126, 234, 0.4)';"
+                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';"
+                        >
+                            <i class="fas fa-gift"></i> 兑换积分
+                        </button>
+                    </div>
+                    <div id="redeemMessage" style="margin-top: 10px; font-size: 14px;"></div>
+                </div>
             </div>
 
             <!-- 收益管理 -->
@@ -1716,8 +1762,8 @@
                                         <th style="padding: 10px; text-align: left; border-radius: 5px;">奖励积分</th>
                                         <th style="padding: 10px; text-align: left; border-radius: 5px;">说明</th>
                                     </tr>
-                                    <tr><td style="padding: 10px; border-bottom: 1px solid rgba(255, 215, 0, 0.2);">被邀请人</td><td style="padding: 10px; border-bottom: 1px solid rgba(255, 215, 0, 0.2); color: #667eea; font-weight: 600;">+50</td><td style="padding: 10px; border-bottom: 1px solid rgba(255, 215, 0, 0.2);">注册时输入邀请码</td></tr>
-                                    <tr><td style="padding: 10px; border-radius: 5px;">邀请人</td><td style="padding: 10px; border-radius: 5px; color: #667eea; font-weight: 600;">+25</td><td style="padding: 10px; border-radius: 5px;">被邀请人注册后（50%）</td></tr>
+                                    <tr><td style="padding: 10px; border-bottom: 1px solid rgba(255, 215, 0, 0.2);">被邀请人</td><td style="padding: 10px; border-bottom: 1px solid rgba(255, 215, 0, 0.2); color: #667eea; font-weight: 600;">+50</td><td style="padding: 10px; border-bottom: 1px solid rgba(255, 215, 0, 0.2);">注册页面或个人信息页面输入邀请码</td></tr>
+                                    <tr><td style="padding: 10px; border-radius: 5px;">邀请人</td><td style="padding: 10px; border-radius: 5px; color: #667eea; font-weight: 600;">+25</td><td style="padding: 10px; border-radius: 5px;">被邀请人使用后（50%）</td></tr>
                                 </table>
                             </div>
                         </div>
@@ -2544,7 +2590,63 @@
                 </div>
             `;
         }
-
+        
+        // 兑换邀请码
+        async function redeemInviteCode() {
+            const codeInput = document.getElementById('inviteCodeInput');
+            const messageDiv = document.getElementById('redeemMessage');
+            const code = codeInput.value.trim().toUpperCase();
+            
+            if (!code) {
+                messageDiv.innerHTML = '<span style="color: #f44336;"><i class="fas fa-exclamation-circle"></i> 请输入邀请码</span>';
+                return;
+            }
+            
+            if (code.length !== 8) {
+                messageDiv.innerHTML = '<span style="color: #f44336;"><i class="fas fa-exclamation-circle"></i> 邀请码必须是 8 位</span>';
+                return;
+            }
+            
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                messageDiv.innerHTML = '<span style="color: #2196f3;"><i class="fas fa-spinner fa-spin"></i> 正在兑换...</span>';
+                
+                const response = await fetch('/api/invitations/redeem', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ code })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    messageDiv.innerHTML = `
+                        <span style="color: #4caf50;">
+                            <i class="fas fa-check-circle"></i> 
+                            兑换成功！获得 <strong>${data.bonusPoints}</strong> 积分
+                            ${data.inviterBonus > 0 ? `（邀请人获得 ${data.inviterBonus} 积分）` : ''}
+                        </span>
+                    `;
+                    codeInput.value = '';
+                    
+                    // 重新加载用户信息和邀请码
+                    setTimeout(() => {
+                        loadUserProfile();
+                        loadInvitationCodes();
+                    }, 1000);
+                } else {
+                    messageDiv.innerHTML = `<span style="color: #f44336;"><i class="fas fa-exclamation-circle"></i> ${data.error || '兑换失败'}</span>`;
+                }
+            } catch (error) {
+                console.error('兑换邀请码错误:', error);
+                messageDiv.innerHTML = '<span style="color: #f44336;"><i class="fas fa-exclamation-circle"></i> 兑换失败，请稍后重试</span>';
+            }
+        }
+        
 // ========== 邀请码系统 ==========
         
         // 加载邀请码

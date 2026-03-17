@@ -16,7 +16,7 @@ function generateInviteCode(): string {
   return code;
 }
 
-// 验证JWT中间件
+// 验证 JWT 中间件
 async function authenticateToken(req: any, res: any, next: any) {
   const token = req.headers.authorization?.replace('Bearer ', '');
   
@@ -216,7 +216,7 @@ router.post('/admin/generate', authenticateToken, requireAdmin, async (req: any,
     const { count = 10, bonusPoints = 100, maxUses = 1, expiresInDays = 30 } = req.body;
 
     if (count < 1 || count > 100) {
-      return res.status(400).json({ error: '生成数量必须在1-100之间' });
+      return res.status(400).json({ error: '生成数量必须在 1-100 之间' });
     }
 
     const codes = [];
@@ -429,7 +429,129 @@ router.post('/admin/grant-permission', authenticateToken, requireAdmin, async (r
   }
 });
 
-// 8. 【用户】申请邀请码权限（用于管理员审核）
+// 8. 【用户】兑换邀请码
+router.post('/redeem', authenticateToken, async (req: any, res) => {
+  try {
+    const userId = req.userId;
+    const { code } = req.body;
+
+    if (!code) {
+      return res.status(400).json({ error: '请提供邀请码' });
+    }
+
+    const inviteCode = await prisma.invitation_codes.findUnique({
+      where: { code: code.toUpperCase() },
+      include: {
+        created_by: {
+          select: {
+            id: true,
+            username: true
+          }
+        }
+      }
+    });
+
+    if (!inviteCode) {
+      return res.status(404).json({ error: '邀请码不存在' });
+    }
+
+    // 检查邀请码是否有效
+    if (!inviteCode.is_active) {
+      return res.status(400).json({ error: '邀请码已被禁用' });
+    }
+
+    if (inviteCode.expires_at && new Date(inviteCode.expires_at) < new Date()) {
+      return res.status(400).json({ error: '邀请码已过期' });
+    }
+
+    if (inviteCode.max_uses !== -1 && inviteCode.used_count >= inviteCode.max_uses) {
+      return res.status(400).json({ error: '邀请码已达到最大使用次数' });
+    }
+
+    // 检查用户是否已经使用过这个邀请码
+    const existingRecord = await prisma.invitation_records.findFirst({
+      where: {
+        invitee_id: userId,
+        invitation_code: inviteCode.code
+      }
+    });
+
+    if (existingRecord) {
+      return res.status(400).json({ error: '您已经使用过这个邀请码' });
+    }
+
+    // 检查用户是否已经有邀请人（只能被邀请一次）
+    const existingInvitee = await prisma.invitation_records.findFirst({
+      where: {
+        invitee_id: userId
+      }
+    });
+
+    if (existingInvitee) {
+      return res.status(400).json({ error: '您已经使用过其他邀请码，无法再次兑换' });
+    }
+
+    // 检查是否是自己生成的邀请码
+    if (inviteCode.created_by_id === userId) {
+      return res.status(400).json({ error: '不能兑换自己生成的邀请码' });
+    }
+
+    // 使用事务处理兑换
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. 更新邀请码使用次数
+      await tx.invitation_codes.update({
+        where: { id: inviteCode.id },
+        data: { used_count: inviteCode.used_count + 1 }
+      });
+
+      // 2. 创建邀请记录
+      const record = await tx.invitation_records.create({
+        data: {
+          inviter_id: inviteCode.created_by_id,
+          invitee_id: userId,
+          invitation_code: inviteCode.code,
+          bonus_points: inviteCode.bonus_points,
+          milestone_rewards: null
+        }
+      });
+
+      // 3. 给被邀请人发放积分
+      await tx.users.update({
+        where: { id: userId },
+        data: { points: { increment: inviteCode.bonus_points } }
+      });
+
+      // 4. 给邀请人发放奖励积分（50%）
+      const inviterBonus = Math.floor(inviteCode.bonus_points * 0.5);
+      await tx.users.update({
+        where: { id: inviteCode.created_by_id },
+        data: { points: { increment: inviterBonus } }
+      });
+
+      return {
+        record,
+        bonusPoints: inviteCode.bonus_points,
+        inviterBonus
+      };
+    });
+
+    console.log(`用户 ${userId} 成功兑换邀请码 ${inviteCode.code}，获得 ${result.bonusPoints} 积分`);
+
+    res.json({
+      success: true,
+      message: '邀请码兑换成功！',
+      bonusPoints: result.bonusPoints,
+      inviterBonus: result.inviterBonus,
+      code: inviteCode.code,
+      invitedBy: inviteCode.created_by.username
+    });
+  } catch (error) {
+    console.error('兑换邀请码失败:', error);
+    res.status(500).json({ error: '兑换失败，请稍后重试' });
+  }
+});
+
+// 9. 【用户】申请邀请码权限（用于管理员审核）
 router.post('/request-permission', authenticateToken, async (req: any, res) => {
   try {
     const user = await prisma.users.findUnique({
