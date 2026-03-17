@@ -885,6 +885,33 @@
             </div>
         </div>
 
+        <!-- 邀请码和收益管理（两栏布局） -->
+        <div class="two-column-section">
+            <!-- 我的邀请码 -->
+            <div class="content-section column-item">
+                <div class="section-header">
+                    <h2 class="section-title"><i class="fas fa-gift"></i> 我的邀请码</h2>
+                </div>
+                <div id="invitationSection">
+                    <div class="loading">
+                        <i class="fas fa-spinner"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 收益管理 -->
+            <div class="content-section column-item">
+                <div class="section-header">
+                    <h2 class="section-title"><i class="fas fa-wallet"></i> 收益管理</h2>
+                </div>
+                <div id="earningsSection">
+                    <div class="loading">
+                        <i class="fas fa-spinner"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- 我的故事 -->
         <div class="content-section">
             <div class="section-header">
@@ -1025,6 +1052,8 @@
                 displayUserProfile(data.user);
                 loadUserStats(data.user.id);
                 loadCheckinStatus(); // 加载签到状态
+                loadInvitationCodes(); // 加载邀请码
+                loadEarningsStats(); // 加载收益统计
                 loadUserStories(data.user.id);
                 loadFollowedStories(data.user.id);
                 loadFollowers(data.user.id);
@@ -1957,6 +1986,721 @@
                     <p style="color: #999; font-size: 14px;">继续创作精彩内容，吸引读者追更吧！</p>
                 </div>
             `;
+        }
+
+        // ========== 邀请码系统 ==========
+        
+        // 加载邀请码
+        async function loadInvitationCodes() {
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                const response = await fetch('/api/invitations/my-codes', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const invitationSection = document.getElementById('invitationSection');
+
+                if (!response.ok) {
+                    invitationSection.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-lock"></i>
+                            <p>暂无邀请码权限</p>
+                            <p style="color: #999; font-size: 14px;">达成20万字里程碑后即可获得邀请码权限</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const data = await response.json();
+                
+                if (!data.codes || data.codes.length === 0) {
+                    invitationSection.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-gift"></i>
+                            <p>暂无邀请码</p>
+                            <p style="color: #999; font-size: 14px;">达成里程碑后将自动生成邀请码</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const code = data.codes[0];
+                const stats = data.stats || {};
+                
+                invitationSection.innerHTML = `
+                    <div style="padding: 20px;">
+                        <!-- 邀请码展示 -->
+                        <div style="
+                            background: linear-gradient(135deg, #667eea, #764ba2);
+                            border-radius: 15px;
+                            padding: 25px;
+                            color: white;
+                            margin-bottom: 20px;
+                            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+                        ">
+                            <div style="font-size: 14px; opacity: 0.9; margin-bottom: 10px;">我的邀请码</div>
+                            <div style="
+                                font-size: 32px;
+                                font-weight: 700;
+                                letter-spacing: 4px;
+                                margin-bottom: 15px;
+                                font-family: 'Courier New', monospace;
+                            ">${code.code}</div>
+                            <div style="display: flex; gap: 10px;">
+                                <button onclick="copyInviteCode('${code.code}')" style="
+                                    flex: 1;
+                                    padding: 10px;
+                                    background: rgba(255, 255, 255, 0.2);
+                                    border: 1px solid rgba(255, 255, 255, 0.3);
+                                    color: white;
+                                    border-radius: 8px;
+                                    cursor: pointer;
+                                    font-size: 14px;
+                                    font-weight: 600;
+                                    transition: all 0.3s;
+                                " onmouseover="this.style.background='rgba(255,255,255,0.3)'" 
+                                   onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                                    <i class="fas fa-copy"></i> 复制
+                                </button>
+                                <button onclick="shareInviteCode('${code.code}')" style="
+                                    flex: 1;
+                                    padding: 10px;
+                                    background: rgba(255, 255, 255, 0.2);
+                                    border: 1px solid rgba(255, 255, 255, 0.3);
+                                    color: white;
+                                    border-radius: 8px;
+                                    cursor: pointer;
+                                    font-size: 14px;
+                                    font-weight: 600;
+                                    transition: all 0.3s;
+                                " onmouseover="this.style.background='rgba(255,255,255,0.3)'" 
+                                   onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                                    <i class="fas fa-share-alt"></i> 分享
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 邀请统计 -->
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+                            <div style="
+                                padding: 15px;
+                                background: #f8f9fa;
+                                border-radius: 10px;
+                                text-align: center;
+                            ">
+                                <div style="font-size: 24px; font-weight: 700; color: #667eea; margin-bottom: 5px;">
+                                    ${stats.totalInvited || 0}
+                                </div>
+                                <div style="color: #999; font-size: 14px;">邀请人数</div>
+                            </div>
+                            <div style="
+                                padding: 15px;
+                                background: #f8f9fa;
+                                border-radius: 10px;
+                                text-align: center;
+                            ">
+                                <div style="font-size: 24px; font-weight: 700; color: #4caf50; margin-bottom: 5px;">
+                                    ${stats.totalRewards || 0}
+                                </div>
+                                <div style="color: #999; font-size: 14px;">获得积分</div>
+                            </div>
+                        </div>
+
+                        ${data.invitedUsers && data.invitedUsers.length > 0 ? `
+                            <div style="margin-top: 20px;">
+                                <div style="color: #666; font-size: 14px; font-weight: 600; margin-bottom: 10px;">
+                                    最近邀请
+                                </div>
+                                ${data.invitedUsers.slice(0, 5).map(user => `
+                                    <div style="
+                                        display: flex;
+                                        align-items: center;
+                                        gap: 10px;
+                                        padding: 10px;
+                                        background: #f8f9fa;
+                                        border-radius: 8px;
+                                        margin-bottom: 8px;
+                                    ">
+                                        <div style="
+                                            width: 32px;
+                                            height: 32px;
+                                            background: linear-gradient(135deg, #667eea, #764ba2);
+                                            border-radius: 50%;
+                                            display: flex;
+                                            align-items: center;
+                                            justify-content: center;
+                                            color: white;
+                                            font-size: 14px;
+                                        ">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                        <div style="flex: 1;">
+                                            <div style="font-weight: 600; color: #333;">${escapeHtml(user.username)}</div>
+                                            <div style="font-size: 12px; color: #999;">${formatDate(user.createdAt)}</div>
+                                        </div>
+                                        <div style="color: #4caf50; font-weight: 600;">+${user.reward || 0}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            } catch (error) {
+                console.error('加载邀请码错误:', error);
+                document.getElementById('invitationSection').innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>加载失败</p>
+                    </div>
+                `;
+            }
+        }
+
+        // 复制邀请码
+        function copyInviteCode(code) {
+            const text = `${code} - 来StoryTree一起创作故事吧！注册时输入这个邀请码可以获得额外积分奖励哦~`;
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('邀请码已复制到剪贴板！');
+                }).catch(() => {
+                    fallbackCopy(text);
+                });
+            } else {
+                fallbackCopy(text);
+            }
+        }
+
+        // 备用复制方法
+        function fallbackCopy(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                alert('邀请码已复制到剪贴板！');
+            } catch (err) {
+                alert('复制失败，请手动复制邀请码');
+            }
+            document.body.removeChild(textarea);
+        }
+
+        // 分享邀请码
+        function shareInviteCode(code) {
+            const url = `${window.location.origin}/register?invite=${code}`;
+            const text = `来StoryTree一起创作故事吧！使用我的邀请码 ${code} 注册可以获得额外积分奖励哦~`;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: 'StoryTree邀请码',
+                    text: text,
+                    url: url
+                }).catch(err => {
+                    console.log('分享取消或失败:', err);
+                });
+            } else {
+                copyInviteCode(code);
+            }
+        }
+
+        // ========== 收益管理系统 ==========
+        
+        // 加载收益统计
+        async function loadEarningsStats() {
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                const response = await fetch('/api/withdrawals/earnings-stats', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const earningsSection = document.getElementById('earningsSection');
+
+                if (!response.ok) {
+                    earningsSection.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-wallet"></i>
+                            <p>暂无收益数据</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const data = await response.json();
+                
+                earningsSection.innerHTML = `
+                    <div style="padding: 20px;">
+                        <!-- 收益余额 -->
+                        <div style="
+                            background: linear-gradient(135deg, #4caf50, #66bb6a);
+                            border-radius: 15px;
+                            padding: 25px;
+                            color: white;
+                            margin-bottom: 20px;
+                            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+                        ">
+                            <div style="font-size: 14px; opacity: 0.9; margin-bottom: 10px;">收益余额</div>
+                            <div style="
+                                font-size: 36px;
+                                font-weight: 700;
+                                margin-bottom: 15px;
+                            ">${data.earningsBalance || 0} <span style="font-size: 18px;">积分</span></div>
+                            <button onclick="showWithdrawalDialog()" style="
+                                width: 100%;
+                                padding: 12px;
+                                background: rgba(255, 255, 255, 0.2);
+                                border: 1px solid rgba(255, 255, 255, 0.3);
+                                color: white;
+                                border-radius: 8px;
+                                cursor: pointer;
+                                font-size: 16px;
+                                font-weight: 600;
+                                transition: all 0.3s;
+                            " onmouseover="this.style.background='rgba(255,255,255,0.3)'" 
+                               onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                                <i class="fas fa-hand-holding-usd"></i> 申请提现
+                            </button>
+                        </div>
+
+                        <!-- 收益统计 -->
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px;">
+                            <div style="
+                                padding: 15px;
+                                background: #f8f9fa;
+                                border-radius: 10px;
+                                text-align: center;
+                            ">
+                                <div style="font-size: 20px; font-weight: 700; color: #667eea; margin-bottom: 5px;">
+                                    ${data.totalEarnings || 0}
+                                </div>
+                                <div style="color: #999; font-size: 13px;">总收益</div>
+                            </div>
+                            <div style="
+                                padding: 15px;
+                                background: #f8f9fa;
+                                border-radius: 10px;
+                                text-align: center;
+                            ">
+                                <div style="font-size: 20px; font-weight: 700; color: #4caf50; margin-bottom: 5px;">
+                                    ${data.withdrawnAmount || 0}
+                                </div>
+                                <div style="color: #999; font-size: 13px;">已提现</div>
+                            </div>
+                            <div style="
+                                padding: 15px;
+                                background: #f8f9fa;
+                                border-radius: 10px;
+                                text-align: center;
+                            ">
+                                <div style="font-size: 20px; font-weight: 700; color: #ff9800; margin-bottom: 5px;">
+                                    ${data.pendingAmount || 0}
+                                </div>
+                                <div style="color: #999; font-size: 13px;">待审核</div>
+                            </div>
+                            <div style="
+                                padding: 15px;
+                                background: #f8f9fa;
+                                border-radius: 10px;
+                                text-align: center;
+                            ">
+                                <div style="font-size: 20px; font-weight: 700; color: #2196f3; margin-bottom: 5px;">
+                                    ${data.unlockCount || 0}
+                                </div>
+                                <div style="color: #999; font-size: 13px;">解锁次数</div>
+                            </div>
+                        </div>
+
+                        <!-- 提现记录链接 -->
+                        <button onclick="showWithdrawalHistory()" style="
+                            width: 100%;
+                            padding: 12px;
+                            background: white;
+                            border: 2px solid #667eea;
+                            color: #667eea;
+                            border-radius: 10px;
+                            cursor: pointer;
+                            font-size: 14px;
+                            font-weight: 600;
+                            transition: all 0.3s;
+                        " onmouseover="this.style.background='#667eea'; this.style.color='white'" 
+                           onmouseout="this.style.background='white'; this.style.color='#667eea'">
+                            <i class="fas fa-history"></i> 查看提现记录
+                        </button>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('加载收益统计错误:', error);
+                document.getElementById('earningsSection').innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>加载失败</p>
+                    </div>
+                `;
+            }
+        }
+
+        // 显示提现对话框
+        function showWithdrawalDialog() {
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                animation: fadeIn 0.3s;
+            `;
+            
+            overlay.innerHTML = `
+                <div style="
+                    background: white;
+                    border-radius: 20px;
+                    padding: 30px;
+                    max-width: 500px;
+                    width: 90%;
+                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                    animation: slideUp 0.3s;
+                ">
+                    <h2 style="margin: 0 0 20px 0; color: #333;">
+                        <i class="fas fa-hand-holding-usd" style="color: #4caf50;"></i> 
+                        申请提现
+                    </h2>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; color: #666; font-weight: 600; margin-bottom: 8px;">
+                            提现金额（积分）
+                        </label>
+                        <input type="number" id="withdrawalAmount" placeholder="最低100积分" min="100" style="
+                            width: 100%;
+                            padding: 12px;
+                            border: 2px solid #e0e0e0;
+                            border-radius: 10px;
+                            font-size: 16px;
+                            box-sizing: border-box;
+                        ">
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; color: #666; font-weight: 600; margin-bottom: 8px;">
+                            提现方式
+                        </label>
+                        <select id="paymentMethod" style="
+                            width: 100%;
+                            padding: 12px;
+                            border: 2px solid #e0e0e0;
+                            border-radius: 10px;
+                            font-size: 16px;
+                            box-sizing: border-box;
+                        ">
+                            <option value="支付宝">支付宝</option>
+                            <option value="微信">微信</option>
+                            <option value="银行卡">银行卡</option>
+                        </select>
+                    </div>
+                    
+                    <div style="margin-bottom: 25px;">
+                        <label style="display: block; color: #666; font-weight: 600; margin-bottom: 8px;">
+                            提现账号
+                        </label>
+                        <input type="text" id="paymentAccount" placeholder="请输入账号" style="
+                            width: 100%;
+                            padding: 12px;
+                            border: 2px solid #e0e0e0;
+                            border-radius: 10px;
+                            font-size: 16px;
+                            box-sizing: border-box;
+                        ">
+                    </div>
+                    
+                    <p style="color: #999; font-size: 13px; margin-bottom: 20px; line-height: 1.6;">
+                        <i class="fas fa-info-circle"></i>
+                        提现申请提交后，管理员将在3-5个工作日内审核。审核通过后，款项将转入你的账户。
+                    </p>
+                    
+                    <div style="display: flex; gap: 15px;">
+                        <button onclick="this.closest('div').parentElement.remove()" style="
+                            flex: 1;
+                            padding: 12px;
+                            background: #f5f5f5;
+                            color: #666;
+                            border: none;
+                            border-radius: 10px;
+                            font-size: 16px;
+                            font-weight: 600;
+                            cursor: pointer;
+                        ">取消</button>
+                        <button onclick="submitWithdrawal()" style="
+                            flex: 1;
+                            padding: 12px;
+                            background: linear-gradient(135deg, #4caf50, #66bb6a);
+                            color: white;
+                            border: none;
+                            border-radius: 10px;
+                            font-size: 16px;
+                            font-weight: 600;
+                            cursor: pointer;
+                        ">提交申请</button>
+                    </div>
+                </div>
+            `;
+            
+            overlay.onclick = (e) => {
+                if (e.target === overlay) {
+                    overlay.remove();
+                }
+            };
+            
+            document.body.appendChild(overlay);
+        }
+
+        // 提交提现申请
+        async function submitWithdrawal() {
+            const amount = parseInt(document.getElementById('withdrawalAmount').value);
+            const paymentMethod = document.getElementById('paymentMethod').value;
+            const paymentAccount = document.getElementById('paymentAccount').value.trim();
+
+            if (!amount || amount < 100) {
+                alert('提现金额最低为100积分');
+                return;
+            }
+
+            if (!paymentAccount) {
+                alert('请输入提现账号');
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                const response = await fetch('/api/withdrawals/request', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        amount,
+                        paymentMethod,
+                        paymentAccount
+                    })
+                });
+
+                const data = await response.json();
+                
+                // 移除对话框
+                document.querySelectorAll('body > div').forEach(div => {
+                    if (div.style.position === 'fixed') {
+                        div.remove();
+                    }
+                });
+                
+                if (response.ok) {
+                    alert('✅ ' + data.message);
+                    // 刷新收益统计
+                    await loadEarningsStats();
+                } else {
+                    alert('❌ ' + (data.error || '提现申请失败'));
+                }
+            } catch (error) {
+                console.error('提交提现申请失败:', error);
+                alert('提交失败，请稍后重试');
+            }
+        }
+
+        // 显示提现记录
+        async function showWithdrawalHistory() {
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                const response = await fetch('/api/withdrawals/my-requests', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    alert('加载提现记录失败');
+                    return;
+                }
+
+                const data = await response.json();
+                const requests = data.requests || [];
+                
+                const overlay = document.createElement('div');
+                overlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0, 0, 0, 0.5);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10000;
+                    animation: fadeIn 0.3s;
+                `;
+                
+                const statusMap = {
+                    pending: { text: '待审核', color: '#ff9800' },
+                    approved: { text: '已通过', color: '#4caf50' },
+                    rejected: { text: '已拒绝', color: '#f44336' }
+                };
+                
+                overlay.innerHTML = `
+                    <div style="
+                        background: white;
+                        border-radius: 20px;
+                        padding: 30px;
+                        max-width: 700px;
+                        width: 90%;
+                        max-height: 80vh;
+                        overflow-y: auto;
+                        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                        animation: slideUp 0.3s;
+                    ">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h2 style="margin: 0; color: #333;">
+                                <i class="fas fa-history"></i> 
+                                提现记录
+                            </h2>
+                            <button onclick="this.closest('div').parentElement.remove()" style="
+                                background: none;
+                                border: none;
+                                font-size: 24px;
+                                cursor: pointer;
+                                color: #999;
+                                padding: 0;
+                                width: 32px;
+                                height: 32px;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                border-radius: 50%;
+                                transition: all 0.3s;
+                            " onmouseover="this.style.background='#f0f0f0'; this.style.color='#333';" 
+                               onmouseout="this.style.background='none'; this.style.color='#999';">
+                                ×
+                            </button>
+                        </div>
+                        
+                        ${requests.length === 0 ? `
+                            <div style="text-align: center; padding: 40px; color: #999;">
+                                <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 15px;"></i>
+                                <p>还没有提现记录</p>
+                            </div>
+                        ` : requests.map(req => {
+                            const status = statusMap[req.status] || { text: req.status, color: '#999' };
+                            return `
+                                <div style="
+                                    padding: 20px;
+                                    background: #f8f9fa;
+                                    border-radius: 15px;
+                                    margin-bottom: 15px;
+                                ">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                        <div>
+                                            <span style="
+                                                font-size: 24px;
+                                                font-weight: 700;
+                                                color: #333;
+                                            ">${req.amount} 积分</span>
+                                        </div>
+                                        <span style="
+                                            padding: 6px 12px;
+                                            background: ${status.color};
+                                            color: white;
+                                            border-radius: 20px;
+                                            font-size: 13px;
+                                            font-weight: 600;
+                                        ">${status.text}</span>
+                                    </div>
+                                    <div style="color: #666; font-size: 14px; line-height: 1.8;">
+                                        <div><i class="fas fa-credit-card"></i> ${escapeHtml(req.payment_method)}</div>
+                                        <div><i class="fas fa-user"></i> ${escapeHtml(req.payment_account)}</div>
+                                        <div><i class="fas fa-clock"></i> ${formatDate(req.created_at)}</div>
+                                        ${req.admin_note ? `<div style="color: #f44336;"><i class="fas fa-comment"></i> ${escapeHtml(req.admin_note)}</div>` : ''}
+                                    </div>
+                                    ${req.status === 'pending' ? `
+                                        <button onclick="cancelWithdrawal(${req.id})" style="
+                                            margin-top: 15px;
+                                            padding: 8px 16px;
+                                            background: #f44336;
+                                            color: white;
+                                            border: none;
+                                            border-radius: 8px;
+                                            cursor: pointer;
+                                            font-size: 13px;
+                                            font-weight: 600;
+                                        ">取消申请</button>
+                                    ` : ''}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+                
+                overlay.onclick = (e) => {
+                    if (e.target === overlay) {
+                        overlay.remove();
+                    }
+                };
+                
+                document.body.appendChild(overlay);
+            } catch (error) {
+                console.error('加载提现记录失败:', error);
+                alert('加载失败，请稍后重试');
+            }
+        }
+
+        // 取消提现申请
+        async function cancelWithdrawal(requestId) {
+            if (!confirm('确定要取消这个提现申请吗？金额将退回到收益余额。')) {
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                const response = await fetch(`/api/withdrawals/${requestId}/cancel`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('✅ ' + data.message);
+                    // 关闭对话框
+                    document.querySelectorAll('body > div').forEach(div => {
+                        if (div.style.position === 'fixed') {
+                            div.remove();
+                        }
+                    });
+                    // 刷新收益统计
+                    await loadEarningsStats();
+                } else {
+                    alert('❌ ' + (data.error || '取消失败'));
+                }
+            } catch (error) {
+                console.error('取消提现申请失败:', error);
+                alert('操作失败，请稍后重试');
+            }
         }
 
         // ========== 签到系统 ==========
