@@ -1092,6 +1092,25 @@
             <div class="content-section column-item">
                 <div class="section-header">
                     <h2 class="section-title"><i class="fas fa-gift"></i> 我的邀请码</h2>
+                    <button onclick="showInviteRules()" style="
+                        background: none;
+                        border: 1px solid #ccc;
+                        border-radius: 50%;
+                        width: 20px;
+                        height: 20px;
+                        cursor: pointer;
+                        color: #667eea;
+                        font-size: 14px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        transition: all 0.3s;
+                        padding: 0;
+                        line-height: 1;
+                        margin-left: 8px;
+                    " onmouseover="this.style.borderColor='#667eea'; this.style.background='#667eea'; this.style.color='white';" 
+                       onmouseout="this.style.borderColor='#ccc'; this.style.background='none'; this.style.color='#667eea';" 
+                       title="查看邀请码规则">?</button>
                 </div>
                 <div id="invitationSection">
                     <div class="loading">
@@ -1406,7 +1425,27 @@
                 <!-- 紧凑版签到框（完整功能） -->
                 <div class="compact-checkin-widget" id="compactCheckinWidget">
                     <div class="compact-checkin-header">
-                        <span><i class="fas fa-calendar-check"></i> 每日签到</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span><i class="fas fa-calendar-check"></i> 每日签到</span>
+                            <button onclick="showCheckinRules()" style="
+                                background: none;
+                                border: 1px solid #ccc;
+                                border-radius: 50%;
+                                width: 20px;
+                                height: 20px;
+                                cursor: pointer;
+                                color: #667eea;
+                                font-size: 14px;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                transition: all 0.3s;
+                                padding: 0;
+                                line-height: 1;
+                            " onmouseover="this.style.borderColor='#667eea'; this.style.background='#667eea'; this.style.color='white';" 
+                               onmouseout="this.style.borderColor='#ccc'; this.style.background='none'; this.style.color='#667eea';" 
+                               title="查看签到规则">?</button>
+                        </div>
                         <div style="display: flex; gap: 15px; font-size: 12px; font-weight: normal;">
                             <span><i class="fas fa-fire"></i> 连续 <strong id="compactConsecutiveDays">0</strong> 天</span>
                             <span><i class="fas fa-ticket-alt"></i> 补签 <strong id="compactMakeupChances">0</strong> 次</span>
@@ -1445,6 +1484,279 @@
                     </div>
                 </div>
             `;
+        }
+        
+        // 显示签到规则说明弹窗
+        function showCheckinRules() {
+            const overlay = document.createElement('div');
+            overlay.id = 'checkinRulesOverlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                animation: fadeIn 0.3s;
+            `;
+            
+            overlay.innerHTML = `
+                <div style="
+                    background: white;
+                    border-radius: 20px;
+                    padding: 30px;
+                    max-width: 600px;
+                    width: 90%;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                    animation: slideUp 0.3s;
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 style="margin: 0; color: #333;">
+                            <i class="fas fa-calendar-check" style="color: #667eea;"></i> 
+                            签到规则说明
+                        </h2>
+                        <button onclick="document.getElementById('checkinRulesOverlay').remove()" style="
+                            background: none;
+                            border: none;
+                            font-size: 24px;
+                            cursor: pointer;
+                            color: #999;
+                            padding: 0;
+                            width: 32px;
+                            height: 32px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            border-radius: 50%;
+                            transition: all 0.3s;
+                        " onmouseover="this.style.background='#f0f0f0'; this.style.color='#333';" 
+                           onmouseout="this.style.background='none'; this.style.color='#999';">
+                            ×
+                        </button>
+                    </div>
+                    
+                    <div style="color: #666; line-height: 1.8;">
+                        <!-- 签到奖励 -->
+                        <div style="margin-bottom: 25px;">
+                            <h3 style="color: #333; margin: 0 0 15px 0; font-size: 18px;">
+                                <i class="fas fa-coins" style="color: #ffd700;"></i> 
+                                签到奖励
+                            </h3>
+                            <div style="background: #f9f9f9; padding: 15px; border-radius: 10px; border-left: 4px solid #667eea;">
+                                <p style="margin: 0 0 10px 0;"><strong>基础奖励：</strong>每天签到可获得积分，连续签到越多奖励越高</p>
+                                <ul style="margin: 0; padding-left: 20px; font-size: 14px;">
+                                    <li>第 1-7 天：每天 +2 积分递增（10, 12, 14, 16, 18, 20, 22）</li>
+                                    <li>第 8-30 天：每 7 天 +5 积分（22, 27, 32, 37）</li>
+                                    <li>第 30 天+：每 30 天 +10 积分（37, 47, 57...）</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <!-- 里程碑奖励 -->
+                        <div style="margin-bottom: 25px;">
+                            <h3 style="color: #333; margin: 0 0 15px 0; font-size: 18px;">
+                                <i class="fas fa-trophy" style="color: #ff9800;"></i> 
+                                里程碑奖励
+                            </h3>
+                            <div style="background: #fff8e1; padding: 15px; border-radius: 10px; border-left: 4px solid #ff9800;">
+                                <p style="margin: 0 0 10px 0;"><strong>额外奖励：</strong>达成特定连续天数可获得大量积分</p>
+                                <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                                    <tr style="background: rgba(255, 152, 0, 0.1);">
+                                        <th style="padding: 10px; text-align: left; border-radius: 5px;">连续天数</th>
+                                        <th style="padding: 10px; text-align: left; border-radius: 5px;">奖励积分</th>
+                                    </tr>
+                                    <tr><td style="padding: 10px; border-bottom: 1px solid rgba(255, 152, 0, 0.2);">7 天</td><td style="padding: 10px; border-bottom: 1px solid rgba(255, 152, 0, 0.2); color: #667eea; font-weight: 600;">+50</td></tr>
+                                    <tr><td style="padding: 10px; border-bottom: 1px solid rgba(255, 152, 0, 0.2);">30 天</td><td style="padding: 10px; border-bottom: 1px solid rgba(255, 152, 0, 0.2); color: #667eea; font-weight: 600;">+200</td></tr>
+                                    <tr><td style="padding: 10px; border-bottom: 1px solid rgba(255, 152, 0, 0.2);">100 天</td><td style="padding: 10px; border-bottom: 1px solid rgba(255, 152, 0, 0.2); color: #667eea; font-weight: 600;">+1000</td></tr>
+                                    <tr><td style="padding: 10px; border-radius: 5px;">365 天</td><td style="padding: 10px; border-radius: 5px; color: #667eea; font-weight: 600;">+5000</td></tr>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- 补签规则 -->
+                        <div style="margin-bottom: 25px;">
+                            <h3 style="color: #333; margin: 0 0 15px 0; font-size: 18px;">
+                                <i class="fas fa-undo" style="color: #4caf50;"></i> 
+                                补签规则
+                            </h3>
+                            <div style="background: #e8f5e9; padding: 15px; border-radius: 10px; border-left: 4px solid #4caf50;">
+                                <p style="margin: 0 0 10px 0;"><strong>补签机会：</strong>每连续签到 7 天可获得 1 次补签机会</p>
+                                <ul style="margin: 0; padding-left: 20px; font-size: 14px;">
+                                    <li>可补签最近 7 天内的日期（不含今天）</li>
+                                    <li>每个日期只能补签一次</li>
+                                    <li>补签可恢复连续天数，可能触发里程碑奖励</li>
+                                    <li style="color: #f44336; margin-top: 8px;"><strong>智能计算：</strong>系统会自动从今天倒推检查，确保连续天数正确</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <!-- 温馨提示 -->
+                        <div style="background: #fff3e0; padding: 15px; border-radius: 10px; border-left: 4px solid #ff9800;">
+                            <p style="margin: 0; color: #666; font-size: 14px;">
+                                <i class="fas fa-lightbulb" style="color: #ff9800; margin-right: 8px;"></i>
+                                <strong>温馨提示：</strong>签到数据永久保存，即使中断也可以通过补签恢复连续记录。建议每天定闹钟签到哦！
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            overlay.onclick = (e) => {
+                if (e.target === overlay) {
+                    overlay.remove();
+                }
+            };
+            
+            document.body.appendChild(overlay);
+        }
+        
+        // 显示邀请码规则说明弹窗
+        function showInviteRules() {
+            const overlay = document.createElement('div');
+            overlay.id = 'inviteRulesOverlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                animation: fadeIn 0.3s;
+            `;
+            
+            overlay.innerHTML = `
+                <div style="
+                    background: white;
+                    border-radius: 20px;
+                    padding: 30px;
+                    max-width: 600px;
+                    width: 90%;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                    animation: slideUp 0.3s;
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 style="margin: 0; color: #333;">
+                            <i class="fas fa-gift" style="color: #667eea;"></i> 
+                            邀请码规则说明
+                        </h2>
+                        <button onclick="document.getElementById('inviteRulesOverlay').remove()" style="
+                            background: none;
+                            border: none;
+                            font-size: 24px;
+                            cursor: pointer;
+                            color: #999;
+                            padding: 0;
+                            width: 32px;
+                            height: 32px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            border-radius: 50%;
+                            transition: all 0.3s;
+                        " onmouseover="this.style.background='#f0f0f0'; this.style.color='#333';" 
+                           onmouseout="this.style.background='none'; this.style.color='#999';">
+                            ×
+                        </button>
+                    </div>
+                    
+                    <div style="color: #666; line-height: 1.8;">
+                        <!-- 获取条件 -->
+                        <div style="margin-bottom: 25px;">
+                            <h3 style="color: #333; margin: 0 0 15px 0; font-size: 18px;">
+                                <i class="fas fa-unlock-alt" style="color: #4caf50;"></i> 
+                                获取条件
+                            </h3>
+                            <div style="background: #e8f5e9; padding: 15px; border-radius: 10px; border-left: 4px solid #4caf50;">
+                                <p style="margin: 0 0 10px 0;"><strong>满足任一条件即可生成邀请码：</strong></p>
+                                <ul style="margin: 0; padding-left: 20px; font-size: 14px;">
+                                    <li><strong>码字奖励：</strong>每码字 1 万字可生成 1 个邀请码</li>
+                                    <li><strong>签到奖励：</strong>每连续签到 7 天可生成 1 个邀请码</li>
+                                    <li style="color: #ff9800; margin-top: 8px;"><strong>数量限制：</strong>每个条件可生成多个，但已有未使用完的邀请码时不能重复生成</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <!-- 邀请码特性 -->
+                        <div style="margin-bottom: 25px;">
+                            <h3 style="color: #333; margin: 0 0 15px 0; font-size: 18px;">
+                                <i class="fas fa-ticket-alt" style="color: #2196f3;"></i> 
+                                邀请码特性
+                            </h3>
+                            <div style="background: #e3f2fd; padding: 15px; border-radius: 10px; border-left: 4px solid #2196f3;">
+                                <ul style="margin: 0; padding-left: 20px; font-size: 14px;">
+                                    <li><strong>一次性使用：</strong>每个邀请码只能被使用 1 次</li>
+                                    <li><strong>永久有效：</strong>邀请码没有过期时间</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <!-- 奖励机制 -->
+                        <div style="margin-bottom: 25px;">
+                            <h3 style="color: #333; margin: 0 0 15px 0; font-size: 18px;">
+                                <i class="fas fa-coins" style="color: #ffd700;"></i> 
+                                奖励机制
+                            </h3>
+                            <div style="background: #fff8e1; padding: 15px; border-radius: 10px; border-left: 4px solid #ffd700;">
+                                <p style="margin: 0 0 10px 0;"><strong>双方受益：</strong>邀请人和被邀请人都能获得积分奖励</p>
+                                <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                                    <tr style="background: rgba(255, 215, 0, 0.1);">
+                                        <th style="padding: 10px; text-align: left; border-radius: 5px;">角色</th>
+                                        <th style="padding: 10px; text-align: left; border-radius: 5px;">奖励积分</th>
+                                        <th style="padding: 10px; text-align: left; border-radius: 5px;">说明</th>
+                                    </tr>
+                                    <tr><td style="padding: 10px; border-bottom: 1px solid rgba(255, 215, 0, 0.2);">被邀请人</td><td style="padding: 10px; border-bottom: 1px solid rgba(255, 215, 0, 0.2); color: #667eea; font-weight: 600;">+50</td><td style="padding: 10px; border-bottom: 1px solid rgba(255, 215, 0, 0.2);">注册时输入邀请码</td></tr>
+                                    <tr><td style="padding: 10px; border-radius: 5px;">邀请人</td><td style="padding: 10px; border-radius: 5px; color: #667eea; font-weight: 600;">+25</td><td style="padding: 10px; border-radius: 5px;">被邀请人注册后（50%）</td></tr>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- 使用方法 -->
+                        <div style="margin-bottom: 25px;">
+                            <h3 style="color: #333; margin: 0 0 15px 0; font-size: 18px;">
+                                <i class="fas fa-share-alt" style="color: #9c27b0;"></i> 
+                                使用方法
+                            </h3>
+                            <div style="background: #f3e5f5; padding: 15px; border-radius: 10px; border-left: 4px solid #9c27b0;">
+                                <ol style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 2;">
+                                    <li>在个人中心生成邀请码</li>
+                                    <li>复制邀请码分享给朋友</li>
+                                    <li>朋友注册时输入邀请码</li>
+                                    <li>双方获得积分奖励</li>
+                                    <li>可继续生成新的邀请码</li>
+                                </ol>
+                            </div>
+                        </div>
+                        
+                        <!-- 温馨提示 -->
+                        <div style="background: #fff3e0; padding: 15px; border-radius: 10px; border-left: 4px solid #ff9800;">
+                            <p style="margin: 0; color: #666; font-size: 14px;">
+                                <i class="fas fa-lightbulb" style="color: #ff9800; margin-right: 8px;"></i>
+                                <strong>温馨提示：</strong>邀请码是邀请好友的最佳方式，不仅能让好友获得额外积分，你也能获得奖励哦！多码字、多签到，获取更多邀请码吧！
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            overlay.onclick = (e) => {
+                if (e.target === overlay) {
+                    overlay.remove();
+                }
+            };
+            
+            document.body.appendChild(overlay);
         }
         
         // 显示里程碑说明弹窗

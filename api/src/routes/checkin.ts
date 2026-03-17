@@ -250,7 +250,7 @@ router.post('/makeup', authenticateToken, async (req: any, res) => {
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays > 7) {
-      return res.status(400).json({ error: '只能补签最近7天内的日期' });
+      return res.status(400).json({ error: '只能补签最近 7 天内的日期' });
     }
 
     const user = await prisma.users.findUnique({
@@ -287,20 +287,50 @@ router.post('/makeup', authenticateToken, async (req: any, res) => {
       return res.status(400).json({ error: '该日期已经签到过了' });
     }
 
-    // 计算补签时的连续天数
-    let consecutiveDaysAtMakeup = 1;
-    if (user.last_checkin_date) {
-      const lastCheckin = new Date(user.last_checkin_date);
-      lastCheckin.setHours(0, 0, 0, 0);
-      const makeupDiffTime = makeupDate.getTime() - lastCheckin.getTime();
-      const makeupDiffDays = Math.floor(makeupDiffTime / (1000 * 60 * 60 * 24));
+    // 【核心修复】重新计算补签后的连续天数
+    // 从补签日期开始，倒推检查到今天的所有日期是否都已签到
+    const checkinRecords = await prisma.checkin_records.findMany({
+      where: {
+        user_id: userId,
+        checkin_date: {
+          gte: makeupDate,
+          lte: today,
+        }
+      },
+      select: {
+        checkin_date: true,
+      }
+    });
+
+    // 构建已签到日期集合
+    const checkinDates = new Set(checkinRecords.map(r => {
+      const d = new Date(r.checkin_date);
+      return d.toISOString().split('T')[0];
+    }));
+
+    // 添加本次补签日期
+    const makeupDateStr = makeupDate.toISOString().split('T')[0];
+    checkinDates.add(makeupDateStr);
+
+    // 从今天开始倒推，计算连续天数
+    let newConsecutiveDays = 0;
+    let currentDate = new Date(today);
+    
+    while (true) {
+      const dateStr = currentDate.toISOString().split('T')[0];
       
-      if (makeupDiffDays === 1) {
-        consecutiveDaysAtMakeup = user.consecutive_days + 1;
+      if (checkinDates.has(dateStr)) {
+        newConsecutiveDays++;
+        // 倒推一天
+        currentDate.setDate(currentDate.getDate() - 1);
+      } else {
+        // 遇到未签到的日期，中断
+        break;
       }
     }
 
-    const pointsEarned = calculateCheckinReward(consecutiveDaysAtMakeup);
+    // 计算补签的奖励积分（基于补签时的连续天数）
+    const pointsEarned = calculateCheckinReward(newConsecutiveDays);
 
     // 使用事务处理补签
     const result = await prisma.$transaction(async (tx) => {
@@ -309,7 +339,7 @@ router.post('/makeup', authenticateToken, async (req: any, res) => {
         data: {
           user_id: userId,
           checkin_date: makeupDate,
-          consecutive_days: consecutiveDaysAtMakeup,
+          consecutive_days: newConsecutiveDays,
           points_earned: pointsEarned,
           is_makeup: true,
         }
@@ -320,6 +350,8 @@ router.post('/makeup', authenticateToken, async (req: any, res) => {
         where: { id: userId },
         data: {
           makeup_chances: user.makeup_chances - 1,
+          consecutive_days: newConsecutiveDays, // ✅ 更新连续天数
+          last_checkin_date: today, // ✅ 更新最后签到日期
           points: user.points + pointsEarned,
         }
       });
@@ -334,16 +366,66 @@ router.post('/makeup', authenticateToken, async (req: any, res) => {
         }
       });
 
+      // 【新增】检查里程碑奖励（补签也可能触发）
+      let bonusPoints = 0;
+      let milestoneMessage = '';
+      
+      if (newConsecutiveDays === 7) {
+        bonusPoints = 50;
+        milestoneMessage = '连续签到 7 天';
+      } else if (newConsecutiveDays === 30) {
+        bonusPoints = 200;
+        milestoneMessage = '连续签到 30 天';
+      } else if (newConsecutiveDays === 100) {
+        bonusPoints = 1000;
+        milestoneMessage = '连续签到 100 天';
+      } else if (newConsecutiveDays === 365) {
+        bonusPoints = 5000;
+        milestoneMessage = '连续签到 365 天';
+      }
+
+      if (bonusPoints > 0) {
+        await tx.users.update({
+          where: { id: userId },
+          data: {
+            points: user.points + pointsEarned + bonusPoints,
+          }
+        });
+
+        await tx.point_transactions.create({
+          data: {
+            user_id: userId,
+            amount: bonusPoints,
+            type: 'checkin_milestone',
+            description: `${milestoneMessage}里程碑奖励（补签触发）`,
+          }
+        });
+
+        // 发送通知
+        await tx.notifications.create({
+          data: {
+            user_id: userId,
+            type: 'checkin_milestone',
+            title: '🎉 签到里程碑达成！',
+            content: `恭喜你通过补签达成${milestoneMessage}！获得 ${bonusPoints} 积分奖励！`,
+            link: '/profile',
+          }
+        });
+      }
+
       return {
         checkinRecord,
         pointsEarned,
+        bonusPoints,
+        milestoneMessage,
         remainingMakeupChances: user.makeup_chances - 1,
+        newConsecutiveDays,
       };
     });
 
     res.json({
       success: true,
-      message: '补签成功！',
+      message: '补签成功！' + (result.bonusPoints > 0 ? ` 🎉 达成${result.milestoneMessage}里程碑！` : ''),
       data: result,
     });
 
@@ -492,4 +574,3 @@ router.get('/leaderboard', async (req, res) => {
 });
 
 export default router;
-
