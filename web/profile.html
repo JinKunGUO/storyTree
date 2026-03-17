@@ -109,6 +109,50 @@
         .profile-actions {
             display: flex;
             gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        /* 个人信息栏内的统计行 */
+        .profile-stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+        }
+        
+        .profile-stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .profile-stat-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+        
+        .profile-stat-icon {
+            font-size: 24px;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+        
+        .profile-stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        
+        .profile-stat-label {
+            color: #999;
+            font-size: 12px;
+            text-align: center;
         }
 
         .btn {
@@ -994,30 +1038,6 @@
             </div>
         </div>
 
-        <!-- 统计数据 -->
-        <div class="stats-grid" id="statsGrid">
-            <div class="stat-card">
-                <div class="stat-icon"><i class="fas fa-book"></i></div>
-                <div class="stat-value" id="storyCount">-</div>
-                <div class="stat-label">创作故事</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon"><i class="fas fa-file-alt"></i></div>
-                <div class="stat-value" id="nodeCount">-</div>
-                <div class="stat-label">章节数量</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon"><i class="fas fa-heart"></i></div>
-                <div class="stat-value" id="likeCount">-</div>
-                <div class="stat-label">获得点赞</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon"><i class="fas fa-eye"></i></div>
-                <div class="stat-value" id="viewCount">-</div>
-                <div class="stat-label">总浏览量</div>
-            </div>
-        </div>
-
         <!-- 签到日历（隐藏） -->
         <div class="content-section" style="display: none;">
             <div class="section-header">
@@ -1437,7 +1457,7 @@
                 `;
             }
             
-            profileHeader.innerHTML = `
+profileHeader.innerHTML = `
                 <div class="profile-main-content">
                     <div class="profile-avatar">
                         <i class="fas fa-user"></i>
@@ -1452,9 +1472,9 @@
                         </div>
                         <div class="profile-points">
                             <i class="fas fa-star"></i>
-                            积分: ${points.toLocaleString()}
-                            <span style="margin-left: 15px;"><i class="fas fa-pen-fancy"></i> 码字: ${wordCount.toLocaleString()}字</span>
-                            <span style="margin-left: 15px;"><i class="fas fa-calendar-check"></i> 补签: ${makeupChances}次</span>
+                            积分：${points.toLocaleString()}
+                            <span style="margin-left: 15px;"><i class="fas fa-pen-fancy"></i> 码字：${wordCount.toLocaleString()}字</span>
+                            <span style="margin-left: 15px;"><i class="fas fa-calendar-check"></i> 补签：${makeupChances}次</span>
                         </div>
                         ${badgesHTML}${nextMilestoneHTML}
                         <div class="profile-bio">
@@ -1464,6 +1484,30 @@
                             <a href="/create" class="btn btn-primary">
                                 <i class="fas fa-pen"></i> 创作新故事
                             </a>
+                        </div>
+                        
+                        <!-- 统计数据移到个人信息栏内 -->
+                        <div class="profile-stats-row">
+                            <div class="profile-stat-item">
+                                <div class="profile-stat-icon"><i class="fas fa-book"></i></div>
+                                <div class="profile-stat-value" id="storyCount">-</div>
+                                <div class="profile-stat-label">创作故事</div>
+                            </div>
+                            <div class="profile-stat-item">
+                                <div class="profile-stat-icon"><i class="fas fa-file-alt"></i></div>
+                                <div class="profile-stat-value" id="nodeCount">-</div>
+                                <div class="profile-stat-label">章节数量</div>
+                            </div>
+                            <div class="profile-stat-item">
+                                <div class="profile-stat-icon"><i class="fas fa-heart"></i></div>
+                                <div class="profile-stat-value" id="likeCount">-</div>
+                                <div class="profile-stat-label">获得点赞</div>
+                            </div>
+                            <div class="profile-stat-item">
+                                <div class="profile-stat-icon"><i class="fas fa-eye"></i></div>
+                                <div class="profile-stat-value" id="viewCount">-</div>
+                                <div class="profile-stat-label">总浏览量</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1501,7 +1545,7 @@
                     <button id="compactCheckinBtn" class="compact-checkin-btn" onclick="dailyCheckin()">
                         <i class="fas fa-calendar-check"></i>
                         <span id="compactCheckinText">今日签到</span>
-                        <small id="compactCheckinReward">+10积分</small>
+                        <small id="compactCheckinReward">+10 积分</small>
                     </button>
                     
                     <div class="compact-checkin-message" id="compactCheckinMessage"></div>
@@ -1511,7 +1555,7 @@
                         <button class="compact-calendar-nav-btn" onclick="changeMonth(-1)">
                             <i class="fas fa-chevron-left"></i>
                         </button>
-                        <div class="compact-calendar-month" id="compactCalendarMonth">2026年3月</div>
+                        <div class="compact-calendar-month" id="compactCalendarMonth">2026 年 3 月</div>
                         <button class="compact-calendar-nav-btn" onclick="changeMonth(1)">
                             <i class="fas fa-chevron-right"></i>
                         </button>
@@ -1526,7 +1570,7 @@
                         <div class="compact-calendar-day-header">四</div>
                         <div class="compact-calendar-day-header">五</div>
                         <div class="compact-calendar-day-header">六</div>
-                        <!-- 日期将通过JavaScript动态生成 -->
+                        <!-- 日期将通过 JavaScript 动态生成 -->
                     </div>
                 </div>
             `;
