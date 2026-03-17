@@ -1675,6 +1675,56 @@
         </div>
     </div>
 
+    <!-- 付费设置模态框 -->
+    <div class="edit-modal" id="setPaidModal">
+        <div class="edit-modal-content">
+            <div class="edit-modal-header">
+                <h2>
+                    <i class="fas fa-lock"></i>
+                    付费章节设置
+                </h2>
+                <button class="close-btn" id="closePaidModal">×</button>
+            </div>
+            <div class="edit-modal-body">
+                <div class="form-group">
+                    <label for="paidPrice">解锁价格（积分）*</label>
+                    <input type="number" id="paidPrice" min="1" max="1000" placeholder="输入解锁价格" value="50">
+                    <div class="form-hint">建议范围：10-100积分</div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="memberFree" style="width: auto; margin-right: 8px;">
+                        会员免费阅读
+                    </label>
+                    <div class="form-hint">勾选后，会员用户可免费阅读此章节</div>
+                </div>
+
+                <div class="form-hint" style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 20px;">
+                    <i class="fas fa-info-circle"></i> 
+                    <strong>提示：</strong>
+                    <ul style="margin: 10px 0 0 20px; line-height: 1.8;">
+                        <li>设置为付费后，读者需要支付积分才能阅读</li>
+                        <li>您将获得100%的收益（积分）</li>
+                        <li>您自己查看章节无需支付</li>
+                        <li>已解锁的读者无需重复支付</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="edit-modal-footer">
+                <button class="btn-cancel" id="cancelPaid">取消</button>
+                <button class="btn-save" id="confirmSetPaid">
+                    <i class="fas fa-check"></i>
+                    确认设置
+                </button>
+                <button class="btn-save" id="confirmCancelPaid" style="background: #f44336; display: none;">
+                    <i class="fas fa-unlock"></i>
+                    取消付费
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="auth.js"></script>
     <script src="share.js"></script>
     <script>
@@ -2796,12 +2846,46 @@
                             <span><i class="fas fa-clock"></i> ${new Date(chapter.createdAt || chapter.created_at).toLocaleDateString('zh-CN')}</span>
                         </div>
                     </div>
-                    <div class="chapter-actions">
+                    <div class="chapter-actions" style="display: flex; align-items: center; gap: 10px;">
+                        ${chapter.isPaid ? `
+                            <div class="chapter-paid-badge" style="
+                                padding: 5px 12px;
+                                background: linear-gradient(135deg, #f39c12, #e67e22);
+                                color: white;
+                                border-radius: 15px;
+                                font-size: 12px;
+                                font-weight: 600;
+                                white-space: nowrap;
+                            ">
+                                <i class="fas fa-lock"></i> ${chapter.paidPrice || 0}积分
+                            </div>
+                        ` : ''}
                         <div class="chapter-status ${chapter.isPublished || chapter.is_published ? 'status-published' : 'status-draft'}">
                             ${chapter.isPublished || chapter.is_published ? '已发布' : '草稿'}
                         </div>
                         ${canDelete ? `
-                            <button class="chapter-delete-btn" data-chapter-id="${chapter.id}" data-chapter-title="${chapter.title}" onclick="event.stopPropagation(); deleteChapter(${chapter.id}, '${chapter.title.replace(/'/g, "\\'")}')">
+                            <button class="chapter-action-btn" onclick="event.stopPropagation(); setPaidChapter(${chapter.id}, '${chapter.title.replace(/'/g, "\\'")}', ${chapter.isPaid || false}, ${chapter.paidPrice || 0})" title="付费设置" style="
+                                padding: 8px 12px;
+                                background: ${chapter.isPaid ? '#f39c12' : '#667eea'};
+                                color: white;
+                                border: none;
+                                border-radius: 8px;
+                                cursor: pointer;
+                                transition: all 0.3s;
+                                font-size: 14px;
+                            ">
+                                <i class="fas fa-${chapter.isPaid ? 'unlock' : 'lock'}"></i>
+                            </button>
+                            <button class="chapter-action-btn" onclick="event.stopPropagation(); deleteChapter(${chapter.id}, '${chapter.title.replace(/'/g, "\\'")}')}" title="删除章节" style="
+                                padding: 8px 12px;
+                                background: #f44336;
+                                color: white;
+                                border: none;
+                                border-radius: 8px;
+                                cursor: pointer;
+                                transition: all 0.3s;
+                                font-size: 14px;
+                            ">
                                 <i class="fas fa-trash-alt"></i>
                             </button>
                         ` : ''}
@@ -2813,8 +2897,8 @@
             // 添加点击事件
             container.querySelectorAll('.chapter-item').forEach(item => {
                 item.addEventListener('click', function(e) {
-                    // 如果点击的是删除按钮，不跳转
-                    if (e.target.closest('.chapter-delete-btn')) {
+                    // 如果点击的是操作按钮，不跳转
+                    if (e.target.closest('.chapter-action-btn') || e.target.closest('button')) {
                         return;
                     }
                     const chapterId = this.dataset.chapterId;
@@ -3606,6 +3690,172 @@
                 showError(error.message || '删除章节失败');
             }
         };
+
+        // ============================================
+        // 付费章节管理功能
+        // ============================================
+
+        let currentPaidChapterId = null;
+
+        // 打开付费设置模态框
+        window.setPaidChapter = function(chapterId, chapterTitle, isPaid, currentPrice) {
+            console.log('打开付费设置:', { chapterId, chapterTitle, isPaid, currentPrice });
+            
+            currentPaidChapterId = chapterId;
+            
+            // 设置模态框标题和内容
+            const modal = document.getElementById('setPaidModal');
+            const priceInput = document.getElementById('paidPrice');
+            const memberFreeCheckbox = document.getElementById('memberFree');
+            const confirmSetBtn = document.getElementById('confirmSetPaid');
+            const confirmCancelBtn = document.getElementById('confirmCancelPaid');
+            
+            if (isPaid) {
+                // 已是付费章节，显示取消付费按钮
+                priceInput.value = currentPrice || 50;
+                confirmSetBtn.style.display = 'none';
+                confirmCancelBtn.style.display = 'inline-flex';
+            } else {
+                // 未设置付费，显示设置按钮
+                priceInput.value = 50;
+                memberFreeCheckbox.checked = false;
+                confirmSetBtn.style.display = 'inline-flex';
+                confirmCancelBtn.style.display = 'none';
+            }
+            
+            modal.classList.add('active');
+        };
+
+        // 初始化付费设置模态框事件
+        document.addEventListener('DOMContentLoaded', function() {
+            // 关闭按钮
+            document.getElementById('closePaidModal')?.addEventListener('click', closePaidModal);
+            document.getElementById('cancelPaid')?.addEventListener('click', closePaidModal);
+            
+            // 点击背景关闭
+            document.getElementById('setPaidModal')?.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closePaidModal();
+                }
+            });
+            
+            // 确认设置付费
+            document.getElementById('confirmSetPaid')?.addEventListener('click', confirmSetPaid);
+            
+            // 确认取消付费
+            document.getElementById('confirmCancelPaid')?.addEventListener('click', confirmCancelPaid);
+        });
+
+        // 关闭付费设置模态框
+        function closePaidModal() {
+            document.getElementById('setPaidModal').classList.remove('active');
+            currentPaidChapterId = null;
+        }
+
+        // 确认设置付费
+        async function confirmSetPaid() {
+            const price = parseInt(document.getElementById('paidPrice').value);
+            const memberFree = document.getElementById('memberFree').checked;
+            
+            if (!price || price < 1 || price > 1000) {
+                showError('请输入有效的价格（1-1000积分）');
+                return;
+            }
+            
+            if (!currentPaidChapterId) {
+                showError('章节ID不存在');
+                return;
+            }
+            
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                if (!token) {
+                    throw new Error('请先登录');
+                }
+                
+                showMessage('正在设置...', 'info');
+                
+                const response = await fetch(`/api/paid-nodes/${currentPaidChapterId}/set-price`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        unlockPrice: price,
+                        isMemberFree: memberFree
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || '设置失败');
+                }
+                
+                const data = await response.json();
+                console.log('设置成功:', data);
+                
+                closePaidModal();
+                showSuccess('付费设置成功！即将刷新页面...');
+                
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+                
+            } catch (error) {
+                console.error('设置付费章节错误:', error);
+                showError(error.message || '设置失败');
+            }
+        }
+
+        // 确认取消付费
+        async function confirmCancelPaid() {
+            if (!confirm('确定要取消付费设置吗？\n\n取消后，该章节将变为免费章节。')) {
+                return;
+            }
+            
+            if (!currentPaidChapterId) {
+                showError('章节ID不存在');
+                return;
+            }
+            
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                if (!token) {
+                    throw new Error('请先登录');
+                }
+                
+                showMessage('正在取消...', 'info');
+                
+                const response = await fetch(`/api/paid-nodes/${currentPaidChapterId}/cancel-price`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || '取消失败');
+                }
+                
+                const data = await response.json();
+                console.log('取消成功:', data);
+                
+                closePaidModal();
+                showSuccess('已取消付费设置！即将刷新页面...');
+                
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+                
+            } catch (error) {
+                console.error('取消付费设置错误:', error);
+                showError(error.message || '取消失败');
+            }
+        }
 
         // ============================================
         // 分支树和统计功能
