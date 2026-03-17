@@ -17,7 +17,7 @@ const router = Router();
 
 // 用户注册
 router.post('/register', async (req, res) => {
-  const { username, email, password } = req.body;
+  const { username, email, password, invitationCode } = req.body;
 
   // 验证输入
   if (!username || !email || !password) {
@@ -61,6 +61,36 @@ router.post('/register', async (req, res) => {
       }
     }
 
+    // 验证邀请码（如果提供）
+    let inviteCodeData = null;
+    let inviterUser = null;
+    if (invitationCode) {
+      inviteCodeData = await prisma.invitation_codes.findUnique({
+        where: { code: invitationCode.toUpperCase() }
+      });
+
+      if (!inviteCodeData) {
+        return res.status(400).json({ error: '邀请码不存在' });
+      }
+
+      if (!inviteCodeData.is_active) {
+        return res.status(400).json({ error: '邀请码已被禁用' });
+      }
+
+      if (inviteCodeData.expires_at && new Date(inviteCodeData.expires_at) < new Date()) {
+        return res.status(400).json({ error: '邀请码已过期' });
+      }
+
+      if (inviteCodeData.max_uses !== -1 && inviteCodeData.used_count >= inviteCodeData.max_uses) {
+        return res.status(400).json({ error: '邀请码已达到最大使用次数' });
+      }
+
+      // 获取邀请人信息
+      inviterUser = await prisma.users.findUnique({
+        where: { id: inviteCodeData.created_by_id }
+      });
+    }
+
     // 加密密码
     const hashedPassword = await hashPassword(password);
 
@@ -68,25 +98,92 @@ router.post('/register', async (req, res) => {
     const verificationToken = generateToken();
     const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24小时
 
-    // 创建用户
-    const user = await prisma.users.create({
-      data: {
-        username,
-        email,
-        password: hashedPassword,
-        emailVerificationToken: verificationToken,
-        emailVerificationExpires: verificationExpires,
-        updatedAt: new Date(),
-      },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        avatar: true,
-        bio: true,
-        emailVerified: true,
-        createdAt: true,
+    // 使用事务创建用户并处理邀请奖励
+    const result = await prisma.$transaction(async (tx) => {
+      // 创建用户
+      const user = await tx.users.create({
+        data: {
+          username,
+          email,
+          password: hashedPassword,
+          emailVerificationToken: verificationToken,
+          emailVerificationExpires: verificationExpires,
+          invited_by_code: invitationCode?.toUpperCase() || null,
+          points: inviteCodeData ? inviteCodeData.bonus_points : 0, // 新用户获得奖励积分
+          updatedAt: new Date(),
+        },
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          avatar: true,
+          bio: true,
+          emailVerified: true,
+          points: true,
+          createdAt: true,
+        }
+      });
+
+      // 如果使用了邀请码，处理邀请奖励
+      if (inviteCodeData && inviterUser) {
+        // 更新邀请码使用次数
+        await tx.invitation_codes.update({
+          where: { code: inviteCodeData.code },
+          data: { used_count: { increment: 1 } }
+        });
+
+        // 给邀请人奖励积分（新用户奖励的50%）
+        const inviterReward = Math.floor(inviteCodeData.bonus_points * 0.5);
+        await tx.users.update({
+          where: { id: inviterUser.id },
+          data: { points: { increment: inviterReward } }
+        });
+
+        // 记录邀请关系
+        await tx.invitation_records.create({
+          data: {
+            inviter_id: inviterUser.id,
+            invitee_id: user.id,
+            invitation_code: inviteCodeData.code,
+            bonus_points: inviteCodeData.bonus_points
+          }
+        });
+
+        // 给邀请人发送通知
+        await tx.notifications.create({
+          data: {
+            user_id: inviterUser.id,
+            type: 'invitation_success',
+            title: '邀请成功',
+            content: `用户 ${username} 通过你的邀请码注册成功，你获得了 ${inviterReward} 积分奖励！`,
+            link: '/profile'
+          }
+        });
+
+        // 记录邀请人的积分交易
+        await tx.point_transactions.create({
+          data: {
+            user_id: inviterUser.id,
+            amount: inviterReward,
+            type: 'invitation_reward',
+            description: `邀请用户 ${username} 注册`,
+            reference_id: user.id
+          }
+        });
+
+        // 记录新用户的积分交易
+        await tx.point_transactions.create({
+          data: {
+            user_id: user.id,
+            amount: inviteCodeData.bonus_points,
+            type: 'registration_bonus',
+            description: `使用邀请码 ${inviteCodeData.code} 注册`,
+            reference_id: inviterUser.id
+          }
+        });
       }
+
+      return user;
     });
 
     // 发送验证邮件（异步，不阻塞响应）
@@ -95,9 +192,11 @@ router.post('/register', async (req, res) => {
     });
 
     res.status(201).json({
-      message: '注册成功，请查收验证邮件',
-      user,
-      token: generateJWT(user.id, user.username)
+      message: inviteCodeData 
+        ? `注册成功！你获得了 ${inviteCodeData.bonus_points} 积分奖励，请查收验证邮件`
+        : '注册成功，请查收验证邮件',
+      user: result,
+      token: generateJWT(result.id, result.username)
     });
   } catch (error) {
     console.error('注册错误:', error);

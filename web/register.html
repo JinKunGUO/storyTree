@@ -71,6 +71,26 @@
                     <span class="error-message" id="confirmPasswordError"></span>
                 </div>
 
+                <div class="form-group">
+                    <label for="invitationCode">
+                        邀请码（可选）
+                        <span style="color: #999; font-size: 12px; font-weight: normal;">有邀请码可获得积分奖励</span>
+                    </label>
+                    <div class="input-group">
+                        <i class="fas fa-ticket-alt"></i>
+                        <input type="text" id="invitationCode" name="invitationCode" 
+                               placeholder="请输入邀请码" maxlength="8" 
+                               style="text-transform: uppercase;">
+                        <button type="button" class="verify-code-btn" onclick="verifyInviteCode()" 
+                                style="position: absolute; right: 10px; background: none; border: none; 
+                                       color: #667eea; cursor: pointer; font-size: 14px; padding: 5px 10px;">
+                            验证
+                        </button>
+                    </div>
+                    <span class="success-message" id="inviteCodeSuccess" style="display: none; color: #4caf50; font-size: 13px; margin-top: 5px;"></span>
+                    <span class="error-message" id="inviteCodeError"></span>
+                </div>
+
                 <button type="submit" class="auth-button" id="registerBtn">
                     <span class="button-text">立即注册</span>
                     <span class="button-loading" style="display: none;">

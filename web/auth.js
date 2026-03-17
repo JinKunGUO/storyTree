@@ -1,5 +1,45 @@
 // 认证功能 JavaScript
 
+// 邀请码验证
+let inviteCodeVerified = false;
+let verifiedInviteCode = null;
+
+async function verifyInviteCode() {
+    const input = document.getElementById('invitationCode');
+    const code = input.value.trim().toUpperCase();
+    const successMsg = document.getElementById('inviteCodeSuccess');
+    const errorMsg = document.getElementById('inviteCodeError');
+    
+    // 清除之前的消息
+    successMsg.style.display = 'none';
+    errorMsg.textContent = '';
+    
+    if (!code) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/invitations/validate/${code}`);
+        const data = await response.json();
+        
+        if (response.ok && data.valid) {
+            inviteCodeVerified = true;
+            verifiedInviteCode = code;
+            successMsg.textContent = `✓ 邀请码有效！注册成功后你将获得 ${data.bonusPoints} 积分奖励`;
+            successMsg.style.display = 'block';
+            input.style.borderColor = '#4caf50';
+        } else {
+            inviteCodeVerified = false;
+            verifiedInviteCode = null;
+            errorMsg.textContent = data.error || '邀请码无效';
+            input.style.borderColor = '#e74c3c';
+        }
+    } catch (error) {
+        console.error('验证邀请码失败:', error);
+        errorMsg.textContent = '验证失败，请稍后重试';
+    }
+}
+
 // 工具函数
 function togglePassword(inputId) {
     const input = document.getElementById(inputId);
@@ -81,6 +121,7 @@ function handleRegister() {
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirmPassword').value;
+        const invitationCode = document.getElementById('invitationCode')?.value.trim().toUpperCase() || null;
         
         let isValid = true;
         
@@ -128,7 +169,7 @@ function handleRegister() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ username, email, password })
+                body: JSON.stringify({ username, email, password, invitationCode })
             });
             
             const data = await response.json();
