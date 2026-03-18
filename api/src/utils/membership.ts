@@ -235,10 +235,10 @@ export async function getMembershipQuota(userId: number): Promise<{
       };
     }
 
-    // 计算会员配额（Lv4 基础配额 * 会员倍数）
+    // 计算会员配额（Lv4 基础配额 × 会员倍数）
     baseQuotas = {
       continuation: Math.floor(LEVEL_CONFIG[4].quotas.continuation * multiplier),
-      polish: LEVEL_CONFIG[4].quotas.polish, // 润色保持无限
+      polish: Math.floor(LEVEL_CONFIG[4].quotas.polish * multiplier),
       illustration: Math.floor(LEVEL_CONFIG[4].quotas.illustration * multiplier)
     };
   }

@@ -3,6 +3,12 @@ import { notifyLevelUp, notifyPointsEarned } from './notification';
 
 /**
  * 用户等级配置
+ * 
+ * 配额设计原则：
+ * - Lv4 作为会员配额计算的基准（会员配额 = Lv4配额 × 会员倍数）
+ * - 等级之间有明显的递进关系
+ * - 插图成本高，配额相对保守
+ * - 润色成本低，高等级可以较多使用
  */
 export const LEVEL_CONFIG = {
   1: {
@@ -10,9 +16,9 @@ export const LEVEL_CONFIG = {
     minPoints: 0,
     maxPoints: 99,
     quotas: {
-      continuation: 3,  // 每月AI续写次数
-      polish: 5,        // 每月AI润色次数
-      illustration: 2   // 每月AI插图张数
+      continuation: 5,   // 每月AI续写次数
+      polish: 10,        // 每月AI润色次数
+      illustration: 2    // 每月AI插图张数
     }
   },
   2: {
@@ -20,9 +26,9 @@ export const LEVEL_CONFIG = {
     minPoints: 100,
     maxPoints: 499,
     quotas: {
-      continuation: 10,
-      polish: 20,
-      illustration: 2
+      continuation: 15,
+      polish: 30,
+      illustration: 5
     }
   },
   3: {
@@ -31,7 +37,7 @@ export const LEVEL_CONFIG = {
     maxPoints: 1999,
     quotas: {
       continuation: 30,
-      polish: -1,  // -1表示无限制
+      polish: 60,
       illustration: 10
     }
   },
@@ -40,9 +46,9 @@ export const LEVEL_CONFIG = {
     minPoints: 2000,
     maxPoints: Infinity,
     quotas: {
-      continuation: -1,
-      polish: -1,
-      illustration: 50
+      continuation: 50,   // 作为会员配额的基准值
+      polish: 100,        // 作为会员配额的基准值
+      illustration: 20    // 作为会员配额的基准值
     }
   }
 };

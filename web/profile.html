@@ -2084,10 +2084,10 @@ profileHeader.innerHTML = `
         // 获取用户等级信息
         function getUserLevelInfo(points) {
             const levels = [
-                { level: 1, name: '新手作者', minPoints: 0, maxPoints: 99, quotas: { continuation: 3, polish: 5, illustration: 2 } },
-                { level: 2, name: '活跃作者', minPoints: 100, maxPoints: 499, quotas: { continuation: 10, polish: 20, illustration: 2 } },
-                { level: 3, name: '专业作者', minPoints: 500, maxPoints: 1999, quotas: { continuation: 30, polish: -1, illustration: 10 } },
-                { level: 4, name: '大师作者', minPoints: 2000, maxPoints: Infinity, quotas: { continuation: -1, polish: -1, illustration: 50 } }
+                { level: 1, name: '新手作者', minPoints: 0, maxPoints: 99, quotas: { continuation: 5, polish: 10, illustration: 2 } },
+                { level: 2, name: '活跃作者', minPoints: 100, maxPoints: 499, quotas: { continuation: 15, polish: 30, illustration: 5 } },
+                { level: 3, name: '专业作者', minPoints: 500, maxPoints: 1999, quotas: { continuation: 30, polish: 60, illustration: 10 } },
+                { level: 4, name: '大师作者', minPoints: 2000, maxPoints: Infinity, quotas: { continuation: 50, polish: 100, illustration: 20 } }
             ];
             
             for (const levelInfo of levels) {
@@ -2170,10 +2170,10 @@ profileHeader.innerHTML = `
         // 显示等级说明弹窗
         function showLevelInfo() {
             const levels = [
-                { level: 1, name: '新手作者', points: '0-99', continuation: '3次/月', polish: '5次/月', illustration: '2张/月' },
-                { level: 2, name: '活跃作者', points: '100-499', continuation: '10次/月', polish: '20次/月', illustration: '2张/月' },
-                { level: 3, name: '专业作者', points: '500-1999', continuation: '30次/月', polish: '无限', illustration: '10张/月' },
-                { level: 4, name: '大师作者', points: '2000+', continuation: '无限', polish: '无限', illustration: '50张/月' }
+                { level: 1, name: '新手作者', points: '0-99', continuation: '5次/月', polish: '10次/月', illustration: '2张/月' },
+                { level: 2, name: '活跃作者', points: '100-499', continuation: '15次/月', polish: '30次/月', illustration: '5张/月' },
+                { level: 3, name: '专业作者', points: '500-1999', continuation: '30次/月', polish: '60次/月', illustration: '10张/月' },
+                { level: 4, name: '大师作者', points: '2000+', continuation: '50次/月', polish: '100次/月', illustration: '20张/月' }
             ];
             
             const levelList = levels.map(l => 
