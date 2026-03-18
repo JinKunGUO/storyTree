@@ -1793,6 +1793,9 @@
             commentInput?.addEventListener('input', function() {
                 currentChars.textContent = this.value.length;
             });
+
+            // 书签按钮（收藏当前章节）
+            document.getElementById('bookmarkBtn')?.addEventListener('click', toggleBookmark);
         });
 
         // 加载章节
@@ -1824,9 +1827,6 @@
                 console.log('当前章节:', currentChapter);
                 console.log('子分支数量:', currentChapter.branches.length);
                 console.log('故事ID:', storyId);
-
-                // 检查付费状态
-                await checkPaidStatus(currentChapter);
                 
                 renderChapter(currentChapter);
                 
@@ -1968,56 +1968,54 @@
                         if (!confirm('确定要发布这个草稿章节吗？\n\n发布后，其他用户将可以看到这个章节。')) {
                             return;
                         }
-                        return;
-                    }
 
-                    try {
-                        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-                        const publishBtn = document.getElementById('publishDraftBtn');
-                        
-                        // 禁用按钮并显示加载状态
-                        publishBtn.disabled = true;
-                        publishBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 发布中...';
+                        try {
+                            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                            const publishBtn = document.getElementById('publishDraftBtn');
+                            
+                            // 禁用按钮并显示加载状态
+                            publishBtn.disabled = true;
+                            publishBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 发布中...';
 
-                        const response = await fetch(`/api/nodes/${chapterId}/publish`, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${token}`
+                            const response = await fetch(`/api/nodes/${chapterId}/publish`, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`
+                                }
+                            });
+
+                            if (!response.ok) {
+                                const error = await response.json();
+                                throw new Error(error.error || '发布失败');
                             }
-                        });
 
-                        if (!response.ok) {
-                            const error = await response.json();
-                            throw new Error(error.error || '发布失败');
+                            const data = await response.json();
+                            console.log('发布成功:', data);
+
+                            // 更新当前章节状态
+                            currentChapter.is_published = true;
+
+                            // 显示成功消息
+                            showSuccess(data.message || '章节发布成功！');
+
+                            // 隐藏发布按钮
+                            publishBtn.style.display = 'none';
+
+                            // 刷新页面以显示最新状态
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 1500);
+
+                        } catch (error) {
+                            console.error('发布失败:', error);
+                            showError(error.message || '发布失败，请稍后重试');
+                            
+                            // 恢复按钮状态
+                            const publishBtn = document.getElementById('publishDraftBtn');
+                            publishBtn.disabled = false;
+                            publishBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 发布草稿';
                         }
-
-                        const data = await response.json();
-                        console.log('发布成功:', data);
-
-                        // 更新当前章节状态
-                        currentChapter.is_published = true;
-
-                        // 显示成功消息
-                        showSuccess(data.message || '章节发布成功！');
-
-                        // 隐藏发布按钮
-                        publishBtn.style.display = 'none';
-
-                        // 刷新页面以显示最新状态
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1500);
-
-                    } catch (error) {
-                        console.error('发布失败:', error);
-                        showError(error.message || '发布失败，请稍后重试');
-                        
-                        // 恢复按钮状态
-                        const publishBtn = document.getElementById('publishDraftBtn');
-                        publishBtn.disabled = false;
-                        publishBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 发布草稿';
                     }
-                }
 
         // 检查是否是作者
         async function checkIfAuthor(chapter) {
@@ -2670,6 +2668,73 @@
             localStorage.setItem(`reading_progress_${storyId}`, JSON.stringify(progress));
 
             // TODO: 同步到服务器
+        }
+
+        // ============================================
+        // 收藏章节功能
+        // ============================================
+        
+        // 切换收藏状态（收藏/取消收藏章节）
+        async function toggleBookmark() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            
+            if (!token) {
+                showError('请先登录');
+                setTimeout(() => {
+                    window.location.href = '/login?redirect=' + encodeURIComponent(window.location.href);
+                }, 1500);
+                return;
+            }
+
+            if (!currentChapter) {
+                showError('章节信息加载中，请稍后重试');
+                return;
+            }
+
+            const bookmarkBtn = document.getElementById('bookmarkBtn');
+            const icon = bookmarkBtn.querySelector('i');
+            
+            try {
+                // 禁用按钮，防止重复点击
+                bookmarkBtn.disabled = true;
+
+                // 调用收藏章节API
+                const response = await fetch(`/api/bookmarks/node/${currentChapter.id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || '操作失败');
+                }
+
+                const data = await response.json();
+                console.log('收藏操作结果:', data);
+
+                // 更新按钮状态
+                if (data.bookmarked) {
+                    // 已收藏
+                    icon.classList.remove('far');
+                    icon.classList.add('fas');
+                    showSuccess(data.message || '收藏成功！');
+                } else {
+                    // 已取消收藏
+                    icon.classList.remove('fas');
+                    icon.classList.add('far');
+                    showSuccess(data.message || '已取消收藏');
+                }
+
+            } catch (error) {
+                console.error('收藏操作错误:', error);
+                showError(error.message || '操作失败，请稍后重试');
+            } finally {
+                // 恢复按钮状态
+                bookmarkBtn.disabled = false;
+            }
         }
 
         // 显示错误消息

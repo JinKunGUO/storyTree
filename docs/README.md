@@ -1,270 +1,368 @@
-# 🌳 StoryTree
+# 积分系统优化与防刷分机制
 
-分支式AI协作小说创作平台 - 让故事拥有无限可能
+## 📋 版本信息
 
-## 📖 项目简介
-
-StoryTree 是一个创新的小说创作平台，允许多个作者在同一个故事的不同节点创建分支剧情，并结合AI辅助续写功能，打造树状结构的交互式故事体验。
-
-### ✨ 核心特性
-
-- 🌿 **分支式创作**：每个章节都可以有多个续写分支，形成树状故事结构
-- 🤖 **AI协作**：集成AI生成多个续写选项，作者可选择采用
-- ⭐ **评分系统**：读者可以为每个章节评分，引导最佳剧情走向
-- 🔍 **智能搜索**：快速找到感兴趣的故事和章节
-- 👥 **社交功能**：关注作者、查看动态、接收通知
-- 🛡️ **内容审核**：管理员后台、自动审核、举报系统
-- 📱 **响应式设计**：支持桌面和移动设备访问
-
-## 🚀 快速开始
-
-### 环境要求
-
-- Node.js >= 18.0.0
-- PostgreSQL >= 14.0 (或 SQLite 用于开发)
-- npm >= 9.0.0
-
-### 安装步骤
-
-1. **克隆项目**
-```bash
-git clone <repository-url>
-cd storytree
-```
-
-2. **安装后端依赖**
-```bash
-cd api
-npm install
-```
-
-3. **配置环境变量**
-```bash
-cp .env.example .env
-# 编辑 .env 文件，配置数据库连接等信息
-```
-
-4. **初始化数据库**
-```bash
-npm run db:push
-```
-
-5. **启动后端服务**
-```bash
-npm run dev
-```
-
-6. **访问应用**
-- 前台：打开 `web/index.html`
-- 管理后台：打开 `web/admin.html`
-
-## 📁 项目结构
-
-```
-storytree/
-├── api/                    # 后端服务
-│   ├── prisma/            # 数据库模型和迁移
-│   │   └── schema.prisma  # Prisma数据模型
-│   ├── src/
-│   │   ├── routes/        # API路由
-│   │   │   ├── auth.ts    # 认证
-│   │   │   ├── stories.ts # 故事管理
-│   │   │   ├── nodes.ts   # 章节管理
-│   │   │   ├── ai.ts      # AI生成
-│   │   │   ├── admin.ts   # 管理员
-│   │   │   ├── users.ts   # 用户管理
-│   │   │   ├── upload.ts  # 图片上传
-│   │   │   ├── search.ts  # 搜索
-│   │   │   └── notifications.ts # 通知
-│   │   ├── utils/         # 工具函数
-│   │   │   ├── upload.ts  # 上传工具
-│   │   │   ├── auth.ts    # 权限验证
-│   │   │   └── sensitiveWords.ts # 敏感词
-│   │   └── index.ts       # 入口文件
-│   └── package.json
-├── web/                   # 前端页面
-│   ├── index.html        # 用户前台
-│   └── admin.html        # 管理后台
-├── docs/                 # 文档
-├── scripts/              # 脚本工具
-└── README.md
-```
-
-## 🔧 技术栈
-
-### 后端
-- **框架**：Express.js + TypeScript
-- **数据库**：PostgreSQL / SQLite
-- **ORM**：Prisma
-- **文件上传**：Multer
-- **AI集成**：OpenAI API (可配置)
-
-### 前端
-- **纯HTML/CSS/JavaScript**：无框架依赖，轻量级
-- **响应式设计**：适配多种设备
-
-## 📊 数据模型
-
-### 核心实体
-
-- **User (用户)**：用户账号、个人信息、权限
-- **Story (故事)**：故事基本信息、封面图片
-- **Node (章节)**：树状结构的故事节点、内容、配图
-- **Rating (评分)**：用户对章节的评分
-- **Follow (关注)**：用户之间的关注关系
-- **Notification (通知)**：系统通知消息
-- **Report (举报)**：内容举报记录
-
-## 🛠️ 开发指南
-
-### 运行开发环境
-
-```bash
-# 后端开发模式（热重载）
-cd api
-npm run dev
-
-# 查看数据库
-npm run db:studio
-```
-
-### 代码规范
-
-```bash
-# 代码检查
-npm run lint
-
-# 格式化代码
-npm run format
-```
-
-### 数据库操作
-
-```bash
-# 推送模型变更到数据库
-npm run db:push
-
-# 查看数据库GUI
-npm run db:studio
-
-# 生成Prisma Client
-npm run db:generate
-```
-
-## 🔐 权限系统
-
-### 用户角色
-
-- **普通用户**：创作、阅读、评分、举报
-- **管理员**：内容审核、用户管理、查看举报
-
-### 设置管理员
-
-在数据库中将用户的 `is_admin` 字段设置为 `true`：
-
-```sql
-UPDATE users SET is_admin = true WHERE username = 'admin';
-```
-
-## 📝 API文档
-
-### 认证
-- `POST /api/auth/dev-login` - 开发环境登录
-
-### 故事管理
-- `GET /api/stories` - 获取故事列表
-- `POST /api/stories` - 创建新故事
-- `GET /api/stories/:id` - 获取故事详情
-
-### 章节管理
-- `GET /api/nodes/:id` - 获取章节详情
-- `POST /api/nodes/:id/branches` - 创建分支
-- `POST /api/nodes/:id/rate` - 评分
-- `POST /api/nodes/:id/report` - 举报
-
-### 用户功能
-- `GET /api/users/:id` - 获取用户信息
-- `PUT /api/users/profile` - 更新个人资料
-- `POST /api/users/:id/follow` - 关注用户
-- `GET /api/users/feed/me` - 获取动态流
-
-### 搜索
-- `GET /api/search?q=关键词` - 搜索故事和章节
-
-### 通知
-- `GET /api/notifications` - 获取通知列表
-- `PUT /api/notifications/:id/read` - 标记已读
-
-### 管理员
-- `GET /api/admin/review-queue` - 获取审核队列
-- `POST /api/admin/review` - 审核操作
-
-## 🎯 开发路线图
-
-### M1 阶段 ✅ (已完成)
-- 基础故事创作和阅读
-- 分支式章节系统
-- AI续写功能
-- 评分和举报系统
-
-### M2 阶段 ✅ (已完成)
-- 图片上传功能
-- 搜索功能
-- 用户资料页
-- 通知系统
-- 动态流
-- 管理员后台
-
-### M3 阶段 (规划中)
-- 用户注册和邮箱验证
-- 故事收藏和书签
-- 评论系统
-- 标签和分类
-- 数据统计和分析
-
-### M4 阶段 (规划中)
-- 移动端优化
-- PWA支持
-- 实时协作
-- 导出功能（PDF/EPUB）
-
-## 🤝 贡献指南
-
-欢迎提交Issue和Pull Request！
-
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'feat: add amazing feature'`)
-4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 提交Pull Request
-
-### Commit规范
-
-使用语义化提交信息：
-
-- `feat:` 新功能
-- `fix:` 修复Bug
-- `docs:` 文档更新
-- `style:` 代码格式调整
-- `refactor:` 重构
-- `test:` 测试相关
-- `chore:` 构建/工具相关
-
-## 📄 许可证
-
-MIT License
-
-## 👥 作者
-
-StoryTree Team
-
-## 🙏 致谢
-
-- OpenAI - AI生成能力
-- Prisma - 优秀的ORM工具
-- Express.js - 简洁的Web框架
+**版本：** v1.3.0  
+**日期：** 2026-03-18  
+**分支：** feature/m3-user-auth
 
 ---
 
-**享受创作的乐趣！** 🌳✨
+## 🎯 本次更新概述
+
+本次更新对积分奖励系统进行了全面优化，主要包括：
+
+1. **新增章节收藏功能**（替代故事收藏）
+2. **追更功能添加积分奖励**
+3. **删除故事收藏功能**（与追更功能重复）
+4. **实现防刷分机制**（章节收藏和追更都只在首次操作时发放积分）
+5. **评论积分奖励优化**
+
+---
+
+## ✅ 核心功能
+
+### **1. 章节收藏功能**
+
+**文件位置：**
+- 后端API：`api/src/routes/bookmarks.ts`
+- 前端页面：`web/chapter.html`
+- 数据库表：`node_bookmarks`
+
+**功能特性：**
+- ✅ 用户可以收藏喜欢的章节
+- ✅ 章节收藏按钮显示在章节工具栏
+- ✅ 首次收藏给作者发放2积分奖励
+- ✅ 防刷分机制：反复收藏-取消收藏不会重复发放积分
+- ✅ 作者自己收藏不发放积分
+
+**API接口：**
+```
+POST /api/bookmarks/node/:nodeId
+```
+
+**详细文档：**
+- `docs/chapter-bookmark-feature.md` - 章节收藏功能完整说明
+- `docs/node-bookmark-anti-farming.md` - 防刷分机制详解
+
+---
+
+### **2. 追更功能添加积分奖励**
+
+**文件位置：**
+- 后端API：`api/src/routes/stories.ts`
+- 数据库表：`story_followers`
+
+**功能特性：**
+- ✅ 用户追更故事时，故事作者获得5积分奖励
+- ✅ 只有首次追更才发放积分
+- ✅ 作者自己追更不发放积分
+- ✅ 数据库字段 `points_awarded` 防止重复发放
+
+**API接口：**
+```
+POST /api/stories/:id/follow
+```
+
+**详细文档：**
+- `docs/remove-bookmark-add-follow-points.md` - 追更积分奖励说明
+
+---
+
+### **3. 删除故事收藏功能**
+
+**原因：**
+- 故事收藏与追更功能高度重合
+- 简化用户操作，避免混淆
+- 统一使用"追更"功能表达对故事的关注
+
+**删除的API：**
+```
+❌ POST   /api/bookmarks/:storyId       # 收藏故事
+❌ DELETE /api/bookmarks/:storyId       # 取消收藏故事
+❌ GET    /api/bookmarks                # 获取收藏列表
+❌ GET    /api/bookmarks/check/:storyId # 检查收藏状态
+❌ GET    /api/bookmarks/count/:storyId # 获取收藏数
+```
+
+**保留的API：**
+```
+✅ POST /api/bookmarks/node/:nodeId  # 收藏章节
+```
+
+**前端改动：**
+- 删除个人页面关注列表的收藏按钮
+- 修改显示为"追更数"而非"收藏数"
+
+**详细文档：**
+- `docs/remove-bookmark-add-follow-points.md`
+
+---
+
+### **4. 防刷分机制**
+
+**问题：**
+用户可以通过反复"收藏-取消收藏-再次收藏"来刷积分。
+
+**解决方案：**
+
+#### **章节收藏防刷分**
+- 查询 `point_transactions` 表，检查是否曾经发放过积分
+- 只有首次收藏才发放积分
+- 数据库字段 `node_bookmarks.points_awarded` 标记状态
+
+#### **追更防刷分**
+- 数据库唯一约束 `@@unique([story_id, user_id])` 防止重复追更
+- 数据库字段 `story_followers.points_awarded` 标记是否已发放积分
+- 只有首次追更才发放积分
+
+**详细文档：**
+- `docs/node-bookmark-anti-farming.md` - 章节收藏防刷分详解
+
+---
+
+### **5. 评论积分奖励**
+
+**功能特性：**
+- ✅ 用户评论章节时，章节作者获得1积分奖励
+- ✅ 作者自己评论不发放积分
+- ✅ 每次评论都发放积分（无防刷分限制）
+
+**文件位置：**
+- 后端API：`api/src/routes/comments.ts`
+
+---
+
+## 📊 完整积分奖励体系
+
+| 操作 | 奖励对象 | 积分 | 触发条件 | 防刷分 |
+|------|---------|------|---------|--------|
+| **追更故事** | 故事作者 | +5 | 首次追更（非作者本人） | ✅ 数据库约束 + `points_awarded` |
+| **收藏章节** | 章节作者 | +2 | 首次收藏（非作者本人） | ✅ 查询 `point_transactions` |
+| **评论章节** | 章节作者 | +1 | 每次评论（非作者本人） | ❌ 无限制 |
+| **收藏故事** | - | - | - | ❌ 已删除 |
+
+---
+
+## 🗂️ 数据库变更
+
+### **新增表**
+
+#### **node_bookmarks（章节收藏表）**
+```prisma
+model node_bookmarks {
+  id             Int      @id @default(autoincrement())
+  user_id        Int
+  node_id        Int
+  points_awarded Boolean  @default(false) // 是否已发放收藏积分奖励
+  created_at     DateTime @default(now())
+  node           nodes    @relation(fields: [node_id], references: [id], onDelete: Cascade)
+  user           users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, node_id])
+  @@index([user_id])
+  @@index([node_id])
+}
+```
+
+---
+
+### **修改表**
+
+#### **story_followers（追更表）**
+```prisma
+model story_followers {
+  id             Int      @id @default(autoincrement())
+  story_id       Int
+  user_id        Int
+  points_awarded Boolean  @default(false) // 是否已发放追更积分奖励
+  created_at     DateTime @default(now())
+  story          stories  @relation(fields: [story_id], references: [id], onDelete: Cascade)
+  user           users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([story_id, user_id])
+  @@index([user_id])
+  @@index([story_id])
+}
+```
+
+---
+
+### **数据库迁移文件**
+
+| 迁移文件 | 说明 |
+|---------|------|
+| `20260318_add_node_bookmarks/migration.sql` | 创建章节收藏表 |
+| `20260318_add_points_to_story_followers/migration.sql` | 追更表添加 `points_awarded` 字段 |
+| `20260318_add_points_awarded_to_node_bookmarks/migration.sql` | 章节收藏表添加 `points_awarded` 字段 |
+
+---
+
+## 📁 文件变更清单
+
+### **后端文件**
+
+| 文件 | 变更类型 | 说明 |
+|------|---------|------|
+| `api/src/routes/bookmarks.ts` | 新建 | 章节收藏API（删除故事收藏API） |
+| `api/src/routes/stories.ts` | 修改 | 追更API添加积分奖励 |
+| `api/src/routes/comments.ts` | 修改 | 评论API添加积分奖励 |
+| `api/prisma/schema.prisma` | 修改 | 添加 `node_bookmarks` 表，修改 `story_followers` 表 |
+| `api/src/index.ts` | 修改 | 注册 `bookmarks` 路由 |
+
+---
+
+### **前端文件**
+
+| 文件 | 变更类型 | 说明 |
+|------|---------|------|
+| `web/chapter.html` | 修改 | 添加章节收藏按钮和功能 |
+| `web/profile.html` | 修改 | 删除关注列表的收藏按钮，显示追更数 |
+
+---
+
+### **文档文件**
+
+| 文件 | 说明 |
+|------|------|
+| `docs/chapter-bookmark-feature.md` | 章节收藏功能完整说明 |
+| `docs/remove-bookmark-add-follow-points.md` | 删除故事收藏、追更添加积分 |
+| `docs/node-bookmark-anti-farming.md` | 章节收藏防刷分机制 |
+| `docs/README.md` | 本文档（总览） |
+
+---
+
+## 🧪 测试要点
+
+### **1. 章节收藏测试**
+
+- [ ] 首次收藏章节，作者获得2积分
+- [ ] 取消收藏，作者积分不变
+- [ ] 再次收藏，作者积分不变（防刷分）
+- [ ] 作者自己收藏，不发放积分
+- [ ] 不同用户收藏同一章节，都发放积分
+
+---
+
+### **2. 追更测试**
+
+- [ ] 首次追更故事，作者获得5积分
+- [ ] 重复追更，返回错误（数据库约束）
+- [ ] 作者自己追更，不发放积分
+
+---
+
+### **3. 评论测试**
+
+- [ ] 评论章节，作者获得1积分
+- [ ] 作者自己评论，不发放积分
+- [ ] 每次评论都发放积分
+
+---
+
+### **4. 防刷分测试**
+
+- [ ] 反复收藏-取消收藏章节10次，只发放1次积分
+- [ ] 查看 `point_transactions` 表，确认只有1条记录
+
+---
+
+## 🚀 部署说明
+
+### **1. 数据库迁移**
+
+```bash
+cd api
+npx prisma migrate deploy
+npx prisma generate
+```
+
+---
+
+### **2. 重启服务**
+
+```bash
+# 重启API服务
+cd api
+npm run dev
+
+# 前端无需重启（静态文件）
+```
+
+---
+
+### **3. 验证部署**
+
+1. 访问章节页面，检查收藏按钮是否显示
+2. 测试收藏功能是否正常
+3. 检查积分是否正确发放
+4. 测试防刷分机制是否生效
+
+---
+
+## 💡 设计亮点
+
+### **1. 防刷分机制**
+
+- **章节收藏：** 查询 `point_transactions` 表，即使取消收藏后再次收藏也不会重复发放
+- **追更：** 数据库唯一约束 + `points_awarded` 字段双重保障
+
+---
+
+### **2. 用户体验优化**
+
+- **简化功能：** 删除故事收藏，统一使用追更
+- **即时反馈：** 收藏成功后立即显示积分奖励
+- **防误操作：** 收藏按钮状态实时更新
+
+---
+
+### **3. 代码质量**
+
+- **错误容错：** 积分发放失败不影响主功能
+- **日志记录：** 详细的控制台日志便于调试
+- **类型安全：** TypeScript类型定义完善
+
+---
+
+## 📝 后续优化建议
+
+### **1. 性能优化**
+
+为 `point_transactions` 表添加复合索引：
+
+```sql
+CREATE INDEX idx_point_transactions_lookup 
+ON point_transactions(user_id, type, reference_id);
+```
+
+---
+
+### **2. 评论防刷分**
+
+考虑为评论添加防刷分机制：
+- 同一用户对同一章节的评论，只有前N条发放积分
+- 或者限制每日评论积分上限
+
+---
+
+### **3. 积分回收机制**
+
+考虑在特殊情况下回收积分：
+- 恶意刷分行为
+- 违规内容被删除
+
+---
+
+## 🎉 总结
+
+本次更新完成了积分系统的全面优化：
+
+- ✅ 新增章节收藏功能，替代故事收藏
+- ✅ 追更功能添加积分奖励
+- ✅ 实现完善的防刷分机制
+- ✅ 简化用户操作，提升体验
+- ✅ 积分系统更公平、更合理
+
+**积分系统现在更能反映真实的内容质量和用户参与度！**
 

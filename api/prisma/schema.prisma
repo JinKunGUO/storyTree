@@ -20,6 +20,20 @@ model bookmarks {
   @@index([story_id])
 }
 
+model node_bookmarks {
+  id             Int      @id @default(autoincrement())
+  user_id        Int
+  node_id        Int
+  points_awarded Boolean  @default(false) // 是否已发放收藏积分奖励（仅首次收藏发放）
+  created_at     DateTime @default(now())
+  node           nodes    @relation(fields: [node_id], references: [id], onDelete: Cascade)
+  user           users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, node_id])
+  @@index([user_id])
+  @@index([node_id])
+}
+
 model comments {
   id             Int             @id @default(autoincrement())
   content        String
@@ -77,6 +91,7 @@ model nodes {
   created_at      DateTime          @default(now())
   updated_at      DateTime
   comments        comments[]
+  node_bookmarks  node_bookmarks[]
   nodes           nodes?            @relation("nodesTonodes", fields: [parent_id], references: [id])
   other_nodes     nodes[]           @relation("nodesTonodes")
   author          users             @relation("NodeAuthor", fields: [author_id], references: [id])
@@ -226,6 +241,7 @@ model users {
   point_transactions         point_transactions[]
   orders                     orders[]
   bookmarks                  bookmarks[]
+  node_bookmarks             node_bookmarks[]
   comments                   comments[]
   comment_votes              comment_votes[]
   following                  follows[]                 @relation("follows_following_idTousers")
@@ -372,14 +388,15 @@ model delete_requests {
   @@index([status])
 }
 
-// 故事粉丝表（用户关注故事）
+// 故事粉丝表（用户关注故事/追更）
 model story_followers {
-  id         Int      @id @default(autoincrement())
-  story_id   Int
-  user_id    Int
-  created_at DateTime @default(now())
-  story      stories  @relation(fields: [story_id], references: [id], onDelete: Cascade)
-  user       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  id             Int      @id @default(autoincrement())
+  story_id       Int
+  user_id        Int
+  points_awarded Boolean  @default(false) // 是否已发放追更积分奖励（仅首次追更发放）
+  created_at     DateTime @default(now())
+  story          stories  @relation(fields: [story_id], references: [id], onDelete: Cascade)
+  user           users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([story_id, user_id])
   @@index([user_id])

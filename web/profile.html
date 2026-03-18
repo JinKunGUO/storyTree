@@ -2629,7 +2629,7 @@ profileHeader.innerHTML = `
 
             const storiesHTML = stories.map(story => {
                 const nodeCount = story._count?.nodes || 0;
-                const likeCount = story._count?.bookmarks || story.likes || 0;
+                const followerCount = story._count?.followers || 0;
                 const viewCount = story.views || 0;
                 const authorName = story.author?.username || '未知作者';
                 
@@ -2648,7 +2648,7 @@ profileHeader.innerHTML = `
                 }
                 
                 return `
-                    <div class="story-item" onclick="window.location.href='/story?id=${story.id}'">
+                    <div class="story-item" onclick="window.location.href='/story?id=${story.id}'" style="cursor: pointer;">
                         <div class="story-icon ${iconClass}">
                             <i class="fas ${icon}"></i>
                         </div>
@@ -2660,7 +2660,7 @@ profileHeader.innerHTML = `
                             <div class="story-meta">
                                 <span><i class="fas fa-user"></i> ${escapeHtml(authorName)}</span>
                                 <span><i class="fas fa-file-alt"></i> ${nodeCount} 章节</span>
-                                <span><i class="fas fa-heart"></i> ${likeCount} 点赞</span>
+                                <span><i class="fas fa-book-reader"></i> ${followerCount} 追更</span>
                                 <span><i class="fas fa-eye"></i> ${viewCount} 浏览</span>
                             </div>
                         </div>
@@ -2669,6 +2669,38 @@ profileHeader.innerHTML = `
             }).join('');
 
             list.innerHTML = storiesHTML;
+        }
+        
+        // 显示消息提示
+        function showMessage(message, type = 'info') {
+            const messageEl = document.createElement('div');
+            messageEl.style.cssText = `
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                background: white;
+                padding: 15px 25px;
+                border-radius: 10px;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                z-index: 10000;
+                border-left: 4px solid ${type === 'error' ? '#f44336' : '#4caf50'};
+                animation: slideIn 0.3s ease-out;
+            `;
+
+            messageEl.innerHTML = `
+                <i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'}"></i>
+                <span>${message}</span>
+            `;
+
+            document.body.appendChild(messageEl);
+
+            setTimeout(() => {
+                messageEl.style.animation = 'fadeOut 0.3s ease-out forwards';
+                setTimeout(() => messageEl.remove(), 300);
+            }, 3000);
         }
 
         // 显示空的关注列表

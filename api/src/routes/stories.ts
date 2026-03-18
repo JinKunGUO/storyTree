@@ -851,7 +851,7 @@ router.post('/:id/collaborators/leave', authenticateToken, async (req, res) => {
 
 // ==================== 故事粉丝API ====================
 
-// 关注故事
+// 关注故事（追更）
 router.post('/:id/follow', authenticateToken, async (req, res) => {
   const userId = getUserId(req);
   const { id } = req.params;
@@ -892,14 +892,54 @@ router.post('/:id/follow', authenticateToken, async (req, res) => {
     }
 
     // 创建关注记录
-    await prisma.story_followers.create({
+    const follow = await prisma.story_followers.create({
       data: {
         story_id: parseInt(id),
-        user_id: userId
+        user_id: userId,
+        points_awarded: false // 初始未发放积分
       }
     });
 
-    res.json({ message: '关注成功' });
+    // 🎁 首次追更积分奖励：为故事作者发放积分（非作者本人追更时）
+    let pointsEarned = 0;
+    if (story.author_id !== userId && !follow.points_awarded) {
+      try {
+        const { addPoints, POINT_RULES } = await import('../utils/points');
+        await addPoints(
+          story.author_id,
+          POINT_RULES.GET_BOOKMARK.points, // 使用收藏的积分规则（5积分）
+          'get_follow',
+          `故事《${story.title}》获得追更`,
+          story.id
+        );
+        
+        // 标记为已发放积分
+        await prisma.story_followers.update({
+          where: {
+            story_id_user_id: {
+              story_id: parseInt(id),
+              user_id: userId
+            }
+          },
+          data: {
+            points_awarded: true
+          }
+        });
+
+        pointsEarned = POINT_RULES.GET_BOOKMARK.points;
+        console.log(`✅ 追更积分奖励已发放: 用户 ${story.author_id} 获得 ${pointsEarned} 积分`);
+      } catch (error) {
+        console.error('❌ 发放追更积分失败:', error);
+        // 不阻塞追更操作，仅记录错误
+      }
+    } else if (story.author_id === userId) {
+      console.log(`⚠️ 作者自己追更，不发放积分奖励`);
+    }
+
+    res.json({ 
+      message: '关注成功',
+      pointsEarned: pointsEarned > 0 ? pointsEarned : undefined
+    });
   } catch (error) {
     console.error('Follow story error:', error);
     res.status(500).json({ error: '关注失败' });

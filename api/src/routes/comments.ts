@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../index';
 import { verifyJWT } from '../utils/auth';
+import { addPoints, POINT_RULES } from '../utils/points';
 
 const router = Router();
 
@@ -200,6 +201,25 @@ router.post('/nodes/:node_id/comments', async (req, res) => {
         }
       }
     });
+
+    // 🎁 触发积分奖励：给章节作者发放评论积分（非回复且评论字数≥10字时）
+    if (!parent_id && node.author_id !== decoded.userId && content.trim().length >= 10) {
+      try {
+        await addPoints(
+          node.author_id,
+          POINT_RULES.GET_COMMENT.points,
+          'get_comment',
+          `章节《${node.title}》获得评论`,
+          node.id
+        );
+        console.log(`✅ 评论积分奖励已发放: 用户 ${node.author_id} 获得 ${POINT_RULES.GET_COMMENT.points} 积分 (评论字数: ${content.trim().length})`);
+      } catch (error) {
+        console.error('❌ 发放评论积分失败:', error);
+        // 不阻塞评论操作，仅记录错误
+      }
+    } else if (!parent_id && node.author_id !== decoded.userId && content.trim().length < 10) {
+      console.log(`⚠️ 评论字数不足10字，不发放积分奖励 (评论字数: ${content.trim().length})`);
+    }
 
     // 发送通知给被回复的用户（如果有parent_id）
     if (parent_id) {
