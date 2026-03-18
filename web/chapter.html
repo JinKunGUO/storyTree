@@ -698,6 +698,62 @@
             font-weight: 600;
         }
 
+        /* 置顶标识样式 */
+        .pin-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        .pin-badge i {
+            font-size: 11px;
+        }
+
+        /* 置顶按钮样式 */
+        .btn-pin {
+            padding: 5px 12px;
+            border-radius: 15px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            border: 1px solid #e0e0e0;
+            background: white;
+            color: #666;
+            font-size: 13px;
+        }
+
+        .btn-pin:hover {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-color: transparent;
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(240, 147, 251, 0.3);
+        }
+
+        .btn-pin.active {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-color: transparent;
+        }
+
+        .btn-pin:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-pin i {
+            font-size: 12px;
+        }
+
         /* 编辑表单样式 */
         .edit-form-container {
             margin-top: 10px;
@@ -1748,7 +1804,7 @@
     </div>
 
     <script src="auth.js"></script>
-    <script src="comments.js"></script>
+    <script src="comments.js?v=20260318002"></script>
     <script src="share.js"></script>
     <script>
         let currentChapter = null;

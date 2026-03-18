@@ -41,6 +41,8 @@ model comments {
   user_id        Int
   parent_id      Int?
   is_deleted     Boolean         @default(false)
+  pinned         Boolean         @default(false) // 是否置顶（作者功能）
+  pinned_at      DateTime? // 置顶时间
   created_at     DateTime        @default(now())
   updated_at     DateTime
   comments       comments?       @relation("commentsTocomments", fields: [parent_id], references: [id])
@@ -53,6 +55,7 @@ model comments {
   @@index([parent_id])
   @@index([user_id])
   @@index([node_id])
+  @@index([pinned])
 }
 
 model follows {
@@ -188,6 +191,9 @@ model stories {
   require_collaborator_review Boolean                  @default(false) // 协作者内容是否需要审核
   auto_approve_collaborators  Boolean                  @default(false) // 是否自动通过协作申请
   tags                        String? // JSON数组: ["科幻", "悬疑"]
+  pinned                      Boolean                  @default(false) // 是否置顶
+  pinned_until                DateTime? // 置顶到期时间
+  pinned_at                   DateTime? // 置顶开始时间
   created_at                  DateTime                 @default(now())
   updated_at                  DateTime
   bookmarks                   bookmarks[]
@@ -265,6 +271,8 @@ model users {
   created_invitation_codes   invitation_codes[]
   user_subscriptions         user_subscriptions[]
   membership_benefits_log    membership_benefits_log[]
+  sent_tips                  tips[]                    @relation("tip_sender")
+  received_tips              tips[]                    @relation("tip_receiver")
 }
 
 model ai_usage_logs {
@@ -554,3 +562,23 @@ model membership_benefits_log {
 
 // Add relation fields to users model
 // This comment is just a reminder - the fields are already added above
+
+// 打赏记录表
+model tips {
+  id          Int      @id @default(autoincrement())
+  sender_id   Int // 打赏人
+  receiver_id Int // 接收人（作者）
+  story_id    Int? // 打赏的故事（可选）
+  node_id     Int? // 打赏的章节（可选）
+  amount      Int // 打赏积分数
+  message     String? // 打赏留言
+  created_at  DateTime @default(now())
+  sender      users    @relation("tip_sender", fields: [sender_id], references: [id], onDelete: Cascade)
+  receiver    users    @relation("tip_receiver", fields: [receiver_id], references: [id], onDelete: Cascade)
+
+  @@index([sender_id])
+  @@index([receiver_id])
+  @@index([story_id])
+  @@index([node_id])
+  @@index([created_at])
+}

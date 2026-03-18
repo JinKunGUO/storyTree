@@ -1225,6 +1225,10 @@
                                 <i class="fas fa-book-open"></i>
                                 开始阅读
                             </button>
+                            <button class="btn btn-primary" id="pinStoryBtn" style="display: none; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                                <i class="fas fa-thumbtack"></i>
+                                置顶故事
+                            </button>
                             <button class="btn btn-primary" id="editStoryBtn" style="display: none;">
                                 <i class="fas fa-edit"></i>
                                 编辑故事
@@ -1359,9 +1363,12 @@
                                 <i class="fas fa-pen"></i>
                                 续写分支
                             </button>
-                            <button class="detail-btn" id="aiCreateChapterBtn" style="display: none; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+<button class="detail-btn" id="aiCreateChapterBtn" style="display: none; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); position: relative;">
                                 <i class="fas fa-robot"></i>
-                                AI创作章节
+                                AI 创作章节
+                                <span class="ai-quota-badge" id="aiChapterQuota" title="剩余配额" style="position: absolute; top: -8px; right: -8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 12px; min-width: 18px; text-align: center; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                </span>
                             </button>
                         </div>
                     </div>
@@ -1670,6 +1677,65 @@
                 <button class="btn-save" id="submitCollaborationRequest">
                     <i class="fas fa-paper-plane"></i>
                     提交申请
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 置顶故事模态框 -->
+    <div class="edit-modal" id="pinStoryModal">
+        <div class="edit-modal-content">
+            <div class="edit-modal-header">
+                <h2>
+                    <i class="fas fa-thumbtack"></i>
+                    置顶故事
+                </h2>
+                <button class="close-btn" id="closePinStoryModal">×</button>
+            </div>
+            <div class="edit-modal-body">
+                <div class="form-group">
+                    <label for="pinDays">置顶天数</label>
+                    <input type="number" id="pinDays" min="1" max="30" value="7" 
+                           placeholder"输入置顶天数（1-30 天）" style="
+                               width: 100%;
+                               padding: 12px;
+                               border: 2px solid #e0e0e0;
+                               border-radius: 8px;
+                               font-size: 16px;
+                           ">
+                    <div class="form-hint" style="margin-top: 10px; color: #f5576c;">
+                        <i class="fas fa-coins"></i>
+                        消耗积分：<span id="pinPointsCost" style="font-weight: 600;">350</span> 积分 
+                        （<span id="pinDailyCost" style="font-weight: 600;">50</span> 积分/天 × <span id="pinDaysDisplay">7</span> 天）
+                    </div>
+                    <div class="form-hint" style="margin-top: 5px;">
+                        <i class="fas fa-info-circle"></i> 置顶后故事将在首页和发现页优先展示
+                    </div>
+                </div>
+                <div style="
+                    margin-top: 20px;
+                    padding: 15px;
+                    background: #f9f9f9;
+                    border-radius: 8px;
+                    border-left: 4px solid #667eea;
+                ">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span style="color: #666;">当前积分余额：</span>
+                        <span id="userPointsBalance" style="font-weight: 600; color: #f5576c;">0</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: #666;">置顶后余额：</span>
+                        <span id="remainingPoints" style="font-weight: 600; color: #667eea;">0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="edit-modal-footer">
+                <button class="btn-cancel" id="cancelPinStory">取消</button>
+                <button class="btn-save" id="confirmPinStory" style="
+                    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                ">
+                    <i class="fas fa-thumbtack"></i>
+                    确认置顶
                 </button>
             </div>
         </div>
@@ -2137,6 +2203,11 @@
                             roleBadge.className = 'user-role-badge role-author';
                             roleText.innerHTML = '<i class="fas fa-crown"></i> 主创';
                             
+                            // 显示置顶故事按钮
+                            const pinBtn = document.getElementById('pinStoryBtn');
+                            pinBtn.style.display = 'inline-flex';
+                            pinBtn.addEventListener('click', () => openPinStoryModal(story.id));
+                            
                             // 显示编辑和设置按钮
                             const editBtn = document.getElementById('editStoryBtn');
                             editBtn.style.display = 'inline-flex';
@@ -2151,14 +2222,18 @@
                             // 加载待处理的协作申请数量，显示在设置按钮上
                             loadPendingRequestsCount(story.id);
                             
-                            const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
+const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                             aiCreateBtn.style.display = 'inline-flex';
+                            
+                            // 加载配额信息显示在按钮上
+                            loadAiChapterQuotaInfo();
+                            
                             aiCreateBtn.addEventListener('click', () => {
                                 const parentId = window.currentSelectedNodeId;
                                 if (parentId) {
                                     openAiChapterModal(story, parentId);
                                 } else {
-                                    showError('请先点击分支图中的一个章节，再使用AI创作功能');
+                                    showError('请先点击分支图中的一个章节，再使用 AI 创作功能');
                                 }
                             });
                             
@@ -2192,21 +2267,25 @@
                             newApplyBtn.style.color = 'white';
                             newApplyBtn.addEventListener('click', () => quitCollaboration(story.id));
                             
-                            // 只有在允许续写时，协作者才能使用AI续写章节功能
+// 只有在允许续写时，协作者才能使用 AI 续写章节功能
                             if (roleData.allow_branch) {
                                 const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                                 aiCreateBtn.style.display = 'inline-flex';
+                                
+                                // 加载配额信息显示在按钮上
+                                loadAiChapterQuotaInfo();
+                                
                                 aiCreateBtn.addEventListener('click', () => {
                                     const parentId = window.currentSelectedNodeId;
                                     if (parentId) {
                                         openAiChapterModal(story, parentId);
                                     } else {
-                                        showError('请先点击分支图中的一个章节，再使用AI创作功能');
+                                        showError('请先点击分支图中的一个章节，再使用 AI 创作功能');
                                     }
                                 });
-                                console.log('✅ 协作者-允许续写，显示AI续写按钮');
+                                console.log('✅ 协作者 - 允许续写，显示 AI 续写按钮');
                             } else {
-                                console.log('❌ 协作者-故事已关闭续写功能，不显示AI续写按钮');
+                                console.log('❌ 协作者 - 故事已关闭续写功能，不显示 AI 续写按钮');
                             }
                         } else if (roleData.is_follower) {
                             roleBadge.style.display = 'inline-flex';
@@ -2260,7 +2339,7 @@
             }
         }
 
-        // 加载待处理的协作申请数量
+// 加载待处理的协作申请数量
         async function loadPendingRequestsCount(storyId) {
             const token = localStorage.getItem('token') || sessionStorage.getItem('token');
             if (!token) return;
@@ -2273,7 +2352,7 @@
                 if (!response.ok) return;
 
                 const data = await response.json();
-                console.log('徽章-API返回的数据:', data);
+                console.log('徽章-API 返回的数据:', data);
                 const pendingRequests = data.requests || [];
                 const pendingCount = pendingRequests.length;
 
@@ -2289,6 +2368,78 @@
                 console.error('加载协作申请数量失败:', error);
             }
         }
+
+        // ========== 新增：加载 AI 创作章节配额信息 ==========
+        async function loadAiChapterQuotaInfo() {
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                if (!token) {
+                    console.log('未登录，跳过配额加载');
+                    return;
+                }
+
+                const response = await fetch('/api/ai/v2/quota', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`获取配额信息失败：HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('📊 AI 创作章节配额信息:', data);
+
+                // 防御性检查：确保数据结构正确
+                const quotaData = data.quota || data.quotas;
+                if (!quotaData) {
+                    console.error('❌ API 返回的数据缺少 quota 字段:', data);
+                    return;
+                }
+
+                // 更新徽章显示（使用 continuation 配额，因为 AI 创作章节也是续写功能）
+                if (quotaData.continuation && data.costs) {
+                    updateAiChapterQuotaBadge(quotaData.continuation, data.costs.continuation);
+                }
+
+            } catch (error) {
+                console.error('❌ 加载配额信息失败:', error);
+                // 静默失败，不影响功能使用
+            }
+        }
+
+        // 更新 AI 创作章节按钮的配额徽章
+        function updateAiChapterQuotaBadge(quota, cost) {
+            const badge = document.getElementById('aiChapterQuota');
+            if (!badge) return;
+
+            const remaining = quota.unlimited ? -1 : Math.max(0, quota.limit - quota.used);
+            
+            if (quota.unlimited) {
+                // 无限配额
+                badge.innerHTML = '∞';
+                badge.className = 'ai-quota-badge unlimited';
+                badge.title = '无限配额';
+            } else if (remaining > 0) {
+                // 有配额
+                badge.textContent = remaining;
+                badge.className = 'ai-quota-badge';
+                badge.title = `剩余${remaining}次配额，超配额后 ${cost}积分/次`;
+                
+                // 配额不足 3 次时显示警告
+                if (remaining <= 3) {
+                    badge.classList.add('low');
+                    badge.title += '（配额即将用完）';
+                }
+            } else {
+                // 配额用完
+                badge.innerHTML = `<i class="fas fa-coins"></i> ${cost}`;
+                badge.className = 'ai-quota-badge exhausted';
+                badge.title = `配额已用完，需要${cost}积分/次`;
+            }
+        }
+        // ===============================================
 
         // 切换关注故事状态
         async function toggleFollowStory(storyId) {
@@ -2533,6 +2684,157 @@
                 }
             });
         });
+
+        // ========== 新增：置顶故事功能 ==========
+        
+        // 打开置顶故事模态框
+        async function openPinStoryModal(storyId) {
+            window.currentPinStoryId = storyId;
+            
+            // 重置天数输入
+            const daysInput = document.getElementById('pinDays');
+            daysInput.value = 7;
+            
+            // 加载用户积分余额
+            await loadUserPointsForPin();
+            
+            // 更新费用显示
+            updatePinCostDisplay(7);
+            
+            // 显示模态框
+            document.getElementById('pinStoryModal').classList.add('active');
+            
+            // 添加天数变化监听
+            daysInput.oninput = function() {
+                const days = parseInt(this.value) || 0;
+                updatePinCostDisplay(days);
+            };
+        }
+        
+        // 关闭置顶故事模态框
+        function closePinStoryModal() {
+            document.getElementById('pinStoryModal').classList.remove('active');
+        }
+        
+        // 加载用户积分余额
+        async function loadUserPointsForPin() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) {
+                showError('请先登录');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/auth/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    const userData = await response.json();
+                    const userPoints = userData.user.points || 0;
+                    
+                    document.getElementById('userPointsBalance').textContent = userPoints;
+                    updateRemainingPoints(userPoints, 350);
+                }
+            } catch (error) {
+                console.error('加载用户积分失败:', error);
+            }
+        }
+        
+        // 更新置顶费用显示
+        function updatePinCostDisplay(days) {
+            const dailyCost = 50;
+            const totalCost = dailyCost * days;
+            
+            document.getElementById('pinDailyCost').textContent = dailyCost;
+            document.getElementById('pinDaysDisplay').textContent = days;
+            document.getElementById('pinPointsCost').textContent = totalCost;
+            
+            // 更新剩余积分
+            const userPoints = parseInt(document.getElementById('userPointsBalance').textContent) || 0;
+            updateRemainingPoints(userPoints, totalCost);
+        }
+        
+        // 更新剩余积分显示
+        function updateRemainingPoints(currentPoints, cost) {
+            const remaining = currentPoints - cost;
+            const remainingEl = document.getElementById('remainingPoints');
+            remainingEl.textContent = remaining;
+            
+            if (remaining < 0) {
+                remainingEl.style.color = '#f44336';
+            } else {
+                remainingEl.style.color = '#667eea';
+            }
+        }
+        
+        // 确认置顶故事
+        async function confirmPinStory() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) {
+                showError('请先登录');
+                return;
+            }
+            
+            const days = parseInt(document.getElementById('pinDays').value);
+            
+            // 验证天数
+            if (!days || days < 1 || days > 30) {
+                showError('置顶天数必须在 1-30 天之间');
+                return;
+            }
+            
+            const confirmBtn = document.getElementById('confirmPinStory');
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 处理中...';
+            
+            try {
+                const response = await fetch(`/api/points-features/stories/${window.currentPinStoryId}/pin`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ days })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || '置顶失败');
+                }
+                
+                const data = await response.json();
+                
+                showSuccess(`故事已置顶${days}天，消耗${data.cost}积分`);
+                closePinStoryModal();
+                
+                // 刷新页面更新状态
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+                
+            } catch (error) {
+                console.error('置顶故事失败:', error);
+                showError(error.message || '置顶失败，请重试');
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = '<i class="fas fa-thumbtack"></i> 确认置顶';
+            }
+        }
+        
+        // 初始化置顶故事模态框事件
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('closePinStoryModal')?.addEventListener('click', closePinStoryModal);
+            document.getElementById('cancelPinStory')?.addEventListener('click', closePinStoryModal);
+            document.getElementById('confirmPinStory')?.addEventListener('click', confirmPinStory);
+            
+            document.getElementById('pinStoryModal')?.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closePinStoryModal();
+                }
+            });
+        });
+        
+        // ===============================================
 
         // 打开编辑模态框
         function openEditModal(story) {
@@ -2871,6 +3173,152 @@
             }, 3000);
         }
 
+        // ========== 新增：积分确认弹窗 ==========
+        function showPointsConfirmDialog(featureName, pointsCost, description) {
+            return new Promise((resolve) => {
+                const overlay = document.createElement('div');
+                overlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0, 0, 0, 0.7);
+                    z-index: 10000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 20px;
+                `;
+
+                overlay.innerHTML = `
+                    <div style="
+                        background: white;
+                        border-radius: 20px;
+                        max-width: 450px;
+                        padding: 30px;
+                        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+                        animation: slideIn 0.3s ease-out;
+                    ">
+                        <div style="
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            width: 60px;
+                            height: 60px;
+                            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                            border-radius: 50%;
+                            margin: 0 auto 20px;
+                        ">
+                            <i class="fas fa-coins" style="font-size: 28px; color: white;"></i>
+                        </div>
+                        <h3 style="
+                            text-align: center;
+                            color: #333;
+                            margin: 0 0 15px 0;
+                            font-size: 22px;
+                        ">
+                            积分消耗确认
+                        </h3>
+                        <p style="
+                            text-align: center;
+                            color: #666;
+                            margin: 0 0 10px 0;
+                            font-size: 16px;
+                        ">
+                            使用 <strong>${featureName}</strong> 功能
+                        </p>
+                        <p style="
+                            text-align: center;
+                            color: #333;
+                            margin: 0 0 25px 0;
+                            font-size: 18px;
+                            font-weight: 600;
+                        ">
+                            将消耗 <span style="color: #f5576c;">${pointsCost}</span> 积分
+                        </p>
+                        ${description ? `
+                            <p style="
+                                text-align: center;
+                                color: #999;
+                                margin: 0 0 25px 0;
+                                font-size: 14px;
+                                background: #f8f9fa;
+                                padding: 12px;
+                                border-radius: 8px;
+                            ">
+                                ${description}
+                            </p>
+                        ` : ''}
+                        <div style="
+                            display: flex;
+                            gap: 15px;
+                            margin-top: 20px;
+                        ">
+                            <button id="cancelPointsBtn" style="
+                                flex: 1;
+                                padding: 14px 20px;
+                                background: #f1f3f5;
+                                color: #333;
+                                border: none;
+                                border-radius: 12px;
+                                font-size: 16px;
+                                font-weight: 600;
+                                cursor: pointer;
+                                transition: all 0.3s;
+                            ">
+                                取消
+                            </button>
+                            <button id="confirmPointsBtn" style="
+                                flex: 1;
+                                padding: 14px 20px;
+                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                color: white;
+                                border: none;
+                                border-radius: 12px;
+                                font-size: 16px;
+                                font-weight: 600;
+                                cursor: pointer;
+                                transition: all 0.3s;
+                            ">
+                                确认使用
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                document.body.appendChild(overlay);
+
+                // 按钮事件
+                const cancelBtn = document.getElementById('cancelPointsBtn');
+                const confirmBtn = document.getElementById('confirmPointsBtn');
+
+                const closeDialog = () => {
+                    overlay.style.animation = 'slideOut 0.3s ease-out';
+                    setTimeout(() => overlay.remove(), 300);
+                };
+
+                cancelBtn.addEventListener('click', () => {
+                    closeDialog();
+                    resolve(false);
+                });
+
+                confirmBtn.addEventListener('click', () => {
+                    closeDialog();
+                    resolve(true);
+                });
+
+                // 点击背景关闭
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) {
+                        closeDialog();
+                        resolve(false);
+                    }
+                });
+            });
+        }
+        // ===============================================
+
         // ============================================
         // AI创作章节功能
         // ============================================
@@ -3052,11 +3500,11 @@
             document.getElementById('regenerateAiChapter')?.addEventListener('click', regenerateAiChapter);
         });
 
-        // 打开AI创作章节模态框
+// 打开 AI 创作章节模态框
         function openAiChapterModal(story, parentId) {
-            console.log('打开AI创作章节模态框, 故事:', story, '父节点ID:', parentId);
+            console.log('打开 AI 创作章节模态框，故事:', story, '父节点 ID:', parentId);
             
-            // 保存父节点ID到全局变量
+            // 保存父节点 ID 到全局变量
             window.aiChapterParentId = parentId;
             
             const modal = document.getElementById('aiChapterModal');
@@ -3094,6 +3542,10 @@
                 customBtn.innerHTML = '<i class="fas fa-edit"></i> 自定义';
             }
             
+            // ========== 新增：加载配额信息并更新徽章 ==========
+            loadAiChapterQuotaInfo();
+            // ===============================================
+            
             // 显示模态框
             modal.classList.add('active');
         }
@@ -3104,9 +3556,9 @@
             modal.classList.remove('active');
         }
 
-        // 开始AI章节生成
+// 开始 AI 章节生成
         async function startAiChapterGeneration(publishImmediately = true) {
-            console.log('开始AI章节生成');
+            console.log('开始 AI 章节生成');
             console.log('惊喜时间:', selectedAiSurpriseTime);
             console.log('风格:', selectedAiChapterStyle);
             console.log('期望字数:', selectedAiWordCount);
@@ -3123,15 +3575,15 @@
             // 根据惊喜时间和发布状态更新加载文本
             const loadingText = document.getElementById('aiChapterLoadingText');
             if (selectedAiSurpriseTime === 'immediate') {
-                loadingText.textContent = 'AI正在思考中，请稍候...';
+                loadingText.textContent = 'AI 正在思考中，请稍候...';
             } else {
                 const timeMap = {
-                    '1hour': '1小时后',
-                    'tonight': '今晚22:00',
-                    'tomorrow': '明天8:00'
+                    '1hour': '1 小时后',
+                    'tonight': '今晚 22:00',
+                    'tomorrow': '明天 8:00'
                 };
                 const action = publishImmediately ? '创作并发布' : '创作（保存为草稿）';
-                loadingText.textContent = `任务已提交，AI将在${timeMap[selectedAiSurpriseTime]}${action}新章节`;
+                loadingText.textContent = `任务已提交，AI 将在${timeMap[selectedAiSurpriseTime]}${action}新章节`;
             }
 
             try {
@@ -3141,12 +3593,80 @@
                     throw new Error('请先登录');
                 }
 
+                // ========== 新增：检查是否需要使用积分 ==========
+                try {
+                    // 获取配额信息
+                    const quotaResponse = await fetch('/api/ai/v2/quota', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+
+                    if (quotaResponse.ok) {
+                        const quotaData = await quotaResponse.json();
+                        const quotaInfo = quotaData.quota || quotaData.quotas;
+                        const costs = quotaData.costs;
+
+                        // 检查续写配额
+                        if (quotaInfo && quotaInfo.continuation) {
+                            const remaining = quotaInfo.continuation.unlimited ? -1 : 
+                                Math.max(0, quotaInfo.continuation.limit - quotaInfo.continuation.used);
+
+                            // 配额用完且需要消耗积分
+                            if (remaining === 0 && costs && costs.continuation > 0) {
+                                // 检查当前用户积分
+                                const userPointsResponse = await fetch('/api/auth/me', {
+                                    headers: {
+                                        'Authorization': `Bearer ${token}`
+                                    }
+                                });
+
+                                if (userPointsResponse.ok) {
+                                    const userData = await userPointsResponse.json();
+                                    const userPoints = userData.user.points || 0;
+
+                                    // 积分足够，弹窗确认
+                                    if (userPoints >= costs.continuation) {
+                                        const confirmed = await showPointsConfirmDialog(
+                                            'AI 续写章节',
+                                            costs.continuation,
+                                            `本次操作将消耗 ${costs.continuation} 积分（您的积分余额：${userPoints}）`
+                                        );
+
+                                        if (!confirmed) {
+                                            console.log('用户取消使用积分');
+                                            // 恢复 UI 状态
+                                            document.getElementById('aiSurpriseTimeSelector').style.display = 'block';
+                                            document.getElementById('aiAiStyleSelector').style.display = 'block';
+                                            document.querySelector('#startAiChapterGenerationDraft').parentElement.style.display = 'flex';
+                                            document.getElementById('aiChapterLoading').style.display = 'none';
+                                            return;
+                                        }
+                                    } else {
+                                        showError('积分不足，无法使用 AI 续写章节功能');
+                                        // 恢复 UI 状态
+                                        document.getElementById('aiSurpriseTimeSelector').style.display = 'block';
+                                        document.getElementById('aiAiStyleSelector').style.display = 'block';
+                                        document.querySelector('#startAiChapterGenerationDraft').parentElement.style.display = 'flex';
+                                        document.getElementById('aiChapterLoading').style.display = 'none';
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('检查配额和积分失败:', error);
+                    // 继续执行，不阻止用户操作
+                }
+                // ===============================================
+
                 const story = window.currentStory;
                 if (!story) {
                     throw new Error('故事信息不存在');
                 }
 
-                console.log('调用AI API...');
+                console.log('调用 AI API...');
 
                 // 处理自定义时间：转换为ISO格式（包含时区信息）
                 let surpriseTimeToSend = selectedAiSurpriseTime;

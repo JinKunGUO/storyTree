@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>积分商城 - StoryTree</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding-top: 80px;
+        }
+
+        .mall-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .mall-header {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .mall-title {
+            font-size: 36px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .mall-subtitle {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+
+        .user-points-card {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            border-radius: 15px;
+            padding: 25px;
+            display: inline-block;
+            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.3);
+            margin-top: 20px;
+        }
+
+        .user-points-label {
+            color: #333;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .user-points-value {
+            color: #333;
+            font-size: 48px;
+            font-weight: 700;
+        }
+
+        .points-packages {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .package-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .package-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.3);
+        }
+
+        .package-card.popular {
+            border: 3px solid #ff9800;
+        }
+
+        .popular-badge {
+            position: absolute;
+            top: 20px;
+            right: -35px;
+            background: linear-gradient(135deg, #ff9800, #ffa726);
+            color: white;
+            padding: 5px 40px;
+            transform: rotate(45deg);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .package-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 36px;
+            margin: 0 auto 20px;
+        }
+
+        .package-name {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .package-points {
+            font-size: 36px;
+            font-weight: 700;
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .package-points span {
+            font-size: 16px;
+            color: #999;
+        }
+
+        .package-price {
+            font-size: 32px;
+            font-weight: 700;
+            color: #4caf50;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .package-price span {
+            font-size: 16px;
+            color: #999;
+        }
+
+        .package-features {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 25px;
+        }
+
+        .package-features li {
+            padding: 8px 0;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .package-features li i {
+            color: #4caf50;
+        }
+
+        .btn-buy {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-buy:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .payment-methods {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .payment-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .payment-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .payment-option {
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .payment-option:hover {
+            border-color: #667eea;
+            background: #f8f9fa;
+        }
+
+        .payment-option.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+        }
+
+        .payment-option i {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .payment-option.alipay i {
+            color: #1677ff;
+        }
+
+        .payment-option.wechat i {
+            color: #07c160;
+        }
+
+        .payment-option.bank i {
+            color: #ff9800;
+        }
+
+        .payment-option.code i {
+            color: #9c27b0;
+        }
+
+        .payment-option-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .payment-option-desc {
+            font-size: 13px;
+            color: #999;
+        }
+
+        .exchange-code-section {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .exchange-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .exchange-input-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .exchange-input {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .exchange-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn-exchange {
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #9c27b0, #ba68c8);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .btn-exchange:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(156, 39, 176, 0.4);
+        }
+
+        .exchange-rules {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .exchange-rules h4 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .exchange-rules ul {
+            margin: 0;
+            padding-left: 20px;
+            color: #666;
+            line-height: 2;
+        }
+
+        @media (max-width: 768px) {
+            .mall-title {
+                font-size: 28px;
+            }
+
+            .user-points-value {
+                font-size: 36px;
+            }
+
+            .points-packages {
+                grid-template-columns: 1fr;
+            }
+
+            .exchange-input-group {
+                flex-direction: column;
+            }
+
+            .btn-exchange {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="/" class="nav-brand">
+                <i class="fas fa-tree"></i>
+                StoryTree
+            </a>
+            <div class="nav-menu">
+                <a href="/" class="nav-link">首页</a>
+                <a href="/discover" class="nav-link">发现故事</a>
+                <a href="/membership.html" class="nav-link">
+                    <i class="fas fa-crown"></i> 会员中心
+                </a>
+                <a href="/points-mall.html" class="nav-link" style="color: #ff9800;">
+                    <i class="fas fa-shopping-cart"></i> 积分商城
+                </a>
+                <a href="/notifications.html" class="nav-link" id="notificationLink" style="position: relative;">
+                    <i class="fas fa-bell"></i> 消息
+                    <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                </a>
+                <a href="/profile" class="nav-link" id="profileLink" style="display: none;">
+                    <i class="fas fa-user"></i> 个人中心
+                </a>
+                <a href="/login" class="nav-link" onclick="logout(); return false;">
+                    <i class="fas fa-sign-out-alt"></i> 退出
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="mall-container">
+        <!-- 商城头部 -->
+        <div class="mall-header">
+            <div class="mall-title">
+                <i class="fas fa-coins" style="color: #ffd700;"></i>
+                积分商城
+            </div>
+            <div class="mall-subtitle">
+                充值积分，解锁更多 AI 创作功能
+            </div>
+            
+            <!-- 用户当前积分 -->
+            <div class="user-points-card">
+                <div class="user-points-label">我的积分</div>
+                <div class="user-points-value" id="userPoints">加载中...</div>
+            </div>
+        </div>
+
+        <!-- 积分套餐 -->
+        <h2 style="color: white; margin-bottom: 20px; text-align: center; font-size: 28px;">
+            <i class="fas fa-gift"></i> 积分套餐
+        </h2>
+        
+        <div class="points-packages">
+            <!-- 套餐 1: 小额套餐 -->
+            <div class="package-card">
+                <div class="package-icon">
+                    <i class="fas fa-coins"></i>
+                </div>
+                <div class="package-name">小额套餐</div>
+                <div class="package-points">100 <span>积分</span></div>
+                <div class="package-price">¥9.9 <span>元</span></div>
+                <ul class="package-features">
+                    <li><i class="fas fa-check"></i> 相当于 10 次 AI 续写</li>
+                    <li><i class="fas fa-check"></i> 或 33 次 AI 润色</li>
+                    <li><i class="fas fa-check"></i> 或 5 张 AI 插图</li>
+                    <li><i class="fas fa-check"></i> 永久有效</li>
+                </ul>
+                <button class="btn-buy" onclick="selectPackage(100, 9.9)">
+                    <i class="fas fa-shopping-cart"></i> 立即购买
+                </button>
+            </div>
+
+            <!-- 套餐 2: 中额套餐 (热门) -->
+            <div class="package-card popular">
+                <div class="popular-badge">热门推荐</div>
+                <div class="package-icon">
+                    <i class="fas fa-gem"></i>
+                </div>
+                <div class="package-name">中额套餐</div>
+                <div class="package-points">500 <span>积分</span></div>
+                <div class="package-price">¥45.0 <span>元</span></div>
+                <ul class="package-features">
+                    <li><i class="fas fa-check"></i> 相当于 50 次 AI 续写</li>
+                    <li><i class="fas fa-check"></i> 或 166 次 AI 润色</li>
+                    <li><i class="fas fa-check"></i> 或 25 张 AI 插图</li>
+                    <li><i class="fas fa-check"></i> 永久有效</li>
+                    <li><i class="fas fa-star" style="color: #ff9800;"></i> 节省 5 元</li>
+                </ul>
+                <button class="btn-buy" onclick="selectPackage(500, 45.0)">
+                    <i class="fas fa-shopping-cart"></i> 立即购买
+                </button>
+            </div>
+
+            <!-- 套餐 3: 大额套餐 -->
+            <div class="package-card">
+                <div class="package-icon">
+                    <i class="fas fa-crown"></i>
+                </div>
+                <div class="package-name">大额套餐</div>
+                <div class="package-points">1000 <span>积分</span></div>
+                <div class="package-price">¥85.0 <span>元</span></div>
+                <ul class="package-features">
+                    <li><i class="fas fa-check"></i> 相当于 100 次 AI 续写</li>
+                    <li><i class="fas fa-check"></i> 或 333 次 AI 润色</li>
+                    <li><i class="fas fa-check"></i> 或 50 张 AI 插图</li>
+                    <li><i class="fas fa-check"></i> 永久有效</li>
+                    <li><i class="fas fa-star" style="color: #ff9800;"></i> 节省 15 元</li>
+                </ul>
+                <button class="btn-buy" onclick="selectPackage(1000, 85.0)">
+                    <i class="fas fa-shopping-cart"></i> 立即购买
+                </button>
+            </div>
+
+            <!-- 套餐 4: 超值套餐 -->
+            <div class="package-card">
+                <div class="package-icon">
+                    <i class="fas fa-fire"></i>
+                </div>
+                <div class="package-name">超值套餐</div>
+                <div class="package-points">2000 <span>积分</span></div>
+                <div class="package-price">¥160.0 <span>元</span></div>
+                <ul class="package-features">
+                    <li><i class="fas fa-check"></i> 相当于 200 次 AI 续写</li>
+                    <li><i class="fas fa-check"></i> 或 666 次 AI 润色</li>
+                    <li><i class="fas fa-check"></i> 或 100 张 AI 插图</li>
+                    <li><i class="fas fa-check"></i> 永久有效</li>
+                    <li><i class="fas fa-star" style="color: #ff9800;"></i> 节省 40 元</li>
+                </ul>
+                <button class="btn-buy" onclick="selectPackage(2000, 160.0)">
+                    <i class="fas fa-shopping-cart"></i> 立即购买
+                </button>
+            </div>
+        </div>
+
+        <!-- 支付方式 -->
+        <div class="payment-methods">
+            <div class="payment-title">
+                <i class="fas fa-wallet" style="color: #667eea;"></i>
+                选择支付方式
+            </div>
+            <div class="payment-options">
+                <div class="payment-option alipay" onclick="selectPayment('alipay', this)">
+                    <i class="fab fa-alipay"></i>
+                    <div class="payment-option-name">支付宝充值</div>
+                    <div class="payment-option-desc">快捷安全的支付方式</div>
+                </div>
+                <div class="payment-option wechat" onclick="selectPayment('wechat', this)">
+                    <i class="fab fa-weixin"></i>
+                    <div class="payment-option-name">微信支付</div>
+                    <div class="payment-option-desc">扫码即可支付</div>
+                </div>
+                <div class="payment-option bank" onclick="selectPayment('bank', this)">
+                    <i class="fas fa-university"></i>
+                    <div class="payment-option-name">银行卡充值</div>
+                    <div class="payment-option-desc">支持各大银行</div>
+                </div>
+                <div class="payment-option code" onclick="selectPayment('code', this)">
+                    <i class="fas fa-ticket-alt"></i>
+                    <div class="payment-option-name">积分兑换码</div>
+                    <div class="payment-option-desc">使用兑换码兑换积分</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 积分兑换码 -->
+        <div class="exchange-code-section">
+            <div class="exchange-title">
+                <i class="fas fa-gift" style="color: #9c27b0;"></i>
+                积分兑换码
+            </div>
+            <div class="exchange-input-group">
+                <input 
+                    type="text" 
+                    id="exchangeCodeInput" 
+                    class="exchange-input"
+                    placeholder="请输入 8-16 位兑换码"
+                    maxlength="16"
+                />
+                <button class="btn-exchange" onclick="redeemExchangeCode()">
+                    <i class="fas fa-exchange-alt"></i> 立即兑换
+                </button>
+            </div>
+            <div id="exchangeMessage" style="display: none; padding: 15px; border-radius: 10px; margin-top: 15px;"></div>
+            
+            <div class="exchange-rules">
+                <h4><i class="fas fa-info-circle" style="color: #667eea;"></i> 使用说明</h4>
+                <ul>
+                    <li>兑换码由 8-16 位字母和数字组成</li>
+                    <li>每个兑换码只能使用一次</li>
+                    <li>兑换成功后积分立即到账</li>
+                    <li>积分永久有效，没有使用期限</li>
+                    <li>如有疑问，请联系客服咨询</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let selectedPaymentMethod = null;
+
+        // 检查登录状态
+        function checkAuthStatus() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            
+            if (!token) {
+                if (confirm('请先登录，是否前往登录页面？')) {
+                    window.location.href = '/login?redirect=/points-mall';
+                } else {
+                    window.location.href = '/';
+                }
+                return false;
+            }
+            return true;
+        }
+
+        // 退出登录
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('user');
+            window.location.href = '/login';
+        }
+
+        // 加载用户信息
+        async function loadUserInfo() {
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                const response = await fetch('/api/auth/me', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('获取用户信息失败');
+                }
+
+                const data = await response.json();
+                currentUser = data.user;
+                
+                // 显示用户积分
+                document.getElementById('userPoints').textContent = (data.user.points || 0).toLocaleString();
+                
+                // 显示个人中心链接
+                const profileLink = document.getElementById('profileLink');
+                if (profileLink) {
+                    profileLink.style.display = 'block';
+                    profileLink.innerHTML = `<i class="fas fa-user"></i> ${data.user.username}`;
+                }
+            } catch (error) {
+                console.error('加载用户信息错误:', error);
+                alert('加载失败，请重新登录');
+                logout();
+            }
+        }
+
+        // 选择套餐
+        function selectPackage(points, price) {
+            if (!checkAuthStatus()) return;
+            
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                animation: fadeIn 0.3s;
+            `;
+            
+            overlay.innerHTML = `
+                <div style="
+                    background: white;
+                    border-radius: 20px;
+                    padding: 40px;
+                    max-width: 500px;
+                    width: 90%;
+                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                    animation: slideUp 0.3s;
+                ">
+                    <h2 style="margin: 0 0 20px 0; color: #333; text-align: center;">
+                        <i class="fas fa-shopping-cart" style="color: #667eea;"></i> 
+                        确认购买
+                    </h2>
+                    
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <div style="font-size: 48px; color: #667eea; margin-bottom: 10px;">
+                            ${points.toLocaleString()} 积分
+                        </div>
+                        <div style="font-size: 32px; color: #4caf50; font-weight: 700;">
+                            ¥${price.toFixed(2)} 元
+                        </div>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 25px;">
+                        <div style="color: #666; font-size: 14px; margin-bottom: 10px;">
+                            <i class="fas fa-info-circle"></i> 购买须知
+                        </div>
+                        <ul style="margin: 0; padding-left: 20px; color: #666; line-height: 2;">
+                            <li>支付成功后积分立即到账</li>
+                            <li>积分永久有效，没有使用期限</li>
+                            <li>支持 7 天无理由退款（未使用）</li>
+                            <li>如有问题请联系客服</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; color: #666; font-weight: 600; margin-bottom: 10px;">
+                            选择支付方式
+                        </label>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                            <div class="payment-option alipay" onclick="selectPaymentInModal('alipay', this)">
+                                <i class="fab fa-alipay" style="font-size: 32px;"></i>
+                                <div style="font-size: 13px; font-weight: 600;">支付宝</div>
+                            </div>
+                            <div class="payment-option wechat" onclick="selectPaymentInModal('wechat', this)">
+                                <i class="fab fa-weixin" style="font-size: 32px;"></i>
+                                <div style="font-size: 13px; font-weight: 600;">微信</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 15px;">
+                        <button onclick="this.closest('div').parentElement.parentElement.remove()" style="
+                            flex: 1;
+                            padding: 12px;
+                            background: #f5f5f5;
+                            color: #666;
+                            border: none;
+                            border-radius: 10px;
+                            font-size: 16px;
+                            font-weight: 600;
+                            cursor: pointer;
+                        ">取消</button>
+                        <button onclick="confirmPurchase(${points}, ${price})" style="
+                            flex: 1;
+                            padding: 12px;
+                            background: linear-gradient(135deg, #667eea, #764ba2);
+                            color: white;
+                            border: none;
+                            border-radius: 10px;
+                            font-size: 16px;
+                            font-weight: 600;
+                            cursor: pointer;
+                        ">确认支付</button>
+                    </div>
+                </div>
+            `;
+            
+            overlay.onclick = (e) => {
+                if (e.target === overlay) {
+                    overlay.remove();
+                }
+            };
+            
+            document.body.appendChild(overlay);
+        }
+
+        // 在弹窗中选择支付方式
+        function selectPaymentInModal(method, element) {
+            selectedPaymentMethod = method;
+            
+            // 移除其他选项的选中状态
+            document.querySelectorAll('.payment-option').forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            // 添加选中状态
+            element.classList.add('selected');
+        }
+
+        // 确认购买
+        async function confirmPurchase(points, price) {
+            if (!selectedPaymentMethod) {
+                alert('请选择支付方式');
+                return;
+            }
+            
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                // TODO: 调用后端 API 创建充值订单
+                const response = await fetch('/api/points/recharge', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        points,
+                        amount: price,
+                        paymentMethod: selectedPaymentMethod
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('✅ 订单创建成功！即将跳转支付页面...');
+                    // TODO: 跳转到支付页面
+                    // window.location.href = data.paymentUrl;
+                } else {
+                    alert('❌ ' + (data.error || '创建订单失败'));
+                }
+            } catch (error) {
+                console.error('创建订单失败:', error);
+                alert('创建订单失败，请稍后重试');
+            }
+        }
+
+        // 选择支付方式（主页面）
+        function selectPayment(method, element) {
+            selectedPaymentMethod = method;
+            
+            // 移除其他选项的选中状态
+            document.querySelectorAll('.payment-option').forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            // 添加选中状态
+            element.classList.add('selected');
+            
+            // 如果选择了兑换码，滚动到兑换码区域
+            if (method === 'code') {
+                document.querySelector('.exchange-code-section').scrollIntoView({
+                    behavior: 'smooth'
+                });
+            }
+        }
+
+        // 兑换积分兑换码
+        async function redeemExchangeCode() {
+            const code = document.getElementById('exchangeCodeInput').value.trim();
+            const messageEl = document.getElementById('exchangeMessage');
+            
+            if (!code) {
+                showMessage(messageEl, '请输入兑换码', 'error');
+                return;
+            }
+            
+            if (code.length < 8 || code.length > 16) {
+                showMessage(messageEl, '兑换码长度应为 8-16 位', 'error');
+                return;
+            }
+            
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                const response = await fetch('/api/points/exchange-code', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ code })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage(messageEl, `✅ 兑换成功！获得 ${data.points} 积分`, 'success');
+                    document.getElementById('exchangeCodeInput').value = '';
+                    // 刷新用户积分
+                    await loadUserInfo();
+                } else {
+                    showMessage(messageEl, '❌ ' + (data.error || '兑换失败'), 'error');
+                }
+            } catch (error) {
+                console.error('兑换失败:', error);
+                showMessage(messageEl, '兑换失败，请稍后重试', 'error');
+            }
+        }
+
+        // 显示消息
+        function showMessage(element, message, type) {
+            element.style.display = 'block';
+            element.className = `message message-${type}`;
+            element.innerHTML = message;
+            element.style.cssText = `
+                padding: 15px;
+                border-radius: 10px;
+                margin-top: 15px;
+                background: ${type === 'success' ? '#e8f5e9' : type === 'error' ? '#ffebee' : '#e3f2fd'};
+                color: ${type === 'success' ? '#4caf50' : type === 'error' ? '#f44336' : '#2196f3'};
+                border-left: 4px solid ${type === 'success' ? '#4caf50' : type === 'error' ? '#f44336' : '#2196f3'};
+            `;
+            
+            setTimeout(() => {
+                element.style.display = 'none';
+            }, 5000);
+        }
+
+        // 页面加载
+        document.addEventListener('DOMContentLoaded', function() {
+            if (checkAuthStatus()) {
+                loadUserInfo();
+            }
+        });
+    </script>
+</body>
+</html>

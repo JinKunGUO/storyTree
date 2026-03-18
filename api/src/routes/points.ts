@@ -92,14 +92,78 @@ router.get('/transactions', async (req, res) => {
 
     const total = await prisma.point_transactions.count({ where });
 
+    // 批量获取关联的故事/章节信息
+    const enrichedTransactions = await Promise.all(
+      transactions.map(async (t) => {
+        let sourceInfo = null;
+        
+        // 根据 type 判断需要查询的表
+        if (
+          t.type.includes('bookmark') || 
+          t.type.includes('follow') || 
+          t.type.includes('like') ||
+          t.type.includes('word_count') ||
+          t.type.includes('publish_node')
+        ) {
+          // 查询章节信息
+          if (t.reference_id) {
+            const node = await prisma.nodes.findUnique({
+              where: { id: t.reference_id },
+              select: { id: true, title: true, story_id: true }
+            });
+            if (node) {
+              const story = await prisma.stories.findUnique({
+                where: { id: node.story_id },
+                select: { id: true, title: true }
+              });
+              sourceInfo = {
+                type: 'node',
+                title: node.title,
+                storyTitle: story?.title || '未知故事'
+              };
+            }
+          }
+        } else if (
+          t.type.includes('publish_story') ||
+          t.type.includes('pin_story')
+        ) {
+          // 查询故事信息
+          if (t.reference_id) {
+            const story = await prisma.stories.findUnique({
+              where: { id: t.reference_id },
+              select: { id: true, title: true }
+            });
+            if (story) {
+              sourceInfo = {
+                type: 'story',
+                title: story.title
+              };
+            }
+          }
+        } else if (
+          t.type.includes('checkin') ||
+          t.type.includes('milestone') ||
+          t.type.includes('invite') ||
+          t.type.includes('invited') ||
+          t.type.includes('membership')
+        ) {
+          // 这些类型不需要额外的 source info
+          sourceInfo = null;
+        }
+
+        return {
+          id: t.id,
+          amount: t.amount,
+          type: t.type,
+          description: t.description,
+          createdAt: t.created_at,
+          sourceInfo: sourceInfo
+        };
+      })
+    );
+
     res.json({
-      transactions: transactions.map(t => ({
-        id: t.id,
-        amount: t.amount,
-        type: t.type,
-        description: t.description,
-        createdAt: t.created_at
-      })),
+      transactions: enrichedTransactions,
       pagination: {
         page: parseInt(page as string),
         limit: parseInt(limit as string),

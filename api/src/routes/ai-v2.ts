@@ -38,10 +38,20 @@ router.post('/continuation/submit', async (req, res) => {
   }
 
   try {
-    // 检查权限
+    // 检查权限（配额+积分混合模式）
     const permission = await canUseAiFeature(userId, 'continuation');
     if (!permission.allowed) {
       return res.status(403).json({ error: permission.reason });
+    }
+
+    // 获取用户信息
+    const user = await prisma.users.findUnique({
+      where: { id: userId },
+      select: { points: true, isAdmin: true }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: '用户不存在' });
     }
 
     // 获取故事信息
@@ -161,7 +171,7 @@ router.post('/continuation/submit', async (req, res) => {
         }
     }
 
-    // 创建任务记录
+    // 创建任务记录（保存是否需要使用积分）
     const task = await prisma.ai_tasks.create({
       data: {
         user_id: userId,
@@ -178,7 +188,10 @@ router.post('/continuation/submit', async (req, res) => {
           count,
           mode, // 保存模式信息
           publishImmediately, // 保存发布状态
-          wordCount // 保存期望字数
+          wordCount, // 保存期望字数
+          usePoints: permission.usePoints, // 是否需要使用积分
+          pointsCost: permission.pointsCost, // 需要消耗的积分数
+          quotaRemaining: permission.quotaRemaining // 剩余配额
         }),
         scheduled_at: scheduledAt
       }
@@ -236,20 +249,25 @@ router.post('/polish', async (req, res) => {
   }
 
   try {
-    // 检查权限
+    // 检查权限（配额+积分混合模式）
     const permission = await canUseAiFeature(userId, 'polish');
     if (!permission.allowed) {
       return res.status(403).json({ error: permission.reason });
     }
 
-    // 创建任务
+    // 创建任务（保存是否需要使用积分）
     const task = await prisma.ai_tasks.create({
       data: {
         user_id: userId,
         task_type: 'polish',
         status: 'pending',
         priority: 20, // 润色任务高优先级
-        input_data: JSON.stringify({ content, style })
+        input_data: JSON.stringify({ 
+          content, 
+          style,
+          usePoints: permission.usePoints,
+          pointsCost: permission.pointsCost
+        })
       }
     });
 
@@ -307,13 +325,13 @@ router.post('/illustration/submit', async (req, res) => {
   }
 
   try {
-    // 检查权限
+    // 检查权限（配额+积分混合模式）
     const permission = await canUseAiFeature(userId, 'illustration');
     if (!permission.allowed) {
       return res.status(403).json({ error: permission.reason });
     }
 
-    // 创建任务
+    // 创建任务（保存是否需要使用积分）
     const task = await prisma.ai_tasks.create({
       data: {
         user_id: userId,
@@ -322,7 +340,12 @@ router.post('/illustration/submit', async (req, res) => {
         task_type: 'illustration',
         status: 'pending',
         priority: 5,
-        input_data: JSON.stringify({ chapterTitle, chapterContent })
+        input_data: JSON.stringify({ 
+          chapterTitle, 
+          chapterContent,
+          usePoints: permission.usePoints,
+          pointsCost: permission.pointsCost
+        })
       }
     });
 

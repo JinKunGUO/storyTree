@@ -78,6 +78,16 @@ export const AI_COST = {
 };
 
 /**
+ * 其他积分消耗规则
+ */
+export const POINTS_COST = {
+  STORY_PIN_PER_DAY: 50,        // 故事置顶（每天）
+  COMMENT_PIN: 10,              // 置顶评论（每条）
+  TIP_MIN: 5,                   // 打赏最低金额
+  TIP_MAX: 10000                // 打赏最高金额（单次）
+};
+
+/**
  * 获取用户等级信息
  */
 export function getUserLevel(points: number): {
@@ -277,7 +287,25 @@ export async function getUserMonthlyQuota(userId: number): Promise<{
   if (user.membership_tier && user.membership_tier !== 'free') {
     const { getMembershipQuota } = await import('./membership');
     try {
-      return await getMembershipQuota(userId);
+      const membershipQuota = await getMembershipQuota(userId);
+      // 确保返回正确的格式
+      return {
+        continuation: {
+          used: membershipQuota.continuation.used,
+          limit: membershipQuota.continuation.limit,
+          unlimited: membershipQuota.continuation.unlimited
+        },
+        polish: {
+          used: membershipQuota.polish.used,
+          limit: membershipQuota.polish.limit,
+          unlimited: membershipQuota.polish.unlimited
+        },
+        illustration: {
+          used: membershipQuota.illustration.used,
+          limit: membershipQuota.illustration.limit,
+          unlimited: membershipQuota.illustration.unlimited
+        }
+      };
     } catch (error) {
       console.error('获取会员配额失败:', error);
       // 降级到旧逻辑
@@ -344,38 +372,73 @@ export async function getUserMonthlyQuota(userId: number): Promise<{
 }
 
 /**
- * 检查用户是否可以使用AI功能
+ * 检查用户是否可以使用AI功能（配额+积分混合模式）
+ * 
+ * 规则：
+ * 1. 如果配额充足，直接使用配额（免费）
+ * 2. 如果配额用完，检查积分是否足够
+ * 3. 如果积分也不够，返回错误
+ * 
+ * @returns { allowed: boolean, usePoints: boolean, pointsCost: number, reason?: string }
  */
 export async function canUseAiFeature(
   userId: number,
   featureType: 'continuation' | 'polish' | 'illustration'
-): Promise<{ allowed: boolean; reason?: string }> {
+): Promise<{ 
+  allowed: boolean; 
+  usePoints: boolean;  // 是否需要使用积分
+  pointsCost: number;  // 需要消耗的积分数
+  quotaRemaining: number; // 剩余配额
+  reason?: string 
+}> {
   const quota = await getUserMonthlyQuota(userId);
   const feature = quota[featureType];
-
-  // 如果是无限制，直接允许
-  if (feature.unlimited) {
-    return { allowed: true };
-  }
-
-  // 检查配额
-  if (feature.used >= feature.limit) {
-    return {
-      allowed: false,
-      reason: `本月${featureType === 'continuation' ? 'AI续写' : featureType === 'polish' ? 'AI润色' : 'AI插图'}次数已用完（${feature.used}/${feature.limit}）`
-    };
-  }
-
-  // 检查积分（如果配额用完，可以用积分）
   const cost = AI_COST[featureType.toUpperCase() as keyof typeof AI_COST];
-  const hasPoints = await hasEnoughPoints(userId, cost);
 
-  if (!hasPoints && feature.used >= feature.limit) {
-    return {
-      allowed: false,
-      reason: `积分不足，需要 ${cost} 积分`
+  // 如果是无限配额，直接允许（不消耗积分）
+  if (feature.unlimited) {
+    return { 
+      allowed: true, 
+      usePoints: false, 
+      pointsCost: 0,
+      quotaRemaining: -1 // -1表示无限
     };
   }
 
-  return { allowed: true };
+  const remaining = feature.limit - feature.used;
+
+  // 情况1：配额充足，使用配额（免费）
+  if (remaining > 0) {
+    return { 
+      allowed: true, 
+      usePoints: false, 
+      pointsCost: 0,
+      quotaRemaining: remaining
+    };
+  }
+
+  // 情况2：配额用完，检查积分
+  const hasPoints = await hasEnoughPoints(userId, cost);
+  
+  if (hasPoints) {
+    // 积分足够，允许使用（消耗积分）
+    return { 
+      allowed: true, 
+      usePoints: true, 
+      pointsCost: cost,
+      quotaRemaining: 0
+    };
+  }
+
+  // 情况3：配额和积分都不够
+  const featureName = featureType === 'continuation' ? 'AI续写' : 
+                      featureType === 'polish' ? 'AI润色' : 'AI插图';
+  
+  return {
+    allowed: false,
+    usePoints: false,
+    pointsCost: 0,
+    quotaRemaining: 0,
+    reason: `本月${featureName}配额已用完（${feature.used}/${feature.limit}），且积分不足（需要${cost}积分）`
+  };
 }

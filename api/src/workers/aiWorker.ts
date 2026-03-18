@@ -404,13 +404,30 @@ XXX` : ''}`;
       }
     });
 
-    // 扣除积分
-    await deductPoints(userId, AI_COST.CONTINUATION, 'ai_continuation', 'AI续写消耗', taskId);
-
-    // 处理任务完成逻辑
+    // 查询任务信息（用于后续处理）
     const task = await prisma.ai_tasks.findUnique({
       where: { id: taskId }
     });
+
+    // 根据任务设置决定是否扣除积分
+    const inputData = JSON.parse(task?.input_data || '{}');
+    const usePoints = inputData.usePoints || false;
+    const pointsCost = inputData.pointsCost || AI_COST.CONTINUATION;
+
+    if (usePoints) {
+      // 配额用完，使用积分
+      console.log(`💰 配额已用完，扣除${pointsCost}积分`);
+      const deductResult = await deductPoints(userId, pointsCost, 'ai_continuation', 'AI续写消耗积分', taskId);
+      if (!deductResult.success) {
+        console.error(`❌ 扣除积分失败，用户积分不足`);
+        // 积分不足时任务已经执行，不回滚，但记录警告
+      }
+    } else {
+      // 使用配额，不扣除积分
+      console.log(`✅ 使用配额，不扣除积分（剩余配额: ${inputData.quotaRemaining || 'N/A'}）`);
+    }
+
+    // 处理任务完成逻辑
 
     if (task) {
       // 检查任务类型和设置
@@ -822,7 +839,26 @@ ${content}
       }
     });
 
-    await deductPoints(userId, AI_COST.POLISH, 'ai_polish', 'AI润色消耗', taskId);
+    // 根据任务设置决定是否扣除积分
+    const task = await prisma.ai_tasks.findUnique({
+      where: { id: taskId },
+      select: { input_data: true }
+    });
+    
+    const inputData = JSON.parse(task?.input_data || '{}');
+    const usePoints = inputData.usePoints || false;
+    const pointsCost = inputData.pointsCost || AI_COST.POLISH;
+
+    if (usePoints) {
+      console.log(`💰 配额已用完，扣除${pointsCost}积分`);
+      const deductResult = await deductPoints(userId, pointsCost, 'ai_polish', 'AI润色消耗积分', taskId);
+      if (!deductResult.success) {
+        console.error(`❌ 扣除积分失败，用户积分不足`);
+      }
+    } else {
+      console.log(`✅ 使用配额，不扣除积分`);
+    }
+
     await notifyAiPolishReady(userId, taskId);
 
     console.log(`✅ AI润色任务完成: ${taskId}`);
@@ -908,7 +944,26 @@ aiIllustrationQueue.process(async (job: Job<IllustrationJobData>) => {
       }
     });
 
-    await deductPoints(userId, AI_COST.ILLUSTRATION, 'ai_illustration', 'AI插图消耗', taskId);
+    // 根据任务设置决定是否扣除积分
+    const task = await prisma.ai_tasks.findUnique({
+      where: { id: taskId },
+      select: { input_data: true }
+    });
+    
+    const inputData = JSON.parse(task?.input_data || '{}');
+    const usePoints = inputData.usePoints || false;
+    const pointsCost = inputData.pointsCost || AI_COST.ILLUSTRATION;
+
+    if (usePoints) {
+      console.log(`💰 配额已用完，扣除${pointsCost}积分`);
+      const deductResult = await deductPoints(userId, pointsCost, 'ai_illustration', 'AI插图消耗积分', taskId);
+      if (!deductResult.success) {
+        console.error(`❌ 扣除积分失败，用户积分不足`);
+      }
+    } else {
+      console.log(`✅ 使用配额，不扣除积分`);
+    }
+
     await notifyAiIllustrationReady(userId, taskId, chapterTitle);
 
     console.log(`✅ AI插图任务完成: ${taskId}, 耗时: ${responseTime}ms`);

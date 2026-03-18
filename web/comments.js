@@ -52,20 +52,49 @@ class CommentSystem {
             return;
         }
 
-        container.innerHTML = this.comments.map(comment => this.renderComment(comment)).join('');
+        // 对评论进行排序：置顶评论排在最前面，然后按创建时间倒序
+        const sortedComments = [...this.comments].sort((a, b) => {
+            const aPinned = a.pinned || false;
+            const bPinned = b.pinned || false;
+            
+            // 如果一个置顶一个不置顶，置顶的排前面
+            if (aPinned && !bPinned) return -1;
+            if (!aPinned && bPinned) return 1;
+            
+            // 如果都置顶或都不置顶，按创建时间倒序
+            return new Date(b.created_at) - new Date(a.created_at);
+        });
+
+        container.innerHTML = sortedComments.map(comment => this.renderComment(comment)).join('');
     }
 
-    // 渲染单个评论
+// 渲染单个评论
     renderComment(comment, isReply = false, rootCommentId = null, replyToUsername = null) {
         const currentUser = this.getCurrentUser();
         const isOwner = currentUser && currentUser.id === comment.user.id;
+        const isStoryAuthor = this.storyInfo && currentUser && this.storyInfo.author_id === currentUser.id;
         const avatar = comment.user.avatar || '/assets/default-avatar.png';
         const isDeleted = comment.is_deleted || false;
+        const isPinned = comment.pinned || false;
         
-        // 如果是顶级评论，rootCommentId就是自己的ID
+        // 如果是顶级评论，rootCommentId 就是自己的 ID
         const actualRootId = rootCommentId || comment.id;
 
-        // 点赞/踩按钮HTML（已删除的评论不显示）
+        // 置顶标识 HTML（仅顶级评论显示）
+        const pinBadge = !isReply && isPinned ? `
+            <span class="pin-badge" title="已置顶">
+                <i class="fas fa-thumbtack"></i> 置顶
+            </span>
+        ` : '';
+
+        // 置顶/取消置顶按钮 HTML（仅故事作者可见，仅顶级评论）
+        const pinButtons = (!isReply && isStoryAuthor && !isDeleted) ? `
+            <button class="btn-pin ${isPinned ? 'active' : ''}" data-comment-id="${comment.id}" title="${isPinned ? '取消置顶' : '置顶评论'}">
+                <i class="fas fa-thumbtack"></i> ${isPinned ? '取消置顶' : '置顶'}
+            </button>
+        ` : '';
+
+        // 点赞/踩按钮 HTML（已删除的评论不显示）
         const voteButtons = isDeleted ? '' : `
             <button class="btn-vote btn-like ${comment.userVote === 'like' ? 'active' : ''}" data-comment-id="${comment.id}" data-vote-type="like">
                 <i class="fas fa-thumbs-up"></i>
@@ -77,15 +106,12 @@ class CommentSystem {
             </button>
         `;
 
-        // 如果是回复评论，使用简化的结构（不再递归，所有回复都在同一层级）
+// 如果是回复评论，使用简化的结构（不再递归，所有回复都在同一层级）
         if (isReply) {
-            // 如果有replyToUsername，说明是回复子评论，需要添加@前缀
+            // 如果有 replyToUsername，说明是回复子评论，需要添加@前缀
             const contentPrefix = replyToUsername ? `<span class="reply-to">@${replyToUsername}：</span>` : '';
             
-            // 判断是否可以编辑/删除：
-            // 1. 必须是评论作者本人
-            // 2. 如果评论功能关闭（allow_comment=false），只有主创可以编辑/删除
-            const isStoryAuthor = this.storyInfo && currentUser && this.storyInfo.author_id === currentUser.id;
+            // 判断是否可以编辑/删除（复用方法开始处声明的 isStoryAuthor）
             const allowCommentEnabled = !this.storyInfo || this.storyInfo.allow_comment !== false;
             const canEditDelete = isOwner && !isDeleted && (allowCommentEnabled || isStoryAuthor);
             
@@ -145,10 +171,7 @@ class CommentSystem {
         
         const visibleReplies = showCollapse ? allRepliesFlat.slice(0, 3) : allRepliesFlat;
         
-        // 判断是否可以编辑/删除：
-        // 1. 必须是评论作者本人
-        // 2. 如果评论功能关闭（allow_comment=false），只有主创可以编辑/删除
-        const isStoryAuthor = this.storyInfo && currentUser && this.storyInfo.author_id === currentUser.id;
+        // 判断是否可以编辑/删除（复用方法开始处声明的 isStoryAuthor）
         const allowCommentEnabled = !this.storyInfo || this.storyInfo.allow_comment !== false;
         const canEditDelete = isOwner && !isDeleted && (allowCommentEnabled || isStoryAuthor);
         
@@ -164,6 +187,8 @@ class CommentSystem {
                     </div>
                     <div class="comment-text ${isDeleted ? 'deleted-text' : ''}">${this.escapeHtml(comment.content)}</div>
                     <div class="comment-actions">
+                        ${pinBadge}
+                        ${pinButtons}
                         ${voteButtons}
                         ${!isDeleted ? `
                             <button class="btn-reply" data-comment-id="${comment.id}" data-root-id="${comment.id}" data-author="${comment.user.username}">
@@ -266,6 +291,12 @@ class CommentSystem {
                 const commentId = target.dataset.commentId;
                 const voteType = target.dataset.voteType;
                 await this.voteComment(commentId, voteType, target);
+            }
+
+            // 置顶/取消置顶按钮
+            if (target.classList.contains('btn-pin')) {
+                const commentId = target.dataset.commentId;
+                await this.togglePinComment(commentId, target);
             }
 
             // 展开/折叠回复
@@ -643,7 +674,7 @@ class CommentSystem {
         }
     }
 
-    // 点赞或踩评论
+// 点赞或踩评论
     async voteComment(commentId, voteType, buttonElement) {
         const token = localStorage.getItem('token') || sessionStorage.getItem('token');
         if (!token) {
@@ -668,11 +699,11 @@ class CommentSystem {
 
             const data = await response.json();
 
-            // 更新UI - 查找评论元素
+            // 更新 UI - 查找评论元素
             const commentEl = buttonElement.closest('[data-comment-id]');
             if (!commentEl) {
                 console.error('找不到评论元素');
-                // 重新加载评论列表以更新UI
+                // 重新加载评论列表以更新 UI
                 await this.loadComments(this.currentPage);
                 return;
             }
@@ -712,6 +743,59 @@ class CommentSystem {
         } catch (error) {
             console.error('投票错误:', error);
             this.showError(error.message || '操作失败，请稍后重试');
+        }
+    }
+
+    // 置顶/取消置顶评论
+    async togglePinComment(commentId, buttonElement) {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        if (!token) {
+            this.showError('请先登录');
+            return;
+        }
+
+        const commentEl = buttonElement.closest('[data-comment-id]');
+        const isPinned = buttonElement.classList.contains('active');
+        
+        // 禁用按钮并显示加载状态
+        buttonElement.disabled = true;
+        buttonElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 处理中...';
+
+        try {
+            const url = isPinned 
+                ? `/api/points-features/comments/${commentId}/pin`
+                : `/api/points-features/comments/${commentId}/pin`;
+            
+            const method = isPinned ? 'DELETE' : 'POST';
+            
+            const response = await fetch(url, {
+                method,
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || '操作失败');
+            }
+
+            // 重新加载评论列表
+            await this.loadComments(this.currentPage);
+
+            if (isPinned) {
+                this.showSuccess('已取消置顶');
+            } else {
+                this.showSuccess('评论已置顶，消耗 10 积分');
+            }
+
+        } catch (error) {
+            console.error('置顶操作错误:', error);
+            this.showError(error.message || '操作失败，请稍后重试');
+            
+            // 恢复按钮状态
+            buttonElement.disabled = false;
+            buttonElement.innerHTML = '<i class="fas fa-thumbtack"></i> 置顶';
         }
     }
 
@@ -794,4 +878,3 @@ class CommentSystem {
 
 // 导出
 window.CommentSystem = CommentSystem;
-

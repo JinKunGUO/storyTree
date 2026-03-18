@@ -27,6 +27,7 @@ import badgesRoutes from './routes/badges';
 import invitationRoutes from './routes/invitations';
 import checkinRoutes from './routes/checkin';
 import withdrawalRoutes from './routes/withdrawals';
+import pointsFeaturesRoutes from './routes/points-features';
 import { closeQueues } from './utils/queue';
 
 dotenv.config();
@@ -36,6 +37,9 @@ import './workers/aiWorker';
 
 // 启动会员 Worker
 import './workers/membershipWorker';
+
+// 启动置顶清理 Worker
+import './workers/pinCleanupWorker';
 
 const app = express();
 export const prisma = new PrismaClient();
@@ -73,6 +77,7 @@ app.use('/api/badges', badgesRoutes);
 app.use('/api/invitations', invitationRoutes);
 app.use('/api/checkin', checkinRoutes);
 app.use('/api/withdrawals', withdrawalRoutes);
+app.use('/api/points-features', pointsFeaturesRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
