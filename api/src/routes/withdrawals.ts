@@ -281,18 +281,6 @@ router.get('/earnings-stats', authenticateToken, async (req: any, res: any) => {
       }
     });
 
-    // 获取总收益（所有付费章节的收益）
-    const totalEarnings = await prisma.paid_nodes.aggregate({
-      where: {
-        node: {
-          author_id: userId
-        }
-      },
-      _sum: {
-        total_earnings: true
-      }
-    });
-
     // 获取已提现金额
     const withdrawnAmount = await prisma.withdrawal_requests.aggregate({
       where: {
@@ -315,26 +303,18 @@ router.get('/earnings-stats', authenticateToken, async (req: any, res: any) => {
       }
     });
 
-    // 获取章节解锁统计
-    const unlockStats = await prisma.node_unlocks.aggregate({
-      where: {
-        node: {
-          author_id: userId
-        }
-      },
-      _count: true,
-      _sum: {
-        cost: true
-      }
-    });
+    // 注：付费章节功能已移除，以下数据不再统计
+    // - totalEarnings: 总收益（原来自 paid_nodes 表）
+    // - unlockCount: 解锁次数（原来自 node_unlocks 表）
+    // - unlockRevenue: 解锁收益（原来自 node_unlocks 表）
 
     res.json({
       earningsBalance: user?.earnings_balance || 0,
-      totalEarnings: totalEarnings._sum.total_earnings || 0,
+      totalEarnings: 0, // 付费功能已移除
       withdrawnAmount: withdrawnAmount._sum.amount || 0,
       pendingAmount: pendingAmount._sum.amount || 0,
-      unlockCount: unlockStats._count || 0,
-      unlockRevenue: unlockStats._sum.cost || 0
+      unlockCount: 0, // 付费功能已移除
+      unlockRevenue: 0 // 付费功能已移除
     });
   } catch (error) {
     console.error('获取收益统计失败:', error);

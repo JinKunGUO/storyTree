@@ -242,7 +242,7 @@ export async function hasEnoughPoints(userId: number, amount: number): Promise<b
 }
 
 /**
- * 获取用户本月AI使用配额
+ * 获取用户本月 AI 使用配额
  */
 export async function getUserMonthlyQuota(userId: number): Promise<{
   continuation: { used: number; limit: number; unlimited: boolean };
@@ -251,7 +251,7 @@ export async function getUserMonthlyQuota(userId: number): Promise<{
 }> {
   const user = await prisma.users.findUnique({
     where: { id: userId },
-    select: { points: true, subscription_type: true, subscription_expires: true, isAdmin: true }
+    select: { points: true, subscription_type: true, subscription_expires: true, isAdmin: true, membership_tier: true, membership_expires_at: true }
   });
 
   if (!user) {
@@ -267,18 +267,37 @@ export async function getUserMonthlyQuota(userId: number): Promise<{
     };
   }
 
+  // 使用会员系统获取配额（新方式）
+  if (user.membership_tier && user.membership_tier !== 'free') {
+    const { getMembershipQuota } = await import('./membership');
+    try {
+      return await getMembershipQuota(userId);
+    } catch (error) {
+      console.error('获取会员配额失败:', error);
+      // 降级到旧逻辑
+    }
+  }
+
+  // 旧逻辑：如果有有效订阅，使用订阅配额（向后兼容）
+  if (user.subscription_type && user.subscription_expires && user.subscription_expires > new Date()) {
+    if (user.subscription_type === 'monthly') {
+      return {
+        continuation: { used: 0, limit: LEVEL_CONFIG[3].quotas.continuation, unlimited: false },
+        polish: { used: 0, limit: LEVEL_CONFIG[3].quotas.polish, unlimited: true },
+        illustration: { used: 0, limit: LEVEL_CONFIG[3].quotas.illustration, unlimited: false }
+      };
+    } else if (user.subscription_type === 'yearly') {
+      return {
+        continuation: { used: 0, limit: LEVEL_CONFIG[4].quotas.continuation, unlimited: true },
+        polish: { used: 0, limit: LEVEL_CONFIG[4].quotas.polish, unlimited: true },
+        illustration: { used: 0, limit: LEVEL_CONFIG[4].quotas.illustration, unlimited: true }
+      };
+    }
+  }
+
   // 获取用户等级配额
   const levelInfo = getUserLevel(user.points);
   let quotas = levelInfo.quotas;
-
-  // 如果有有效订阅，使用订阅配额
-  if (user.subscription_type && user.subscription_expires && user.subscription_expires > new Date()) {
-    if (user.subscription_type === 'monthly') {
-      quotas = LEVEL_CONFIG[3].quotas; // 月度会员相当于Lv3
-    } else if (user.subscription_type === 'yearly') {
-      quotas = LEVEL_CONFIG[4].quotas; // 年度会员相当于Lv4
-    }
-  }
 
   // 获取本月使用量
   const now = new Date();
@@ -354,4 +373,3 @@ export async function canUseAiFeature(
 
   return { allowed: true };
 }
-

@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../index';
 import { addPoints } from '../utils/points';
 import crypto from 'crypto';
+import { upgradeMembership } from '../utils/membership';
 
 const router = Router();
 
@@ -23,7 +24,44 @@ const getUserId = (req: any): number | null => {
 };
 
 /**
- * 订阅套餐配置
+ * 会员套餐配置
+ */
+const MEMBERSHIP_PLANS = {
+  trial: {
+    name: '体验会员',
+    price: 9.9,
+    duration: 7, // 天
+    tier: 'trial'
+  },
+  monthly: {
+    name: '月度会员',
+    price: 39,
+    duration: 30,
+    tier: 'monthly'
+  },
+  quarterly: {
+    name: '季度会员',
+    price: 99,
+    duration: 90,
+    tier: 'quarterly'
+  },
+  yearly: {
+    name: '年度会员',
+    price: 388,
+    duration: 365,
+    tier: 'yearly'
+  },
+  enterprise: {
+    name: '企业版/创作团队版',
+    price: 999,
+    duration: 365,
+    tier: 'enterprise',
+    maxAccounts: 5
+  }
+};
+
+/**
+ * 订阅套餐配置（向后兼容）
  */
 const SUBSCRIPTION_PLANS = {
   monthly: {
@@ -80,21 +118,47 @@ router.get('/plans', (req, res) => {
 /**
  * 创建订阅订单
  */
-router.post('/subscription/create', async (req, res) => {
+/**
+ * 创建会员订阅订单
+ */
+router.post('/membership/create', async (req, res) => {
   const userId = getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
 
-  const { planId } = req.body;
+  const { tier, discountCode } = req.body;
 
-  if (!SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]) {
-    return res.status(400).json({ error: '无效的套餐' });
+  if (!tier || !MEMBERSHIP_PLANS[tier as keyof typeof MEMBERSHIP_PLANS]) {
+    return res.status(400).json({ error: '无效的会员等级' });
+  }
+
+  // 检查体验会员资格
+  if (tier === 'trial') {
+    const user = await prisma.users.findUnique({
+      where: { id: userId },
+      select: { has_used_trial: true }
+    });
+
+    if (user?.has_used_trial) {
+      return res.status(400).json({ error: '体验会员仅限使用一次' });
+    }
   }
 
   try {
-    const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS];
-    const orderId = `SUB_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+    const plan = MEMBERSHIP_PLANS[tier as keyof typeof MEMBERSHIP_PLANS];
+    const orderId = `MEM_${Date.now()}_${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+
+    // 计算优惠
+    let originalPrice = plan.price;
+    let discountAmount = 0;
+    let finalPrice = originalPrice;
+
+    if (discountCode) {
+      // TODO: 实现优惠码逻辑
+      discountAmount = originalPrice * 0.1;
+      finalPrice = originalPrice - discountAmount;
+    }
 
     // 创建订单
     const order = await prisma.orders.create({
@@ -102,26 +166,35 @@ router.post('/subscription/create', async (req, res) => {
         id: orderId,
         user_id: userId,
         type: 'subscription',
-        amount: plan.price,
-        points: plan.bonusPoints,
+        tier,
+        amount: finalPrice,
+        original_amount: originalPrice,
+        discount_amount: discountAmount,
+        discount_code: discountCode,
         status: 'pending',
-        payment_method: null
+        payment_method: null,
+        expires_at: new Date(Date.now() + 30 * 60 * 1000) // 30 分钟过期
       }
     });
 
-    // TODO: 集成真实支付接口（支付宝/微信）
-    // 这里返回模拟的支付链接
     res.json({
       orderId: order.id,
-      amount: order.amount,
-      planName: plan.name,
-      // 模拟支付链接
+      tier,
+      tierName: plan.name,
+      originalPrice,
+      discountAmount,
+      finalPrice,
+      duration: plan.duration,
+      durationText: plan.duration === 7 ? '7 天体验' :
+                   plan.duration === 30 ? '1 个月' :
+                   plan.duration === 90 ? '3 个月' :
+                   plan.duration === 365 ? '1 年' : `${plan.duration}天`,
       paymentUrl: `/payment/mock?orderId=${orderId}`,
       qrCode: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${orderId}`,
-      expiresAt: new Date(Date.now() + 30 * 60 * 1000) // 30分钟过期
+      expiresAt: order.expires_at
     });
   } catch (error) {
-    console.error('创建订单失败:', error);
+    console.error('创建会员订单失败:', error);
     res.status(500).json({ error: '创建订单失败' });
   }
 });
@@ -293,33 +366,45 @@ router.post('/callback/mock', async (req, res) => {
 
       // 处理订单
       if (order.type === 'subscription') {
-        // 订阅订单：更新用户订阅状态
-        const plan = Object.entries(SUBSCRIPTION_PLANS).find(
-          ([_, p]) => p.price === order.amount
-        );
+        // 会员订阅订单：使用新的会员系统
+        if (order.tier) {
+          await upgradeMembership(
+            order.user_id,
+            order.tier,
+            order.id,
+            order.amount,
+            order.original_amount || order.amount,
+            order.discount_code || undefined
+          );
+        } else {
+          // 向后兼容旧的订阅系统
+          const plan = Object.entries(SUBSCRIPTION_PLANS).find(
+            ([_, p]) => p.price === order.amount
+          );
 
-        if (plan) {
-          const [planId, planInfo] = plan;
-          const expiresAt = new Date();
-          expiresAt.setDate(expiresAt.getDate() + planInfo.duration);
+          if (plan) {
+            const [planId, planInfo] = plan;
+            const expiresAt = new Date();
+            expiresAt.setDate(expiresAt.getDate() + planInfo.duration);
 
-          await prisma.users.update({
-            where: { id: order.user_id },
-            data: {
-              subscription_type: planId,
-              subscription_expires: expiresAt
+            await prisma.users.update({
+              where: { id: order.user_id },
+              data: {
+                subscription_type: planId,
+                subscription_expires: expiresAt
+              }
+            });
+
+            // 赠送积分
+            if (planInfo.bonusPoints > 0) {
+              await addPoints(
+                order.user_id,
+                planInfo.bonusPoints,
+                'subscription_bonus',
+                `购买${planInfo.name}赠送积分`,
+                parseInt(orderId.split('_')[1])
+              );
             }
-          });
-
-          // 赠送积分
-          if (planInfo.bonusPoints > 0) {
-            await addPoints(
-              order.user_id,
-              planInfo.bonusPoints,
-              'subscription_bonus',
-              `购买${planInfo.name}赠送积分`,
-              parseInt(orderId.split('_')[1])
-            );
           }
         }
       } else if (order.type === 'points') {
@@ -351,4 +436,3 @@ router.post('/callback/mock', async (req, res) => {
 });
 
 export default router;
-

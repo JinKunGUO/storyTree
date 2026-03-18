@@ -55,38 +55,36 @@ model follows {
 }
 
 model nodes {
-  id             Int        @id @default(autoincrement())
-  story_id       Int
-  parent_id      Int?
-  author_id      Int
-  title          String
-  content        String
-  image          String?
-  path           String
-  ai_generated   Boolean    @default(false)
-  is_published   Boolean    @default(false)
-  rating_avg     Float      @default(0)
-  rating_count   Int        @default(0)
-  read_count     Int        @default(0)
-  review_status  String     @default("APPROVED")
-  report_count   Int        @default(0)
-  report_reasons String?
-  reviewed_by    Int?
-  reviewed_at    DateTime?
-  review_note    String?
-  created_at     DateTime   @default(now())
-  updated_at     DateTime
-  comments       comments[]
-  nodes          nodes?     @relation("nodesTonodes", fields: [parent_id], references: [id])
-  other_nodes    nodes[]    @relation("nodesTonodes")
-  author         users      @relation("NodeAuthor", fields: [author_id], references: [id])
-  story          stories    @relation(fields: [story_id], references: [id], onDelete: Cascade)
-  ratings        ratings[]
-  reports        reports[]
-  shares         shares[]
+  id              Int               @id @default(autoincrement())
+  story_id        Int
+  parent_id       Int?
+  author_id       Int
+  title           String
+  content         String
+  image           String?
+  path            String
+  ai_generated    Boolean           @default(false)
+  is_published    Boolean           @default(false)
+  rating_avg      Float             @default(0)
+  rating_count    Int               @default(0)
+  read_count      Int               @default(0)
+  review_status   String            @default("APPROVED")
+  report_count    Int               @default(0)
+  report_reasons  String?
+  reviewed_by     Int?
+  reviewed_at     DateTime?
+  review_note     String?
+  created_at      DateTime          @default(now())
+  updated_at      DateTime
+  comments        comments[]
+  nodes           nodes?            @relation("nodesTonodes", fields: [parent_id], references: [id])
+  other_nodes     nodes[]           @relation("nodesTonodes")
+  author          users             @relation("NodeAuthor", fields: [author_id], references: [id])
+  story           stories           @relation(fields: [story_id], references: [id], onDelete: Cascade)
+  ratings         ratings[]
+  reports         reports[]
+  shares          shares[]
   delete_requests delete_requests[]
-  paid_node      paid_nodes?
-  node_unlocks   node_unlocks[]
 
   @@index([review_status])
   @@index([path])
@@ -157,88 +155,100 @@ model shares {
 }
 
 model stories {
-  id                         Int                   @id @default(autoincrement())
-  title                      String
-  description                String?
-  cover_image                String?
-  author_id                  Int
-  root_node_id               Int?
-  visibility                 String                @default("public") 
+  id                          Int                      @id @default(autoincrement())
+  title                       String
+  description                 String?
+  cover_image                 String?
+  author_id                   Int
+  root_node_id                Int?
+  visibility                  String                   @default("public")
   // 可见性级别（四级）：
   // - author_only: 仅主创可见（私密）
   // - collaborators: 主创和协作者可见
   // - followers: 主创、协作者、故事粉丝、作者粉丝可见
   // - public: 所有人可见（包括未登录用户，默认）
-  password                   String? // 密码保护（可选，暂未实现）
-  allow_branch               Boolean               @default(true) // 是否允许协作者续写
-  allow_comment              Boolean               @default(true) // 是否允许评论
-  require_collaborator_review Boolean              @default(false) // 协作者内容是否需要审核
-  auto_approve_collaborators Boolean               @default(false) // 是否自动通过协作申请
-  tags                       String? // JSON数组: ["科幻", "悬疑"]
-  created_at                 DateTime              @default(now())
-  updated_at                 DateTime
-  bookmarks                  bookmarks[]
-  nodes                      nodes[]
-  shares                     shares[]
-  author                     users                 @relation("StoryAuthor", fields: [author_id], references: [id])
-  collaborators              story_collaborators[]
-  followers                  story_followers[]
-  collaboration_requests     collaboration_requests[]
+  password                    String? // 密码保护（可选，暂未实现）
+  allow_branch                Boolean                  @default(true) // 是否允许协作者续写
+  allow_comment               Boolean                  @default(true) // 是否允许评论
+  require_collaborator_review Boolean                  @default(false) // 协作者内容是否需要审核
+  auto_approve_collaborators  Boolean                  @default(false) // 是否自动通过协作申请
+  tags                        String? // JSON数组: ["科幻", "悬疑"]
+  created_at                  DateTime                 @default(now())
+  updated_at                  DateTime
+  bookmarks                   bookmarks[]
+  nodes                       nodes[]
+  shares                      shares[]
+  author                      users                    @relation("StoryAuthor", fields: [author_id], references: [id])
+  collaborators               story_collaborators[]
+  followers                   story_followers[]
+  collaboration_requests      collaboration_requests[]
 }
 
 model users {
-  id                       Int                   @id @default(autoincrement())
-  username                 String                @unique
-  email                    String                @unique
-  password                 String
-  avatar                   String?
-  bio                      String?
-  level                    Int                   @default(1)
-  points                   Int                   @default(0)
-  word_count               Int                   @default(0) // 累计码字数
-  badges                   String?               // JSON 数组：已解锁的徽章列表
-  consecutive_days         Int                   @default(0) // 连续签到天数
-  last_checkin_date        DateTime?             // 最后签到日期
-  makeup_chances           Int                   @default(0) // 补签机会次数
-  invited_by_code          String?               // 被哪个邀请码邀请
-  earnings_balance         Int                   @default(0) // 收益余额
-  subscription_type        String?
-  subscription_expires     DateTime?
-  isAdmin                  Boolean               @default(false) @map("is_admin")
-  emailVerified            Boolean               @default(false) @map("email_verified")
-  emailVerificationToken   String?               @map("email_verification_token")
-  emailVerificationExpires DateTime?             @map("email_verification_expires")
-  passwordResetToken       String?               @map("password_reset_token")
-  passwordResetExpires     DateTime?             @map("password_reset_expires")
-  createdAt                DateTime              @default(now()) @map("created_at")
-  updatedAt                DateTime              @map("updated_at")
-  ai_usage_logs            ai_usage_logs[]
-  ai_tasks                 ai_tasks[]
-  point_transactions       point_transactions[]
-  orders                   orders[]
-  bookmarks                bookmarks[]
-  comments                 comments[]
-  comment_votes            comment_votes[]
-  following                follows[]             @relation("follows_following_idTousers")
-  followers                follows[]             @relation("follows_follower_idTousers")
-  authored_nodes           nodes[]               @relation("NodeAuthor")
-  notifications            notifications[]
-  ratings                  ratings[]
-  reports                  reports[]
-  shares                   shares[]
-  authored_stories         stories[]             @relation("StoryAuthor")
-  collaborations           story_collaborators[]
-  story_follows            story_followers[]
-  collaboration_requests   collaboration_requests[] @relation("collaboration_request_user")
-  collaboration_reviews    collaboration_requests[] @relation("collaboration_request_reviewer")
-  delete_requests_made     delete_requests[]     @relation("delete_request_requester")
-  delete_requests_reviewed delete_requests[]     @relation("delete_request_reviewer")
-  checkin_records          checkin_records[]
-  node_unlocks             node_unlocks[]
-  withdrawal_requests      withdrawal_requests[]
-  invitation_records_inviter invitation_records[] @relation("invitation_inviter")
-  invitation_records_invitee invitation_records[] @relation("invitation_invitee")
-  created_invitation_codes invitation_codes[]
+  id                Int       @id @default(autoincrement())
+  username          String    @unique
+  email             String    @unique
+  password          String
+  avatar            String?
+  bio               String?
+  level             Int       @default(1)
+  points            Int       @default(0)
+  word_count        Int       @default(0) // 累计码字数
+  badges            String? // JSON 数组：已解锁的徽章列表
+  consecutive_days  Int       @default(0) // 连续签到天数
+  last_checkin_date DateTime? // 最后签到日期
+  makeup_chances    Int       @default(0) // 补签机会次数
+  invited_by_code   String? // 被哪个邀请码邀请
+  earnings_balance  Int       @default(0) // 收益余额
+
+  // 会员相关字段
+  membership_tier           String    @default("free") // 'free' | 'trial' | 'monthly' | 'quarterly' | 'yearly' | 'enterprise'
+  membership_started_at     DateTime?
+  membership_expires_at     DateTime?
+  membership_auto_renew     Boolean   @default(false)
+  membership_payment_method String?
+  has_used_trial            Boolean   @default(false) // 是否已使用过体验会员
+
+  // 旧字段保留（用于数据迁移过渡）
+  subscription_type    String?
+  subscription_expires DateTime?
+
+  isAdmin                    Boolean                   @default(false) @map("is_admin")
+  emailVerified              Boolean                   @default(false) @map("email_verified")
+  emailVerificationToken     String?                   @map("email_verification_token")
+  emailVerificationExpires   DateTime?                 @map("email_verification_expires")
+  passwordResetToken         String?                   @map("password_reset_token")
+  passwordResetExpires       DateTime?                 @map("password_reset_expires")
+  createdAt                  DateTime                  @default(now()) @map("created_at")
+  updatedAt                  DateTime                  @map("updated_at")
+  ai_usage_logs              ai_usage_logs[]
+  ai_tasks                   ai_tasks[]
+  point_transactions         point_transactions[]
+  orders                     orders[]
+  bookmarks                  bookmarks[]
+  comments                   comments[]
+  comment_votes              comment_votes[]
+  following                  follows[]                 @relation("follows_following_idTousers")
+  followers                  follows[]                 @relation("follows_follower_idTousers")
+  authored_nodes             nodes[]                   @relation("NodeAuthor")
+  notifications              notifications[]
+  ratings                    ratings[]
+  reports                    reports[]
+  shares                     shares[]
+  authored_stories           stories[]                 @relation("StoryAuthor")
+  collaborations             story_collaborators[]
+  story_follows              story_followers[]
+  collaboration_requests     collaboration_requests[]  @relation("collaboration_request_user")
+  collaboration_reviews      collaboration_requests[]  @relation("collaboration_request_reviewer")
+  delete_requests_made       delete_requests[]         @relation("delete_request_requester")
+  delete_requests_reviewed   delete_requests[]         @relation("delete_request_reviewer")
+  checkin_records            checkin_records[]
+  withdrawal_requests        withdrawal_requests[]
+  invitation_records_inviter invitation_records[]      @relation("invitation_inviter")
+  invitation_records_invitee invitation_records[]      @relation("invitation_invitee")
+  created_invitation_codes   invitation_codes[]
+  user_subscriptions         user_subscriptions[]
+  membership_benefits_log    membership_benefits_log[]
 }
 
 model ai_usage_logs {
@@ -287,14 +297,14 @@ model ai_tasks {
 }
 
 model point_transactions {
-  id          Int      @id @default(autoincrement())
-  user_id     Int
-  amount      Int
-  type        String
-  description String
+  id           Int      @id @default(autoincrement())
+  user_id      Int
+  amount       Int
+  type         String
+  description  String
   reference_id Int?
-  created_at  DateTime @default(now())
-  user        users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  created_at   DateTime @default(now())
+  user         users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
   @@index([created_at])
@@ -302,20 +312,28 @@ model point_transactions {
 }
 
 model orders {
-  id             String   @id
-  user_id        Int
-  type           String
-  amount         Float
-  points         Int?
-  status         String   @default("pending")
-  payment_method String?
-  paid_at        DateTime?
-  created_at     DateTime @default(now())
-  user           users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  id              String    @id
+  user_id         Int
+  type            String // 'subscription' | 'points' | 'renewal'
+  tier            String? // 会员档位
+  amount          Float
+  original_amount Float? // 原价
+  discount_amount Float? // 优惠金额
+  discount_code   String? // 优惠码
+  points          Int?
+  status          String    @default("pending")
+  payment_method  String?
+  paid_at         DateTime?
+  created_at      DateTime  @default(now())
+  expires_at      DateTime? // 订单过期时间
+
+  user         users               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  subscription user_subscriptions?
 
   @@index([user_id])
   @@index([status])
   @@index([created_at])
+  @@index([type])
 }
 
 // 故事协作者表（简化版，仅标识协作者身份）
@@ -326,7 +344,7 @@ model story_collaborators {
   invited_by Int
   created_at DateTime  @default(now())
   removed_at DateTime? // 软删除：移除时间
-  removed_by Int?      // 软删除：谁移除的
+  removed_by Int? // 软删除：谁移除的
   story      stories   @relation(fields: [story_id], references: [id], onDelete: Cascade)
   user       users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
@@ -362,7 +380,7 @@ model story_followers {
   created_at DateTime @default(now())
   story      stories  @relation(fields: [story_id], references: [id], onDelete: Cascade)
   user       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  
+
   @@unique([story_id, user_id])
   @@index([user_id])
   @@index([story_id])
@@ -373,7 +391,7 @@ model collaboration_requests {
   id          Int       @id @default(autoincrement())
   story_id    Int
   user_id     Int
-  message     String?   // 申请理由
+  message     String? // 申请理由
   status      String    @default("pending") // pending, approved, rejected
   created_at  DateTime  @default(now())
   reviewed_by Int?
@@ -381,7 +399,7 @@ model collaboration_requests {
   story       stories   @relation(fields: [story_id], references: [id], onDelete: Cascade)
   user        users     @relation("collaboration_request_user", fields: [user_id], references: [id], onDelete: Cascade)
   reviewer    users?    @relation("collaboration_request_reviewer", fields: [reviewed_by], references: [id])
-  
+
   @@unique([story_id, user_id])
   @@index([story_id])
   @@index([user_id])
@@ -393,11 +411,11 @@ model comment_votes {
   id         Int      @id @default(autoincrement())
   comment_id Int
   user_id    Int
-  vote_type  String   // 'like' 或 'dislike'
+  vote_type  String // 'like' 或 'dislike'
   created_at DateTime @default(now())
   comment    comments @relation(fields: [comment_id], references: [id], onDelete: Cascade)
   user       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  
+
   @@unique([comment_id, user_id])
   @@index([comment_id])
   @@index([user_id])
@@ -405,19 +423,19 @@ model comment_votes {
 
 // 邀请码表
 model invitation_codes {
-  id              Int                  @id @default(autoincrement())
-  code            String               @unique
-  created_by_id   Int                  // 创建者 ID
-  created_by      users                @relation(fields: [created_by_id], references: [id], onDelete: Cascade)
-  type            String               // 'admin' | 'user'
-  bonus_points    Int                  // 受邀人获得的积分
-  max_uses        Int                  // 最大使用次数（-1 为无限，用户码固定为 1）
-  used_count      Int                  @default(0)
-  expires_at      DateTime?            // 过期时间
-  created_at      DateTime             @default(now())
-  is_active       Boolean              @default(true)
-  version         Int                  @default(0) // 乐观锁版本号
-  
+  id            Int       @id @default(autoincrement())
+  code          String    @unique
+  created_by_id Int // 创建者 ID
+  created_by    users     @relation(fields: [created_by_id], references: [id], onDelete: Cascade)
+  type          String // 'admin' | 'user'
+  bonus_points  Int // 受邀人获得的积分
+  max_uses      Int // 最大使用次数（-1 为无限，用户码固定为 1）
+  used_count    Int       @default(0)
+  expires_at    DateTime? // 过期时间
+  created_at    DateTime  @default(now())
+  is_active     Boolean   @default(true)
+  version       Int       @default(0) // 乐观锁版本号
+
   @@index([code])
   @@index([created_by_id])
   @@index([is_active])
@@ -425,16 +443,16 @@ model invitation_codes {
 
 // 邀请记录表
 model invitation_records {
-  id              Int      @id @default(autoincrement())
-  inviter_id      Int      // 邀请人
-  invitee_id      Int      // 被邀请人
-  invitation_code String   // 使用的邀请码
-  bonus_points    Int      // 获得的积分
+  id                Int      @id @default(autoincrement())
+  inviter_id        Int // 邀请人
+  invitee_id        Int // 被邀请人
+  invitation_code   String // 使用的邀请码
+  bonus_points      Int // 获得的积分
   milestone_rewards String? // JSON：里程碑奖励记录
-  created_at      DateTime @default(now())
-  inviter         users    @relation("invitation_inviter", fields: [inviter_id], references: [id], onDelete: Cascade)
-  invitee         users    @relation("invitation_invitee", fields: [invitee_id], references: [id], onDelete: Cascade)
-  
+  created_at        DateTime @default(now())
+  inviter           users    @relation("invitation_inviter", fields: [inviter_id], references: [id], onDelete: Cascade)
+  invitee           users    @relation("invitation_invitee", fields: [invitee_id], references: [id], onDelete: Cascade)
+
   @@index([inviter_id])
   @@index([invitee_id])
   @@index([invitation_code])
@@ -442,46 +460,17 @@ model invitation_records {
 
 // 签到记录表
 model checkin_records {
-  id              Int      @id @default(autoincrement())
-  user_id         Int
-  user            users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  checkin_date    DateTime @default(now())
-  consecutive_days Int     // 当时的连续天数
-  points_earned   Int      // 获得的积分
-  is_makeup       Boolean  @default(false) // 是否补签
-  
+  id               Int      @id @default(autoincrement())
+  user_id          Int
+  user             users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  checkin_date     DateTime @default(now())
+  consecutive_days Int // 当时的连续天数
+  points_earned    Int // 获得的积分
+  is_makeup        Boolean  @default(false) // 是否补签
+
   @@unique([user_id, checkin_date])
   @@index([user_id])
   @@index([checkin_date])
-}
-
-// 付费章节表
-model paid_nodes {
-  id              Int      @id @default(autoincrement())
-  node_id         Int      @unique
-  node            nodes    @relation(fields: [node_id], references: [id], onDelete: Cascade)
-  unlock_price    Int      // 解锁价格（积分）
-  is_member_free  Boolean  @default(false) // 会员是否免费
-  total_earnings  Int      @default(0) // 总收益
-  unlock_count    Int      @default(0) // 解锁次数
-  created_at      DateTime @default(now())
-  
-  @@index([node_id])
-}
-
-// 章节解锁记录表
-model node_unlocks {
-  id         Int      @id @default(autoincrement())
-  user_id    Int
-  user       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  node_id    Int
-  node       nodes    @relation(fields: [node_id], references: [id], onDelete: Cascade)
-  cost       Int      // 花费积分（会员为0）
-  created_at DateTime @default(now())
-  
-  @@unique([user_id, node_id])
-  @@index([user_id])
-  @@index([node_id])
 }
 
 // 收益提现表
@@ -489,16 +478,62 @@ model withdrawal_requests {
   id              Int       @id @default(autoincrement())
   user_id         Int
   user            users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  amount          Int       // 提现积分数
+  amount          Int // 提现积分数
   status          String    @default("pending") // 'pending' | 'approved' | 'rejected'
-  payment_method  String    // 提现方式
-  payment_account String    // 提现账号
-  admin_note      String?   // 管理员备注
+  payment_method  String // 提现方式
+  payment_account String // 提现账号
+  admin_note      String? // 管理员备注
   created_at      DateTime  @default(now())
   processed_at    DateTime?
-  processed_by    Int?      // 处理人
-  
+  processed_by    Int? // 处理人
+
   @@index([user_id])
   @@index([status])
   @@index([created_at])
 }
+
+// 会员订阅记录表（保留完整历史）
+model user_subscriptions {
+  id             Int       @id @default(autoincrement())
+  user_id        Int
+  tier           String // 'trial' | 'monthly' | 'quarterly' | 'yearly' | 'enterprise'
+  status         String // 'active' | 'expired' | 'cancelled' | 'refunded'
+  started_at     DateTime
+  expires_at     DateTime
+  auto_renew     Boolean   @default(false)
+  payment_method String?
+  order_id       String?   @unique
+  original_price Float // 原价
+  paid_price     Float // 实付价格
+  discount_code  String? // 优惠码
+  created_at     DateTime  @default(now())
+  cancelled_at   DateTime?
+  cancel_reason  String?
+
+  user  users   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  order orders? @relation(fields: [order_id], references: [id])
+
+  @@index([user_id])
+  @@index([status])
+  @@index([expires_at])
+  @@index([tier])
+}
+
+// 会员权益使用日志（用于统计分析）
+model membership_benefits_log {
+  id              Int      @id @default(autoincrement())
+  user_id         Int
+  benefit_type    String // 'ai_continuation' | 'ai_polish' | 'ai_illustration' | 'export' | 'advanced_editor' 等
+  used_at         DateTime @default(now())
+  membership_tier String // 使用时的会员等级
+  user_level      Int // 使用时的用户等级
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([benefit_type])
+  @@index([used_at])
+}
+
+// Add relation fields to users model
+// This comment is just a reminder - the fields are already added above

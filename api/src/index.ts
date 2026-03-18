@@ -18,19 +18,23 @@ import commentRoutes from './routes/comments';
 import shareRoutes from './routes/shares';
 import pointsRoutes from './routes/points';
 import paymentRoutes from './routes/payment';
+import membershipRoutes from './routes/membership';
+import adminMembershipRoutes from './routes/admin-membership';
 import systemRoutes from './routes/system';
 import collaborationRequestRoutes from './routes/collaboration-requests';
 import badgesRoutes from './routes/badges';
 import invitationRoutes from './routes/invitations';
 import checkinRoutes from './routes/checkin';
-import paidNodesRoutes from './routes/paid-nodes';
 import withdrawalRoutes from './routes/withdrawals';
 import { closeQueues } from './utils/queue';
 
 dotenv.config();
 
-// 启动AI Worker
+// 启动 AI Worker
 import './workers/aiWorker';
+
+// 启动会员 Worker
+import './workers/membershipWorker';
 
 const app = express();
 export const prisma = new PrismaClient();
@@ -59,12 +63,13 @@ app.use('/api/comments', commentRoutes);
 app.use('/api/shares', shareRoutes);
 app.use('/api/points', pointsRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/membership', membershipRoutes);
+app.use('/api/admin/membership', adminMembershipRoutes);
 app.use('/api/system', systemRoutes);
 app.use('/api/collaboration-requests', collaborationRequestRoutes);
 app.use('/api/badges', badgesRoutes);
 app.use('/api/invitations', invitationRoutes);
 app.use('/api/checkin', checkinRoutes);
-app.use('/api/paid-nodes', paidNodesRoutes);
 app.use('/api/withdrawals', withdrawalRoutes);
 
 // Health check

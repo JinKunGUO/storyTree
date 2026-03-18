@@ -1367,7 +1367,7 @@
                     </div>
                 </div>
 
-                <!-- 标签2：章节列表 -->
+<!-- 标签 2：章节列表 -->
                 <div class="tab-content" id="chaptersTab">
                     <div class="chapters-section-inner">
                         <div class="section-header">
@@ -1644,7 +1644,7 @@
                     重新生成
                 </button>
             </div>
-        </div>
+</div>
     </div>
 
     <!-- 协作申请模态框 -->
@@ -1662,7 +1662,7 @@
                     <label for="collaborationMessage">申请留言</label>
                     <textarea id="collaborationMessage" placeholder="向主创说明你的协作意向..." 
                               maxlength="500" rows="6"></textarea>
-                    <div class="form-hint">最多500个字符，说明你为什么想参与这个故事的创作</div>
+                    <div class="form-hint">最多 500 个字符，说明你为什么想参与这个故事的创作</div>
                 </div>
             </div>
             <div class="edit-modal-footer">
@@ -1670,56 +1670,6 @@
                 <button class="btn-save" id="submitCollaborationRequest">
                     <i class="fas fa-paper-plane"></i>
                     提交申请
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 付费设置模态框 -->
-    <div class="edit-modal" id="setPaidModal">
-        <div class="edit-modal-content">
-            <div class="edit-modal-header">
-                <h2>
-                    <i class="fas fa-lock"></i>
-                    付费章节设置
-                </h2>
-                <button class="close-btn" id="closePaidModal">×</button>
-            </div>
-            <div class="edit-modal-body">
-                <div class="form-group">
-                    <label for="paidPrice">解锁价格（积分）*</label>
-                    <input type="number" id="paidPrice" min="1" max="1000" placeholder="输入解锁价格" value="50">
-                    <div class="form-hint">建议范围：10-100积分</div>
-                </div>
-
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="memberFree" style="width: auto; margin-right: 8px;">
-                        会员免费阅读
-                    </label>
-                    <div class="form-hint">勾选后，会员用户可免费阅读此章节</div>
-                </div>
-
-                <div class="form-hint" style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 20px;">
-                    <i class="fas fa-info-circle"></i> 
-                    <strong>提示：</strong>
-                    <ul style="margin: 10px 0 0 20px; line-height: 1.8;">
-                        <li>设置为付费后，读者需要支付积分才能阅读</li>
-                        <li>您将获得100%的收益（积分）</li>
-                        <li>您自己查看章节无需支付</li>
-                        <li>已解锁的读者无需重复支付</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="edit-modal-footer">
-                <button class="btn-cancel" id="cancelPaid">取消</button>
-                <button class="btn-save" id="confirmSetPaid">
-                    <i class="fas fa-check"></i>
-                    确认设置
-                </button>
-                <button class="btn-save" id="confirmCancelPaid" style="background: #f44336; display: none;">
-                    <i class="fas fa-unlock"></i>
-                    取消付费
                 </button>
             </div>
         </div>
@@ -2752,12 +2702,12 @@
         // 加载章节列表
         async function loadChapters(storyId) {
             try {
-                const response = await fetch(`/api/stories/${storyId}/nodes`);
-                if (!response.ok) {
+                const chaptersResponse = await fetch(`/api/stories/${storyId}/nodes`);
+                if (!chaptersResponse.ok) {
                     throw new Error('加载章节失败');
                 }
 
-                const chapters = await response.json();
+                const chapters = await chaptersResponse.json();
                 renderChapters(chapters);
 
                 // 排序按钮
@@ -2778,25 +2728,30 @@
             }
         }
 
-        // 渲染章节列表
+// 渲染章节列表
         async function renderChapters(chapters) {
             const container = document.getElementById('chaptersList');
             
-            // 获取当前用户ID
-            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-            let currentUserId = null;
+            // 使用缓存的用户 ID，避免重复调用 API
+            let currentUserId = window.currentUserId;
             
-            if (token) {
-                try {
-                    const response = await fetch('/api/auth/me', {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    if (response.ok) {
-                        const userData = await response.json();
-                        currentUserId = userData.user.id;
+            // 如果还没有缓存用户 ID，且需要判断作者身份，则获取一次
+            if (!currentUserId && chapters.length > 0) {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                if (token) {
+                    try {
+                        const response = await fetch('/api/auth/me', {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        if (response.ok) {
+                            const userData = await response.json();
+                            currentUserId = userData.user.id;
+                            // 缓存用户 ID 供后续使用
+                            window.currentUserId = currentUserId;
+                        }
+                    } catch (error) {
+                        console.error('获取用户信息失败:', error);
                     }
-                } catch (error) {
-                    console.error('获取用户信息失败:', error);
                 }
             }
             
@@ -2804,7 +2759,7 @@
             console.log('渲染章节列表，章节数量:', chapters.length);
             if (chapters.length > 0) {
                 console.log('第一个章节数据:', chapters[0]);
-                console.log('AI字段检查:', {
+                console.log('AI 字段检查:', {
                     ai_generated: chapters[0].ai_generated,
                     aiGenerated: chapters[0].aiGenerated
                 });
@@ -2815,6 +2770,7 @@
                     <div class="empty-state">
                         <i class="fas fa-book"></i>
                         <p>还没有章节</p>
+                        <p style="margin-top: 10px; color: #999; font-size: 14px;">点击"续写分支"或"AI 创作"来添加章节</p>
                     </div>
                 `;
                 return;
@@ -2824,12 +2780,12 @@
             const isStoryAuthor = story && currentUserId && (story.authorId === currentUserId || story.author?.id === currentUserId);
 
             container.innerHTML = chapters.map((chapter, index) => {
-                // 调试每个章节的AI字段
+                // 调试每个章节的 AI 字段
                 const hasAI = chapter.aiGenerated || chapter.ai_generated;
                 const isChapterAuthor = currentUserId && chapter.author_id === currentUserId;
                 const canDelete = isStoryAuthor || isChapterAuthor;
                 
-                console.log(`章节 ${index + 1} "${chapter.title}" AI标记:`, hasAI);
+                console.log(`章节 ${index + 1} "${chapter.title}" AI 标记:`, hasAI);
                 
                 return `
                 <div class="chapter-item" data-chapter-id="${chapter.id}">
@@ -2837,7 +2793,7 @@
                     <div class="chapter-info">
                         <div class="chapter-title">
                             ${chapter.title}
-                            ${hasAI ? '<span class="ai-badge"><i class="fas fa-robot"></i> AI创作</span>' : ''}
+                            ${hasAI ? '<span class="ai-badge"><i class="fas fa-robot"></i> AI 创作</span>' : ''}
                         </div>
                         <div class="chapter-meta">
                             <span><i class="fas fa-eye"></i> ${chapter.readCount || chapter.read_count || chapter.views || 0} 阅读</span>
@@ -2847,35 +2803,10 @@
                         </div>
                     </div>
                     <div class="chapter-actions" style="display: flex; align-items: center; gap: 10px;">
-                        ${chapter.isPaid ? `
-                            <div class="chapter-paid-badge" style="
-                                padding: 5px 12px;
-                                background: linear-gradient(135deg, #f39c12, #e67e22);
-                                color: white;
-                                border-radius: 15px;
-                                font-size: 12px;
-                                font-weight: 600;
-                                white-space: nowrap;
-                            ">
-                                <i class="fas fa-lock"></i> ${chapter.paidPrice || 0}积分
-                            </div>
-                        ` : ''}
                         <div class="chapter-status ${chapter.isPublished || chapter.is_published ? 'status-published' : 'status-draft'}">
                             ${chapter.isPublished || chapter.is_published ? '已发布' : '草稿'}
                         </div>
                         ${canDelete ? `
-                            <button class="chapter-action-btn" onclick="event.stopPropagation(); setPaidChapter(${chapter.id}, '${chapter.title.replace(/'/g, "\\'")}', ${chapter.isPaid || false}, ${chapter.paidPrice || 0})" title="付费设置" style="
-                                padding: 8px 12px;
-                                background: ${chapter.isPaid ? '#f39c12' : '#667eea'};
-                                color: white;
-                                border: none;
-                                border-radius: 8px;
-                                cursor: pointer;
-                                transition: all 0.3s;
-                                font-size: 14px;
-                            ">
-                                <i class="fas fa-${chapter.isPaid ? 'unlock' : 'lock'}"></i>
-                            </button>
                             <button class="chapter-action-btn" onclick="event.stopPropagation(); deleteChapter(${chapter.id}, '${chapter.title.replace(/'/g, "\\'")}')}" title="删除章节" style="
                                 padding: 8px 12px;
                                 background: #f44336;
@@ -3691,198 +3622,33 @@
             }
         };
 
-        // ============================================
-        // 付费章节管理功能
-        // ============================================
-
-        let currentPaidChapterId = null;
-
-        // 打开付费设置模态框
-        window.setPaidChapter = function(chapterId, chapterTitle, isPaid, currentPrice) {
-            console.log('打开付费设置:', { chapterId, chapterTitle, isPaid, currentPrice });
-            
-            currentPaidChapterId = chapterId;
-            
-            // 设置模态框标题和内容
-            const modal = document.getElementById('setPaidModal');
-            const priceInput = document.getElementById('paidPrice');
-            const memberFreeCheckbox = document.getElementById('memberFree');
-            const confirmSetBtn = document.getElementById('confirmSetPaid');
-            const confirmCancelBtn = document.getElementById('confirmCancelPaid');
-            
-            if (isPaid) {
-                // 已是付费章节，显示取消付费按钮
-                priceInput.value = currentPrice || 50;
-                confirmSetBtn.style.display = 'none';
-                confirmCancelBtn.style.display = 'inline-flex';
-            } else {
-                // 未设置付费，显示设置按钮
-                priceInput.value = 50;
-                memberFreeCheckbox.checked = false;
-                confirmSetBtn.style.display = 'inline-flex';
-                confirmCancelBtn.style.display = 'none';
-            }
-            
-            modal.classList.add('active');
-        };
-
-        // 初始化付费设置模态框事件
-        document.addEventListener('DOMContentLoaded', function() {
-            // 关闭按钮
-            document.getElementById('closePaidModal')?.addEventListener('click', closePaidModal);
-            document.getElementById('cancelPaid')?.addEventListener('click', closePaidModal);
-            
-            // 点击背景关闭
-            document.getElementById('setPaidModal')?.addEventListener('click', function(e) {
-                if (e.target === this) {
-                    closePaidModal();
-                }
-            });
-            
-            // 确认设置付费
-            document.getElementById('confirmSetPaid')?.addEventListener('click', confirmSetPaid);
-            
-            // 确认取消付费
-            document.getElementById('confirmCancelPaid')?.addEventListener('click', confirmCancelPaid);
-        });
-
-        // 关闭付费设置模态框
-        function closePaidModal() {
-            document.getElementById('setPaidModal').classList.remove('active');
-            currentPaidChapterId = null;
-        }
-
-        // 确认设置付费
-        async function confirmSetPaid() {
-            const price = parseInt(document.getElementById('paidPrice').value);
-            const memberFree = document.getElementById('memberFree').checked;
-            
-            if (!price || price < 1 || price > 1000) {
-                showError('请输入有效的价格（1-1000积分）');
-                return;
-            }
-            
-            if (!currentPaidChapterId) {
-                showError('章节ID不存在');
-                return;
-            }
-            
-            try {
-                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-                
-                if (!token) {
-                    throw new Error('请先登录');
-                }
-                
-                showMessage('正在设置...', 'info');
-                
-                const response = await fetch(`/api/paid-nodes/${currentPaidChapterId}/set-price`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        unlockPrice: price,
-                        isMemberFree: memberFree
-                    })
-                });
-                
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.error || '设置失败');
-                }
-                
-                const data = await response.json();
-                console.log('设置成功:', data);
-                
-                closePaidModal();
-                showSuccess('付费设置成功！即将刷新页面...');
-                
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
-                
-            } catch (error) {
-                console.error('设置付费章节错误:', error);
-                showError(error.message || '设置失败');
-            }
-        }
-
-        // 确认取消付费
-        async function confirmCancelPaid() {
-            if (!confirm('确定要取消付费设置吗？\n\n取消后，该章节将变为免费章节。')) {
-                return;
-            }
-            
-            if (!currentPaidChapterId) {
-                showError('章节ID不存在');
-                return;
-            }
-            
-            try {
-                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-                
-                if (!token) {
-                    throw new Error('请先登录');
-                }
-                
-                showMessage('正在取消...', 'info');
-                
-                const response = await fetch(`/api/paid-nodes/${currentPaidChapterId}/cancel-price`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.error || '取消失败');
-                }
-                
-                const data = await response.json();
-                console.log('取消成功:', data);
-                
-                closePaidModal();
-                showSuccess('已取消付费设置！即将刷新页面...');
-                
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
-                
-            } catch (error) {
-                console.error('取消付费设置错误:', error);
-                showError(error.message || '取消失败');
-            }
-        }
-
-        // ============================================
+// ============================================
         // 分支树和统计功能
         // ============================================
 
         let treeChart = null;
         let statsChart = null;
         let currentLayout = 'vertical';
-
-        // 加载树状图数据
+// 加载树状图数据
         async function loadTreeData(storyId) {
             try {
-                // 获取token（如果已登录）
+                // 获取 token（如果已登录）
                 const token = localStorage.getItem('token') || sessionStorage.getItem('token');
                 const headers = {};
                 if (token) {
                     headers['Authorization'] = `Bearer ${token}`;
                 }
 
-                const response = await fetch(`/api/stories/${storyId}/tree`, { headers });
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    console.error('加载树状图失败:', response.status, errorData);
+                // 加载树状图数据
+                const treeResponse = await fetch(`/api/stories/${storyId}/tree`, { headers });
+                
+                if (!treeResponse.ok) {
+                    const errorData = await treeResponse.json().catch(() => ({}));
+                    console.error('加载树状图失败:', treeResponse.status, errorData);
                     throw new Error(errorData.error || '加载树状图数据失败');
                 }
 
-                const data = await response.json();
+                const data = await treeResponse.json();
                 window.treeData = data.tree;
                 window.treeStats = data.stats;
                 
@@ -4094,7 +3860,7 @@
         }
 
         // 获取树状图配置
-        function getTreeOption(treeData, layout) {
+function getTreeOption(treeData, layout) {
             const isVertical = layout === 'vertical';
             const isRadial = layout === 'radial';
 
@@ -4125,11 +3891,12 @@
                                 <div style="color: #999;">中间章节已折叠</div>
                             </div>`;
                         }
+                        
                         return `<div style="padding: 10px;">
                             <div style="font-weight: bold; margin-bottom: 5px;">${data.name}</div>
-                            <div>作者: ${data.author || '未知'}</div>
-                            <div>阅读: ${data.readCount || 0}</div>
-                            <div>分支: ${data.branchCount || 0}</div>
+                            <div>作者：${data.author || '未知'}</div>
+                            <div>阅读：${data.readCount || 0}</div>
+                            <div>分支：${data.branchCount || 0}</div>
                         </div>`;
                     }
                 },

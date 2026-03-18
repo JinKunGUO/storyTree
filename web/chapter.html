@@ -1878,316 +1878,146 @@
             }
         }
 
-        // ========== 付费章节系统 ==========
-
-        // 检查付费状态
-        async function checkPaidStatus(chapter) {
-            try {
-                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-                
-                // 检查章节是否设置为付费
-                const response = await fetch(`/api/paid-nodes/${chapter.id}/status`, {
-                    headers: token ? {
-                        'Authorization': `Bearer ${token}`
-                    } : {}
+// ========== 渲染章节 ==========
+// 渲染章节
+            function renderChapter(chapter) {
+                // 调试：输出章节数据
+                console.log('渲染章节详情:', chapter);
+                console.log('AI 字段检查:', {
+                    ai_generated: chapter.ai_generated,
+                    aiGenerated: chapter.aiGenerated
                 });
-
-                if (!response.ok) {
-                    // 如果接口返回404，说明不是付费章节
-                    chapter.isPaid = false;
-                    chapter.isUnlocked = true;
-                    return;
-                }
-
-                const data = await response.json();
-                console.log('付费状态:', data);
+                console.log('插图字段:', chapter.image);
                 
-                chapter.isPaid = data.isPaid;
-                chapter.isUnlocked = data.isUnlocked;
-                chapter.paidInfo = data.paidInfo;
-                chapter.unlockInfo = data.unlockInfo;
-
-            } catch (error) {
-                console.error('检查付费状态错误:', error);
-                // 出错时默认为免费章节
-                chapter.isPaid = false;
-                chapter.isUnlocked = true;
-            }
-        }
-
-        // 解锁付费章节
-        async function unlockChapter(nodeId) {
-            try {
-                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                // 设置标题，如果是 AI 生成则添加标记
+                const titleElement = document.getElementById('chapterTitle');
+                const aiGenerated = chapter.ai_generated || chapter.aiGenerated;
                 
-                if (!token) {
-                    showError('请先登录');
-                    setTimeout(() => {
-                        window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.href);
-                    }, 1500);
-                    return;
+                console.log('AI 生成标记:', aiGenerated);
+                
+                let titleHTML = chapter.title;
+                
+                // 添加 AI 标记
+                if (aiGenerated) {
+                    titleHTML += ' <span class="ai-badge"><i class="fas fa-robot"></i> AI 创作</span>';
                 }
-
-                const unlockBtn = document.getElementById('unlockBtn');
-                if (unlockBtn) {
-                    unlockBtn.disabled = true;
-                    unlockBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 解锁中...';
-                }
-
-                const response = await fetch(`/api/paid-nodes/${nodeId}/unlock`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
+                
+                titleElement.innerHTML = titleHTML;
+                
+                document.getElementById('chapterAuthor').textContent = chapter.author?.username || '未知作者';
+                document.getElementById('chapterDate').textContent = new Date(chapter.created_at).toLocaleDateString('zh-CN');
+                document.getElementById('chapterWords').textContent = `${chapter.content?.length || 0}字`;
+                
+                // 渲染章节内容
+                const chapterTextEl = document.getElementById('chapterText');
+                const content = chapter.content || '暂无内容';
+                
+                // 正常显示章节内容
+                if (chapter.image) {
+                    // 有插图：在内容中间插入插图
+                    const contentLength = content.length;
+                    const insertPosition = Math.floor(contentLength / 2);
+                    
+                    // 找到插入位置附近的段落分隔符
+                    let actualPosition = insertPosition;
+                    for (let i = insertPosition; i < Math.min(insertPosition + 100, contentLength); i++) {
+                        if (content[i] === '\n') {
+                            actualPosition = i + 1;
+                            break;
+                        }
                     }
-                });
-
-                const data = await response.json();
-                
-                if (response.ok) {
-                    showSuccess('✅ ' + data.message);
-                    // 刷新页面显示解锁后的内容
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
+                    
+                    // 插入插图
+                    const beforeImage = content.substring(0, actualPosition);
+                    const afterImage = content.substring(actualPosition);
+                    
+                    chapterTextEl.innerHTML = `
+                        <div style="white-space: pre-wrap; text-indent: 2em;">${beforeImage}</div>
+                        <div style="text-align: center; margin: 40px 0;">
+                            <img src="${chapter.image}" 
+                                 alt="章节插图" 
+                                 style="max-width: 100%; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1);" 
+                                 onerror="this.style.display='none'">
+                            <p style="color: #999; font-size: 14px; margin-top: 10px; text-indent: 0;">
+                                <i class="fas fa-image"></i> AI 生成插图
+                            </p>
+                        </div>
+                        <div style="white-space: pre-wrap; text-indent: 2em;">${afterImage}</div>
+                    `;
                 } else {
-                    showError('❌ ' + (data.error || '解锁失败'));
-                    if (unlockBtn) {
-                        unlockBtn.disabled = false;
-                        unlockBtn.innerHTML = '<i class="fas fa-unlock"></i> 立即解锁';
+                    // 没有插图：直接显示文本
+                    chapterTextEl.textContent = content;
+                }
+
+                // 更新页面标题
+                document.title = `${chapter.title} - StoryTree`;
+
+                // 检查是否是作者
+                checkIfAuthor(chapter);
+            }
+
+// HTML 转义函数
+                    function escapeHtml(text) {
+                        const div = document.createElement('div');
+                        div.textContent = text;
+                        return div.innerHTML;
+                    }
+
+                    // 发布草稿章节
+                    async function publishDraft(chapterId) {
+                        if (!confirm('确定要发布这个草稿章节吗？\n\n发布后，其他用户将可以看到这个章节。')) {
+                            return;
+                        }
+                        return;
+                    }
+
+                    try {
+                        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                        const publishBtn = document.getElementById('publishDraftBtn');
+                        
+                        // 禁用按钮并显示加载状态
+                        publishBtn.disabled = true;
+                        publishBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 发布中...';
+
+                        const response = await fetch(`/api/nodes/${chapterId}/publish`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+
+                        if (!response.ok) {
+                            const error = await response.json();
+                            throw new Error(error.error || '发布失败');
+                        }
+
+                        const data = await response.json();
+                        console.log('发布成功:', data);
+
+                        // 更新当前章节状态
+                        currentChapter.is_published = true;
+
+                        // 显示成功消息
+                        showSuccess(data.message || '章节发布成功！');
+
+                        // 隐藏发布按钮
+                        publishBtn.style.display = 'none';
+
+                        // 刷新页面以显示最新状态
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+
+                    } catch (error) {
+                        console.error('发布失败:', error);
+                        showError(error.message || '发布失败，请稍后重试');
+                        
+                        // 恢复按钮状态
+                        const publishBtn = document.getElementById('publishDraftBtn');
+                        publishBtn.disabled = false;
+                        publishBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 发布草稿';
                     }
                 }
-            } catch (error) {
-                console.error('解锁章节错误:', error);
-                showError('解锁失败，请稍后重试');
-                const unlockBtn = document.getElementById('unlockBtn');
-                if (unlockBtn) {
-                    unlockBtn.disabled = false;
-                    unlockBtn.innerHTML = '<i class="fas fa-unlock"></i> 立即解锁';
-                }
-            }
-        }
-
-        // 渲染章节
-        function renderChapter(chapter) {
-            // 调试：输出章节数据
-            console.log('渲染章节详情:', chapter);
-            console.log('AI字段检查:', {
-                ai_generated: chapter.ai_generated,
-                aiGenerated: chapter.aiGenerated
-            });
-            console.log('插图字段:', chapter.image);
-            console.log('付费状态:', {
-                isPaid: chapter.isPaid,
-                isUnlocked: chapter.isUnlocked
-            });
-            
-            // 设置标题，如果是AI生成则添加标记
-            const titleElement = document.getElementById('chapterTitle');
-            const aiGenerated = chapter.ai_generated || chapter.aiGenerated;
-            
-            console.log('AI生成标记:', aiGenerated);
-            
-            let titleHTML = chapter.title;
-            
-            // 添加AI标记
-            if (aiGenerated) {
-                titleHTML += ' <span class="ai-badge"><i class="fas fa-robot"></i> AI创作</span>';
-            }
-            
-            // 添加付费标记
-            if (chapter.isPaid) {
-                titleHTML += ' <span class="paid-badge"><i class="fas fa-lock"></i> 付费章节</span>';
-            }
-            
-            titleElement.innerHTML = titleHTML;
-            
-            document.getElementById('chapterAuthor').textContent = chapter.author?.username || '未知作者';
-            document.getElementById('chapterDate').textContent = new Date(chapter.created_at).toLocaleDateString('zh-CN');
-            document.getElementById('chapterWords').textContent = `${chapter.content?.length || 0}字`;
-            
-            // 渲染章节内容
-            const chapterTextEl = document.getElementById('chapterText');
-            const content = chapter.content || '暂无内容';
-            
-            // 检查是否为付费章节且未解锁
-            if (chapter.isPaid && !chapter.isUnlocked) {
-                // 显示付费解锁界面
-                renderPaidLockUI(chapter);
-                return;
-            }
-            
-            // 正常显示章节内容
-            if (chapter.image) {
-                // 有插图：在内容中间插入插图
-                const contentLength = content.length;
-                const insertPosition = Math.floor(contentLength / 2);
-                
-                // 找到插入位置附近的段落分隔符
-                let actualPosition = insertPosition;
-                for (let i = insertPosition; i < Math.min(insertPosition + 100, contentLength); i++) {
-                    if (content[i] === '\n') {
-                        actualPosition = i + 1;
-                        break;
-                    }
-                }
-                
-                // 插入插图
-                const beforeImage = content.substring(0, actualPosition);
-                const afterImage = content.substring(actualPosition);
-                
-                chapterTextEl.innerHTML = `
-                    <div style="white-space: pre-wrap; text-indent: 2em;">${beforeImage}</div>
-                    <div style="text-align: center; margin: 40px 0;">
-                        <img src="${chapter.image}" 
-                             alt="章节插图" 
-                             style="max-width: 100%; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1);" 
-                             onerror="this.style.display='none'">
-                        <p style="color: #999; font-size: 14px; margin-top: 10px; text-indent: 0;">
-                            <i class="fas fa-image"></i> AI生成插图
-                        </p>
-                    </div>
-                    <div style="white-space: pre-wrap; text-indent: 2em;">${afterImage}</div>
-                `;
-            } else {
-                // 没有插图：直接显示文本
-                chapterTextEl.textContent = content;
-            }
-
-            // 更新页面标题
-            document.title = `${chapter.title} - StoryTree`;
-
-            // 检查是否是作者
-            checkIfAuthor(chapter);
-        }
-
-        // 渲染付费锁定UI
-        function renderPaidLockUI(chapter) {
-            const chapterContent = document.querySelector('.chapter-content');
-            const paidInfo = chapter.paidInfo || {};
-            
-            // 判断是否是会员免费
-            const isMemberFree = paidInfo.member_free;
-            
-            chapterContent.innerHTML = `
-                <div class="paid-lock-overlay">
-                    <div class="paid-lock-icon">
-                        <i class="fas fa-lock"></i>
-                    </div>
-                    <div class="paid-lock-title">
-                        这是一个付费章节
-                    </div>
-                    <div class="paid-lock-desc">
-                        ${isMemberFree ? '会员可免费阅读，或使用积分解锁' : '使用积分解锁后即可阅读完整内容'}
-                    </div>
-                    
-                    <div class="paid-lock-info">
-                        <div class="paid-lock-info-item">
-                            <div class="paid-lock-info-label">章节名称</div>
-                            <div class="paid-lock-info-value">${escapeHtml(chapter.title)}</div>
-                        </div>
-                        <div class="paid-lock-info-item">
-                            <div class="paid-lock-info-label">作者</div>
-                            <div class="paid-lock-info-value">${escapeHtml(chapter.author?.username || '未知')}</div>
-                        </div>
-                        <div class="paid-lock-info-item">
-                            <div class="paid-lock-info-label">字数</div>
-                            <div class="paid-lock-info-value">${chapter.content?.length || 0}字</div>
-                        </div>
-                        <div class="paid-lock-info-item">
-                            <div class="paid-lock-info-label">
-                                解锁价格
-                                ${isMemberFree ? '<span class="paid-lock-vip-badge"><i class="fas fa-crown"></i> 会员免费</span>' : ''}
-                            </div>
-                            <div class="paid-lock-info-value">
-                                <span class="paid-lock-price">${paidInfo.price || 0}</span> 积分
-                            </div>
-                        </div>
-                        ${paidInfo.unlock_count ? `
-                            <div class="paid-lock-info-item">
-                                <div class="paid-lock-info-label">已有人解锁</div>
-                                <div class="paid-lock-info-value">${paidInfo.unlock_count} 人</div>
-                            </div>
-                        ` : ''}
-                    </div>
-                    
-                    <div class="paid-lock-actions">
-                        <button id="unlockBtn" class="btn-unlock" onclick="unlockChapter(${chapter.id})">
-                            <i class="fas fa-unlock"></i>
-                            立即解锁
-                        </button>
-                        <button class="btn-back-story" onclick="window.location.href='/story?id=${storyId}'">
-                            <i class="fas fa-arrow-left"></i>
-                            返回故事
-                        </button>
-                    </div>
-                    
-                    <div class="paid-lock-stats">
-                        解锁后可永久阅读此章节
-                    </div>
-                </div>
-            `;
-        }
-
-        // HTML转义函数
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // 发布草稿章节
-        async function publishDraft(chapterId) {
-            if (!confirm('确定要发布这个草稿章节吗？\n\n发布后，其他用户将可以看到这个章节。')) {
-                return;
-            }
-
-            try {
-                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-                const publishBtn = document.getElementById('publishDraftBtn');
-                
-                // 禁用按钮并显示加载状态
-                publishBtn.disabled = true;
-                publishBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 发布中...';
-
-                const response = await fetch(`/api/nodes/${chapterId}/publish`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || '发布失败');
-                }
-
-                const data = await response.json();
-                console.log('发布成功:', data);
-
-                // 更新当前章节状态
-                currentChapter.is_published = true;
-
-                // 显示成功消息
-                showSuccess(data.message || '章节发布成功！');
-
-                // 隐藏发布按钮
-                publishBtn.style.display = 'none';
-
-                // 刷新页面以显示最新状态
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
-
-            } catch (error) {
-                console.error('发布失败:', error);
-                showError(error.message || '发布失败，请稍后重试');
-                
-                // 恢复按钮状态
-                const publishBtn = document.getElementById('publishDraftBtn');
-                publishBtn.disabled = false;
-                publishBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 发布草稿';
-            }
-        }
 
         // 检查是否是作者
         async function checkIfAuthor(chapter) {

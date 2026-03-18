@@ -181,6 +181,13 @@
       resize: vertical;
       min-height: 60px;
     }
+
+    .badge-free { background: #e0e0e0; color: #666; }
+    .badge-trial { background: #ffecd2; color: #d4a574; }
+    .badge-monthly { background: #d5e1df; color: #2d5d5a; }
+    .badge-quarterly { background: #a8d5ba; color: #1e5c3a; }
+    .badge-yearly { background: #ffd700; color: #8b6900; }
+    .badge-enterprise { background: #b9f2ff; color: #006a7f; }
   </style>
 </head>
 <body>
@@ -200,6 +207,7 @@
     <div class="tabs">
       <button class="tab active" onclick="switchTab('content')">📝 内容审核</button>
       <button class="tab" onclick="switchTab('withdrawal')">💰 提现审核</button>
+      <button class="tab" onclick="switchTab('membership')">👑 会员管理</button>
     </div>
 
     <!-- 内容审核 -->
@@ -212,6 +220,27 @@
     <div id="withdrawalTab" class="tab-content">
       <h2 style="margin-bottom: 20px;">💰 提现审核</h2>
       <div id="withdrawalQueue"></div>
+    </div>
+
+    <!-- 会员管理 -->
+    <div id="membershipTab" class="tab-content">
+      <h2 style="margin-bottom: 20px;">👑 会员统计</h2>
+      <div class="stats" id="membershipStats" style="margin-bottom: 30px;"></div>
+      
+      <h3 style="margin-bottom: 15px;">📊 会员列表</h3>
+      <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+        <select id="tierFilter" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+          <option value="all">全部等级</option>
+          <option value="trial">体验会员</option>
+          <option value="monthly">月度会员</option>
+          <option value="quarterly">季度会员</option>
+          <option value="yearly">年度会员</option>
+          <option value="enterprise">企业版</option>
+        </select>
+        <input type="text" id="searchInput" placeholder="搜索用户名或邮箱" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd; flex: 1;">
+        <button class="btn btn-success" onclick="loadMembers()">🔍 搜索</button>
+      </div>
+      <div id="membersList"></div>
     </div>
   </div>
 
@@ -409,6 +438,10 @@
         document.getElementById('contentTab').classList.add('active');
       } else if (tab === 'withdrawal') {
         document.getElementById('withdrawalTab').classList.add('active');
+      } else if (tab === 'membership') {
+        document.getElementById('membershipTab').classList.add('active');
+        loadMembershipStats();
+        loadMembers();
       }
     }
 
@@ -638,11 +671,163 @@
       }
     }
 
-    // HTML转义函数
+// HTML 转义函数
     function escapeHtml(text) {
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
+    }
+
+    // ========== 会员管理功能 ==========
+
+    // 加载会员统计
+    async function loadMembershipStats() {
+      try {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        
+        const response = await fetch(`${API_BASE}/admin/membership/stats`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('加载会员统计失败');
+        }
+
+        const stats = await response.json();
+        
+        const membershipStatsDiv = document.getElementById('membershipStats');
+        membershipStatsDiv.innerHTML = `
+          <div class="stat-card">
+            <div class="label">总会员数</div>
+            <div class="value" style="color: #667eea;">${stats.totalMembers}</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">今日新增</div>
+            <div class="value" style="color: #27ae60;">${stats.newMembersToday}</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">本月新增</div>
+            <div class="value" style="color: #3498db;">${stats.newMembersThisMonth}</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">即将到期</div>
+            <div class="value" style="color: #f39c12;">${stats.expiringMembers}</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">活跃会员</div>
+            <div class="value" style="color: #e74c3c;">${stats.activeMembers}</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">自动续费</div>
+            <div class="value" style="color: #9b59b6;">${stats.autoRenewCount}</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">本月收入</div>
+            <div class="value" style="color: #1abc9c;">¥${stats.revenue.toFixed(2)}</div>
+          </div>
+        `;
+      } catch (e) {
+        console.error('Failed to load membership stats:', e);
+      }
+    }
+
+    // 加载会员列表
+    async function loadMembers() {
+      const membersDiv = document.getElementById('membersList');
+      membersDiv.innerHTML = '<div class="loading"></div>';
+
+      try {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        const tier = document.getElementById('tierFilter').value;
+        const search = document.getElementById('searchInput').value;
+        
+        let url = `${API_BASE}/admin/membership/members?page=1&limit=20`;
+        if (tier !== 'all') url += `&tier=${tier}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('加载会员列表失败');
+        }
+
+        const data = await response.json();
+        const members = data.members || [];
+        
+        if (members.length === 0) {
+          membersDiv.innerHTML = '<div class="empty">暂无会员数据</div>';
+          return;
+        }
+
+        const tierNames = {
+          trial: '体验会员',
+          monthly: '月度会员',
+          quarterly: '季度会员',
+          yearly: '年度会员',
+          enterprise: '企业版'
+        };
+
+        membersDiv.innerHTML = members.map(member => `
+          <div class="review-item">
+            <div class="header">
+              <div>
+                <h3>${escapeHtml(member.username)}</h3>
+                <div class="meta">
+                  邮箱：${escapeHtml(member.email)} | 
+                  加入时间：${new Date(member.created_at).toLocaleString('zh-CN')}
+                </div>
+              </div>
+              <span class="status ${getBadgeClass(member.membership_tier)}">
+                ${tierNames[member.membership_tier] || member.membership_tier}
+              </span>
+            </div>
+            <div class="info" style="grid-template-columns: repeat(3, 1fr);">
+              <div class="info-item">
+                <div class="label">到期时间</div>
+                <div class="value">${member.membership_expires_at ? new Date(member.membership_expires_at).toLocaleDateString('zh-CN') : '-'}</div>
+              </div>
+              <div class="info-item">
+                <div class="label">自动续费</div>
+                <div class="value">${member.auto_renew ? '✓ 已开启' : '✗ 未开启'}</div>
+              </div>
+              <div class="info-item">
+                <div class="label">操作</div>
+                <div class="value">
+                  <button class="btn" style="padding: 4px 8px; font-size: 12px; background: #3498db; color: white;" onclick="viewMemberDetail(${member.id})">
+                    查看详情
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        membersDiv.innerHTML = `<p style="color: red;">加载失败：${e.message}</p>`;
+      }
+    }
+
+    // 获取会员徽章样式
+    function getBadgeClass(tier) {
+      const classes = {
+        free: 'badge-free',
+        trial: 'badge-trial',
+        monthly: 'badge-monthly',
+        quarterly: 'badge-quarterly',
+        yearly: 'badge-yearly',
+        enterprise: 'badge-enterprise'
+      };
+      return classes[tier] || 'badge-free';
+    }
+
+    // 查看会员详情
+    function viewMemberDetail(memberId) {
+      alert('会员详情功能开发中...\n会员 ID: ' + memberId);
     }
 
     // 启动
@@ -650,4 +835,3 @@
   </script>
 </body>
 </html>
-

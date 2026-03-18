@@ -1072,7 +1072,7 @@ router.get('/:id/role', authenticateToken, async (req, res) => {
     // 检查是否是主创
     const is_author = story.author_id === userId;
 
-    // 检查是否是协作者(未被移除)
+    // 检查是否是协作者 (未被移除)
     const collaborator = await prisma.story_collaborators.findFirst({
       where: {
         story_id: parseInt(id),

@@ -1014,7 +1014,9 @@
             <div class="nav-menu">
                 <a href="/" class="nav-link">首页</a>
                 <a href="/discover" class="nav-link">发现故事</a>
-                <a href="/create" class="nav-link">开始创作</a>
+                <a href="/membership.html" class="nav-link">
+                    <i class="fas fa-crown"></i> 会员中心
+                </a>
                 <a href="/notifications.html" class="nav-link" id="notificationLink" style="position: relative;">
                     <i class="fas fa-bell"></i> 消息
                     <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
@@ -1378,50 +1380,77 @@
                     const badges = typeof user.badges === 'string' ? JSON.parse(user.badges) : user.badges;
                     if (badges && badges.length > 0) {
                         badgesHTML = `
-                            <div class="profile-badges" style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                                <span style="color: #666; font-size: 14px; font-weight: 600;">里程碑成就:</span>
+                            <div style="
+                                margin-top: 10px;
+                                padding: 15px 20px;
+                                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                                border-radius: 12px;
+                                border-left: 4px solid #4caf50;
+                                display: flex;
+                                align-items: center;
+                                gap: 12px;
+                                flex-wrap: wrap;
+                            ">
+                                <span style="color: #333; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 5px;">
+                                    里程碑成就：
+                                </span>
                                 ${badges.map(badgeId => getBadgeDisplay(badgeId)).join('')}
                                 <button onclick="showMilestoneInfo()" style="
                                     background: none;
                                     border: 1px solid #ccc;
                                     border-radius: 50%;
-                                    width: 24px;
-                                    height: 24px;
+                                    width: 20px;
+                                    height: 20px;
                                     cursor: pointer;
-                                    color: #666;
+                                    color: #4caf50;
                                     font-size: 14px;
                                     display: flex;
                                     align-items: center;
                                     justify-content: center;
                                     transition: all 0.3s;
-                                " onmouseover="this.style.borderColor='#667eea'; this.style.color='#667eea';" 
-                                   onmouseout="this.style.borderColor='#ccc'; this.style.color='#666';" 
+                                    padding: 0;
+                                    line-height: 1;
+                                " onmouseover="this.style.borderColor='#4caf50'; this.style.background='#4caf50'; this.style.color='white';" 
+                                   onmouseout="this.style.borderColor='#ccc'; this.style.background='none'; this.style.color='#4caf50';" 
                                    title="查看里程碑说明">?</button>
                             </div>
                         `;
                     } else {
                         // 没有徽章时显示下一个里程碑
                         nextMilestoneHTML = `
-                            <div class="profile-badges" style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
-                                <span style="color: #999; font-size: 14px;">
-                                    <i class="fas fa-trophy"></i> 
+                            <div style="
+                                margin-top: 10px;
+                                padding: 15px 20px;
+                                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                                border-radius: 12px;
+                                border-left: 4px solid #4caf50;
+                                display: flex;
+                                align-items: center;
+                                justify-content: space-between;
+                                gap: 12px;
+                            ">
+                                <span style="color: #666; font-size: 14px; flex: 1;">
+                                    <i class="fas fa-trophy" style="color: #4caf50;"></i> 
                                     继续创作，解锁你的第一个里程碑徽章！（1万字）
                                 </span>
                                 <button onclick="showMilestoneInfo()" style="
                                     background: none;
                                     border: 1px solid #ccc;
                                     border-radius: 50%;
-                                    width: 24px;
-                                    height: 24px;
+                                    width: 20px;
+                                    height: 20px;
                                     cursor: pointer;
-                                    color: #666;
+                                    color: #4caf50;
                                     font-size: 14px;
                                     display: flex;
                                     align-items: center;
                                     justify-content: center;
                                     transition: all 0.3s;
-                                " onmouseover="this.style.borderColor='#667eea'; this.style.color='#667eea';" 
-                                   onmouseout="this.style.borderColor='#ccc'; this.style.color='#666';" 
+                                    padding: 0;
+                                    line-height: 1;
+                                    flex-shrink: 0;
+                                " onmouseover="this.style.borderColor='#4caf50'; this.style.background='#4caf50'; this.style.color='white';" 
+                                   onmouseout="this.style.borderColor='#ccc'; this.style.background='none'; this.style.color='#4caf50';" 
                                    title="查看里程碑说明">?</button>
                             </div>
                         `;
@@ -1432,26 +1461,39 @@
             } else {
                 // 没有badges字段时也显示提示
                 nextMilestoneHTML = `
-                    <div class="profile-badges" style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
-                        <span style="color: #999; font-size: 14px;">
-                            <i class="fas fa-trophy"></i> 
+                    <div style="
+                        margin-top: 10px;
+                        padding: 15px 20px;
+                        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                        border-radius: 12px;
+                        border-left: 4px solid #4caf50;
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 12px;
+                    ">
+                        <span style="color: #666; font-size: 14px; flex: 1;">
+                            <i class="fas fa-trophy" style="color: #4caf50;"></i> 
                             继续创作，解锁你的第一个里程碑徽章！（1万字）
                         </span>
                         <button onclick="showMilestoneInfo()" style="
                             background: none;
                             border: 1px solid #ccc;
                             border-radius: 50%;
-                            width: 24px;
-                            height: 24px;
+                            width: 20px;
+                            height: 20px;
                             cursor: pointer;
-                            color: #666;
+                            color: #4caf50;
                             font-size: 14px;
                             display: flex;
                             align-items: center;
                             justify-content: center;
                             transition: all 0.3s;
-                        " onmouseover="this.style.borderColor='#667eea'; this.style.color='#667eea';" 
-                           onmouseout="this.style.borderColor='#ccc'; this.style.color='#666';" 
+                            padding: 0;
+                            line-height: 1;
+                            flex-shrink: 0;
+                        " onmouseover="this.style.borderColor='#4caf50'; this.style.background='#4caf50'; this.style.color='white';" 
+                           onmouseout="this.style.borderColor='#ccc'; this.style.background='none'; this.style.color='#4caf50';" 
                            title="查看里程碑说明">?</button>
                     </div>
                 `;
@@ -1465,6 +1507,9 @@ profileHeader.innerHTML = `
                     <div class="profile-info">
                         <div class="profile-name">
                             ${escapeHtml(user.username)}
+                            <span class="level-badge" id="userLevelBadge">
+                                Lv1
+                            </span>
                         </div>
                         <div class="profile-email">
                             <i class="fas fa-envelope"></i>
@@ -1476,15 +1521,86 @@ profileHeader.innerHTML = `
                             <span style="margin-left: 15px;"><i class="fas fa-pen-fancy"></i> 码字：${wordCount.toLocaleString()}字</span>
                             <span style="margin-left: 15px;"><i class="fas fa-calendar-check"></i> 补签：${makeupChances}次</span>
                         </div>
-                        ${badgesHTML}${nextMilestoneHTML}
-                        <div class="profile-bio">
-                            ${escapeHtml(user.bio || '这个人很懒，还没有写个人简介...')}
-                        </div>
-                        <div class="profile-actions">
-                            <a href="/create" class="btn btn-primary">
-                                <i class="fas fa-pen"></i> 创作新故事
+                        <!-- 用户等级信息卡片 -->
+                        <div id="userLevelCard" style="
+                            margin-top: 15px;
+                            padding: 15px 20px;
+                            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                            border-radius: 12px;
+                            border-left: 4px solid #667eea;
+                            display: flex;
+                            align-items: center;
+                            justify-content: space-between;
+                            gap: 20px;
+                        ">
+                            <div style="display: flex; align-items: center; gap: 15px; flex: 1;">
+                                <div id="userLevelIcon" style="
+                                    width: 50px;
+                                    height: 50px;
+                                    border-radius: 50%;
+                                    background: linear-gradient(135deg, #667eea, #764ba2);
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    color: white;
+                                    font-weight: 700;
+                                    font-size: 16px;
+                                    flex-shrink: 0;
+                                ">
+                                    Lv1
+                                </div>
+                                <div style="flex: 1;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
+                                        <span style="font-weight: 600; color: #333; font-size: 16px;" id="levelName">加载中...</span>
+                                        <button onclick="showLevelInfo()" style="
+                                            background: none;
+                                            border: 1px solid #ccc;
+                                            border-radius: 50%;
+                                            width: 20px;
+                                            height: 20px;
+                                            cursor: pointer;
+                                            color: #667eea;
+                                            font-size: 14px;
+                                            display: flex;
+                                            align-items: center;
+                                            justify-content: center;
+                                            transition: all 0.3s;
+                                            padding: 0;
+                                            line-height: 1;
+                                        " onmouseover="this.style.borderColor='#667eea'; this.style.background='#667eea'; this.style.color='white';" 
+                                           onmouseout="this.style.borderColor='#ccc'; this.style.background='none'; this.style.color='#667eea';" 
+                                           title="查看等级说明">?</button>
+                                    </div>
+                                    <div style="color: #666; font-size: 13px;" id="levelProgress">
+                                        升级进度：<span id="levelProgressText">加载中...</span>
+                                    </div>
+                                    <div style="color: #999; font-size: 12px; margin-top: 3px;">
+                                        <i class="fas fa-info-circle"></i> 等级影响 AI 配额基础值
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- 升级会员按钮 -->
+                            <a href="/membership.html" style="
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 8px;
+                                padding: 8px 16px;
+                                background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+                                color: #333;
+                                border-radius: 20px;
+                                font-size: 14px;
+                                font-weight: 600;
+                                text-decoration: none;
+                                transition: all 0.3s;
+                                box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+                                flex-shrink: 0;
+                            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(255, 215, 0, 0.5)';" 
+                               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(255, 215, 0, 0.3)';">
+                                <i class="fas fa-crown"></i>
+                                <span>升级会员获得更多配额</span>
                             </a>
                         </div>
+                        ${badgesHTML}${nextMilestoneHTML}
                         
                         <!-- 统计数据移到个人信息栏内 -->
                         <div class="profile-stats-row">
@@ -1574,6 +1690,9 @@ profileHeader.innerHTML = `
                     </div>
                 </div>
             `;
+            
+            // 更新用户等级显示（必须在 innerHTML 设置之后）
+            updateUserLevelDisplay(points);
         }
         
         // 显示签到规则说明弹窗
@@ -1947,6 +2066,253 @@ profileHeader.innerHTML = `
                             <i class="fas fa-lightbulb" style="color: #ff9800;"></i>
                             <strong>提示：</strong>只统计非AI生成的已发布章节字数
                         </p>
+                    </div>
+                </div>
+            `;
+            
+            overlay.onclick = (e) => {
+                if (e.target === overlay) {
+                    overlay.remove();
+                }
+            };
+            
+            document.body.appendChild(overlay);
+        }
+        
+        // ========== 用户等级相关函数 ==========
+        
+        // 获取用户等级信息
+        function getUserLevelInfo(points) {
+            const levels = [
+                { level: 1, name: '新手作者', minPoints: 0, maxPoints: 99, quotas: { continuation: 3, polish: 5, illustration: 2 } },
+                { level: 2, name: '活跃作者', minPoints: 100, maxPoints: 499, quotas: { continuation: 10, polish: 20, illustration: 2 } },
+                { level: 3, name: '专业作者', minPoints: 500, maxPoints: 1999, quotas: { continuation: 30, polish: -1, illustration: 10 } },
+                { level: 4, name: '大师作者', minPoints: 2000, maxPoints: Infinity, quotas: { continuation: -1, polish: -1, illustration: 50 } }
+            ];
+            
+            for (const levelInfo of levels) {
+                if (points >= levelInfo.minPoints && points <= levelInfo.maxPoints) {
+                    // 计算升级进度
+                    let progress = 0;
+                    let nextLevelPoints = 0;
+                    
+                    if (levelInfo.level < 4) {
+                        // 计算到下一级所需积分
+                        const nextLevel = levels[levelInfo.level]; // 数组索引从0开始，level从1开始，所以level正好是下一级的索引
+                        nextLevelPoints = nextLevel.minPoints - points;
+                        
+                        // 计算当前等级的进度百分比
+                        const currentLevelRange = levelInfo.maxPoints - levelInfo.minPoints + 1;
+                        const currentProgress = points - levelInfo.minPoints;
+                        progress = (currentProgress / currentLevelRange) * 100;
+                    } else {
+                        // 已达最高等级
+                        progress = 100;
+                        nextLevelPoints = 0;
+                    }
+                    
+                    return {
+                        ...levelInfo,
+                        progress: Math.min(progress, 100),
+                        nextLevelPoints: Math.max(nextLevelPoints, 0)
+                    };
+                }
+            }
+            
+            return levels[0]; // 默认返回 Lv1
+        }
+        
+        // 更新用户等级显示
+        function updateUserLevelDisplay(points) {
+            const levelInfo = getUserLevelInfo(points);
+            
+            console.log('更新用户等级显示:', {
+                points,
+                currentLevel: levelInfo.level,
+                levelName: levelInfo.name,
+                nextLevelPoints: levelInfo.nextLevelPoints,
+                progress: levelInfo.progress
+            });
+            
+            // 更新用户名旁的等级徽章
+            const levelBadgeEl = document.getElementById('userLevelBadge');
+            if (levelBadgeEl) {
+                levelBadgeEl.textContent = `Lv${levelInfo.level}`;
+            }
+            
+            // 更新等级卡片中的等级图标
+            const levelIconEl = document.getElementById('userLevelIcon');
+            if (levelIconEl) {
+                levelIconEl.textContent = `Lv${levelInfo.level}`;
+            }
+            
+            // 更新等级名称
+            const levelNameEl = document.getElementById('levelName');
+            if (levelNameEl) {
+                levelNameEl.textContent = levelInfo.name;
+            }
+            
+            // 更新升级进度
+            const levelProgressTextEl = document.getElementById('levelProgressText');
+            if (levelProgressTextEl) {
+                if (levelInfo.nextLevelPoints > 0) {
+                    // 根据当前等级计算下一级
+                    const nextLevel = levelInfo.level + 1;
+                    const displayText = `还需 ${levelInfo.nextLevelPoints} 积分升级到 Lv${nextLevel}`;
+                    console.log('设置升级进度文本:', displayText);
+                    levelProgressTextEl.textContent = displayText;
+                } else {
+                    levelProgressTextEl.textContent = '🎉 已达最高等级';
+                }
+            }
+        }
+        
+        // 显示等级说明弹窗
+        function showLevelInfo() {
+            const levels = [
+                { level: 1, name: '新手作者', points: '0-99', continuation: '3次/月', polish: '5次/月', illustration: '2张/月' },
+                { level: 2, name: '活跃作者', points: '100-499', continuation: '10次/月', polish: '20次/月', illustration: '2张/月' },
+                { level: 3, name: '专业作者', points: '500-1999', continuation: '30次/月', polish: '无限', illustration: '10张/月' },
+                { level: 4, name: '大师作者', points: '2000+', continuation: '无限', polish: '无限', illustration: '50张/月' }
+            ];
+            
+            const levelList = levels.map(l => 
+                `<tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #f0f0f0; text-align: center;">
+                        <div style="
+                            width: 40px;
+                            height: 40px;
+                            margin: 0 auto;
+                            border-radius: 50%;
+                            background: linear-gradient(135deg, #667eea, #764ba2);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            color: white;
+                            font-weight: 700;
+                            font-size: 14px;
+                        ">Lv${l.level}</div>
+                    </td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f0f0f0;">
+                        <div style="font-weight: 600; color: #333;">${l.name}</div>
+                        <div style="font-size: 12px; color: #999;">${l.points}积分</div>
+                    </td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f0f0f0; font-size: 13px;">
+                        续写：${l.continuation}<br>
+                        润色：${l.polish}<br>
+                        插图：${l.illustration}
+                    </td>
+                </tr>`
+            ).join('');
+            
+            const overlay = document.createElement('div');
+            overlay.id = 'levelInfoOverlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                animation: fadeIn 0.3s;
+            `;
+            
+            overlay.innerHTML = `
+                <div style="
+                    background: white;
+                    border-radius: 20px;
+                    padding: 30px;
+                    max-width: 700px;
+                    width: 90%;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                    animation: slideUp 0.3s;
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 style="margin: 0; color: #333;">
+                            <i class="fas fa-layer-group" style="color: #667eea;"></i> 
+                            用户等级体系
+                        </h2>
+                        <button onclick="document.getElementById('levelInfoOverlay').remove()" style="
+                            background: none;
+                            border: none;
+                            font-size: 24px;
+                            cursor: pointer;
+                            color: #999;
+                            padding: 0;
+                            width: 32px;
+                            height: 32px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            border-radius: 50%;
+                            transition: all 0.3s;
+                        " onmouseover="this.style.background='#f0f0f0'; this.style.color='#333';" 
+                           onmouseout="this.style.background='none'; this.style.color='#999';">
+                            ×
+                        </button>
+                    </div>
+                    
+                    <div style="color: #666; line-height: 1.8;">
+                        <!-- 等级说明 -->
+                        <div style="margin-bottom: 25px;">
+                            <h3 style="color: #333; margin: 0 0 15px 0; font-size: 18px;">
+                                <i class="fas fa-info-circle" style="color: #667eea;"></i> 
+                                等级说明
+                            </h3>
+                            <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; border-left: 4px solid #667eea;">
+                                <p style="margin: 0 0 10px 0;">用户等级基于<strong>累计积分</strong>自动提升，等级越高可享受的 AI 配额越多。</p>
+                                <p style="margin: 0;">积分可通过<strong>签到、码字、发布故事、社交互动</strong>等方式获得。</p>
+                            </div>
+                        </div>
+                        
+                        <!-- 等级列表 -->
+                        <div style="margin-bottom: 25px;">
+                            <h3 style="color: #333; margin: 0 0 15px 0; font-size: 18px;">
+                                <i class="fas fa-list-ol" style="color: #ff9800;"></i> 
+                                等级列表
+                            </h3>
+                            <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                                <thead>
+                                    <tr style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                                        <th style="padding: 12px; text-align: center;">等级</th>
+                                        <th style="padding: 12px; text-align: left;">称号</th>
+                                        <th style="padding: 12px; text-align: left;">AI 配额（基础）</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${levelList}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- 重要提示 -->
+                        <div style="background: #fff3e0; padding: 15px; border-radius: 10px; border-left: 4px solid #ff9800; margin-bottom: 15px;">
+                            <p style="margin: 0; color: #666; font-size: 14px;">
+                                <i class="fas fa-exclamation-triangle" style="color: #ff9800; margin-right: 8px;"></i>
+                                <strong>重要：</strong>用户等级决定 AI 配额的<strong>基础值</strong>。购买会员后，会员等级会在用户等级基础上提供配额倍数加成。
+                            </p>
+                        </div>
+                        
+                        <!-- 提升方式 -->
+                        <div style="background: #e8f5e9; padding: 15px; border-radius: 10px; border-left: 4px solid #4caf50;">
+                            <h4 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">
+                                <i class="fas fa-arrow-up" style="color: #4caf50;"></i> 
+                                如何提升等级？
+                            </h4>
+                            <ul style="margin: 0; padding-left: 20px; font-size: 14px;">
+                                <li>持续创作：每码字 1000 字获得 10 积分</li>
+                                <li>每日签到：连续签到可获得递增积分</li>
+                                <li>发布故事：每发布一个故事获得 20 积分</li>
+                                <li>社交互动：获得收藏、评论可获得积分</li>
+                                <li>邀请好友：使用邀请码邀请好友注册</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             `;
