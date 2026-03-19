@@ -1223,23 +1223,13 @@
                 </div>
             </div>
             
-            <div class="checkin-container">
-                <!-- 签到按钮 -->
-                <div class="checkin-action">
-                    <button id="checkinBtn" class="checkin-btn" onclick="dailyCheckin()">
-                        <i class="fas fa-calendar-check"></i>
-                        <span>今日签到</span>
-                        <small id="checkinReward">+10积分</small>
-                    </button>
-                    <div class="checkin-message" id="checkinMessage"></div>
-                </div>
-
+<div class="checkin-container">
                 <!-- 月份选择器 -->
                 <div class="calendar-header">
                     <button class="calendar-nav-btn" onclick="changeMonth(-1)">
                         <i class="fas fa-chevron-left"></i>
                     </button>
-                    <div class="calendar-month" id="calendarMonth">2026年3月</div>
+                    <div class="calendar-month" id="calendarMonth">2026 年 3 月</div>
                     <button class="calendar-nav-btn" onclick="changeMonth(1)">
                         <i class="fas fa-chevron-right"></i>
                     </button>
@@ -1254,7 +1244,7 @@
                     <div class="calendar-day-header">四</div>
                     <div class="calendar-day-header">五</div>
                     <div class="calendar-day-header">六</div>
-                    <!-- 日期将通过JavaScript动态生成 -->
+                    <!-- 日期将通过 JavaScript 动态生成 -->
                 </div>
 
                 <!-- 签到统计 -->
@@ -1547,136 +1537,24 @@
             console.log('  - badges:', user.badges, typeof user.badges);
             
             // 获取数据
-            const points = user.points || 0;
+const points = user.points || 0;
             const wordCount = user.word_count || 0;
             const makeupChances = user.makeup_chances || 0;
             
-            // 获取徽章信息和下一个里程碑
-            let badgesHTML = '';
-            let nextMilestoneHTML = '';
+            // 获取徽章信息
+            let userBadges = [];
+            let hasBadges = false;
             
             if (user.badges) {
                 try {
                     const badges = typeof user.badges === 'string' ? JSON.parse(user.badges) : user.badges;
                     if (badges && badges.length > 0) {
-                        badgesHTML = `
-                            <div style="
-                                margin-top: 10px;
-                                padding: 15px 20px;
-                                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                                border-radius: 12px;
-                                border-left: 4px solid #4caf50;
-                                display: flex;
-                                align-items: center;
-                                gap: 12px;
-                                flex-wrap: wrap;
-                            ">
-                                <span style="color: #333; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 5px;">
-                                    里程碑成就：
-                                </span>
-                                ${badges.map(badgeId => getBadgeDisplay(badgeId)).join('')}
-                                <button onclick="showMilestoneInfo()" style="
-                                    background: none;
-                                    border: 1px solid #ccc;
-                                    border-radius: 50%;
-                                    width: 20px;
-                                    height: 20px;
-                                    cursor: pointer;
-                                    color: #4caf50;
-                                    font-size: 14px;
-                                    display: flex;
-                                    align-items: center;
-                                    justify-content: center;
-                                    transition: all 0.3s;
-                                    padding: 0;
-                                    line-height: 1;
-                                " onmouseover="this.style.borderColor='#4caf50'; this.style.background='#4caf50'; this.style.color='white';" 
-                                   onmouseout="this.style.borderColor='#ccc'; this.style.background='none'; this.style.color='#4caf50';" 
-                                   title="查看里程碑说明">?</button>
-                            </div>
-                        `;
-                    } else {
-                        // 没有徽章时显示下一个里程碑
-                        nextMilestoneHTML = `
-                            <div style="
-                                margin-top: 10px;
-                                padding: 15px 20px;
-                                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                                border-radius: 12px;
-                                border-left: 4px solid #4caf50;
-                                display: flex;
-                                align-items: center;
-                                justify-content: space-between;
-                                gap: 12px;
-                            ">
-                                <span style="color: #666; font-size: 14px; flex: 1;">
-                                    <i class="fas fa-trophy" style="color: #4caf50;"></i> 
-                                    继续创作，解锁你的第一个里程碑徽章！（1万字）
-                                </span>
-                                <button onclick="showMilestoneInfo()" style="
-                                    background: none;
-                                    border: 1px solid #ccc;
-                                    border-radius: 50%;
-                                    width: 20px;
-                                    height: 20px;
-                                    cursor: pointer;
-                                    color: #4caf50;
-                                    font-size: 14px;
-                                    display: flex;
-                                    align-items: center;
-                                    justify-content: center;
-                                    transition: all 0.3s;
-                                    padding: 0;
-                                    line-height: 1;
-                                    flex-shrink: 0;
-                                " onmouseover="this.style.borderColor='#4caf50'; this.style.background='#4caf50'; this.style.color='white';" 
-                                   onmouseout="this.style.borderColor='#ccc'; this.style.background='none'; this.style.color='#4caf50';" 
-                                   title="查看里程碑说明">?</button>
-                            </div>
-                        `;
+                        userBadges = badges;
+                        hasBadges = true;
                     }
                 } catch (e) {
                     console.error('解析徽章数据失败:', e);
                 }
-            } else {
-                // 没有badges字段时也显示提示
-                nextMilestoneHTML = `
-                    <div style="
-                        margin-top: 10px;
-                        padding: 15px 20px;
-                        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                        border-radius: 12px;
-                        border-left: 4px solid #4caf50;
-                        display: flex;
-                        align-items: center;
-                        justify-content: space-between;
-                        gap: 12px;
-                    ">
-                        <span style="color: #666; font-size: 14px; flex: 1;">
-                            <i class="fas fa-trophy" style="color: #4caf50;"></i> 
-                            继续创作，解锁你的第一个里程碑徽章！（1万字）
-                        </span>
-                        <button onclick="showMilestoneInfo()" style="
-                            background: none;
-                            border: 1px solid #ccc;
-                            border-radius: 50%;
-                            width: 20px;
-                            height: 20px;
-                            cursor: pointer;
-                            color: #4caf50;
-                            font-size: 14px;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            transition: all 0.3s;
-                            padding: 0;
-                            line-height: 1;
-                            flex-shrink: 0;
-                        " onmouseover="this.style.borderColor='#4caf50'; this.style.background='#4caf50'; this.style.color='white';" 
-                           onmouseout="this.style.borderColor='#ccc'; this.style.background='none'; this.style.color='#4caf50';" 
-                           title="查看里程碑说明">?</button>
-                    </div>
-                `;
             }
             
 profileHeader.innerHTML = `
@@ -1687,8 +1565,8 @@ profileHeader.innerHTML = `
                     <div class="profile-info">
                         <div class="profile-name">
                             ${escapeHtml(user.username)}
-                            <span class="level-badge" id="userLevelBadge">
-                                Lv1
+                            <span id="userBadgeContainer" style="margin-left: 10px;">
+                                <!-- 徽章将通过 JavaScript 动态插入 -->
                             </span>
                         </div>
                         <div class="profile-email">
@@ -1799,8 +1677,6 @@ profileHeader.innerHTML = `
                                 <span>升级会员获得更多配额</span>
                             </a>
                         </div>
-                        ${badgesHTML}${nextMilestoneHTML}
-                        
                         <!-- 统计数据移到个人信息栏内 -->
                         <div class="profile-stats-row">
                             <div class="profile-stat-item">
@@ -1857,12 +1733,6 @@ profileHeader.innerHTML = `
                         </div>
                     </div>
                     
-                    <button id="compactCheckinBtn" class="compact-checkin-btn" onclick="dailyCheckin()">
-                        <i class="fas fa-calendar-check"></i>
-                        <span id="compactCheckinText">今日签到</span>
-                        <small id="compactCheckinReward">+10 积分</small>
-                    </button>
-                    
                     <div class="compact-checkin-message" id="compactCheckinMessage"></div>
                     
                     <!-- 月份选择器 -->
@@ -1888,10 +1758,85 @@ profileHeader.innerHTML = `
                         <!-- 日期将通过 JavaScript 动态生成 -->
                     </div>
                 </div>
-            `;
+            `
             
             // 更新用户等级显示（必须在 innerHTML 设置之后）
             updateUserLevelDisplay(points);
+            
+            // 显示里程碑成就徽章在用户名旁边
+            const badgeContainer = document.getElementById('userBadgeContainer');
+            if (badgeContainer) {
+                if (hasBadges && userBadges.length > 0) {
+                    badgeContainer.innerHTML = `
+                        <div style="
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 8px;
+                            flex-wrap: wrap;
+                        ">
+                            ${userBadges.map(badgeId => getBadgeDisplay(badgeId)).join('')}
+                            <button onclick="showMilestoneInfo()" style="
+                                background: none;
+                                border: 1px solid #ccc;
+                                border-radius: 50%;
+                                width: 20px;
+                                height: 20px;
+                                cursor: pointer;
+                                color: #4caf50;
+                                font-size: 14px;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                transition: all 0.3s;
+                                padding: 0;
+                                line-height: 1;
+                                flex-shrink: 0;
+                            " onmouseover="this.style.borderColor='#4caf50'; this.style.background='#4caf50'; this.style.color='white';" 
+                               onmouseout="this.style.borderColor='#ccc'; this.style.background='none'; this.style.color='#4caf50';" 
+                               title="查看里程碑说明">?</button>
+                        </div>
+                    `;
+                } else {
+                    // 没有徽章时显示提示和问号按钮
+                    badgeContainer.innerHTML = `
+                        <div style="
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 8px;
+                        ">
+                            <span style="
+                                color: #666;
+                                font-size: 13px;
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 5px;
+                            ">
+                                <i class="fas fa-trophy" style="color: #4caf50;"></i>
+                                继续创作，解锁你的第一个里程碑徽章！（1 万字）
+                            </span>
+                            <button onclick="showMilestoneInfo()" style="
+                                background: none;
+                                border: 1px solid #ccc;
+                                border-radius: 50%;
+                                width: 20px;
+                                height: 20px;
+                                cursor: pointer;
+                                color: #4caf50;
+                                font-size: 14px;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                transition: all 0.3s;
+                                padding: 0;
+                                line-height: 1;
+                                flex-shrink: 0;
+                            " onmouseover="this.style.borderColor='#4caf50'; this.style.background='#4caf50'; this.style.color='white';" 
+                               onmouseout="this.style.borderColor='#ccc'; this.style.background='none'; this.style.color='#4caf50';" 
+                               title="查看里程碑说明">?</button>
+                        </div>
+                    `;
+                }
+            }
         }
         
         // 显示签到规则说明弹窗
@@ -4858,53 +4803,25 @@ if (codes.length === 0) {
                 const data = await response.json();
                 checkinStatus = data;
                 
-                // 更新原签到信息显示（隐藏的大版本）
-                document.getElementById('consecutiveDays').textContent = data.consecutiveDays || 0;
-                document.getElementById('makeupChancesDisplay').textContent = data.makeupChances || 0;
-                document.getElementById('checkinReward').textContent = `+${data.nextReward || 10}积分`;
-                
-                // 更新紧凑版签到框
+                // 更新紧凑版签到框显示
                 const compactConsecutiveDays = document.getElementById('compactConsecutiveDays');
                 const compactMakeupChances = document.getElementById('compactMakeupChances');
-                const compactCheckinBtn = document.getElementById('compactCheckinBtn');
-                const compactCheckinText = document.getElementById('compactCheckinText');
-                const compactCheckinReward = document.getElementById('compactCheckinReward');
                 const compactCheckinMessage = document.getElementById('compactCheckinMessage');
                 
                 if (compactConsecutiveDays) compactConsecutiveDays.textContent = data.consecutiveDays || 0;
                 if (compactMakeupChances) compactMakeupChances.textContent = data.makeupChances || 0;
-                if (compactCheckinReward) compactCheckinReward.textContent = `+${data.nextReward || 10}积分`;
                 
-                if (compactCheckinBtn && compactCheckinText && compactCheckinMessage) {
+                // 显示签到状态提示
+                if (compactCheckinMessage) {
                     if (!data.canCheckin) {
-                        compactCheckinBtn.disabled = true;
-                        compactCheckinText.textContent = '已签到';
                         compactCheckinMessage.className = 'compact-checkin-message info show';
                         compactCheckinMessage.textContent = '今天已签到';
                     } else if (data.isMissed) {
-                        compactCheckinBtn.disabled = false;
-                        compactCheckinText.textContent = '今日签到';
                         compactCheckinMessage.className = 'compact-checkin-message info show';
-                        compactCheckinMessage.textContent = '连续已中断';
+                        compactCheckinMessage.textContent = '连续签到已中断，点击今天日期签到';
                     } else {
-                        compactCheckinBtn.disabled = false;
-                        compactCheckinText.textContent = '今日签到';
                         compactCheckinMessage.className = 'compact-checkin-message';
                     }
-                }
-                
-                // 更新原签到按钮状态
-                const checkinBtn = document.getElementById('checkinBtn');
-                const checkinMessage = document.getElementById('checkinMessage');
-                
-                if (!data.canCheckin) {
-                    checkinBtn.disabled = true;
-                    checkinBtn.querySelector('span').textContent = '已签到';
-                    checkinMessage.className = 'checkin-message info';
-                    checkinMessage.textContent = data.reason || '今天已经签到过了';
-                } else if (data.isMissed) {
-                    checkinMessage.className = 'checkin-message info';
-                    checkinMessage.textContent = '连续签到已中断，今天签到将重新开始计算';
                 }
                 
                 // 加载签到历史（同时更新大日历和紧凑日历）
@@ -4919,10 +4836,6 @@ if (codes.length === 0) {
             try {
                 const token = localStorage.getItem('token') || sessionStorage.getItem('token');
                 
-                const checkinBtn = document.getElementById('checkinBtn');
-                checkinBtn.disabled = true;
-                checkinBtn.querySelector('span').textContent = '签到中...';
-                
                 const response = await fetch('/api/checkin/daily', {
                     method: 'POST',
                     headers: {
@@ -4931,10 +4844,9 @@ if (codes.length === 0) {
                 });
 
                 const data = await response.json();
-                const checkinMessage = document.getElementById('checkinMessage');
                 
                 if (response.ok) {
-                    checkinMessage.className = 'checkin-message success';
+                    // 显示成功消息（使用临时提示）
                     let message = `🎉 ${data.message} 获得 ${data.data.pointsEarned} 积分！`;
                     
                     if (data.data.bonusPoints > 0) {
@@ -4945,27 +4857,19 @@ if (codes.length === 0) {
                         message += ` 🎁 获得 ${data.data.bonusMakeupChances} 次补签机会！`;
                     }
                     
-                    checkinMessage.textContent = message;
-                    checkinBtn.querySelector('span').textContent = '已签到';
+                    // 创建临时消息提示
+                    showMessage(message, 'success');
                     
                     // 刷新签到状态和日历
                     await loadCheckinStatus();
                     await loadUserProfile(); // 刷新用户信息（更新积分）
                 } else {
-                    checkinMessage.className = 'checkin-message error';
-                    checkinMessage.textContent = data.error || '签到失败';
-                    checkinBtn.disabled = false;
-                    checkinBtn.querySelector('span').textContent = '今日签到';
+                    // 显示错误消息
+                    showMessage('❌ ' + (data.error || '签到失败'), 'error');
                 }
             } catch (error) {
                 console.error('签到失败:', error);
-                const checkinMessage = document.getElementById('checkinMessage');
-                checkinMessage.className = 'checkin-message error';
-                checkinMessage.textContent = '签到失败，请稍后重试';
-                
-                const checkinBtn = document.getElementById('checkinBtn');
-                checkinBtn.disabled = false;
-                checkinBtn.querySelector('span').textContent = '今日签到';
+                showMessage('❌ 签到失败，请稍后重试', 'error');
             }
         }
 
@@ -5041,7 +4945,7 @@ if (codes.length === 0) {
             }
         }
         
-        // 渲染日历天数（通用函数）
+// 渲染日历天数（通用函数）
         function renderCalendarDays(gridElement, year, month, firstDayOfWeek, daysInMonth, dayClass) {
             // 填充上个月的日期
             const prevMonthLastDay = new Date(year, month - 1, 0).getDate();
@@ -5070,9 +4974,20 @@ if (codes.length === 0) {
                            recordDate.getDate() === day;
                 });
                 
-                // 今天
+                // 今天 - 添加点击签到功能
                 if (isCurrentMonth && day === today.getDate()) {
                     dayElement.classList.add('today');
+                    // 如果今天可以签到，添加点击事件
+                    if (!record && checkinStatus?.canCheckin) {
+                        dayElement.style.cursor = 'pointer';
+                        dayElement.title = '点击签到';
+                        dayElement.onclick = (e) => {
+                            e.stopPropagation();
+                            dailyCheckin();
+                        };
+                    } else if (record) {
+                        dayElement.title = '今天已签到';
+                    }
                 }
                 
                 // 已签到
@@ -5085,7 +5000,7 @@ if (codes.length === 0) {
                         dayElement.title = `已签到 +${record.points_earned}积分`;
                     }
                 } else {
-                    // 可补签的日期（最近7天内，且有补签机会）
+                    // 可补签的日期（最近 7 天内，且有补签机会）
                     const dayDate = new Date(year, month - 1, day);
                     const diffTime = today - dayDate;
                     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
@@ -5101,7 +5016,7 @@ if (codes.length === 0) {
             }
             
             // 填充下个月的日期
-            const remainingDays = 42 - (firstDayOfWeek + daysInMonth); // 6行7列=42个格子
+            const remainingDays = 42 - (firstDayOfWeek + daysInMonth); // 6 行 7 列=42 个格子
             for (let day = 1; day <= remainingDays; day++) {
                 const dayElement = document.createElement('div');
                 dayElement.className = `${dayClass} other-month`;
