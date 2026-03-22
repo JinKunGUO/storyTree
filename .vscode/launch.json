@@ -1,0 +1,40 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug API (ts-node)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["ts-node"],
+      "args": ["${workspaceFolder}/api/src/index.ts"],
+      "cwd": "${workspaceFolder}/api",
+      "envFile": "${workspaceFolder}/api/.env",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/api/node_modules/**"]
+    },
+    {
+      "name": "Attach to Nodemon",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "restart": true,
+      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/api/node_modules/**"]
+    },
+    {
+      "name": "Debug Current TS File",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["ts-node"],
+      "args": ["${file}"],
+      "cwd": "${workspaceFolder}/api",
+      "envFile": "${workspaceFolder}/api/.env",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**"]
+    }
+  ]
+}
+
