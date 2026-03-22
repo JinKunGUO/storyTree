@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-package-lock.json
 
 # Environment variables
 .env
@@ -11,6 +10,7 @@ package-lock.json
 *.db
 *.sqlite
 *.sqlite3
+*.rdb
 
 # Uploads
 api/uploads/
@@ -50,7 +50,7 @@ temp/
 test-*.sh
 
 # Prisma
-api/prisma/migrations/
+# api/prisma/migrations/  # 迁移文件应纳入版本控制
 
 # Cache
 .cache/
