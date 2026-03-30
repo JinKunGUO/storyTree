@@ -3,6 +3,10 @@ generator client {
 }
 
 datasource db {
+  // 开发环境使用 SQLite，生产环境使用 MySQL
+  // 切换数据库时修改此处的 provider 值：
+  //   开发：provider = "sqlite"，DATABASE_URL="file:./dev.db"
+  //   生产：provider = "mysql"，DATABASE_URL="mysql://user:password@host:3306/storytree"
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
