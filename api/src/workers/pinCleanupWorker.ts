@@ -1,4 +1,4 @@
-import { prisma } from '../index';
+import { prisma } from '../db';
 
 /**
  * 清理过期置顶的定时任务

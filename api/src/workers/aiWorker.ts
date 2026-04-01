@@ -1,7 +1,7 @@
 import { Job } from 'bull';
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
-import { prisma } from '../index';
+import { prisma } from '../db';
 import { aiContinuationQueue, aiPolishQueue, aiIllustrationQueue } from '../utils/queue';
 import { notifyAiContinuationReady, notifyAiPolishReady, notifyAiIllustrationReady } from '../utils/notification';
 import { deductPoints, AI_COST } from '../utils/points';

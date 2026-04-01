@@ -1,7 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
+export { prisma } from './db';
+import { prisma } from './db';
 import * as fs from 'fs';
 import * as path from 'path';
 import authRoutes from './routes/auth';
@@ -44,7 +45,6 @@ import './workers/membershipWorker';
 import './workers/pinCleanupWorker';
 
 const app = express();
-export const prisma = new PrismaClient();
 
 app.use(cors());
 app.use(express.json());
