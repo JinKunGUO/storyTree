@@ -149,8 +149,22 @@ run_migrations() {
     log_info "执行数据库迁移..."
     cd "$API_DIR"
 
-    # 使用生产环境配置
-    export $(grep -v '^#' .env.production | xargs)
+    # 使用生产环境配置（逐行读取，支持含特殊字符的值如 URL、密码）
+    while IFS= read -r line; do
+        # 跳过空行和注释行
+        [[ -z "$line" || "$line" =~ ^# ]] && continue
+        # 提取 key=value，去掉首尾空格，支持带引号的值
+        if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+            key="${BASH_REMATCH[1]}"
+            val="${BASH_REMATCH[2]}"
+            # 去掉值两端的双引号或单引号
+            val="${val%\"}"
+            val="${val#\"}"
+            val="${val%\'}"
+            val="${val#\'}"
+            export "$key=$val"
+        fi
+    done < .env.production
 
     # 将 schema.prisma 中的 provider 切换为 mysql（生产环境）
     SCHEMA_FILE="$API_DIR/prisma/schema.prisma"
