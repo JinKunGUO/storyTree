@@ -30,7 +30,9 @@ import withdrawalRoutes from './routes/withdrawals';
 import pointsFeaturesRoutes from './routes/points-features';
 import { closeQueues } from './utils/queue';
 
-dotenv.config();
+// 根据 NODE_ENV 加载对应的 .env 文件，fallback 到 .env
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
+dotenv.config({ path: envFile });
 
 // 启动 AI Worker
 import './workers/aiWorker';
