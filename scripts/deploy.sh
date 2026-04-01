@@ -138,7 +138,7 @@ update_code() {
 install_deps() {
     log_info "安装 Node.js 依赖..."
     cd "$API_DIR"
-    npm ci --production
+    npm ci
     log_success "依赖安装完成"
 }
 
@@ -171,12 +171,20 @@ run_migrations() {
     sed -i 's/provider = "sqlite"/provider = "mysql"/' "$SCHEMA_FILE"
     log_info "已将 Prisma provider 切换为 mysql"
 
+    # 同步 migration_lock.toml 中的 provider（避免 P3019 错误）
+    LOCK_FILE="$API_DIR/prisma/migrations/migration_lock.toml"
+    if [ -f "$LOCK_FILE" ]; then
+        sed -i 's/provider = "sqlite"/provider = "mysql"/' "$LOCK_FILE"
+        log_info "已同步 migration_lock.toml provider 为 mysql"
+    fi
+
     # 生成 Prisma Client
     npx prisma generate
 
-    # 执行迁移
-    npx prisma migrate deploy
-    log_success "数据库迁移完成"
+    # 使用 db push 同步 schema 到数据库
+    # （迁移文件为 SQLite 语法，无法在 MySQL 上执行，故使用 db push）
+    npx prisma db push
+    log_success "数据库 schema 同步完成"
 }
 
 # ===================================

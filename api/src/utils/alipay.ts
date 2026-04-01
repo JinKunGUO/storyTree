@@ -1,4 +1,4 @@
-import AlipaySdk from 'alipay-sdk';
+import { AlipaySdk } from 'alipay-sdk';
 
 /**
  * 支付宝支付服务
