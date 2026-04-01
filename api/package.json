@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.17.0",
-    "alipay-sdk": "^3.5.0",
+    "alipay-sdk": "3.6.2",
     "@bull-board/api": "^6.20.3",
     "@bull-board/express": "^6.20.3",
     "@prisma/client": "^5.8.0",

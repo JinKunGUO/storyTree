@@ -1,4 +1,5 @@
 import AlipaySdk from 'alipay-sdk';
+import AliPayForm from 'alipay-sdk/lib/form';
 
 /**
  * 支付宝支付服务
@@ -17,7 +18,7 @@ const ALIPAY_CONFIG = {
   privateKey: process.env.ALIPAY_PRIVATE_KEY || '',
   alipayPublicKey: process.env.ALIPAY_PUBLIC_KEY || '',
   gateway: process.env.ALIPAY_GATEWAY || 'https://openapi.alipay.com/gateway.do',
-  timeoutExpress: 30000, // 30 秒超时
+  timeout: 30000, // 30 秒超时
 };
 
 // 初始化 SDK
@@ -26,7 +27,7 @@ const alipaySdk = new AlipaySdk({
   privateKey: ALIPAY_CONFIG.privateKey,
   alipayPublicKey: ALIPAY_CONFIG.alipayPublicKey,
   gateway: ALIPAY_CONFIG.gateway,
-  timeoutExpress: ALIPAY_CONFIG.timeoutExpress,
+  timeout: ALIPAY_CONFIG.timeout,
 });
 
 /**
@@ -48,27 +49,25 @@ export async function createWapPay(params: {
   const { orderId, subject, totalAmount, returnUrl, notifyUrl } = params;
 
   try {
-    // 使用 alipay-sdk 的 exec 方法调用手机网站支付 API
-    const formData = {
-      method: 'alipay.trade.wap.pay',
-      bizContent: {
-        outTradeNo: orderId, // 商户订单号
-        productCode: 'QUICK_WAP_WAY', // 产品码：手机网站支付
-        totalAmount: totalAmount.toFixed(2), // 订单金额
-        subject: subject, // 订单标题
-        timeoutExpress: '30m', // 订单有效期 30 分钟
-      },
-      returnUrl: returnUrl,
-      notifyUrl: notifyUrl,
-    };
+    // v3.x 手机网站支付使用 pageExec + AliPayForm
+    const formData = new AliPayForm();
+    formData.setMethod('get'); // get 返回支付链接，post 返回表单 HTML
+    formData.addField('bizContent', {
+      outTradeNo: orderId,
+      productCode: 'QUICK_WAP_WAY',
+      totalAmount: totalAmount.toFixed(2),
+      subject: subject,
+      timeoutExpress: '30m',
+    });
+    formData.addField('returnUrl', returnUrl);
+    formData.addField('notifyUrl', notifyUrl);
 
-    const result = await alipaySdk.exec('alipay.trade.wap.pay', {
-      bizContent: formData.bizContent,
-    }, {
-      formData: {
-      returnUrl: returnUrl,
-      notifyUrl: notifyUrl,
-    }});
+    const result = alipaySdk.pageExec('alipay.trade.wap.pay', {
+      method: 'GET',
+      bizContent: {},
+      returnUrl,
+      notifyUrl,
+    });
 
     return result;
   } catch (error) {
@@ -153,14 +152,8 @@ export async function queryOrderStatus(orderId: string): Promise<{
  */
 export function verifyNotify(notifyData: any): boolean {
   try {
-    const sign = notifyData.sign;
-    const signType = notifyData.sign_type || 'RSA2';
-    
-    // 移除 sign 和 sign_type 字段
-    const { sign: _, sign_type: __, ...bizContent } = notifyData;
-    
-    // 使用 SDK 验证签名
-    const verifyResult = alipaySdk.checkNotifySign(bizContent, sign, signType);
+    // v3.x checkNotifySign(postData, raw?) - postData 中包含 sign 字段
+    const verifyResult = alipaySdk.checkNotifySign(notifyData);
     
     return verifyResult;
   } catch (error) {
