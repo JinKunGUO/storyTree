@@ -431,8 +431,8 @@
                     <li><i class="fas fa-check"></i> 或 5 张 AI 插图</li>
                     <li><i class="fas fa-check"></i> 永久有效</li>
                 </ul>
-                <button class="btn-buy" onclick="selectPackage(100, 9.9)">
-                    <i class="fas fa-shopping-cart"></i> 立即购买
+                <button class="btn-buy" disabled style="background: #e0e0e0; color: #999; cursor: not-allowed; opacity: 0.8;" title="积分充值功能即将开放">
+                    <i class="fas fa-clock"></i> 敬请期待
                 </button>
             </div>
 
@@ -452,8 +452,8 @@
                     <li><i class="fas fa-check"></i> 永久有效</li>
                     <li><i class="fas fa-star" style="color: #ff9800;"></i> 节省 5 元</li>
                 </ul>
-                <button class="btn-buy" onclick="selectPackage(500, 45.0)">
-                    <i class="fas fa-shopping-cart"></i> 立即购买
+                <button class="btn-buy" disabled style="background: #e0e0e0; color: #999; cursor: not-allowed; opacity: 0.8;" title="积分充值功能即将开放">
+                    <i class="fas fa-clock"></i> 敬请期待
                 </button>
             </div>
 
@@ -472,8 +472,8 @@
                     <li><i class="fas fa-check"></i> 永久有效</li>
                     <li><i class="fas fa-star" style="color: #ff9800;"></i> 节省 15 元</li>
                 </ul>
-                <button class="btn-buy" onclick="selectPackage(1000, 85.0)">
-                    <i class="fas fa-shopping-cart"></i> 立即购买
+                <button class="btn-buy" disabled style="background: #e0e0e0; color: #999; cursor: not-allowed; opacity: 0.8;" title="积分充值功能即将开放">
+                    <i class="fas fa-clock"></i> 敬请期待
                 </button>
             </div>
 
@@ -492,14 +492,13 @@
                     <li><i class="fas fa-check"></i> 永久有效</li>
                     <li><i class="fas fa-star" style="color: #ff9800;"></i> 节省 40 元</li>
                 </ul>
-                <button class="btn-buy" onclick="selectPackage(2000, 160.0)">
-                    <i class="fas fa-shopping-cart"></i> 立即购买
+                <button class="btn-buy" disabled style="background: #e0e0e0; color: #999; cursor: not-allowed; opacity: 0.8;" title="积分充值功能即将开放">
+                    <i class="fas fa-clock"></i> 敬请期待
                 </button>
             </div>
         </div>
-
-        <!-- 支付方式 -->
-        <div class="payment-methods">
+        <!-- 支付方式（暂时隐藏，付费功能即将开放） -->
+        <div class="payment-methods" style="display: none;">
             <div class="payment-title">
                 <i class="fas fa-wallet" style="color: #667eea;"></i>
                 选择支付方式
@@ -525,6 +524,27 @@
                     <div class="payment-option-name">积分兑换码</div>
                     <div class="payment-option-desc">使用兑换码兑换积分</div>
                 </div>
+            </div>
+        </div>
+
+        <!-- 积分获取说明 -->
+        <div style="
+            background: linear-gradient(135deg, #fff8e1 0%, #fff3cd 100%);
+            border: 1px solid #ffc107;
+            border-radius: 16px;
+            padding: 20px 28px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            box-shadow: 0 4px 15px rgba(255, 193, 7, 0.15);
+        ">
+            <div style="font-size: 24px; flex-shrink: 0; margin-top: 2px;">💡</div>
+            <div style="color: #856404; font-size: 15px; line-height: 1.8;">
+                <strong style="display: block; font-size: 16px; margin-bottom: 6px; color: #664d03;">积分充值功能即将开放</strong>
+                目前可通过以下方式免费获取积分：<br>
+                <span style="margin-right: 20px;">📅 <strong>每日签到</strong> — 连续签到最高每天 +57 积分</span>
+                <span>✍️ <strong>创作码字</strong> — 每码字 1000 字获得积分奖励</span>
             </div>
         </div>
 

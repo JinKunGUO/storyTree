@@ -256,6 +256,81 @@
             font-size: 0.9em;
             color: #666;
         }
+
+        /* 内测公告横幅 */
+        .beta-notice {
+            background: linear-gradient(135deg, #fff8e1 0%, #fff3cd 100%);
+            border: 1px solid #ffc107;
+            border-radius: 12px;
+            padding: 18px 24px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            box-shadow: 0 4px 15px rgba(255, 193, 7, 0.2);
+        }
+
+        .beta-notice-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .beta-notice-text {
+            color: #856404;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        .beta-notice-text strong {
+            display: block;
+            font-size: 16px;
+            margin-bottom: 4px;
+            color: #664d03;
+        }
+
+        /* 「即将开放」角标 */
+        .coming-soon-badge {
+            position: absolute;
+            top: 20px;
+            left: -32px;
+            background: linear-gradient(135deg, #ff9800, #ffa726);
+            color: white;
+            padding: 5px 40px;
+            transform: rotate(-45deg);
+            font-size: 0.75em;
+            font-weight: bold;
+            letter-spacing: 1px;
+            z-index: 1;
+        }
+
+        /* 价格改为免费样式 */
+        .tier-price-free {
+            font-size: 2em;
+            font-weight: bold;
+            color: #4caf50;
+        }
+
+        .tier-price-original {
+            font-size: 0.9em;
+            color: #bbb;
+            text-decoration: line-through;
+            display: block;
+            margin-top: 2px;
+        }
+
+        /* 不可点击的按钮样式 */
+        .btn-coming-soon {
+            background: #e0e0e0;
+            color: #999;
+            cursor: not-allowed;
+            opacity: 0.8;
+        }
+
+        .btn-coming-soon:hover {
+            transform: none !important;
+            box-shadow: none !important;
+        }
     </style>
 </head>
 <body>
@@ -269,6 +344,15 @@
 
         <div id="loading" class="loading">加载中...</div>
         <div id="error" class="error" style="display: none;"></div>
+
+        <!-- 内测免费公告 -->
+        <div class="beta-notice">
+            <div class="beta-notice-icon">🎉</div>
+            <div class="beta-notice-text">
+                <strong>平台内测期间，所有会员功能限时免费开放！</strong>
+                无需付费即可享受全部会员权益。付费功能将在正式上线后开放，届时提前注册的用户将享有专属优惠。
+            </div>
+        </div>
 
         <div id="content" style="display: none;">
             <!-- 当前会员状态 -->
@@ -429,9 +513,11 @@
                 tiersGrid.innerHTML = response.tiers.map(tier => `
                     <div class="tier-card ${tier.isPopular ? 'popular' : ''}">
                         ${tier.isPopular ? '<span class="popular-badge">热门</span>' : ''}
+                        <span class="coming-soon-badge">即将开放</span>
                         <div class="tier-header">
                             <div class="tier-name">${tier.name}</div>
-                            <div class="tier-price">¥${tier.price}<small>${tier.duration === 0 ? '永久' : tier.duration === 365 ? '/年' : tier.duration === 90 ? '/季' : tier.duration === 30 ? '/月' : `/${tier.duration}天`}</small></div>
+                            <div class="tier-price-free">限时免费</div>
+                            <span class="tier-price-original">原价 ¥${tier.price}${tier.duration === 0 ? '' : tier.duration === 365 ? '/年' : tier.duration === 90 ? '/季' : tier.duration === 30 ? '/月' : `/${tier.duration}天`}</span>
                         </div>
                         <div class="tier-duration">${tier.durationText}</div>
                         <ul class="tier-benefits">
@@ -441,8 +527,8 @@
                             <strong>AI 配额:</strong><br>
                             ${tier.quotaDescription.split('\n').map(line => line.trim() ? `${line}<br>` : '').join('')}
                         </div>
-                        <button class="tier-action btn-upgrade" data-tier="${tier.id}" onclick="purchaseMembership('${tier.id}')">
-                            ${tier.isTrial ? '立即体验' : '立即开通'}
+                        <button class="tier-action btn-coming-soon" disabled title="付费功能即将开放">
+                            <i class="fas fa-clock"></i> 即将开放
                         </button>
                     </div>
                 `).join('');
