@@ -1565,6 +1565,23 @@ profileHeader.innerHTML = `
                     <div class="profile-info">
                         <div class="profile-name">
                             ${escapeHtml(user.username)}
+                            <button onclick="showEditProfileModal()" style="
+                                background: none;
+                                border: 1px solid #667eea;
+                                color: #667eea;
+                                border-radius: 20px;
+                                padding: 4px 14px;
+                                font-size: 13px;
+                                font-weight: 600;
+                                cursor: pointer;
+                                transition: all 0.3s;
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 5px;
+                            " onmouseover="this.style.background='#667eea'; this.style.color='white';"
+                               onmouseout="this.style.background='none'; this.style.color='#667eea';">
+                                <i class="fas fa-pen" style="font-size: 11px;"></i> 编辑资料
+                            </button>
                             <span id="userBadgeContainer" style="margin-left: 10px;">
                                 <!-- 徽章将通过 JavaScript 动态插入 -->
                             </span>
@@ -5160,6 +5177,337 @@ if (codes.length === 0) {
                 checkinMessage.className = 'checkin-message error';
                 checkinMessage.textContent = '补签失败，请稍后重试';
             }
+        }
+
+        // ========== 编辑资料弹窗 ==========
+        function showEditProfileModal() {
+            // 移除已有弹窗（防止重复）
+            const existing = document.getElementById('editProfileOverlay');
+            if (existing) existing.remove();
+
+            const overlay = document.createElement('div');
+            overlay.id = 'editProfileOverlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                animation: fadeIn 0.3s;
+            `;
+
+            overlay.innerHTML = `
+                <div style="
+                    background: white;
+                    border-radius: 20px;
+                    padding: 35px;
+                    max-width: 480px;
+                    width: 90%;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                    animation: slideUp 0.3s;
+                ">
+                    <!-- 标题 -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px;">
+                        <h2 style="margin:0; color:#333; font-size:22px;">
+                            <i class="fas fa-user-edit" style="color:#667eea;"></i> 编辑资料
+                        </h2>
+                        <button onclick="document.getElementById('editProfileOverlay').remove()" style="
+                            background:none; border:none; font-size:24px; cursor:pointer;
+                            color:#999; width:32px; height:32px; display:flex;
+                            align-items:center; justify-content:center; border-radius:50%;
+                            transition:all 0.3s;
+                        " onmouseover="this.style.background='#f0f0f0'; this.style.color='#333';"
+                           onmouseout="this.style.background='none'; this.style.color='#999';">×</button>
+                    </div>
+
+                    <!-- Tab 切换 -->
+                    <div style="display:flex; border-bottom:2px solid #f0f0f0; margin-bottom:25px;">
+                        <button id="tabBasicBtn" onclick="switchEditTab('basic')" style="
+                            flex:1; padding:10px; background:none; border:none; cursor:pointer;
+                            font-size:15px; font-weight:600; color:#667eea;
+                            border-bottom:3px solid #667eea; transition:all 0.3s;
+                        ">
+                            <i class="fas fa-id-card"></i> 基本信息
+                        </button>
+                        <button id="tabPasswordBtn" onclick="switchEditTab('password')" style="
+                            flex:1; padding:10px; background:none; border:none; cursor:pointer;
+                            font-size:15px; font-weight:600; color:#999;
+                            border-bottom:3px solid transparent; transition:all 0.3s;
+                        ">
+                            <i class="fas fa-lock"></i> 修改密码
+                        </button>
+                    </div>
+
+                    <!-- 基本信息 Tab -->
+                    <div id="tabBasicContent">
+                        <!-- 用户名 -->
+                        <div style="margin-bottom:20px;">
+                            <label style="display:block; font-weight:600; color:#555; margin-bottom:8px; font-size:14px;">
+                                <i class="fas fa-user"></i> 用户名
+                                <span style="color:#999; font-weight:normal; font-size:12px; margin-left:8px;">（3-20位，字母/数字/下划线/连字符）</span>
+                            </label>
+                            <input type="text" id="editUsername" placeholder="输入新用户名"
+                                maxlength="20"
+                                style="
+                                    width:100%; padding:12px 15px; border:2px solid #e0e0e0;
+                                    border-radius:10px; font-size:15px; outline:none;
+                                    box-sizing:border-box; transition:all 0.3s;
+                                "
+                                onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102,126,234,0.1)';"
+                                onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none';"
+                            />
+                        </div>
+                        <!-- 个人简介 -->
+                        <div style="margin-bottom:20px;">
+                            <label style="display:block; font-weight:600; color:#555; margin-bottom:8px; font-size:14px;">
+                                <i class="fas fa-pen"></i> 个人简介
+                            </label>
+                            <textarea id="editBio" placeholder="介绍一下自己..." rows="3"
+                                maxlength="200"
+                                style="
+                                    width:100%; padding:12px 15px; border:2px solid #e0e0e0;
+                                    border-radius:10px; font-size:15px; outline:none; resize:vertical;
+                                    box-sizing:border-box; transition:all 0.3s; font-family:inherit;
+                                "
+                                onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102,126,234,0.1)';"
+                                onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none';"
+                            ></textarea>
+                        </div>
+                        <!-- 提示信息 -->
+                        <div id="editBasicMsg" style="margin-bottom:15px; font-size:14px; display:none;"></div>
+                        <!-- 保存按钮 -->
+                        <button onclick="saveBasicProfile()" style="
+                            width:100%; padding:14px; background:linear-gradient(135deg,#667eea,#764ba2);
+                            color:white; border:none; border-radius:12px; font-size:16px;
+                            font-weight:600; cursor:pointer; transition:all 0.3s;
+                        " onmouseover="this.style.opacity='0.9'; this.style.transform='translateY(-1px)';"
+                           onmouseout="this.style.opacity='1'; this.style.transform='translateY(0)';">
+                            <i class="fas fa-save"></i> 保存修改
+                        </button>
+                    </div>
+
+                    <!-- 修改密码 Tab -->
+                    <div id="tabPasswordContent" style="display:none;">
+                        <!-- 当前密码 -->
+                        <div style="margin-bottom:20px;">
+                            <label style="display:block; font-weight:600; color:#555; margin-bottom:8px; font-size:14px;">
+                                <i class="fas fa-key"></i> 当前密码
+                            </label>
+                            <input type="password" id="editCurrentPassword" placeholder="输入当前密码"
+                                style="
+                                    width:100%; padding:12px 15px; border:2px solid #e0e0e0;
+                                    border-radius:10px; font-size:15px; outline:none;
+                                    box-sizing:border-box; transition:all 0.3s;
+                                "
+                                onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102,126,234,0.1)';"
+                                onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none';"
+                            />
+                        </div>
+                        <!-- 新密码 -->
+                        <div style="margin-bottom:20px;">
+                            <label style="display:block; font-weight:600; color:#555; margin-bottom:8px; font-size:14px;">
+                                <i class="fas fa-lock"></i> 新密码
+                                <span style="color:#999; font-weight:normal; font-size:12px; margin-left:8px;">（至少6位）</span>
+                            </label>
+                            <input type="password" id="editNewPassword" placeholder="输入新密码"
+                                style="
+                                    width:100%; padding:12px 15px; border:2px solid #e0e0e0;
+                                    border-radius:10px; font-size:15px; outline:none;
+                                    box-sizing:border-box; transition:all 0.3s;
+                                "
+                                onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102,126,234,0.1)';"
+                                onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none';"
+                            />
+                        </div>
+                        <!-- 确认新密码 -->
+                        <div style="margin-bottom:20px;">
+                            <label style="display:block; font-weight:600; color:#555; margin-bottom:8px; font-size:14px;">
+                                <i class="fas fa-lock"></i> 确认新密码
+                            </label>
+                            <input type="password" id="editConfirmPassword" placeholder="再次输入新密码"
+                                style="
+                                    width:100%; padding:12px 15px; border:2px solid #e0e0e0;
+                                    border-radius:10px; font-size:15px; outline:none;
+                                    box-sizing:border-box; transition:all 0.3s;
+                                "
+                                onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102,126,234,0.1)';"
+                                onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none';"
+                            />
+                        </div>
+                        <!-- 提示信息 -->
+                        <div id="editPasswordMsg" style="margin-bottom:15px; font-size:14px; display:none;"></div>
+                        <!-- 保存按钮 -->
+                        <button onclick="savePassword()" style="
+                            width:100%; padding:14px; background:linear-gradient(135deg,#667eea,#764ba2);
+                            color:white; border:none; border-radius:12px; font-size:16px;
+                            font-weight:600; cursor:pointer; transition:all 0.3s;
+                        " onmouseover="this.style.opacity='0.9'; this.style.transform='translateY(-1px)';"
+                           onmouseout="this.style.opacity='1'; this.style.transform='translateY(0)';">
+                            <i class="fas fa-lock"></i> 修改密码
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            // 点击遮罩关闭
+            overlay.onclick = (e) => {
+                if (e.target === overlay) overlay.remove();
+            };
+
+            document.body.appendChild(overlay);
+
+            // 填充当前用户名和bio
+            if (currentUser) {
+                document.getElementById('editUsername').value = currentUser.username || '';
+                document.getElementById('editBio').value = currentUser.bio || '';
+            }
+        }
+
+        // 切换 Tab
+        function switchEditTab(tab) {
+            const basicContent = document.getElementById('tabBasicContent');
+            const passwordContent = document.getElementById('tabPasswordContent');
+            const basicBtn = document.getElementById('tabBasicBtn');
+            const passwordBtn = document.getElementById('tabPasswordBtn');
+
+            if (tab === 'basic') {
+                basicContent.style.display = 'block';
+                passwordContent.style.display = 'none';
+                basicBtn.style.color = '#667eea';
+                basicBtn.style.borderBottomColor = '#667eea';
+                passwordBtn.style.color = '#999';
+                passwordBtn.style.borderBottomColor = 'transparent';
+            } else {
+                basicContent.style.display = 'none';
+                passwordContent.style.display = 'block';
+                basicBtn.style.color = '#999';
+                basicBtn.style.borderBottomColor = 'transparent';
+                passwordBtn.style.color = '#667eea';
+                passwordBtn.style.borderBottomColor = '#667eea';
+                // 清空密码输入框
+                document.getElementById('editCurrentPassword').value = '';
+                document.getElementById('editNewPassword').value = '';
+                document.getElementById('editConfirmPassword').value = '';
+            }
+        }
+
+        // 显示编辑表单消息
+        function showEditMsg(elementId, message, isError) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            el.style.display = 'block';
+            el.style.padding = '10px 15px';
+            el.style.borderRadius = '8px';
+            el.style.fontWeight = '500';
+            if (isError) {
+                el.style.background = '#ffebee';
+                el.style.color = '#f44336';
+                el.style.border = '1px solid #ffcdd2';
+            } else {
+                el.style.background = '#e8f5e9';
+                el.style.color = '#4caf50';
+                el.style.border = '1px solid #c8e6c9';
+            }
+            el.textContent = message;
+        }
+
+        // 保存基本信息（用户名 + bio）
+        async function saveBasicProfile() {
+            const newUsername = document.getElementById('editUsername').value.trim();
+            const newBio = document.getElementById('editBio').value.trim();
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+
+            // 用户名变更
+            if (newUsername && newUsername !== currentUser.username) {
+                const usernameRes = await fetch('/api/users/username', {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username: newUsername })
+                });
+                const usernameData = await usernameRes.json();
+                if (!usernameRes.ok) {
+                    showEditMsg('editBasicMsg', '❌ ' + (usernameData.error || '修改用户名失败'), true);
+                    return;
+                }
+            }
+
+            // bio 变更（无论是否修改都提交，后端幂等）
+            const bioRes = await fetch('/api/users/profile', {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ bio: newBio })
+            });
+            const bioData = await bioRes.json();
+            if (!bioRes.ok) {
+                showEditMsg('editBasicMsg', '❌ ' + (bioData.error || '修改简介失败'), true);
+                return;
+            }
+
+            showEditMsg('editBasicMsg', '✅ 修改成功！', false);
+
+            // 刷新页面数据
+            setTimeout(async () => {
+                document.getElementById('editProfileOverlay')?.remove();
+                await loadUserProfile();
+            }, 800);
+        }
+
+        // 保存新密码
+        async function savePassword() {
+            const currentPassword = document.getElementById('editCurrentPassword').value;
+            const newPassword = document.getElementById('editNewPassword').value;
+            const confirmPassword = document.getElementById('editConfirmPassword').value;
+
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                showEditMsg('editPasswordMsg', '❌ 请填写所有密码字段', true);
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                showEditMsg('editPasswordMsg', '❌ 两次输入的新密码不一致', true);
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                showEditMsg('editPasswordMsg', '❌ 新密码长度至少为6位', true);
+                return;
+            }
+
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+
+            const res = await fetch('/api/users/password', {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ currentPassword, newPassword })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                showEditMsg('editPasswordMsg', '❌ ' + (data.error || '修改密码失败'), true);
+                return;
+            }
+
+            showEditMsg('editPasswordMsg', '✅ 密码修改成功！', false);
+
+            // 清空输入框
+            setTimeout(() => {
+                document.getElementById('editCurrentPassword').value = '';
+                document.getElementById('editNewPassword').value = '';
+                document.getElementById('editConfirmPassword').value = '';
+                document.getElementById('editPasswordMsg').style.display = 'none';
+            }, 1500);
         }
 
         // 页面加载

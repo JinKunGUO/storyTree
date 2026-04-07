@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../index';
 import { createNotification } from './notifications';
 import { authenticateToken, optionalAuth, getUserId } from '../utils/middleware';
+import { hashPassword, verifyPassword, isValidUsername, isValidPassword } from '../utils/auth';
 
 const router = Router();
 
@@ -175,6 +176,114 @@ router.put('/profile', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// 修改用户名
+router.put('/username', authenticateToken, async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: '未登录' });
+  }
+
+  const { username } = req.body;
+
+  if (!username) {
+    return res.status(400).json({ error: '请提供新用户名' });
+  }
+
+  // 验证用户名格式
+  const usernameValid = isValidUsername(username);
+  if (!usernameValid.valid) {
+    return res.status(400).json({ error: usernameValid.message });
+  }
+
+  try {
+    // 检查用户名是否已被其他用户使用
+    const existing = await prisma.users.findFirst({
+      where: {
+        username,
+        NOT: { id: userId }
+      }
+    });
+
+    if (existing) {
+      return res.status(400).json({ error: '用户名已被使用，请换一个' });
+    }
+
+    const user = await prisma.users.update({
+      where: { id: userId },
+      data: { username, updatedAt: new Date() },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        avatar: true,
+        bio: true,
+        createdAt: true
+      }
+    });
+
+    res.json({ success: true, user });
+  } catch (error) {
+    console.error('修改用户名错误:', error);
+    res.status(500).json({ error: '修改用户名失败，请稍后重试' });
+  }
+});
+
+// 修改密码（登录态，需验证当前密码）
+router.put('/password', authenticateToken, async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: '未登录' });
+  }
+
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: '请提供当前密码和新密码' });
+  }
+
+  // 验证新密码强度
+  const passwordValid = isValidPassword(newPassword);
+  if (!passwordValid.valid) {
+    return res.status(400).json({ error: passwordValid.message });
+  }
+
+  try {
+    // 获取当前用户的密码哈希
+    const user = await prisma.users.findUnique({
+      where: { id: userId },
+      select: { password: true }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+
+    // 验证当前密码
+    const isCurrentPasswordValid = await verifyPassword(currentPassword, user.password);
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json({ error: '当前密码不正确' });
+    }
+
+    // 检查新密码不能与当前密码相同
+    const isSamePassword = await verifyPassword(newPassword, user.password);
+    if (isSamePassword) {
+      return res.status(400).json({ error: '新密码不能与当前密码相同' });
+    }
+
+    const hashedPassword = await hashPassword(newPassword);
+
+    await prisma.users.update({
+      where: { id: userId },
+      data: { password: hashedPassword, updatedAt: new Date() }
+    });
+
+    res.json({ success: true, message: '密码修改成功' });
+  } catch (error) {
+    console.error('修改密码错误:', error);
+    res.status(500).json({ error: '修改密码失败，请稍后重试' });
   }
 });
 

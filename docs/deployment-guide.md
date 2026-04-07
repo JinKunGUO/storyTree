@@ -255,11 +255,11 @@ server {
     add_header X-XSS-Protection "1; mode=block";
     add_header Referrer-Policy strict-origin-when-cross-origin;
 
-    # 静态前端文件
+    # 静态前端文件根目录
     root /var/www/storytree/web;
     index index.html;
 
-    # API 反向代理
+    # ① API 反向代理（优先级最高，必须放在最前）
     location /api/ {
         proxy_pass http://127.0.0.1:3001;
         proxy_http_version 1.1;
@@ -271,12 +271,38 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 
-    # 前端路由（SPA 支持）
+    # ② 上传文件反向代理
+    location /uploads/ {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    # ③ 前端页面路由：将已知路径转发给 Node.js 处理
+    #    与 api/src/index.ts 中的 possiblePages 列表保持一致
+    location ~ ^/(login|register|create|discover|profile|admin|story|story-tree|chapter|write|payment|reset-password|verify-email|forgot-password|ai-tasks|debug|level)$ {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # ④ 静态资源（CSS/JS/图片等有扩展名的文件）直接由 Nginx 提供
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    # ⑤ 其他所有请求：先找静态文件，找不到则返回首页
     location / {
         try_files $uri $uri/ /index.html;
     }
 }
 ```
+
+> **说明**：规则 ③ 是修复"访问 `/login` 显示首页"问题的关键。Nginx 将这些路径转发给 Node.js，由 `api/src/index.ts` 中的 SPA 路由逻辑返回对应的 `.html` 文件。每次在 `index.ts` 的 `possiblePages` 中新增页面时，也需要同步更新此处的正则表达式。
 
 ```bash
 # 启用配置（创建软链接）
