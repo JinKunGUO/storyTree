@@ -462,7 +462,7 @@
             <h1>欢迎来到 StoryTree</h1>
             <p>在这里，每个故事都是一片叶子，共同组成属于你的故事森林</p>
             <div class="hero-buttons">
-                <a href="/register" class="btn btn-primary" id="startBtn">立即开始</a>
+                <a href="/login" class="btn btn-primary" id="startBtn">立即开始</a>
                 <a href="/discover" class="btn btn-secondary">探索故事</a>
             </div>
         </section>
@@ -628,14 +628,11 @@
             // 添加淡入动画
             document.body.classList.add('fade-in');
             
-            // 确保"立即开始"按钮可以点击
+            // 根据登录状态更新"立即开始"按钮的跳转目标
             const startBtn = document.getElementById('startBtn');
             if (startBtn) {
-                startBtn.addEventListener('click', function(e) {
-                    // 确保链接正常工作
-                    console.log('立即开始按钮被点击');
-                    // 不阻止默认行为，让链接正常跳转
-                });
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                startBtn.href = token ? '/create' : '/login';
             }
         });
 
