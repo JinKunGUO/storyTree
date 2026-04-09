@@ -1,0 +1,331 @@
+/**
+ * StoryTree Design System v1.0
+ * 设计系统基础文件 - 包含所有CSS变量和基础样式
+ */
+
+/* ========================================
+   1. CSS 变量定义
+   ======================================== */
+
+:root {
+  /* ----------------------------------------
+     1.1 品牌色 - 创意靛蓝
+     ---------------------------------------- */
+  --st-primary-50: #EEF2FF;
+  --st-primary-100: #E0E7FF;
+  --st-primary-200: #C7D2FE;
+  --st-primary-300: #A5B4FC;
+  --st-primary-400: #818CF8;
+  --st-primary-500: #6366F1;  /* 主色 */
+  --st-primary-600: #4F46E5;
+  --st-primary-700: #4338CA;
+  --st-primary-800: #3730A3;
+  --st-primary-900: #312E81;
+
+  /* ----------------------------------------
+     1.2 功能色
+     ---------------------------------------- */
+  /* 成功 - 生机绿 */
+  --st-success-50: #F0FDF4;
+  --st-success-100: #DCFCE7;
+  --st-success-200: #BBF7D0;
+  --st-success-500: #22C55E;
+  --st-success-600: #16A34A;
+  --st-success-700: #15803D;
+  
+  /* 警告 - 活力橙 */
+  --st-warning-50: #FFFBEB;
+  --st-warning-100: #FEF3C7;
+  --st-warning-200: #FDE68A;
+  --st-warning-500: #F59E0B;
+  --st-warning-600: #D97706;
+  --st-warning-700: #B45309;
+  
+  /* 错误 - 警示红 */
+  --st-error-50: #FEF2F2;
+  --st-error-100: #FEE2E2;
+  --st-error-200: #FECACA;
+  --st-error-500: #EF4444;
+  --st-error-600: #DC2626;
+  --st-error-700: #B91C1C;
+  
+  /* 信息 - 智慧蓝 */
+  --st-info-50: #EFF6FF;
+  --st-info-100: #DBEAFE;
+  --st-info-200: #BFDBFE;
+  --st-info-500: #3B82F6;
+  --st-info-600: #2563EB;
+  --st-info-700: #1D4ED8;
+
+  /* ----------------------------------------
+     1.3 中性色 - 灰色系
+     ---------------------------------------- */
+  --st-gray-50: #F9FAFB;
+  --st-gray-100: #F3F4F6;
+  --st-gray-200: #E5E7EB;
+  --st-gray-300: #D1D5DB;
+  --st-gray-400: #9CA3AF;
+  --st-gray-500: #6B7280;
+  --st-gray-600: #4B5563;
+  --st-gray-700: #374151;
+  --st-gray-800: #1F2937;
+  --st-gray-900: #111827;
+
+  /* ----------------------------------------
+     1.4 背景色
+     ---------------------------------------- */
+  --st-bg-primary: #FFFFFF;
+  --st-bg-secondary: #F9FAFB;
+  --st-bg-tertiary: #F3F4F6;
+  --st-bg-elevated: #FFFFFF;
+  --st-bg-overlay: rgba(0, 0, 0, 0.5);
+
+  /* ----------------------------------------
+     1.5 文字色
+     ---------------------------------------- */
+  --st-text-primary: #111827;
+  --st-text-secondary: #4B5563;
+  --st-text-tertiary: #9CA3AF;
+  --st-text-disabled: #D1D5DB;
+  --st-text-inverse: #FFFFFF;
+  --st-text-link: #6366F1;
+
+  /* ----------------------------------------
+     1.6 渐变
+     ---------------------------------------- */
+  --st-gradient-brand: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+  --st-gradient-brand-hover: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+  --st-gradient-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --st-gradient-success: linear-gradient(135deg, #22C55E 0%, #16A34A 100%);
+  --st-gradient-gold: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+
+  /* ----------------------------------------
+     1.7 间距系统 - 8px基准
+     ---------------------------------------- */
+  --st-space-0: 0;
+  --st-space-1: 0.25rem;   /* 4px */
+  --st-space-2: 0.5rem;    /* 8px */
+  --st-space-3: 0.75rem;   /* 12px */
+  --st-space-4: 1rem;      /* 16px */
+  --st-space-5: 1.25rem;   /* 20px */
+  --st-space-6: 1.5rem;    /* 24px */
+  --st-space-8: 2rem;      /* 32px */
+  --st-space-10: 2.5rem;   /* 40px */
+  --st-space-12: 3rem;     /* 48px */
+  --st-space-16: 4rem;     /* 64px */
+  --st-space-20: 5rem;     /* 80px */
+  --st-space-24: 6rem;     /* 96px */
+
+  /* ----------------------------------------
+     1.8 圆角
+     ---------------------------------------- */
+  --st-radius-sm: 0.375rem;   /* 6px */
+  --st-radius-md: 0.5rem;     /* 8px */
+  --st-radius-lg: 0.75rem;    /* 12px */
+  --st-radius-xl: 1rem;       /* 16px */
+  --st-radius-2xl: 1.5rem;    /* 24px */
+  --st-radius-full: 9999px;
+
+  /* ----------------------------------------
+     1.9 阴影
+     ---------------------------------------- */
+  --st-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --st-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --st-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --st-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+  /* ----------------------------------------
+     1.10 字体系统
+     ---------------------------------------- */
+  --st-font-sans: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --st-font-display: 'Fredoka', var(--st-font-sans);
+  --st-font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
+  /* ----------------------------------------
+     1.11 字号
+     ---------------------------------------- */
+  --st-text-xs: 0.75rem;      /* 12px */
+  --st-text-sm: 0.875rem;     /* 14px */
+  --st-text-base: 1rem;       /* 16px */
+  --st-text-lg: 1.125rem;     /* 18px */
+  --st-text-xl: 1.25rem;      /* 20px */
+  --st-text-2xl: 1.5rem;      /* 24px */
+  --st-text-3xl: 1.875rem;    /* 30px */
+  --st-text-4xl: 2.25rem;     /* 36px */
+  --st-text-5xl: 3rem;        /* 48px */
+
+  /* ----------------------------------------
+     1.12 行高
+     ---------------------------------------- */
+  --st-leading-tight: 1.25;
+  --st-leading-snug: 1.375;
+  --st-leading-normal: 1.5;
+  --st-leading-relaxed: 1.625;
+  --st-leading-loose: 2;
+
+  /* ----------------------------------------
+     1.13 字重
+     ---------------------------------------- */
+  --st-font-light: 300;
+  --st-font-normal: 400;
+  --st-font-medium: 500;
+  --st-font-semibold: 600;
+  --st-font-bold: 700;
+
+  /* ----------------------------------------
+     1.14 动画时间
+     ---------------------------------------- */
+  --st-duration-fast: 150ms;
+  --st-duration-normal: 200ms;
+  --st-duration-slow: 300ms;
+  --st-duration-slower: 500ms;
+
+  /* ----------------------------------------
+     1.15 缓动函数
+     ---------------------------------------- */
+  --st-ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --st-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --st-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --st-ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ----------------------------------------
+     1.16 布局
+     ---------------------------------------- */
+  --st-page-padding-x: 1rem;
+  --st-page-padding-x-md: 1.5rem;
+  --st-page-padding-x-lg: 2rem;
+  
+  --st-container-sm: 640px;
+  --st-container-md: 768px;
+  --st-container-lg: 1024px;
+  --st-container-xl: 1200px;
+  --st-container-2xl: 1400px;
+}
+
+/* ========================================
+   2. 基础重置样式
+   ======================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--st-font-sans);
+  font-size: var(--st-text-base);
+  font-weight: var(--st-font-normal);
+  line-height: var(--st-leading-normal);
+  color: var(--st-text-primary);
+  background-color: var(--st-bg-secondary);
+}
+
+/* 字体引入 */
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700&display=swap');
+
+/* ========================================
+   3. 排版基础
+   ======================================== */
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--st-font-display);
+  font-weight: var(--st-font-bold);
+  line-height: var(--st-leading-tight);
+  color: var(--st-text-primary);
+}
+
+h1 { font-size: var(--st-text-4xl); }
+h2 { font-size: var(--st-text-3xl); }
+h3 { font-size: var(--st-text-2xl); }
+h4 { font-size: var(--st-text-xl); }
+h5 { font-size: var(--st-text-lg); }
+h6 { font-size: var(--st-text-base); }
+
+p {
+  margin-bottom: var(--st-space-4);
+}
+
+a {
+  color: var(--st-text-link);
+  text-decoration: none;
+  transition: color var(--st-duration-fast) var(--st-ease-default);
+}
+
+a:hover {
+  color: var(--st-primary-600);
+  text-decoration: underline;
+}
+
+/* ========================================
+   4. 表单元素基础
+   ======================================== */
+
+input,
+textarea,
+select,
+button {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+input:focus,
+textarea:focus,
+select:focus,
+button:focus {
+  outline: none;
+}
+
+/* ========================================
+   5. 图片基础
+   ======================================== */
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ========================================
+   6. 减少动画（无障碍）
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ========================================
+   7. 焦点样式（无障碍）
+   ======================================== */
+
+:focus-visible {
+  outline: 2px solid var(--st-primary-500);
+  outline-offset: 2px;
+}
+
+/* ========================================
+   8. 选择文本样式
+   ======================================== */
+
+::selection {
+  background-color: var(--st-primary-200);
+  color: var(--st-primary-900);
+}
+
