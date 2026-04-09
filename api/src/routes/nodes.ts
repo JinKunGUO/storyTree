@@ -607,12 +607,6 @@ router.get('/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Increment read count
-    await prisma.nodes.update({
-      where: { id: parseInt(id) },
-      data: { read_count: { increment: 1 } }
-    });
-
     const node = await prisma.nodes.findUnique({
       where: { id: parseInt(id) },
       include: {
@@ -628,6 +622,12 @@ router.get('/:id', async (req, res) => {
     if (!node) {
       return res.status(404).json({ error: 'Node not found' });
     }
+
+    // Increment read count (only after confirming node exists)
+    await prisma.nodes.update({
+      where: { id: parseInt(id) },
+      data: { read_count: { increment: 1 } }
+    });
 
     // Get branches with rating info
     const branches = await prisma.nodes.findMany({

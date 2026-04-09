@@ -4,824 +4,840 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>发现故事 - StoryTree</title>
-    <link rel="stylesheet" href="styles.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- 字体预连接（提升加载速度） -->
+    <!-- 设计系统 -->
+    <link rel="stylesheet" href="styles/design-system.css">
+    <link rel="stylesheet" href="styles/animations.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link rel="stylesheet" href="styles/utilities.css">
+    <link href="libs/fontawesome/css/all.min.css" rel="stylesheet">
     <style>
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--st-bg-secondary);
             min-height: 100vh;
-            padding-top: 80px;
         }
 
-        .discover-container {
-            max-width: 1200px;
+        /* ===== 导航栏 ===== */
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--st-gray-200);
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 1000;
+            transition: box-shadow var(--st-duration-normal) var(--st-ease-default);
+        }
+        .navbar.scrolled { box-shadow: var(--st-shadow-md); }
+        .navbar-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: var(--st-container-xl);
             margin: 0 auto;
-            padding: 40px 20px;
+            height: 64px;
+            padding: 0 var(--st-page-padding-x-lg);
+        }
+        .nav-brand {
+            display: flex; align-items: center; gap: var(--st-space-2);
+            font-family: var(--st-font-display); font-size: var(--st-text-2xl);
+            font-weight: var(--st-font-bold); color: var(--st-primary-600);
+            text-decoration: none;
+        }
+        .nav-brand:hover { color: var(--st-primary-700); text-decoration: none; }
+        .nav-menu { display: flex; gap: var(--st-space-1); align-items: center; }
+        .nav-link {
+            display: flex; align-items: center; gap: var(--st-space-2);
+            color: var(--st-text-secondary); text-decoration: none;
+            padding: var(--st-space-2) var(--st-space-3);
+            border-radius: var(--st-radius-lg); font-size: var(--st-text-sm);
+            font-weight: var(--st-font-medium);
+            transition: all var(--st-duration-fast) var(--st-ease-default);
+        }
+        .nav-link:hover { background: var(--st-primary-50); color: var(--st-primary-600); text-decoration: none; }
+        .nav-link.active { background: var(--st-primary-100); color: var(--st-primary-700); }
+        .nav-link.nav-link-primary {
+            background: var(--st-gradient-brand); color: white;
+            padding: var(--st-space-2) var(--st-space-4);
+        }
+        .nav-link.nav-link-primary:hover {
+            background: var(--st-gradient-brand-hover); color: white;
+            transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+        }
+        .nav-notification { position: relative; }
+        .notification-badge {
+            position: absolute; top: 2px; right: 4px;
+            background: var(--st-error-500); color: white;
+            border-radius: var(--st-radius-full); padding: 1px 5px;
+            font-size: 10px; font-weight: var(--st-font-bold); min-width: 16px;
+            text-align: center; line-height: 1.4;
+        }
+        .mobile-menu-toggle {
+            display: none; background: none; border: none;
+            font-size: var(--st-text-xl); cursor: pointer;
+            color: var(--st-text-secondary); padding: var(--st-space-2);
+            border-radius: var(--st-radius-md); transition: all var(--st-duration-fast);
+        }
+        .mobile-menu-toggle:hover { background: var(--st-gray-100); color: var(--st-text-primary); }
+        @media (max-width: 768px) {
+            .navbar-content { padding: 0 var(--st-page-padding-x); }
+            .mobile-menu-toggle { display: flex; align-items: center; justify-content: center; }
+            .nav-menu {
+                display: none; position: fixed; top: 64px; left: 0; right: 0;
+                background: white; flex-direction: column;
+                padding: var(--st-space-4); gap: var(--st-space-1);
+                box-shadow: var(--st-shadow-lg); border-top: 1px solid var(--st-gray-100); z-index: 999;
+            }
+            .nav-menu.active { display: flex; }
+            .nav-link { width: 100%; padding: var(--st-space-3) var(--st-space-4); font-size: var(--st-text-base); }
         }
 
-        .page-header {
+        /* ===== 页面头部 Hero ===== */
+        .discover-hero {
+            position: relative;
+            padding: calc(64px + var(--st-space-16)) var(--st-page-padding-x-lg) var(--st-space-16);
+            background: var(--st-gradient-bg);
+            overflow: hidden;
             text-align: center;
+        }
+        .discover-hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0.06;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        .discover-hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 700px;
+            margin: 0 auto;
             color: white;
-            margin-bottom: 40px;
+            animation: slideInUp var(--st-duration-slow) var(--st-ease-out);
         }
-
-        .page-header h1 {
-            font-size: 42px;
-            margin-bottom: 15px;
+        .discover-hero-title {
+            font-family: var(--st-font-display);
+            font-size: clamp(2rem, 6vw, 3rem);
+            font-weight: var(--st-font-bold);
+            margin-bottom: var(--st-space-4);
         }
-
-        .page-header p {
-            font-size: 18px;
+        .discover-hero-desc {
+            font-size: var(--st-text-lg);
             opacity: 0.9;
+            margin-bottom: var(--st-space-8);
         }
 
-        .search-filter {
+        /* ===== 搜索区域 ===== */
+        .search-section {
             background: white;
-            padding: 30px;
-            border-radius: 15px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border-radius: var(--st-radius-2xl);
+            padding: var(--st-space-6);
+            box-shadow: var(--st-shadow-xl);
+            max-width: 700px;
+            margin: 0 auto;
         }
-
         .search-box {
             display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
+            gap: var(--st-space-3);
+            margin-bottom: var(--st-space-4);
         }
-
-        .search-input {
+        .search-input-wrap {
             flex: 1;
-            padding: 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 16px;
-            transition: all 0.3s ease;
+            position: relative;
         }
-
+        .search-input-wrap i {
+            position: absolute;
+            left: var(--st-space-4);
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--st-gray-400);
+        }
+        .search-input {
+            width: 100%;
+            padding: var(--st-space-3) var(--st-space-4) var(--st-space-3) var(--st-space-10);
+            border: 2px solid var(--st-gray-200);
+            border-radius: var(--st-radius-lg);
+            font-size: var(--st-text-base);
+            font-family: var(--st-font-sans);
+            transition: all var(--st-duration-fast);
+            background: var(--st-gray-50);
+        }
         .search-input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--st-primary-500);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
         }
-
-        .search-btn {
-            padding: 15px 30px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 600;
-            transition: transform 0.3s ease;
-        }
-
-        .search-btn:hover {
-            transform: translateY(-2px);
-        }
-
-        .filter-tags {
+        .filter-tabs {
             display: flex;
-            gap: 10px;
+            gap: var(--st-space-2);
             flex-wrap: wrap;
         }
-
-        .filter-tag {
-            padding: 8px 16px;
-            background: #f5f5f5;
+        .filter-tab {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--st-space-1);
+            padding: var(--st-space-2) var(--st-space-4);
+            background: var(--st-gray-100);
             border: 2px solid transparent;
-            border-radius: 20px;
+            border-radius: var(--st-radius-full);
+            font-size: var(--st-text-sm);
+            font-weight: var(--st-font-medium);
+            color: var(--st-text-secondary);
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all var(--st-duration-fast);
+        }
+        .filter-tab:hover { background: var(--st-primary-50); color: var(--st-primary-600); border-color: var(--st-primary-200); }
+        .filter-tab.active { background: var(--st-primary-500); color: white; border-color: var(--st-primary-500); }
+        @media (max-width: 640px) {
+            .search-box { flex-direction: column; }
+            .discover-hero { padding: calc(64px + var(--st-space-10)) var(--st-page-padding-x) var(--st-space-10); }
         }
 
-        .filter-tag:hover,
-        .filter-tag.active {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
+        /* ===== 主内容区 ===== */
+        .discover-main {
+            max-width: var(--st-container-xl);
+            margin: 0 auto;
+            padding: var(--st-space-12) var(--st-page-padding-x-lg);
+        }
+        @media (max-width: 768px) {
+            .discover-main { padding: var(--st-space-8) var(--st-page-padding-x); }
         }
 
-        .stories-section {
-            margin-bottom: 50px;
+        /* ===== 热门故事特殊布局 ===== */
+        .hot-stories-layout {
+            display: grid;
+            grid-template-columns: 1.8fr 1fr;
+            gap: var(--st-space-6);
+            margin-bottom: var(--st-space-12);
         }
-
-        .section-title {
-            color: white;
-            font-size: 28px;
-            margin-bottom: 25px;
+        @media (max-width: 1024px) {
+            .hot-stories-layout { grid-template-columns: 1fr; }
+        }
+        .featured-story-card {
+            background: white;
+            border-radius: var(--st-radius-2xl);
+            overflow: hidden;
+            box-shadow: var(--st-shadow-lg);
+            cursor: pointer;
+            transition: all var(--st-duration-slow) var(--st-ease-bounce);
+            border: 1px solid var(--st-gray-100);
+        }
+        .featured-story-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--st-shadow-xl);
+        }
+        .featured-cover {
+            height: 280px;
+            background: linear-gradient(135deg, #EC4899, #F43F5E);
             display: flex;
             align-items: center;
-            gap: 10px;
-        }
-
-        .section-title i {
-            color: #ffd700;
-        }
-
-        /* 热门故事特殊布局 */
-        .hot-stories-container {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
-        }
-
-        .featured-story {
-            background: white;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
-            transition: all 0.3s ease;
-            cursor: pointer;
+            justify-content: center;
+            color: white;
+            font-size: 4rem;
             position: relative;
         }
-
-        .featured-story:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
-        }
-
-        .featured-story .story-cover {
-            height: 350px;
-            background: linear-gradient(135deg, #f093fb, #f5576c);
-            position: relative;
-        }
-
         .featured-badge {
             position: absolute;
-            top: 20px;
-            left: 20px;
-            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            top: var(--st-space-4);
+            left: var(--st-space-4);
+            background: var(--st-gradient-gold);
             color: white;
-            padding: 10px 20px;
-            border-radius: 25px;
-            font-size: 16px;
-            font-weight: 700;
+            padding: var(--st-space-2) var(--st-space-4);
+            border-radius: var(--st-radius-full);
+            font-size: var(--st-text-sm);
+            font-weight: var(--st-font-bold);
             display: flex;
             align-items: center;
-            gap: 8px;
-            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+            gap: var(--st-space-2);
+            box-shadow: 0 4px 12px rgba(255,165,0,0.4);
         }
-
-        .featured-badge i {
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.2); }
-        }
-
-        .hot-stats {
+        .featured-stats {
             position: absolute;
-            bottom: 20px;
-            right: 20px;
+            bottom: var(--st-space-4);
+            right: var(--st-space-4);
             display: flex;
-            gap: 15px;
+            gap: var(--st-space-2);
         }
-
-        .hot-stat-item {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 600;
-            color: #667eea;
-        }
-
-        .top-stories-list {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .top-story-item {
-            background: white;
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-
-        .top-story-item:hover {
-            transform: translateX(5px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-        }
-
-        .top-rank {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
+        .featured-stat-pill {
+            background: rgba(255,255,255,0.92);
+            color: var(--st-primary-700);
+            padding: var(--st-space-1) var(--st-space-3);
+            border-radius: var(--st-radius-full);
+            font-size: var(--st-text-xs);
+            font-weight: var(--st-font-semibold);
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            font-weight: 700;
-            flex-shrink: 0;
+            gap: 4px;
         }
-
-        .top-rank.rank-1 {
-            background: linear-gradient(135deg, #ffd700, #ff8c00);
-            color: white;
+        .featured-body { padding: var(--st-space-5); }
+        .featured-title {
+            font-size: var(--st-text-xl);
+            font-weight: var(--st-font-bold);
+            color: var(--st-text-primary);
+            margin-bottom: var(--st-space-2);
         }
-
-        .top-rank.rank-2 {
-            background: linear-gradient(135deg, #c0c0c0, #808080);
-            color: white;
-        }
-
-        .top-rank.rank-3 {
-            background: linear-gradient(135deg, #cd7f32, #8b4513);
-            color: white;
-        }
-
-        .top-rank.rank-other {
-            background: #f5f5f5;
-            color: #999;
-        }
-
-        .top-story-content {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .top-story-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 5px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .top-story-meta {
-            font-size: 12px;
-            color: #999;
-            display: flex;
-            gap: 10px;
-        }
-
-        /* 普通故事网格 */
-        .stories-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 30px;
-            margin-bottom: 40px;
-        }
-
-        .story-card {
-            background: white;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-
-        .story-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
-        }
-
-        .story-cover {
-            height: 200px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 48px;
-            position: relative;
-        }
-
-        .story-badge {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: rgba(255, 255, 255, 0.9);
-            color: #667eea;
-            padding: 5px 12px;
-            border-radius: 15px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .story-content {
-            padding: 25px;
-        }
-
-        .story-title {
-            font-size: 22px;
-            font-weight: 700;
-            margin-bottom: 10px;
-            color: #333;
-        }
-
-        .story-description {
-            color: #666;
-            line-height: 1.6;
-            margin-bottom: 15px;
+        .featured-desc {
+            font-size: var(--st-text-sm);
+            color: var(--st-text-secondary);
+            line-height: var(--st-leading-relaxed);
             display: -webkit-box;
             -webkit-line-clamp: 3;
             -webkit-box-orient: vertical;
             overflow: hidden;
+            margin-bottom: var(--st-space-3);
         }
-
-        .story-meta {
+        .featured-meta {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding-top: 15px;
-            border-top: 1px solid #e0e0e0;
-            color: #999;
-            font-size: 14px;
+            padding-top: var(--st-space-3);
+            border-top: 1px solid var(--st-gray-100);
+            font-size: var(--st-text-sm);
+            color: var(--st-text-tertiary);
         }
 
-        .story-author {
+        /* 排行榜 */
+        .ranking-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--st-space-3);
+        }
+        .ranking-item {
             display: flex;
             align-items: center;
-            gap: 8px;
-        }
-
-        .story-stats {
-            display: flex;
-            gap: 15px;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 60px 20px;
-            color: white;
-        }
-
-        .loading i {
-            font-size: 48px;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 80px 20px;
-            color: white;
-        }
-
-        .empty-state i {
-            font-size: 64px;
-            margin-bottom: 20px;
-            opacity: 0.5;
-        }
-
-        .empty-state h3 {
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-
-        /* 特色功能区 */
-        .features-section {
-            margin-top: 80px;
-            padding-top: 60px;
-            border-top: 2px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 30px;
-            margin-top: 30px;
-        }
-
-        .feature-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            padding: 40px 30px;
-            text-align: center;
-            transition: all 0.3s ease;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        }
-
-        .feature-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+            gap: var(--st-space-3);
             background: white;
+            border-radius: var(--st-radius-xl);
+            padding: var(--st-space-4);
+            box-shadow: var(--st-shadow-sm);
+            border: 1px solid var(--st-gray-100);
+            cursor: pointer;
+            transition: all var(--st-duration-normal) var(--st-ease-bounce);
+        }
+        .ranking-item:hover {
+            transform: translateX(6px);
+            box-shadow: var(--st-shadow-md);
+            border-color: var(--st-primary-200);
+        }
+        .rank-badge {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--st-radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--st-text-sm);
+            font-weight: var(--st-font-bold);
+            flex-shrink: 0;
+        }
+        .rank-badge.rank-2 { background: linear-gradient(135deg, #C0C0C0, #A0A0A0); color: white; }
+        .rank-badge.rank-3 { background: linear-gradient(135deg, #CD7F32, #A0522D); color: white; }
+        .rank-badge.rank-other { background: var(--st-gray-100); color: var(--st-gray-500); }
+        .ranking-content { flex: 1; min-width: 0; }
+        .ranking-title {
+            font-size: var(--st-text-sm);
+            font-weight: var(--st-font-semibold);
+            color: var(--st-text-primary);
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .ranking-meta {
+            font-size: var(--st-text-xs);
+            color: var(--st-text-tertiary);
+            display: flex;
+            gap: var(--st-space-3);
         }
 
-        .feature-icon {
-            font-size: 64px;
-            margin-bottom: 20px;
-            color: #667eea;
+        /* ===== 故事网格 ===== */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--st-space-6);
+        }
+        .section-title {
+            font-family: var(--st-font-display);
+            font-size: var(--st-text-2xl);
+            font-weight: var(--st-font-bold);
+            color: var(--st-text-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--st-space-2);
+        }
+        .stories-count {
+            font-size: var(--st-text-sm);
+            color: var(--st-text-tertiary);
+            font-weight: var(--st-font-normal);
+        }
+        .stories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: var(--st-space-6);
+        }
+        @media (max-width: 640px) { .stories-grid { grid-template-columns: 1fr; } }
+
+        /* 骨架屏 */
+        .skeleton-card {
+            background: white; border-radius: var(--st-radius-xl);
+            overflow: hidden; border: 1px solid var(--st-gray-100);
+        }
+        .skeleton-cover {
+            height: 200px;
+            background: linear-gradient(90deg, var(--st-gray-100) 25%, var(--st-gray-200) 50%, var(--st-gray-100) 75%);
+            background-size: 200% 100%; animation: skeleton-loading 1.5s infinite;
+        }
+        .skeleton-body { padding: var(--st-space-5); }
+        .skeleton-line {
+            height: 14px; border-radius: var(--st-radius-sm); margin-bottom: var(--st-space-3);
+            background: linear-gradient(90deg, var(--st-gray-100) 25%, var(--st-gray-200) 50%, var(--st-gray-100) 75%);
+            background-size: 200% 100%; animation: skeleton-loading 1.5s infinite;
+        }
+        .skeleton-line.short { width: 60%; }
+        .skeleton-line.medium { width: 80%; }
+        .skeleton-line.full { width: 100%; }
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
         }
 
-        .feature-title {
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 15px;
-            color: #333;
+        /* 空状态 */
+        .empty-state {
+            text-align: center; padding: var(--st-space-16) var(--st-space-6);
+            grid-column: 1 / -1;
         }
+        .empty-state-icon { font-size: 4rem; color: var(--st-gray-300); margin-bottom: var(--st-space-4); }
+        .empty-state-title { font-size: var(--st-text-xl); font-weight: var(--st-font-semibold); color: var(--st-text-secondary); margin-bottom: var(--st-space-2); }
+        .empty-state-desc { color: var(--st-text-tertiary); margin-bottom: var(--st-space-6); }
 
-        .feature-description {
-            color: #666;
-            line-height: 1.6;
-            font-size: 15px;
-        }
-
-        /* 响应式设计 */
-        @media (max-width: 1024px) {
-            .hot-stories-container {
-                grid-template-columns: 1fr;
-            }
-
-            .features-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* 响应式设计 */
-        @media (max-width: 768px) {
-            .page-header h1 {
-                font-size: 32px;
-            }
-
-            .search-box {
-                flex-direction: column;
-            }
-
-            .stories-grid {
-                grid-template-columns: 1fr;
-            }
+        /* ===== 页脚 ===== */
+        .footer {
+            background: var(--st-gray-900); color: var(--st-gray-400);
+            text-align: center; padding: var(--st-space-8) var(--st-page-padding-x);
+            font-size: var(--st-text-sm); margin-top: var(--st-space-16);
         }
     </style>
 </head>
 <body>
+    <!-- 跳过链接 -->
+    <a href="#main" class="skip-link">跳到主要内容</a>
+
     <!-- 导航栏 -->
-    <nav class="navbar">
+    <nav class="navbar" id="navbar" role="navigation" aria-label="主导航">
         <div class="navbar-content">
-            <a href="/" class="nav-brand">
-                <i class="fas fa-tree"></i>
+            <a href="/" class="nav-brand" aria-label="StoryTree 首页">
+                <i class="fas fa-tree" aria-hidden="true"></i>
                 StoryTree
             </a>
-            <div class="nav-menu">
-                <a href="/" class="nav-link">首页</a>
-                <a href="/discover" class="nav-link" style="color: #667eea;">发现故事</a>
-                <a href="/create" class="nav-link">开始创作</a>
+            <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleMobileMenu()" aria-label="展开菜单" aria-expanded="false">
+                <i class="fas fa-bars" aria-hidden="true"></i>
+            </button>
+            <div class="nav-menu" id="navMenu">
+                <a href="/" class="nav-link">
+                    <i class="fas fa-home" aria-hidden="true"></i> 首页
+                </a>
+                <a href="/discover" class="nav-link active">
+                    <i class="fas fa-compass" aria-hidden="true"></i> 发现故事
+                </a>
+                <a href="/membership.html" class="nav-link">
+                    <i class="fas fa-crown" aria-hidden="true"></i> 会员中心
+                </a>
+                <a href="/notifications.html" class="nav-link nav-notification" id="notificationIcon" style="display: none;" aria-label="消息通知">
+                    <i class="fas fa-bell" aria-hidden="true"></i> 消息
+                    <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                </a>
                 <a href="/login" class="nav-link" id="loginLink">登录</a>
-                <a href="/register" class="nav-link primary" id="registerLink">注册</a>
+                <a href="/register" class="nav-link nav-link-primary" id="registerLink">注册</a>
                 <a href="/profile" class="nav-link" id="profileLink" style="display: none;">
-                    <i class="fas fa-user"></i> 个人中心
+                    <i class="fas fa-user" aria-hidden="true"></i> 个人中心
+                </a>
+                <a href="/login" class="nav-link" id="logoutLink" style="display: none;" onclick="logout(); return false;">
+                    <i class="fas fa-sign-out-alt" aria-hidden="true"></i> 退出
                 </a>
             </div>
         </div>
     </nav>
 
-    <div class="discover-container">
-        <!-- 页面标题 -->
-        <div class="page-header">
-            <h1><i class="fas fa-compass"></i> 发现精彩故事</h1>
-            <p>探索无限可能的故事世界</p>
-        </div>
+    <!-- 主内容 -->
+    <main id="main">
+        <!-- Hero 搜索区 -->
+        <section class="discover-hero" aria-label="搜索故事">
+            <div class="discover-hero-content">
+                <h1 class="discover-hero-title">
+                    <i class="fas fa-compass" aria-hidden="true"></i>
+                    发现精彩故事
+                </h1>
+                <p class="discover-hero-desc">探索无限可能的故事世界，找到你的下一本最爱</p>
 
-        <!-- 搜索和筛选 -->
-        <div class="search-filter">
-            <div class="search-box">
-                <input type="text" class="search-input" id="searchInput" placeholder="搜索故事标题、作者...">
-                <button class="search-btn" onclick="searchStories()">
-                    <i class="fas fa-search"></i> 搜索
-                </button>
-            </div>
-            <div class="filter-tags">
-                <span class="filter-tag active" data-filter="all">全部</span>
-                <span class="filter-tag" data-filter="popular">热门</span>
-                <span class="filter-tag" data-filter="new">最新</span>
-                <span class="filter-tag" data-filter="completed">已完结</span>
-            </div>
-        </div>
-
-        <!-- 热门故事（特殊布局） -->
-        <div class="stories-section" id="hotStoriesSection" style="display: none;">
-            <h2 class="section-title">
-                <i class="fas fa-fire"></i>
-                热门故事
-            </h2>
-            <div class="hot-stories-container" id="hotStoriesContainer">
-                <!-- 左侧：最热门故事大卡片 -->
-                <div id="featuredStoryCard"></div>
-                <!-- 右侧：TOP 2-5排行榜 -->
-                <div class="top-stories-list" id="topStoriesList"></div>
-            </div>
-        </div>
-
-        <!-- 全部故事列表 -->
-        <div class="stories-section">
-            <h2 class="section-title">
-                <i class="fas fa-book"></i>
-                <span id="storiesListTitle">全部故事</span>
-            </h2>
-            <div class="stories-grid" id="storiesGrid">
-                <div class="loading">
-                    <i class="fas fa-spinner"></i>
-                    <p>正在加载精彩故事...</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- 特色功能区（移到底部） -->
-        <div class="features-section">
-            <div class="page-header">
-                <h2 style="font-size: 32px; margin-bottom: 10px;">探索StoryTree的无限可能</h2>
-                <p>三大特色功能，助力你的创作之旅</p>
-            </div>
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-pen-nib"></i>
+                <!-- 搜索框 -->
+                <div class="search-section" role="search">
+                    <div class="search-box">
+                        <div class="search-input-wrap">
+                            <i class="fas fa-search" aria-hidden="true"></i>
+                            <input
+                                type="search"
+                                class="search-input"
+                                id="searchInput"
+                                placeholder="搜索故事标题、作者..."
+                                aria-label="搜索故事"
+                            >
+                        </div>
+                        <button class="btn btn-primary" onclick="searchStories()" aria-label="搜索">
+                            <i class="fas fa-search" aria-hidden="true"></i>
+                            搜索
+                        </button>
                     </div>
-                    <div class="feature-title">创作故事</div>
-                    <div class="feature-description">
-                        创建属于你自己的故事，每个章节都可以有无限可能，让想象自由飞翔。
-                    </div>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-robot"></i>
-                    </div>
-                    <div class="feature-title">AI辅助创作</div>
-                    <div class="feature-description">
-                        使用AI智能续写功能，为你的故事提供灵感和创意，让创作更加轻松。
-                    </div>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-comments"></i>
-                    </div>
-                    <div class="feature-title">社区互动</div>
-                    <div class="feature-description">
-                        与读者和作者互动，评论、点赞、分享，共同构建活跃的故事社区。
+                    <div class="filter-tabs" role="tablist" aria-label="筛选故事">
+                        <button class="filter-tab active" data-filter="all" role="tab" aria-selected="true">
+                            <i class="fas fa-th-large" aria-hidden="true"></i> 全部
+                        </button>
+                        <button class="filter-tab" data-filter="popular" role="tab" aria-selected="false">
+                            <i class="fas fa-fire" aria-hidden="true"></i> 热门
+                        </button>
+                        <button class="filter-tab" data-filter="new" role="tab" aria-selected="false">
+                            <i class="fas fa-clock" aria-hidden="true"></i> 最新
+                        </button>
+                        <button class="filter-tab" data-filter="completed" role="tab" aria-selected="false">
+                            <i class="fas fa-check-circle" aria-hidden="true"></i> 已完结
+                        </button>
                     </div>
                 </div>
             </div>
+        </section>
+
+        <!-- 主内容区 -->
+        <div class="discover-main">
+            <!-- 热门故事特殊布局 -->
+            <section id="hotStoriesSection" style="display: none;" aria-labelledby="hotStoriesTitle">
+                <div class="section-header" style="margin-bottom: var(--st-space-6);">
+                    <h2 class="section-title" id="hotStoriesTitle">
+                        <i class="fas fa-trophy" style="color: var(--st-warning-500);" aria-hidden="true"></i>
+                        本周热榜
+                    </h2>
+                </div>
+                <div class="hot-stories-layout">
+                    <div id="featuredStoryCard"></div>
+                    <div class="ranking-list" id="rankingList"></div>
+                </div>
+            </section>
+
+            <!-- 故事列表 -->
+            <section aria-labelledby="storiesListTitle">
+                <div class="section-header">
+                    <h2 class="section-title" id="storiesListTitle">
+                        <i class="fas fa-book-open" style="color: var(--st-primary-500);" aria-hidden="true"></i>
+                        全部故事
+                        <span class="stories-count" id="storiesCount"></span>
+                    </h2>
+                </div>
+                <div class="stories-grid" id="storiesGrid" aria-live="polite">
+                    <!-- 骨架屏 -->
+                    <div class="skeleton-card" aria-hidden="true">
+                        <div class="skeleton-cover"></div>
+                        <div class="skeleton-body">
+                            <div class="skeleton-line medium"></div>
+                            <div class="skeleton-line full"></div>
+                            <div class="skeleton-line short"></div>
+                        </div>
+                    </div>
+                    <div class="skeleton-card" aria-hidden="true">
+                        <div class="skeleton-cover"></div>
+                        <div class="skeleton-body">
+                            <div class="skeleton-line medium"></div>
+                            <div class="skeleton-line full"></div>
+                            <div class="skeleton-line short"></div>
+                        </div>
+                    </div>
+                    <div class="skeleton-card" aria-hidden="true">
+                        <div class="skeleton-cover"></div>
+                        <div class="skeleton-body">
+                            <div class="skeleton-line medium"></div>
+                            <div class="skeleton-line full"></div>
+                            <div class="skeleton-line short"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
-    </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer" role="contentinfo">
+        <p>&copy; 2026 StoryTree. 用心创作每一个故事。</p>
+    </footer>
 
     <script>
-        let allStories = [];
-        let currentFilter = 'all';
-
-        // 检查登录状态
-        function checkAuthStatus() {
-            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-            const loginLink = document.getElementById('loginLink');
-            const registerLink = document.getElementById('registerLink');
-            const profileLink = document.getElementById('profileLink');
-            
-            if (token) {
-                loginLink.style.display = 'none';
-                registerLink.style.display = 'none';
-                profileLink.style.display = 'block';
-            }
-        }
-
-        // 加载所有故事
-        async function loadStories() {
-            try {
-                const response = await fetch('/api/stories');
-                const data = await response.json();
-                
-                if (data.stories && data.stories.length > 0) {
-                    allStories = data.stories;
-                    
-                    // 显示热门故事（如果有足够的故事）
-                    if (allStories.length >= 3) {
-                        displayHotStories(allStories);
-                    }
-                    
-                    displayStories(allStories);
-                } else {
-                    showEmptyState();
-                }
-            } catch (error) {
-                console.error('加载故事失败:', error);
-                showError();
-            }
-        }
-
-        // 显示热门故事（特殊布局）
-        function displayHotStories(stories) {
-            // 按章节数排序，取前5个
-            const hotStories = [...stories]
-                .sort((a, b) => (b._count?.nodes || 0) - (a._count?.nodes || 0))
-                .slice(0, 5);
-
-            if (hotStories.length === 0) return;
-
-            // 显示热门故事区域
-            document.getElementById('hotStoriesSection').style.display = 'block';
-
-            // 第1名：大卡片
-            const topStory = hotStories[0];
-            const featuredCard = document.getElementById('featuredStoryCard');
-            featuredCard.innerHTML = `
-                <div class="featured-story" onclick="window.location.href='/story?id=${topStory.id}'">
-                    <div class="story-cover">
-                        <i class="fas fa-crown"></i>
-                        <div class="featured-badge">
-                            <i class="fas fa-trophy"></i>
-                            <span>最热门</span>
-                        </div>
-                        <div class="hot-stats">
-                            <span class="hot-stat-item"><i class="fas fa-book"></i> ${topStory._count?.nodes || 0}章</span>
-                            <span class="hot-stat-item"><i class="fas fa-heart"></i> ${topStory._count?.bookmarks || 0}收藏</span>
-                        </div>
-                    </div>
-                    <div class="story-content">
-                        <div class="story-title">${escapeHtml(topStory.title)}</div>
-                        <div class="story-description">${escapeHtml(topStory.description || '暂无描述')}</div>
-                        <div class="story-meta">
-                            <div class="story-author">
-                                <i class="fas fa-user-circle"></i>
-                                <span>${escapeHtml(topStory.author?.username || '未知作者')}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            // 第2-5名：排行榜
-            const topList = document.getElementById('topStoriesList');
-            const topListHTML = hotStories.slice(1, 5).map((story, index) => {
-                const rank = index + 2;
-                const rankClass = rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
-                return `
-                    <div class="top-story-item" onclick="window.location.href='/story?id=${story.id}'">
-                        <div class="top-rank ${rankClass}">${rank}</div>
-                        <div class="top-story-content">
-                            <div class="top-story-title">${escapeHtml(story.title)}</div>
-                            <div class="top-story-meta">
-                                <span><i class="fas fa-user"></i> ${escapeHtml(story.author?.username || '未知')}</span>
-                                <span><i class="fas fa-book"></i> ${story._count?.nodes || 0}章</span>
-                                <span><i class="fas fa-heart"></i> ${story._count?.bookmarks || 0}收藏</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            topList.innerHTML = topListHTML;
-        }
-
-        // 显示故事
-        function displayStories(stories) {
-            const storiesGrid = document.getElementById('storiesGrid');
-            
-            if (stories.length === 0) {
-                showEmptyState();
-                return;
-            }
-
-            const storiesHTML = stories.map(story => `
-                <div class="story-card" onclick="window.location.href='/story?id=${story.id}'">
-                    <div class="story-cover">
-                        <i class="fas fa-book-open"></i>
-                        <span class="story-badge">${story._count?.nodes || 0} 章节</span>
-                    </div>
-                    <div class="story-content">
-                        <div class="story-title">${escapeHtml(story.title)}</div>
-                        <div class="story-description">${escapeHtml(story.description || '暂无描述')}</div>
-                        <div class="story-meta">
-                            <div class="story-author">
-                                <i class="fas fa-user-circle"></i>
-                                <span>${escapeHtml(story.author?.username || '未知作者')}</span>
-                            </div>
-                            <div class="story-stats">
-                                <span><i class="fas fa-eye"></i> ${story.views || 0}</span>
-                                <span><i class="fas fa-heart"></i> ${story._count?.likes || 0}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-            
-            storiesGrid.innerHTML = storiesHTML;
-        }
-
-        // 搜索故事
-        function searchStories() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            
-            if (!searchTerm) {
-                displayStories(allStories);
-                return;
-            }
-
-            const filtered = allStories.filter(story => 
-                story.title.toLowerCase().includes(searchTerm) ||
-                story.description?.toLowerCase().includes(searchTerm) ||
-                story.author.username.toLowerCase().includes(searchTerm)
-            );
-
-            displayStories(filtered);
-        }
-
-        // 筛选故事
-        function filterStories(filter) {
-            currentFilter = filter;
-            
-            // 更新筛选标签样式
-            document.querySelectorAll('.filter-tag').forEach(tag => {
-                tag.classList.remove('active');
-            });
-            event.target.classList.add('active');
-
-            let filtered = [...allStories];
-
-            // 根据筛选条件显示/隐藏热门故事区域
-            const hotSection = document.getElementById('hotStoriesSection');
-            const listTitle = document.getElementById('storiesListTitle');
-
-            switch(filter) {
-                case 'all':
-                    // 显示热门故事区域
-                    if (allStories.length >= 3) {
-                        hotSection.style.display = 'block';
-                    }
-                    listTitle.textContent = '全部故事';
-                    break;
-                case 'popular':
-                    // 隐藏热门故事区域（避免重复）
-                    hotSection.style.display = 'none';
-                    listTitle.textContent = '热门故事';
-                    // 按章节数排序
-                    filtered.sort((a, b) => (b._count?.nodes || 0) - (a._count?.nodes || 0));
-                    break;
-                case 'new':
-                    hotSection.style.display = 'none';
-                    listTitle.textContent = '最新故事';
-                    filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-                    break;
-                case 'completed':
-                    hotSection.style.display = 'none';
-                    listTitle.textContent = '已完结故事';
-                    filtered = filtered.filter(s => s.status === 'COMPLETED');
-                    break;
-            }
-
-            displayStories(filtered);
-        }
-
-        // 显示空状态
-        function showEmptyState() {
-            const storiesGrid = document.getElementById('storiesGrid');
-            storiesGrid.innerHTML = `
-                <div class="empty-state" style="grid-column: 1/-1;">
-                    <i class="fas fa-book"></i>
-                    <h3>暂无故事</h3>
-                    <p>快来创建第一个故事吧！</p>
-                </div>
-            `;
-        }
-
-        // 显示错误
-        function showError() {
-            const storiesGrid = document.getElementById('storiesGrid');
-            storiesGrid.innerHTML = `
-                <div class="empty-state" style="grid-column: 1/-1;">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <h3>加载失败</h3>
-                    <p>请刷新页面重试</p>
-                </div>
-            `;
-        }
-
-        // HTML转义
+        // ===== 工具函数 =====
         function escapeHtml(text) {
+            if (!text) return '';
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
 
-        // 搜索框回车事件
-        document.addEventListener('DOMContentLoaded', function() {
+        const coverGradients = [
+            'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
+            'linear-gradient(135deg, #EC4899 0%, #F43F5E 100%)',
+            'linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%)',
+            'linear-gradient(135deg, #10B981 0%, #0EA5E9 100%)',
+            'linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)',
+            'linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)',
+        ];
+
+        // ===== 导航栏 =====
+        const navbar = document.getElementById('navbar');
+        window.addEventListener('scroll', () => {
+            navbar.classList.toggle('scrolled', window.scrollY > 20);
+        }, { passive: true });
+
+        // ===== 认证状态 =====
+        function checkAuthStatus() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            const show = (id) => { const el = document.getElementById(id); if (el) el.style.display = 'flex'; };
+            const hide = (id) => { const el = document.getElementById(id); if (el) el.style.display = 'none'; };
+            if (token) {
+                hide('loginLink'); hide('registerLink');
+                show('profileLink'); show('logoutLink'); show('notificationIcon');
+                loadUnreadCount();
+            } else {
+                show('loginLink'); show('registerLink');
+                hide('profileLink'); hide('logoutLink'); hide('notificationIcon');
+            }
+        }
+
+        async function loadUnreadCount() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) return;
+            try {
+                const res = await fetch('/api/notifications', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (res.ok) {
+                    const data = await res.json();
+                    const badge = document.getElementById('notificationBadge');
+                    if (badge && data.unreadCount > 0) {
+                        badge.textContent = data.unreadCount > 99 ? '99+' : data.unreadCount;
+                        badge.style.display = 'inline-block';
+                    }
+                }
+            } catch (e) {}
+        }
+
+        function logout() {
+            ['token','user'].forEach(k => { localStorage.removeItem(k); sessionStorage.removeItem(k); });
+            window.location.href = '/login';
+            return false;
+        }
+
+        // ===== 数据 =====
+        let allStories = [];
+        let currentFilter = 'all';
+
+        async function loadStories() {
+            try {
+                const res = await fetch('/api/stories');
+                const data = await res.json();
+                if (data.stories && data.stories.length > 0) {
+                    allStories = data.stories;
+                    if (allStories.length >= 3) displayHotStories(allStories);
+                    displayStories(allStories);
+                } else {
+                    showEmptyState();
+                }
+            } catch (e) {
+                console.error('加载故事失败:', e);
+                showErrorState();
+            }
+        }
+
+        // ===== 热门故事 =====
+        function displayHotStories(stories) {
+            const hotStories = [...stories]
+                .sort((a, b) => (b._count?.nodes || 0) - (a._count?.nodes || 0))
+                .slice(0, 5);
+            if (!hotStories.length) return;
+
+            document.getElementById('hotStoriesSection').style.display = 'block';
+            const top = hotStories[0];
+            const coverGrad = 'linear-gradient(135deg, #EC4899 0%, #F43F5E 100%)';
+
+            document.getElementById('featuredStoryCard').innerHTML = `
+                <div class="featured-story-card" onclick="window.location.href='/story?id=${top.id}'" tabindex="0" role="button" aria-label="阅读：${escapeHtml(top.title)}">
+                    <div class="featured-cover" style="background: ${coverGrad}">
+                        <i class="fas fa-crown" aria-hidden="true"></i>
+                        <div class="featured-badge">
+                            <i class="fas fa-trophy" aria-hidden="true"></i> 最热门
+                        </div>
+                        <div class="featured-stats">
+                            <span class="featured-stat-pill"><i class="fas fa-book-open"></i> ${top._count?.nodes || 0}章</span>
+                            <span class="featured-stat-pill"><i class="fas fa-bookmark"></i> ${top._count?.bookmarks || 0}</span>
+                        </div>
+                    </div>
+                    <div class="featured-body">
+                        <h3 class="featured-title">${escapeHtml(top.title)}</h3>
+                        <p class="featured-desc">${escapeHtml(top.description || '这个故事正在等待你的探索...')}</p>
+                        <div class="featured-meta">
+                            <span><i class="fas fa-user-circle" aria-hidden="true"></i> ${escapeHtml(top.author?.username || '匿名')}</span>
+                            <span><i class="fas fa-eye" aria-hidden="true"></i> ${top._count?.followers || 0} 关注</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('rankingList').innerHTML = hotStories.slice(1).map((story, i) => {
+                const rank = i + 2;
+                const rankClass = rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
+                return `
+                    <div class="ranking-item" onclick="window.location.href='/story?id=${story.id}'" tabindex="0" role="button" aria-label="阅读：${escapeHtml(story.title)}">
+                        <div class="rank-badge ${rankClass}">${rank}</div>
+                        <div class="ranking-content">
+                            <div class="ranking-title">${escapeHtml(story.title)}</div>
+                            <div class="ranking-meta">
+                                <span><i class="fas fa-user" aria-hidden="true"></i> ${escapeHtml(story.author?.username || '匿名')}</span>
+                                <span><i class="fas fa-book" aria-hidden="true"></i> ${story._count?.nodes || 0}章</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ===== 故事列表 =====
+        function displayStories(stories) {
+            const grid = document.getElementById('storiesGrid');
+            const countEl = document.getElementById('storiesCount');
+            if (countEl) countEl.textContent = `（${stories.length}）`;
+
+            if (!stories.length) { showEmptyState(); return; }
+
+            grid.innerHTML = stories.map((story, idx) => `
+                <article class="story-card" onclick="window.location.href='/story?id=${story.id}'" tabindex="0" role="button" aria-label="阅读故事：${escapeHtml(story.title)}">
+                    <div class="story-card-cover" style="background: ${coverGradients[idx % coverGradients.length]}">
+                        <i class="fas fa-book-open" aria-hidden="true"></i>
+                        ${story._count?.nodes > 0 ? `<span class="story-card-badge">${story._count.nodes} 章节</span>` : ''}
+                    </div>
+                    <div class="story-card-content">
+                        <h3 class="story-card-title">${escapeHtml(story.title)}</h3>
+                        <p class="story-card-desc">${escapeHtml(story.description || '这个故事正在等待你的探索...')}</p>
+                        <div class="story-card-meta">
+                            <span class="story-card-author">
+                                <i class="fas fa-user-circle" aria-hidden="true"></i>
+                                ${escapeHtml(story.author?.username || '匿名作者')}
+                            </span>
+                            <span class="story-card-stats">
+                                <span class="story-card-stat">
+                                    <i class="fas fa-eye" aria-hidden="true"></i>
+                                    ${story._count?.followers || 0}
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+                </article>
+            `).join('');
+
+            grid.querySelectorAll('.story-card, .ranking-item, .featured-story-card').forEach(el => {
+                el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); } });
+            });
+        }
+
+        // ===== 搜索 =====
+        function searchStories() {
+            const term = document.getElementById('searchInput').value.trim().toLowerCase();
+            if (!term) { applyFilter(currentFilter); return; }
+            const filtered = allStories.filter(s =>
+                s.title?.toLowerCase().includes(term) ||
+                s.description?.toLowerCase().includes(term) ||
+                s.author?.username?.toLowerCase().includes(term)
+            );
+            displayStories(filtered);
+            document.getElementById('hotStoriesSection').style.display = 'none';
+        }
+
+        // ===== 筛选 =====
+        function applyFilter(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-tab').forEach(t => {
+                const isActive = t.dataset.filter === filter;
+                t.classList.toggle('active', isActive);
+                t.setAttribute('aria-selected', isActive);
+            });
+
+            let filtered = [...allStories];
+            const hotSection = document.getElementById('hotStoriesSection');
+
+            switch (filter) {
+                case 'all':
+                    if (allStories.length >= 3) hotSection.style.display = 'block';
+                    break;
+                case 'popular':
+                    hotSection.style.display = 'none';
+                    filtered.sort((a, b) => (b._count?.nodes || 0) - (a._count?.nodes || 0));
+                    break;
+                case 'new':
+                    hotSection.style.display = 'none';
+                    filtered.sort((a, b) => new Date(b.createdAt || b.created_at || 0) - new Date(a.createdAt || a.created_at || 0));
+                    break;
+                case 'completed':
+                    hotSection.style.display = 'none';
+                    filtered = filtered.filter(s => s.status === 'COMPLETED');
+                    break;
+            }
+            displayStories(filtered);
+        }
+
+        // ===== 空/错误状态 =====
+        function showEmptyState() {
+            document.getElementById('storiesGrid').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon"><i class="fas fa-book-open" aria-hidden="true"></i></div>
+                    <h3 class="empty-state-title">暂无故事</h3>
+                    <p class="empty-state-desc">快来创建第一个故事吧！</p>
+                    <a href="/create" class="btn btn-primary"><i class="fas fa-pen-nib" aria-hidden="true"></i> 开始创作</a>
+                </div>
+            `;
+        }
+
+        function showErrorState() {
+            document.getElementById('storiesGrid').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon"><i class="fas fa-exclamation-circle" aria-hidden="true"></i></div>
+                    <h3 class="empty-state-title">加载失败</h3>
+                    <p class="empty-state-desc">网络异常，请稍后重试</p>
+                    <button class="btn btn-secondary" onclick="loadStories()"><i class="fas fa-redo" aria-hidden="true"></i> 重新加载</button>
+                </div>
+            `;
+        }
+
+        // ===== 移动端菜单 =====
+        function toggleMobileMenu() {
+            const menu = document.getElementById('navMenu');
+            const toggle = document.getElementById('mobileMenuToggle');
+            const isOpen = menu.classList.toggle('active');
+            toggle.setAttribute('aria-expanded', isOpen);
+            toggle.querySelector('i').className = isOpen ? 'fas fa-times' : 'fas fa-bars';
+        }
+
+        document.addEventListener('click', e => {
+            const menu = document.getElementById('navMenu');
+            const toggle = document.getElementById('mobileMenuToggle');
+            if (menu?.classList.contains('active') && !menu.contains(e.target) && !toggle?.contains(e.target)) {
+                menu.classList.remove('active');
+                toggle?.setAttribute('aria-expanded', 'false');
+                if (toggle) toggle.querySelector('i').className = 'fas fa-bars';
+            }
+        });
+
+        // ===== 初始化 =====
+        document.addEventListener('DOMContentLoaded', () => {
             checkAuthStatus();
             loadStories();
 
-            document.getElementById('searchInput').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    searchStories();
-                }
+            document.getElementById('searchInput').addEventListener('keydown', e => {
+                if (e.key === 'Enter') searchStories();
             });
 
-            // 筛选标签点击事件
-            document.querySelectorAll('.filter-tag').forEach(tag => {
-                tag.addEventListener('click', function() {
-                    filterStories(this.dataset.filter);
-                });
+            document.querySelectorAll('.filter-tab').forEach(tab => {
+                tab.addEventListener('click', () => applyFilter(tab.dataset.filter));
             });
         });
     </script>

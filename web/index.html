@@ -4,117 +4,131 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StoryTree - 故事树</title>
-    <link rel="stylesheet" href="styles.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- 字体预连接（提升加载速度） -->
+    <!-- 设计系统 -->
+    <link rel="stylesheet" href="styles/design-system.css">
+    <link rel="stylesheet" href="styles/animations.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link rel="stylesheet" href="styles/utilities.css">
+    <!-- 图标 -->
+    <link href="libs/fontawesome/css/all.min.css" rel="stylesheet">
     <style>
-        /* 全局样式 */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        /* 页面级样式 */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--st-bg-secondary);
             min-height: 100vh;
-            color: #333;
-            line-height: 1.6;
         }
 
-        /* 导航栏 */
+        /* ===== 导航栏 ===== */
         .navbar {
             background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--st-gray-200);
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             z-index: 1000;
-            padding: 0 20px;
+            transition: box-shadow var(--st-duration-normal) var(--st-ease-default);
+        }
+
+        .navbar.scrolled {
+            box-shadow: var(--st-shadow-md);
         }
 
         .navbar-content {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            max-width: 1200px;
+            max-width: var(--st-container-xl);
             margin: 0 auto;
-            height: 70px;
+            height: 64px;
+            padding: 0 var(--st-page-padding-x-lg);
         }
 
         .nav-brand {
             display: flex;
             align-items: center;
-            gap: 10px;
-            font-size: 24px;
-            font-weight: 700;
-            color: #667eea;
+            gap: var(--st-space-2);
+            font-family: var(--st-font-display);
+            font-size: var(--st-text-2xl);
+            font-weight: var(--st-font-bold);
+            color: var(--st-primary-600);
+            text-decoration: none;
+            transition: color var(--st-duration-fast);
+        }
+
+        .nav-brand:hover {
+            color: var(--st-primary-700);
             text-decoration: none;
         }
 
         .nav-brand i {
-            font-size: 28px;
+            font-size: 1.5rem;
         }
 
         .nav-menu {
             display: flex;
-            gap: 30px;
+            gap: var(--st-space-1);
             align-items: center;
         }
 
         .nav-link {
-            color: #333;
+            display: flex;
+            align-items: center;
+            gap: var(--st-space-2);
+            color: var(--st-text-secondary);
             text-decoration: none;
-            padding: 8px 16px;
-            border-radius: 20px;
-            transition: all 0.3s ease;
-            font-weight: 500;
+            padding: var(--st-space-2) var(--st-space-3);
+            border-radius: var(--st-radius-lg);
+            font-size: var(--st-text-sm);
+            font-weight: var(--st-font-medium);
+            transition: all var(--st-duration-fast) var(--st-ease-default);
         }
 
         .nav-link:hover {
-            background: #667eea;
-            color: white;
-            transform: translateY(-2px);
-        }
-
-        .nav-link.primary {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-        }
-
-        .nav-link.primary:hover {
-            background: linear-gradient(135deg, #764ba2, #667eea);
-        }
-
-        /* 通知图标 */
-        .notification-icon {
-            position: relative;
-            cursor: pointer;
-            padding: 8px 16px;
-            border-radius: 20px;
-            transition: all 0.3s ease;
+            background: var(--st-primary-50);
+            color: var(--st-primary-600);
             text-decoration: none;
-            color: #333;
         }
 
-        .notification-icon:hover {
-            background: #f0f0f0;
+        .nav-link.active {
+            background: var(--st-primary-100);
+            color: var(--st-primary-700);
+        }
+
+        .nav-link.nav-link-primary {
+            background: var(--st-gradient-brand);
+            color: white;
+            padding: var(--st-space-2) var(--st-space-4);
+        }
+
+        .nav-link.nav-link-primary:hover {
+            background: var(--st-gradient-brand-hover);
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        /* 通知徽章 */
+        .nav-notification {
+            position: relative;
         }
 
         .notification-badge {
             position: absolute;
             top: 2px;
-            right: 8px;
-            background: #ff4757;
+            right: 4px;
+            background: var(--st-error-500);
             color: white;
-            border-radius: 10px;
-            padding: 2px 6px;
-            font-size: 11px;
-            font-weight: bold;
-            min-width: 18px;
+            border-radius: var(--st-radius-full);
+            padding: 1px 5px;
+            font-size: 10px;
+            font-weight: var(--st-font-bold);
+            min-width: 16px;
             text-align: center;
+            line-height: 1.4;
         }
 
         /* 移动端菜单 */
@@ -122,387 +136,665 @@
             display: none;
             background: none;
             border: none;
-            font-size: 24px;
+            font-size: var(--st-text-xl);
             cursor: pointer;
-            color: #333;
+            color: var(--st-text-secondary);
+            padding: var(--st-space-2);
+            border-radius: var(--st-radius-md);
+            transition: all var(--st-duration-fast);
         }
 
-        .nav-menu {
-            display: flex;
-            gap: 30px;
-            align-items: center;
-        }
-
-        .nav-menu.active {
-            display: flex;
-            flex-direction: column;
-            position: absolute;
-            top: 70px;
-            left: 0;
-            right: 0;
-            background: white;
-            padding: 20px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-            z-index: 1001;
+        .mobile-menu-toggle:hover {
+            background: var(--st-gray-100);
+            color: var(--st-text-primary);
         }
 
         @media (max-width: 768px) {
+            .navbar-content {
+                padding: 0 var(--st-page-padding-x);
+            }
+
             .mobile-menu-toggle {
-                display: block;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
 
             .nav-menu {
                 display: none;
+                position: fixed;
+                top: 64px;
+                left: 0;
+                right: 0;
+                background: white;
+                flex-direction: column;
+                padding: var(--st-space-4);
+                gap: var(--st-space-1);
+                box-shadow: var(--st-shadow-lg);
+                border-top: 1px solid var(--st-gray-100);
+                z-index: 999;
             }
 
             .nav-menu.active {
                 display: flex;
             }
 
-            .navbar-content {
-                position: relative;
+            .nav-link {
+                width: 100%;
+                padding: var(--st-space-3) var(--st-space-4);
+                font-size: var(--st-text-base);
             }
         }
-        /* 主要内容 */
-        .main-content {
-            margin-top: 90px;
-            padding: 20px;
-            max-width: 1200px;
-            margin-left: auto;
-            margin-right: auto;
-        }
 
-        /* 英雄区域 */
-        .hero {
-            text-align: center;
-            padding: 80px 20px;
-            color: white;
-        }
-
-        .hero h1 {
-            font-size: 48px;
-            margin-bottom: 20px;
-            font-weight: 700;
-        }
-
-        .hero p {
-            font-size: 20px;
-            margin-bottom: 40px;
-            opacity: 0.9;
-        }
-
-        .hero-buttons {
+        /* ===== 英雄区域 ===== */
+        .hero-section {
+            position: relative;
+            min-height: 90vh;
             display: flex;
-            gap: 20px;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding-top: 64px;
+        }
+
+        .hero-bg {
+            position: absolute;
+            inset: 0;
+            background: var(--st-gradient-bg);
+        }
+
+        .hero-pattern {
+            position: absolute;
+            inset: 0;
+            opacity: 0.06;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            color: white;
+            padding: var(--st-space-12) var(--st-page-padding-x);
+            max-width: 800px;
+            animation: slideInUp var(--st-duration-slow) var(--st-ease-out);
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--st-space-2);
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: var(--st-space-2) var(--st-space-4);
+            border-radius: var(--st-radius-full);
+            font-size: var(--st-text-sm);
+            font-weight: var(--st-font-medium);
+            margin-bottom: var(--st-space-6);
+            backdrop-filter: blur(8px);
+        }
+
+        .hero-title {
+            font-family: var(--st-font-display);
+            font-size: clamp(2.5rem, 8vw, 4rem);
+            font-weight: var(--st-font-bold);
+            line-height: 1.1;
+            margin-bottom: var(--st-space-6);
+        }
+
+        .hero-title-highlight {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: clamp(1rem, 2.5vw, 1.25rem);
+            opacity: 0.9;
+            margin-bottom: var(--st-space-10);
+            line-height: var(--st-leading-relaxed);
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: var(--st-space-4);
             justify-content: center;
             flex-wrap: wrap;
         }
 
-        .btn {
-            padding: 15px 30px;
+        .hero-btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--st-space-2);
+            padding: var(--st-space-4) var(--st-space-8);
+            background: white;
+            color: var(--st-primary-600);
+            font-size: var(--st-text-base);
+            font-weight: var(--st-font-semibold);
             border: none;
-            border-radius: 25px;
-            font-size: 16px;
-            font-weight: 600;
+            border-radius: var(--st-radius-full);
             cursor: pointer;
             text-decoration: none;
-            transition: all 0.3s ease;
-            display: inline-block;
+            transition: all var(--st-duration-normal) var(--st-ease-bounce);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
         }
 
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea, #764ba2);
+        .hero-btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            color: var(--st-primary-700);
+            text-decoration: none;
+        }
+
+        .hero-btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--st-space-2);
+            padding: var(--st-space-4) var(--st-space-8);
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            font-size: var(--st-text-base);
+            font-weight: var(--st-font-semibold);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-radius: var(--st-radius-full);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all var(--st-duration-normal) var(--st-ease-bounce);
+            backdrop-filter: blur(8px);
+        }
+
+        .hero-btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.6);
+            transform: translateY(-3px);
+            color: white;
+            text-decoration: none;
+        }
+
+        .hero-stats {
+            display: flex;
+            gap: var(--st-space-8);
+            justify-content: center;
+            margin-top: var(--st-space-12);
+            padding-top: var(--st-space-8);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .hero-stat {
+            text-align: center;
+        }
+
+        .hero-stat-number {
+            font-family: var(--st-font-display);
+            font-size: var(--st-text-3xl);
+            font-weight: var(--st-font-bold);
             color: white;
         }
 
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        .hero-stat-label {
+            font-size: var(--st-text-sm);
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: var(--st-space-1);
         }
 
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: 2px solid rgba(255, 255, 255, 0.3);
+        .hero-scroll-hint {
+            position: absolute;
+            bottom: var(--st-space-8);
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.6);
+            font-size: var(--st-text-sm);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--st-space-2);
+            animation: bounce 2s infinite;
         }
 
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-3px);
+        /* ===== 故事区域 ===== */
+        .page-section {
+            padding: var(--st-space-16) var(--st-page-padding-x-lg);
         }
 
-        /* 功能区域 */
-        .features {
+        @media (max-width: 768px) {
+            .page-section {
+                padding: var(--st-space-10) var(--st-page-padding-x);
+            }
+        }
+
+        .section-container {
+            max-width: var(--st-container-xl);
+            margin: 0 auto;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--st-space-8);
+        }
+
+        .section-title {
+            font-family: var(--st-font-display);
+            font-size: var(--st-text-3xl);
+            font-weight: var(--st-font-bold);
+            color: var(--st-text-primary);
+        }
+
+        .section-title span {
+            color: var(--st-primary-500);
+        }
+
+        /* 故事网格 */
+        .stories-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
-            margin: 60px 0;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: var(--st-space-6);
+        }
+
+        @media (min-width: 1400px) {
+            .stories-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .stories-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 骨架屏 */
+        .skeleton-card {
+            background: white;
+            border-radius: var(--st-radius-xl);
+            overflow: hidden;
+            border: 1px solid var(--st-gray-100);
+        }
+
+        .skeleton-cover {
+            height: 200px;
+            background: linear-gradient(90deg, var(--st-gray-100) 25%, var(--st-gray-200) 50%, var(--st-gray-100) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+        }
+
+        .skeleton-body {
+            padding: var(--st-space-5);
+        }
+
+        .skeleton-line {
+            height: 16px;
+            border-radius: var(--st-radius-sm);
+            background: linear-gradient(90deg, var(--st-gray-100) 25%, var(--st-gray-200) 50%, var(--st-gray-100) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            margin-bottom: var(--st-space-3);
+        }
+
+        .skeleton-line.short { width: 60%; }
+        .skeleton-line.medium { width: 80%; }
+        .skeleton-line.full { width: 100%; }
+
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: var(--st-space-16) var(--st-space-6);
+            grid-column: 1 / -1;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            color: var(--st-gray-300);
+            margin-bottom: var(--st-space-4);
+        }
+
+        .empty-state-title {
+            font-size: var(--st-text-xl);
+            font-weight: var(--st-font-semibold);
+            color: var(--st-text-secondary);
+            margin-bottom: var(--st-space-2);
+        }
+
+        .empty-state-desc {
+            color: var(--st-text-tertiary);
+            margin-bottom: var(--st-space-6);
+        }
+
+        /* ===== 功能特性区域 ===== */
+        .features-section {
+            background: linear-gradient(135deg, var(--st-primary-50) 0%, #F5F3FF 100%);
+            padding: var(--st-space-16) var(--st-page-padding-x-lg);
+        }
+
+        @media (max-width: 768px) {
+            .features-section {
+                padding: var(--st-space-10) var(--st-page-padding-x);
+            }
+        }
+
+        .features-header {
+            text-align: center;
+            margin-bottom: var(--st-space-12);
+        }
+
+        .features-header-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--st-space-2);
+            background: var(--st-primary-100);
+            color: var(--st-primary-700);
+            padding: var(--st-space-2) var(--st-space-4);
+            border-radius: var(--st-radius-full);
+            font-size: var(--st-text-sm);
+            font-weight: var(--st-font-semibold);
+            margin-bottom: var(--st-space-4);
+        }
+
+        .features-header-title {
+            font-family: var(--st-font-display);
+            font-size: clamp(1.75rem, 4vw, 2.5rem);
+            font-weight: var(--st-font-bold);
+            color: var(--st-text-primary);
+            margin-bottom: var(--st-space-4);
+        }
+
+        .features-header-desc {
+            font-size: var(--st-text-lg);
+            color: var(--st-text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--st-space-6);
+            max-width: var(--st-container-xl);
+            margin: 0 auto;
         }
 
         .feature-card {
             background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            padding: var(--st-space-8);
+            border-radius: var(--st-radius-2xl);
+            box-shadow: var(--st-shadow-md);
             text-align: center;
-            transition: transform 0.3s ease;
+            transition: all var(--st-duration-slow) var(--st-ease-bounce);
+            border: 1px solid var(--st-gray-100);
         }
 
         .feature-card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-8px);
+            box-shadow: var(--st-shadow-xl);
+            border-color: var(--st-primary-200);
         }
 
-        .feature-card i {
-            font-size: 48px;
-            color: #667eea;
-            margin-bottom: 20px;
-        }
-
-        .feature-card h3 {
-            font-size: 24px;
-            margin-bottom: 15px;
-            color: #333;
-        }
-
-        .feature-card p {
-            color: #666;
-            line-height: 1.6;
-        }
-
-        /* 故事展示区 */
-        .stories-section {
-            margin: 60px 0;
-        }
-
-        .section-header {
-            text-align: center;
-            margin-bottom: 40px;
-            color: white;
-        }
-
-        .section-header h2 {
-            font-size: 36px;
-            margin-bottom: 15px;
-        }
-
-        .stories-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 30px;
-        }
-
-        .story-card {
-            background: white;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
-            cursor: pointer;
-        }
-
-        .story-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .story-image {
-            height: 200px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+        .feature-icon-wrap {
+            width: 72px;
+            height: 72px;
+            background: var(--st-gradient-brand);
+            border-radius: var(--st-radius-2xl);
             display: flex;
             align-items: center;
             justify-content: center;
+            margin: 0 auto var(--st-space-5);
+            font-size: 2rem;
             color: white;
-            font-size: 48px;
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
         }
 
-        .story-content {
-            padding: 20px;
+        .feature-card-title {
+            font-size: var(--st-text-xl);
+            font-weight: var(--st-font-semibold);
+            color: var(--st-text-primary);
+            margin-bottom: var(--st-space-3);
         }
 
-        .story-title {
-            font-size: 20px;
-            font-weight: 600;
-            margin-bottom: 10px;
-            color: #333;
+        .feature-card-desc {
+            color: var(--st-text-secondary);
+            line-height: var(--st-leading-relaxed);
+            font-size: var(--st-text-sm);
+            margin: 0;
         }
 
-        .story-description {
-            color: #666;
-            margin-bottom: 15px;
-            line-height: 1.5;
-        }
-
-        .story-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            color: #999;
-            font-size: 14px;
-        }
-
-        /* 加载动画 */
-        .loading {
+        /* ===== 页脚 ===== */
+        .footer {
+            background: var(--st-gray-900);
+            color: var(--st-gray-400);
             text-align: center;
-            padding: 40px;
-            color: #666;
+            padding: var(--st-space-8) var(--st-page-padding-x);
+            font-size: var(--st-text-sm);
         }
 
-        .loading i {
-            font-size: 48px;
-            animation: spin 1s linear infinite;
+        .footer a {
+            color: var(--st-gray-400);
+            text-decoration: none;
         }
 
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        /* 响应式设计 */
-        @media (max-width: 768px) {
-            .navbar-content {
-                flex-direction: column;
-                height: auto;
-                padding: 15px 0;
-            }
-
-            .nav-menu {
-                margin-top: 15px;
-                flex-direction: column;
-                gap: 15px;
-            }
-
-            .hero h1 {
-                font-size: 36px;
-            }
-
-            .hero-buttons {
-                flex-direction: column;
-                align-items: center;
-            }
-
-            .features {
-                grid-template-columns: 1fr;
-                margin: 40px 0;
-            }
-
-            .main-content {
-                margin-top: 120px;
-                padding: 15px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .hero h1 {
-                font-size: 28px;
-            }
-
-            .hero p {
-                font-size: 16px;
-            }
-
-            .feature-card {
-                padding: 30px 20px;
-            }
-        }
-
-        /* 交互效果 */
-        .fade-in {
-            animation: fadeIn 0.5s ease-in;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+        .footer a:hover {
+            color: white;
         }
     </style>
 </head>
 <body>
+    <!-- 跳过链接（无障碍） -->
+    <a href="#main" class="skip-link">跳到主要内容</a>
+
     <!-- 导航栏 -->
-    <nav class="navbar">
+    <nav class="navbar" id="navbar" role="navigation" aria-label="主导航">
         <div class="navbar-content">
-            <a href="/" class="nav-brand">
-                <i class="fas fa-tree"></i>
+            <a href="/" class="nav-brand" aria-label="StoryTree 首页">
+                <i class="fas fa-tree" aria-hidden="true"></i>
                 StoryTree
             </a>
-            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">
-                <i class="fas fa-bars"></i>
+            <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleMobileMenu()" aria-label="展开菜单" aria-expanded="false">
+                <i class="fas fa-bars" aria-hidden="true"></i>
             </button>
-            <div class="nav-menu" id="navMenu">
-                <a href="/" class="nav-link">
-                    <i class="fas fa-home"></i> 首页
+            <div class="nav-menu" id="navMenu" role="menubar">
+                <a href="/" class="nav-link active" role="menuitem">
+                    <i class="fas fa-home" aria-hidden="true"></i> 首页
                 </a>
-                <a href="/discover" class="nav-link">
-                    <i class="fas fa-compass"></i> 发现故事
+                <a href="/discover" class="nav-link" role="menuitem">
+                    <i class="fas fa-compass" aria-hidden="true"></i> 发现故事
                 </a>
-                <a href="/membership.html" class="nav-link">
-                    <i class="fas fa-crown"></i> 会员中心
+                <a href="/membership.html" class="nav-link" role="menuitem">
+                    <i class="fas fa-crown" aria-hidden="true"></i> 会员中心
                 </a>
-                <a href="/points-mall.html" class="nav-link" style="color: #ff9800;">
-                    <i class="fas fa-shopping-cart"></i> 积分商城
+                <a href="/points-mall.html" class="nav-link" role="menuitem">
+                    <i class="fas fa-shopping-cart" aria-hidden="true"></i> 积分商城
                 </a>
-                <a href="/notifications.html" class="nav-link" id="notificationIcon" style="display: none; position: relative;">
-                    <i class="fas fa-bell"></i> 消息
-                    <span class="notification-badge" id="notificationBadge" style="display: none; position: absolute; top: -5px; right: -5px;">0</span>
+                <a href="/notifications.html" class="nav-link nav-notification" id="notificationIcon" style="display: none;" role="menuitem" aria-label="消息通知">
+                    <i class="fas fa-bell" aria-hidden="true"></i> 消息
+                    <span class="notification-badge" id="notificationBadge" style="display: none;" aria-live="polite">0</span>
                 </a>
-                <a href="/login" class="nav-link" id="loginLink">登录</a>
-                <a href="/register" class="nav-link primary" id="registerLink">注册</a>
-                <a href="/profile" class="nav-link" id="profileLink" style="display: none;">
-                    <i class="fas fa-user"></i> 个人中心
+                <a href="/login" class="nav-link" id="loginLink" role="menuitem">登录</a>
+                <a href="/register" class="nav-link nav-link-primary" id="registerLink" role="menuitem">注册</a>
+                <a href="/profile" class="nav-link" id="profileLink" style="display: none;" role="menuitem">
+                    <i class="fas fa-user" aria-hidden="true"></i> 个人中心
                 </a>
-                <a href="/login" class="nav-link" id="logoutLink" style="display: none;" onclick="logout()">
-                    <i class="fas fa-sign-out-alt"></i> 退出
+                <a href="/login" class="nav-link" id="logoutLink" style="display: none;" onclick="logout(); return false;" role="menuitem">
+                    <i class="fas fa-sign-out-alt" aria-hidden="true"></i> 退出
                 </a>
             </div>
         </div>
     </nav>
 
     <!-- 主要内容 -->
-    <div class="main-content">
+    <main id="main">
         <!-- 英雄区域 -->
-        <section class="hero">
-            <h1>欢迎来到 StoryTree</h1>
-            <p>在这里，每个故事都是一片叶子，共同组成属于你的故事森林</p>
-            <div class="hero-buttons">
-                <a href="/login" class="btn btn-primary" id="startBtn">立即开始</a>
-                <a href="/discover" class="btn btn-secondary">探索故事</a>
+        <section class="hero-section" aria-label="欢迎区域">
+            <div class="hero-bg" aria-hidden="true"></div>
+            <div class="hero-pattern" aria-hidden="true"></div>
+            <div class="hero-content">
+                <div class="hero-badge">
+                    <i class="fas fa-sparkles" aria-hidden="true"></i>
+                    <span>全新创作体验</span>
+                </div>
+                <h1 class="hero-title">
+                    <span class="hero-title-highlight">创作</span>属于你的<br>故事宇宙
+                </h1>
+                <p class="hero-subtitle">
+                    在 StoryTree，每个故事都是一片叶子，每个章节都有无限可能。<br>
+                    与全球创作者一起，共同编织属于你的故事森林。
+                </p>
+                <div class="hero-actions">
+                    <a href="/login" class="hero-btn-primary" id="startBtn">
+                        <i class="fas fa-pen-nib" aria-hidden="true"></i>
+                        立即开始创作
+                    </a>
+                    <a href="/discover" class="hero-btn-secondary">
+                        <i class="fas fa-compass" aria-hidden="true"></i>
+                        探索故事世界
+                    </a>
+                </div>
+                <div class="hero-stats" id="heroStats">
+                    <div class="hero-stat">
+                        <div class="hero-stat-number" id="statStories">--</div>
+                        <div class="hero-stat-label">精彩故事</div>
+                    </div>
+                    <div class="hero-stat">
+                        <div class="hero-stat-number" id="statAuthors">--</div>
+                        <div class="hero-stat-label">创作者</div>
+                    </div>
+                    <div class="hero-stat">
+                        <div class="hero-stat-number" id="statChapters">--</div>
+                        <div class="hero-stat-label">精彩章节</div>
+                    </div>
+                </div>
+            </div>
+            <div class="hero-scroll-hint" aria-hidden="true">
+                <span>向下探索</span>
+                <i class="fas fa-chevron-down"></i>
             </div>
         </section>
 
         <!-- 热门故事 -->
-        <section class="stories-section">
-            <div class="section-header">
-                <h2>热门故事</h2>
-                <p>发现最受欢迎的故事</p>
-            </div>
-            <div class="stories-grid" id="storiesGrid">
-                <div class="loading">
-                    <i class="fas fa-spinner"></i>
-                    <p>正在加载精彩故事...</p>
+        <section class="page-section" aria-labelledby="hotStoriesTitle">
+            <div class="section-container">
+                <div class="section-header">
+                    <h2 class="section-title" id="hotStoriesTitle">
+                        <i class="fas fa-fire" style="color: var(--st-warning-500); margin-right: 8px;" aria-hidden="true"></i>
+                        热门<span>故事</span>
+                    </h2>
+                    <a href="/discover" class="btn btn-text">
+                        查看全部 <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                    </a>
+                </div>
+                <div class="stories-grid" id="storiesGrid" aria-live="polite" aria-label="故事列表">
+                    <!-- 骨架屏 -->
+                    <div class="skeleton-card" aria-hidden="true">
+                        <div class="skeleton-cover"></div>
+                        <div class="skeleton-body">
+                            <div class="skeleton-line medium"></div>
+                            <div class="skeleton-line full"></div>
+                            <div class="skeleton-line short"></div>
+                        </div>
+                    </div>
+                    <div class="skeleton-card" aria-hidden="true">
+                        <div class="skeleton-cover"></div>
+                        <div class="skeleton-body">
+                            <div class="skeleton-line medium"></div>
+                            <div class="skeleton-line full"></div>
+                            <div class="skeleton-line short"></div>
+                        </div>
+                    </div>
+                    <div class="skeleton-card" aria-hidden="true">
+                        <div class="skeleton-cover"></div>
+                        <div class="skeleton-body">
+                            <div class="skeleton-line medium"></div>
+                            <div class="skeleton-line full"></div>
+                            <div class="skeleton-line short"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- 功能介绍（移到底部） -->
-        <section class="features" style="margin-top: 80px; padding-top: 60px; border-top: 2px solid rgba(255, 255, 255, 0.2);">
-            <div class="feature-card">
-                <i class="fas fa-pen-fancy"></i>
-                <h3>创作故事</h3>
-                <p>创建属于你自己的故事，每个章节都可以有无限可能，让想象自由飞翔。</p>
+        <!-- 功能特性 -->
+        <section class="features-section" aria-labelledby="featuresTitle">
+            <div class="features-header">
+                <div class="features-header-badge">
+                    <i class="fas fa-star" aria-hidden="true"></i>
+                    平台特色
+                </div>
+                <h2 class="features-header-title" id="featuresTitle">为什么选择 StoryTree？</h2>
+                <p class="features-header-desc">我们提供最完整的故事创作与阅读体验</p>
             </div>
-            <div class="feature-card">
-                <i class="fas fa-robot"></i>
-                <h3>AI辅助创作</h3>
-                <p>使用AI智能续写功能，为你的故事提供灵感和创意，让创作更加轻松。</p>
-            </div>
-            <div class="feature-card">
-                <i class="fas fa-comments"></i>
-                <h3>社区互动</h3>
-                <p>与读者和作者互动，评论、点赞、分享，共同构建活跃的故事社区。</p>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon-wrap">
+                        <i class="fas fa-pen-fancy" aria-hidden="true"></i>
+                    </div>
+                    <h3 class="feature-card-title">自由创作</h3>
+                    <p class="feature-card-desc">创建属于你自己的故事，每个章节都可以有无限可能，让想象力自由飞翔，构建独特的故事世界。</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon-wrap" style="background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%);">
+                        <i class="fas fa-robot" aria-hidden="true"></i>
+                    </div>
+                    <h3 class="feature-card-title">AI 辅助创作</h3>
+                    <p class="feature-card-desc">使用 AI 智能续写功能，为你的故事提供灵感和创意，让创作更加轻松，突破写作瓶颈。</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon-wrap" style="background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%);">
+                        <i class="fas fa-comments" aria-hidden="true"></i>
+                    </div>
+                    <h3 class="feature-card-title">社区互动</h3>
+                    <p class="feature-card-desc">与读者和作者互动，评论、点赞、分享，共同构建活跃的故事社区，发现志同道合的创作伙伴。</p>
+                </div>
             </div>
         </section>
-    </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer" role="contentinfo">
+        <p>&copy; 2026 StoryTree. 用心创作每一个故事。
+            <a href="/user-agreement">用户协议</a> ·
+            <a href="/privacy">隐私政策</a>
+        </p>
+    </footer>
+
+    <!-- Toast 容器 -->
+    <div id="toastContainer" aria-live="assertive" aria-atomic="true" style="position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; align-items: center;"></div>
 
     <script>
-        // 检查用户登录状态
+        // ===== 工具函数 =====
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 封面颜色渐变列表
+        const coverGradients = [
+            'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
+            'linear-gradient(135deg, #EC4899 0%, #F43F5E 100%)',
+            'linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%)',
+            'linear-gradient(135deg, #10B981 0%, #0EA5E9 100%)',
+            'linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)',
+            'linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)',
+        ];
+
+        // ===== 导航栏滚动效果 =====
+        const navbar = document.getElementById('navbar');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 20) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        }, { passive: true });
+
+        // ===== 认证状态 =====
         function checkAuthStatus() {
             const token = localStorage.getItem('token') || sessionStorage.getItem('token');
             const loginLink = document.getElementById('loginLink');
@@ -510,51 +802,46 @@
             const profileLink = document.getElementById('profileLink');
             const logoutLink = document.getElementById('logoutLink');
             const notificationIcon = document.getElementById('notificationIcon');
-            
+            const startBtn = document.getElementById('startBtn');
+
             if (token) {
                 loginLink.style.display = 'none';
                 registerLink.style.display = 'none';
-                profileLink.style.display = 'block';
-                logoutLink.style.display = 'block';
+                profileLink.style.display = 'flex';
+                logoutLink.style.display = 'flex';
                 if (notificationIcon) {
-                    notificationIcon.style.display = 'block';
+                    notificationIcon.style.display = 'flex';
                     loadUnreadCount();
                 }
+                if (startBtn) startBtn.href = '/create';
             } else {
-                loginLink.style.display = 'block';
-                registerLink.style.display = 'block';
+                loginLink.style.display = 'flex';
+                registerLink.style.display = 'flex';
                 profileLink.style.display = 'none';
                 logoutLink.style.display = 'none';
                 if (notificationIcon) notificationIcon.style.display = 'none';
+                if (startBtn) startBtn.href = '/login';
             }
         }
 
-        // 加载未读通知数量
         async function loadUnreadCount() {
             const token = localStorage.getItem('token') || sessionStorage.getItem('token');
             if (!token) return;
-
             try {
                 const response = await fetch('/api/notifications', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
-
                 if (response.ok) {
                     const data = await response.json();
                     const badge = document.getElementById('notificationBadge');
                     if (badge && data.unreadCount > 0) {
                         badge.textContent = data.unreadCount > 99 ? '99+' : data.unreadCount;
-                        badge.style.display = 'block';
+                        badge.style.display = 'inline-block';
                     }
                 }
-            } catch (error) {
-                console.error('加载未读通知数失败:', error);
-            }
+            } catch (e) { /* 静默失败 */ }
         }
 
-        // 退出登录
         function logout() {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
@@ -564,92 +851,131 @@
             return false;
         }
 
-        // HTML转义函数
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // 加载热门故事
+        // ===== 故事列表 =====
         async function loadStories() {
+            const storiesGrid = document.getElementById('storiesGrid');
             try {
                 const response = await fetch('/api/stories');
                 const data = await response.json();
-                
-                const storiesGrid = document.getElementById('storiesGrid');
+
                 if (data.stories && data.stories.length > 0) {
                     // 按章节数排序，取前6个
                     const hotStories = [...data.stories]
                         .sort((a, b) => (b._count?.nodes || 0) - (a._count?.nodes || 0))
                         .slice(0, 6);
-                    
-                    const storiesHTML = hotStories.map(story => `
-                        <div class="story-card" onclick="window.location.href='/story?id=${story.id}'">
-                            <div class="story-image">
-                                <i class="fas fa-book-open"></i>
+
+                    // 更新英雄区统计数据
+                    const authorSet = new Set(hotStories.map(s => s.author?.id).filter(Boolean));
+                    const totalChapters = data.stories.reduce((sum, s) => sum + (s._count?.nodes || 0), 0);
+                    animateCounter('statStories', data.stories.length);
+                    animateCounter('statAuthors', authorSet.size || data.stories.length);
+                    animateCounter('statChapters', totalChapters);
+
+                    storiesGrid.innerHTML = hotStories.map((story, idx) => `
+                        <article class="story-card" onclick="window.location.href='/story?id=${story.id}'" tabindex="0" role="button" aria-label="阅读故事：${escapeHtml(story.title)}">
+                            <div class="story-card-cover" style="background: ${coverGradients[idx % coverGradients.length]}">
+                                <i class="fas fa-book-open" aria-hidden="true"></i>
+                                ${story._count?.nodes > 0 ? `<span class="story-card-badge">${story._count.nodes} 章节</span>` : ''}
                             </div>
-                            <div class="story-content">
-                                <div class="story-title">${escapeHtml(story.title)}</div>
-                                <div class="story-description">${escapeHtml(story.description || '暂无描述')}</div>
-                                <div class="story-meta">
-                                    <span>作者: ${escapeHtml(story.author.username)}</span>
-                                    <span>${story._count.nodes} 章节</span>
+                            <div class="story-card-content">
+                                <h3 class="story-card-title">${escapeHtml(story.title)}</h3>
+                                <p class="story-card-desc">${escapeHtml(story.description || '这个故事正在等待你的探索...')}</p>
+                                <div class="story-card-meta">
+                                    <span class="story-card-author">
+                                        <i class="fas fa-user-circle" aria-hidden="true"></i>
+                                        ${escapeHtml(story.author?.username || '匿名作者')}
+                                    </span>
+                                    <span class="story-card-stats">
+                                        <span class="story-card-stat">
+                                            <i class="fas fa-eye" aria-hidden="true"></i>
+                                            ${story._count?.followers || 0}
+                                        </span>
+                                    </span>
                                 </div>
                             </div>
-                        </div>
+                        </article>
                     `).join('');
-                    
-                    storiesGrid.innerHTML = storiesHTML;
+
+                    // 为故事卡片添加键盘导航
+                    storiesGrid.querySelectorAll('.story-card').forEach(card => {
+                        card.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                card.click();
+                            }
+                        });
+                    });
                 } else {
                     storiesGrid.innerHTML = `
-                        <div style="text-align: center; color: #666; padding: 40px; grid-column: 1/-1;">
-                            <i class="fas fa-book" style="font-size: 48px; margin-bottom: 20px; color: #999;"></i>
-                            <p>暂无故事，快来创建第一个故事吧！</p>
+                        <div class="empty-state">
+                            <div class="empty-state-icon"><i class="fas fa-book-open" aria-hidden="true"></i></div>
+                            <h3 class="empty-state-title">还没有故事</h3>
+                            <p class="empty-state-desc">成为第一个创作者，开启你的故事世界吧！</p>
+                            <a href="/create" class="btn btn-primary">
+                                <i class="fas fa-pen-nib" aria-hidden="true"></i>
+                                开始创作
+                            </a>
                         </div>
                     `;
                 }
             } catch (error) {
-                document.getElementById('storiesGrid').innerHTML = `
-                    <div style="text-align: center; color: #666; padding: 40px; grid-column: 1/-1;">
-                        <i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 20px; color: #999;"></i>
-                        <p>加载故事失败，请稍后重试</p>
+                console.error('加载故事失败:', error);
+                storiesGrid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon"><i class="fas fa-exclamation-circle" aria-hidden="true"></i></div>
+                        <h3 class="empty-state-title">加载失败</h3>
+                        <p class="empty-state-desc">网络异常，请稍后重试</p>
+                        <button class="btn btn-secondary" onclick="loadStories()">
+                            <i class="fas fa-redo" aria-hidden="true"></i>
+                            重新加载
+                        </button>
                     </div>
                 `;
             }
         }
 
-        // 页面加载完成后初始化
-        document.addEventListener('DOMContentLoaded', function() {
-            checkAuthStatus();
-            loadStories();
-            
-            // 添加淡入动画
-            document.body.classList.add('fade-in');
-            
-            // 根据登录状态更新"立即开始"按钮的跳转目标
-            const startBtn = document.getElementById('startBtn');
-            if (startBtn) {
-                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-                startBtn.href = token ? '/create' : '/login';
+        // 数字动画
+        function animateCounter(id, target) {
+            const el = document.getElementById(id);
+            if (!el || target === 0) {
+                if (el) el.textContent = '0';
+                return;
+            }
+            const duration = 1200;
+            const start = performance.now();
+            const update = (time) => {
+                const elapsed = time - start;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                el.textContent = Math.floor(eased * target).toLocaleString();
+                if (progress < 1) requestAnimationFrame(update);
+            };
+            requestAnimationFrame(update);
+        }
+
+        // ===== 移动端菜单 =====
+        function toggleMobileMenu() {
+            const navMenu = document.getElementById('navMenu');
+            const toggle = document.getElementById('mobileMenuToggle');
+            const isOpen = navMenu.classList.toggle('active');
+            toggle.setAttribute('aria-expanded', isOpen);
+            toggle.querySelector('i').className = isOpen ? 'fas fa-times' : 'fas fa-bars';
+        }
+
+        document.addEventListener('click', (e) => {
+            const navMenu = document.getElementById('navMenu');
+            const toggle = document.getElementById('mobileMenuToggle');
+            if (navMenu?.classList.contains('active') && !navMenu.contains(e.target) && !toggle?.contains(e.target)) {
+                navMenu.classList.remove('active');
+                toggle?.setAttribute('aria-expanded', 'false');
+                toggle.querySelector('i').className = 'fas fa-bars';
             }
         });
 
-        // 移动端菜单切换
-        function toggleMobileMenu() {
-            const navMenu = document.getElementById('navMenu');
-            navMenu.classList.toggle('active');
-        }
-
-        // 点击外部关闭菜单
-        document.addEventListener('click', function(e) {
-            const navMenu = document.getElementById('navMenu');
-            const menuToggle = document.querySelector('.mobile-menu-toggle');
-            
-            if (navMenu && menuToggle && !navMenu.contains(e.target) && !menuToggle.contains(e.target)) {
-                navMenu.classList.remove('active');
-            }
+        // ===== 初始化 =====
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuthStatus();
+            loadStories();
         });
     </script>
 </body>

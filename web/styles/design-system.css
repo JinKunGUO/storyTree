@@ -3,6 +3,16 @@
  * 设计系统基础文件 - 包含所有CSS变量和基础样式
  */
 
+/*
+ * 字体引入说明：
+ * Google Fonts 请在各页面 <head> 中通过 <link rel="preconnect"> + <link> 方式引入，
+ * 避免使用 @import（会阻塞渲染，导致页面加载变慢）。
+ * 参考引入方式：
+ *   <link rel="preconnect" href="https://fonts.googleapis.com">
+ *   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+ *   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+ */
+
 /* ========================================
    1. CSS 变量定义
    ======================================== */
@@ -137,8 +147,10 @@
   /* ----------------------------------------
      1.10 字体系统
      ---------------------------------------- */
-  --st-font-sans: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-  --st-font-display: 'Fredoka', var(--st-font-sans);
+  /* 注意：Nunito/Fredoka 为可选的 Google Fonts，已降级为系统字体优先。
+     如需启用，请在 HTML <head> 中添加 Google Fonts <link> 标签。 */
+  --st-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+  --st-font-display: 'Nunito', var(--st-font-sans);
   --st-font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 
   /* ----------------------------------------
@@ -200,6 +212,14 @@
   --st-container-lg: 1024px;
   --st-container-xl: 1200px;
   --st-container-2xl: 1400px;
+
+  /* ----------------------------------------
+     1.17 常用简写别名（方便在页面内联样式中使用）
+     ---------------------------------------- */
+  --st-primary: var(--st-primary-500);
+  --st-primary-light: var(--st-primary-50);
+  --st-primary-dark: var(--st-primary-600);
+  --st-gradient-primary: var(--st-gradient-brand);
 }
 
 /* ========================================
@@ -230,9 +250,6 @@ body {
   color: var(--st-text-primary);
   background-color: var(--st-bg-secondary);
 }
-
-/* 字体引入 */
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700&display=swap');
 
 /* ========================================
    3. 排版基础

@@ -310,11 +310,6 @@ router.get('/:id/tree', optionalAuth, async (req, res) => {
 
     // Build tree structure
     const nodeMap = new Map();
-    const tree: any = {
-      id: story.id,
-      name: story.title,
-      children: []
-    };
 
     // First pass: create node map
     nodes.forEach(node => {
@@ -325,7 +320,7 @@ router.get('/:id/tree', optionalAuth, async (req, res) => {
         author: node.author?.username || '未知',
         authorId: node.author_id,
         aiGenerated: node.ai_generated,
-        isPublished: node.is_published, // 添加发布状态
+        isPublished: node.is_published,
         readCount: node.read_count || 0,
         commentCount: node._count.comments,
         ratingAvg: node.rating_avg || 0,
@@ -338,11 +333,12 @@ router.get('/:id/tree', optionalAuth, async (req, res) => {
     });
 
     // Second pass: build tree structure
+    const rootNodes: any[] = [];
     nodes.forEach(node => {
       const nodeData = nodeMap.get(node.id);
       if (node.parent_id === null) {
-        // Root node
-        tree.children.push(nodeData);
+        // Root chapter node
+        rootNodes.push(nodeData);
       } else {
         // Child node
         const parent = nodeMap.get(node.parent_id);
@@ -351,6 +347,28 @@ router.get('/:id/tree', optionalAuth, async (req, res) => {
         }
       }
     });
+
+    // 如果只有一个根章节，直接用它作为树根；
+    // 如果有多个根章节（异常情况），用故事标题作为不可点击的虚拟根节点包裹
+    let tree: any;
+    if (rootNodes.length === 1) {
+      tree = rootNodes[0];
+    } else if (rootNodes.length > 1) {
+      tree = {
+        id: null, // null 表示虚拟根节点，前端不应跳转
+        name: story.title,
+        isVirtualRoot: true,
+        children: rootNodes
+      };
+    } else {
+      // 没有任何章节，返回空的虚拟根节点
+      tree = {
+        id: null,
+        name: story.title,
+        isVirtualRoot: true,
+        children: []
+      };
+    }
 
     // Calculate statistics
     const stats = {

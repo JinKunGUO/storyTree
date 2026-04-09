@@ -4,15 +4,243 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>故事详情 - StoryTree</title>
-    <link rel="stylesheet" href="styles.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- 字体预连接（提升加载速度） -->
+    <!-- 设计系统 -->
+    <link rel="stylesheet" href="styles/design-system.css">
+    <link rel="stylesheet" href="styles/animations.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link rel="stylesheet" href="styles/utilities.css">
+    <link href="libs/fontawesome/css/all.min.css" rel="stylesheet">
     <!-- ECharts -->
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="libs/echarts/echarts.min.js"></script>
     <style>
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--st-bg-secondary);
             min-height: 100vh;
-            padding-top: 80px;
+            padding-top: 64px;
+        }
+
+        /* ===== 导航栏 ===== */
+        .st-navbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--st-gray-200);
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 1000;
+            height: 64px;
+            transition: box-shadow var(--st-duration-normal) var(--st-ease-default);
+        }
+
+        .st-navbar.scrolled {
+            box-shadow: var(--st-shadow-md);
+        }
+
+        .st-navbar-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 var(--st-space-6);
+            height: 100%;
+            display: flex;
+            align-items: center;
+            gap: var(--st-space-4);
+        }
+
+        /* Logo */
+        .st-nav-brand {
+            display: flex;
+            align-items: center;
+            gap: var(--st-space-2);
+            font-family: var(--st-font-display);
+            font-size: var(--st-text-xl);
+            font-weight: var(--st-font-bold);
+            color: var(--st-primary-600);
+            text-decoration: none;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .st-nav-brand i {
+            font-size: 1.25rem;
+        }
+
+        .st-nav-brand:hover {
+            color: var(--st-primary-700);
+        }
+
+        /* 面包屑 */
+        .st-nav-breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: var(--st-space-2);
+            font-size: var(--st-text-sm);
+            color: var(--st-text-tertiary);
+            min-width: 0;
+            flex: 1;
+        }
+
+        .st-nav-breadcrumb-sep {
+            color: var(--st-gray-300);
+            flex-shrink: 0;
+        }
+
+        .st-nav-breadcrumb-home {
+            color: var(--st-text-secondary);
+            text-decoration: none;
+            flex-shrink: 0;
+            transition: color var(--st-duration-fast) var(--st-ease-default);
+        }
+
+        .st-nav-breadcrumb-home:hover {
+            color: var(--st-primary-600);
+        }
+
+        .st-nav-breadcrumb-story {
+            font-weight: var(--st-font-medium);
+            color: var(--st-text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 300px;
+        }
+
+        /* 右侧链接 */
+        .st-nav-links {
+            display: flex;
+            align-items: center;
+            gap: var(--st-space-1);
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        .st-nav-link {
+            display: flex;
+            align-items: center;
+            gap: var(--st-space-2);
+            padding: var(--st-space-2) var(--st-space-3);
+            border-radius: var(--st-radius-lg);
+            font-size: var(--st-text-sm);
+            font-weight: var(--st-font-medium);
+            color: var(--st-text-secondary);
+            text-decoration: none;
+            transition: all var(--st-duration-fast) var(--st-ease-default);
+            white-space: nowrap;
+            position: relative;
+        }
+
+        .st-nav-link:hover {
+            background: var(--st-gray-100);
+            color: var(--st-text-primary);
+        }
+
+        .st-nav-link.active {
+            background: var(--st-primary-50);
+            color: var(--st-primary-600);
+        }
+
+        /* 通知徽标 */
+        .st-nav-badge {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: var(--st-error-500);
+            color: white;
+            font-size: 10px;
+            font-weight: var(--st-font-bold);
+            min-width: 16px;
+            height: 16px;
+            border-radius: var(--st-radius-full);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 0 3px;
+        }
+
+        /* 登录/注册按钮 */
+        .st-nav-btn-login {
+            padding: var(--st-space-2) var(--st-space-4);
+            border-radius: var(--st-radius-lg);
+            font-size: var(--st-text-sm);
+            font-weight: var(--st-font-medium);
+            color: var(--st-text-secondary);
+            text-decoration: none;
+            border: 1px solid var(--st-gray-300);
+            transition: all var(--st-duration-fast) var(--st-ease-default);
+        }
+
+        .st-nav-btn-login:hover {
+            border-color: var(--st-primary-400);
+            color: var(--st-primary-600);
+            background: var(--st-primary-50);
+        }
+
+        .st-nav-btn-register {
+            padding: var(--st-space-2) var(--st-space-4);
+            border-radius: var(--st-radius-lg);
+            font-size: var(--st-text-sm);
+            font-weight: var(--st-font-semibold);
+            color: white;
+            text-decoration: none;
+            background: var(--st-gradient-brand);
+            transition: all var(--st-duration-fast) var(--st-ease-default);
+        }
+
+        .st-nav-btn-register:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        /* 移动端汉堡菜单 */
+        .st-nav-toggle {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border: none;
+            background: transparent;
+            border-radius: var(--st-radius-lg);
+            color: var(--st-text-secondary);
+            cursor: pointer;
+            margin-left: auto;
+        }
+
+        .st-nav-toggle:hover {
+            background: var(--st-gray-100);
+        }
+
+        @media (max-width: 768px) {
+            .st-nav-breadcrumb {
+                display: none;
+            }
+
+            .st-nav-links {
+                display: none;
+                position: fixed;
+                top: 64px;
+                left: 0; right: 0;
+                background: white;
+                border-bottom: 1px solid var(--st-gray-200);
+                padding: var(--st-space-4);
+                flex-direction: column;
+                align-items: stretch;
+                gap: var(--st-space-1);
+                box-shadow: var(--st-shadow-lg);
+            }
+
+            .st-nav-links.open {
+                display: flex;
+            }
+
+            .st-nav-link {
+                padding: var(--st-space-3) var(--st-space-4);
+            }
+
+            .st-nav-toggle {
+                display: flex;
+            }
         }
 
         .story-detail-container {
@@ -27,7 +255,7 @@
             border-radius: 20px;
             padding: 40px;
             margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            box-shadow: var(--st-shadow-lg);
         }
 
         .story-header-content {
@@ -193,7 +421,7 @@
             border-radius: 20px;
             padding: 30px;
             margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            box-shadow: var(--st-shadow-lg);
         }
 
         .author-info {
@@ -250,7 +478,7 @@
             background: white;
             border-radius: 20px;
             padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            box-shadow: var(--st-shadow-lg);
         }
 
         .section-header {
@@ -446,7 +674,7 @@
             background: white;
             padding: 15px 25px;
             border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            box-shadow: var(--st-shadow-lg);
             display: flex;
             align-items: center;
             gap: 10px;
@@ -841,7 +1069,7 @@
         .tabs-section {
             background: white;
             border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            box-shadow: var(--st-shadow-lg);
             overflow: hidden;
         }
 
@@ -1140,25 +1368,51 @@
 </head>
 <body>
     <!-- 导航栏 -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <a href="/" class="logo">
-                <i class="fas fa-tree"></i>
+    <nav class="st-navbar" id="stNavbar" role="navigation" aria-label="主导航">
+        <div class="st-navbar-inner">
+            <!-- Logo -->
+            <a href="/" class="st-nav-brand" aria-label="StoryTree 首页">
+                <i class="fas fa-tree" aria-hidden="true"></i>
                 StoryTree
             </a>
-            <ul class="nav-menu" id="navMenu">
-                <li><a href="/">首页</a></li>
-                <li><a href="/discover">发现</a></li>
-                <li><a href="/create">创作</a></li>
-                <li><a href="/profile" id="profileLink" style="display: none;">个人中心</a></li>
-                <li><a href="/login" id="loginLink">登录</a></li>
-                <li><a href="#" id="logoutLink" style="display: none;">退出</a></li>
-            </ul>
-            <div class="hamburger" id="hamburger">
-                <span></span>
-                <span></span>
-                <span></span>
+
+            <!-- 面包屑：首页 / 故事名 -->
+            <nav class="st-nav-breadcrumb" aria-label="面包屑导航">
+                <a href="/" class="st-nav-breadcrumb-home">
+                    <i class="fas fa-home" aria-hidden="true"></i> 首页
+                </a>
+                <span class="st-nav-breadcrumb-sep" aria-hidden="true">/</span>
+                <span class="st-nav-breadcrumb-story" id="navStoryTitle">故事详情</span>
+            </nav>
+
+            <!-- 右侧链接 -->
+            <div class="st-nav-links" id="stNavLinks">
+                <a href="/" class="st-nav-link">
+                    <i class="fas fa-home" aria-hidden="true"></i> 首页
+                </a>
+                <a href="/discover" class="st-nav-link">
+                    <i class="fas fa-compass" aria-hidden="true"></i> 发现
+                </a>
+                <a href="/notifications.html" class="st-nav-link" id="stNavNotification" style="display: none;" aria-label="消息通知">
+                    <i class="fas fa-bell" aria-hidden="true"></i>
+                    <span class="st-nav-badge" id="stNavBadge" aria-live="polite"></span>
+                </a>
+                <!-- 已登录 -->
+                <a href="/profile" class="st-nav-link" id="stNavProfile" style="display: none;">
+                    <i class="fas fa-user-circle" aria-hidden="true"></i> 个人中心
+                </a>
+                <a href="/login" class="st-nav-link" id="stNavLogout" style="display: none;" onclick="stLogout(); return false;">
+                    <i class="fas fa-sign-out-alt" aria-hidden="true"></i> 退出
+                </a>
+                <!-- 未登录 -->
+                <a href="/login" class="st-nav-btn-login" id="stNavLogin">登录</a>
+                <a href="/register" class="st-nav-btn-register" id="stNavRegister">注册</a>
             </div>
+
+            <!-- 移动端切换 -->
+            <button class="st-nav-toggle" id="stNavToggle" aria-label="展开菜单" aria-expanded="false" onclick="stToggleNav()">
+                <i class="fas fa-bars" aria-hidden="true"></i>
+            </button>
         </div>
     </nav>
 
@@ -1696,7 +1950,7 @@
                 <div class="form-group">
                     <label for="pinDays">置顶天数</label>
                     <input type="number" id="pinDays" min="1" max="30" value="7" 
-                           placeholder"输入置顶天数（1-30 天）" style="
+                                   placeholder="输入置顶天数（1-30 天）" style="
                                width: 100%;
                                padding: 12px;
                                border: 2px solid #e0e0e0;
@@ -1746,16 +2000,9 @@
     <script>
         // 页面初始化
         document.addEventListener('DOMContentLoaded', function() {
-            checkAuthStatus();
+            stInitNavbar();
             loadStoryDetail();
 
-            // 汉堡菜单
-            const hamburger = document.getElementById('hamburger');
-            const navMenu = document.getElementById('navMenu');
-            hamburger?.addEventListener('click', () => {
-                navMenu?.classList.toggle('active');
-            });
-            
             // 分享按钮
             document.getElementById('shareBtn')?.addEventListener('click', function() {
                 if (window.currentStory) {
@@ -1902,6 +2149,9 @@
                 window.currentStory = story;
                 
                 document.getElementById('storyTitle').textContent = story.title || '未命名故事';
+                // 更新导航栏面包屑中的故事名
+                const navStoryTitle = document.getElementById('navStoryTitle');
+                if (navStoryTitle) navStoryTitle.textContent = story.title || '故事详情';
                 document.getElementById('storyAuthor').textContent = story.author?.username || '未知作者';
                 
                 // 安全处理日期
@@ -1950,11 +2200,20 @@
                 startReadBtn.parentNode.replaceChild(newStartReadBtn, startReadBtn);
                 
                 newStartReadBtn.addEventListener('click', () => {
-                    const firstChapter = document.querySelector('.chapter-item');
-                    if (firstChapter) {
-                        firstChapter.click();
+                    // 优先从已加载的章节列表中取第一章（parent_id 为 null 的根章节）
+                    const storyData = window.currentStory;
+                    if (storyData && storyData.nodes && storyData.nodes.length > 0) {
+                        // 找根章节（parent_id 为 null）
+                        const rootChapter = storyData.nodes.find(n => !n.parent_id) || storyData.nodes[0];
+                        window.location.href = `/chapter?id=${rootChapter.id}`;
                     } else {
-                        showError('还没有章节可以阅读');
+                        // 降级：点击章节列表中的第一项
+                        const firstChapter = document.querySelector('.chapter-item');
+                        if (firstChapter) {
+                            firstChapter.click();
+                        } else {
+                            showError('还没有章节可以阅读');
+                        }
                     }
                 });
                 
@@ -3145,6 +3404,86 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
             // 这里应该从后端获取实际字数
             return story.wordCount || 0;
         }
+
+        // ===== 新版导航栏初始化 =====
+        function stInitNavbar() {
+            // 滚动阴影
+            const navbar = document.getElementById('stNavbar');
+            window.addEventListener('scroll', () => {
+                navbar?.classList.toggle('scrolled', window.scrollY > 20);
+            }, { passive: true });
+
+            // 认证状态
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            const loginEl   = document.getElementById('stNavLogin');
+            const registerEl = document.getElementById('stNavRegister');
+            const profileEl = document.getElementById('stNavProfile');
+            const logoutEl  = document.getElementById('stNavLogout');
+            const notifEl   = document.getElementById('stNavNotification');
+
+            if (token) {
+                if (loginEl)    loginEl.style.display    = 'none';
+                if (registerEl) registerEl.style.display = 'none';
+                if (profileEl)  profileEl.style.display  = 'flex';
+                if (logoutEl)   logoutEl.style.display   = 'flex';
+                if (notifEl) {
+                    notifEl.style.display = 'flex';
+                    stLoadNotifBadge(token);
+                }
+            } else {
+                if (loginEl)    loginEl.style.display    = 'inline-flex';
+                if (registerEl) registerEl.style.display = 'inline-flex';
+                if (profileEl)  profileEl.style.display  = 'none';
+                if (logoutEl)   logoutEl.style.display   = 'none';
+                if (notifEl)    notifEl.style.display    = 'none';
+            }
+        }
+
+        async function stLoadNotifBadge(token) {
+            try {
+                const res = await fetch('/api/notifications', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                const badge = document.getElementById('stNavBadge');
+                if (badge && data.unreadCount > 0) {
+                    badge.textContent = data.unreadCount > 99 ? '99+' : data.unreadCount;
+                    badge.style.display = 'flex';
+                }
+            } catch (e) { /* 静默失败 */ }
+        }
+
+        function stLogout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('user');
+            window.location.href = '/login';
+        }
+
+        function stToggleNav() {
+            const links  = document.getElementById('stNavLinks');
+            const toggle = document.getElementById('stNavToggle');
+            const isOpen = links?.classList.toggle('open');
+            toggle?.setAttribute('aria-expanded', isOpen);
+            const icon = toggle?.querySelector('i');
+            if (icon) icon.className = isOpen ? 'fas fa-times' : 'fas fa-bars';
+        }
+
+        // 点击导航外侧关闭移动端菜单
+        document.addEventListener('click', (e) => {
+            const links  = document.getElementById('stNavLinks');
+            const toggle = document.getElementById('stNavToggle');
+            if (links?.classList.contains('open') &&
+                !links.contains(e.target) &&
+                !toggle?.contains(e.target)) {
+                links.classList.remove('open');
+                toggle?.setAttribute('aria-expanded', 'false');
+                const icon = toggle?.querySelector('i');
+                if (icon) icon.className = 'fas fa-bars';
+            }
+        });
 
         // 显示错误消息
         function showError(message) {
@@ -4411,6 +4750,10 @@ function getTreeOption(treeData, layout) {
                                 <div style="color: #999;">中间章节已折叠</div>
                             </div>`;
                         }
+                        // 如果是虚拟根节点，不显示 tooltip
+                        if (data.isVirtualRoot || !data.id) {
+                            return '';
+                        }
                         
                         return `<div style="padding: 10px;">
                             <div style="font-weight: bold; margin-bottom: 5px;">${data.name}</div>
@@ -4853,6 +5196,11 @@ function getTreeOption(treeData, layout) {
             if (nodeData.isEllipsis) {
                 console.log('点击省略号节点，展开被折叠的章节:', nodeData.collapsedNodes);
                 expandEllipsisNode(nodeData);
+                return;
+            }
+            
+            // 如果是虚拟根节点（故事标题），不处理
+            if (nodeData.isVirtualRoot || !nodeData.id) {
                 return;
             }
             
