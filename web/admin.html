@@ -14,7 +14,7 @@
     body { font-family: var(--st-font-sans); background: var(--st-bg-secondary); }
 
     .navbar {
-      background: #2c3e50;
+      background: var(--st-gray-900, #111827);
       color: white;
       padding: 0 20px;
       display: flex;
@@ -33,50 +33,50 @@
       margin-bottom: 30px;
     }
     .stat-card {
-      background: #fff;
-      border-radius: 8px;
+      background: var(--st-bg-primary, #fff);
+      border-radius: var(--st-radius-lg, 8px);
       padding: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      box-shadow: var(--st-shadow-sm, 0 2px 8px rgba(0,0,0,0.08));
     }
-    .stat-card .label { color: #666; font-size: 14px; margin-bottom: 8px; }
-    .stat-card .value { font-size: 32px; font-weight: bold; color: #2c3e50; }
+    .stat-card .label { color: var(--st-text-secondary, #6B7280); font-size: var(--st-text-sm, 14px); margin-bottom: 8px; }
+    .stat-card .value { font-size: 32px; font-weight: var(--st-font-bold, 700); color: var(--st-text-primary, #111827); }
 
     .review-item {
-      background: #fff;
-      border-radius: 12px;
+      background: var(--st-bg-primary, #fff);
+      border-radius: var(--st-radius-xl, 12px);
       padding: 20px;
       margin-bottom: 16px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      box-shadow: var(--st-shadow-sm, 0 2px 8px rgba(0,0,0,0.08));
     }
     .review-item .header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px; }
-    .review-item h3 { color: #2c3e50; margin-bottom: 8px; }
-    .review-item .meta { color: #666; font-size: 14px; margin-bottom: 12px; }
+    .review-item h3 { color: var(--st-text-primary, #111827); margin-bottom: 8px; }
+    .review-item .meta { color: var(--st-text-secondary, #6B7280); font-size: var(--st-text-sm, 14px); margin-bottom: 12px; }
     .review-item .content {
-      background: #f8f9fa;
+      background: var(--st-bg-secondary, #F9FAFB);
       padding: 16px;
-      border-radius: 8px;
+      border-radius: var(--st-radius-lg, 8px);
       line-height: 1.6;
       margin-bottom: 16px;
       max-height: 200px;
       overflow-y: auto;
     }
-    .review-item .reports { color: #e74c3c; font-size: 14px; margin-bottom: 12px; }
+    .review-item .reports { color: var(--st-error-500, #EF4444); font-size: var(--st-text-sm, 14px); margin-bottom: 12px; }
     .review-item .actions { display: flex; gap: 10px; }
 
     .btn {
       padding: 10px 20px;
       border: none;
-      border-radius: 6px;
+      border-radius: var(--st-radius-md, 6px);
       cursor: pointer;
-      font-size: 14px;
-      transition: all 0.2s;
+      font-size: var(--st-text-sm, 14px);
+      transition: all var(--st-duration-fast, 0.15s);
     }
-    .btn-success { background: #27ae60; color: white; }
-    .btn-success:hover { background: #229954; }
-    .btn-danger { background: #e74c3c; color: white; }
-    .btn-danger:hover { background: #c0392b; }
-    .btn-warning { background: #f39c12; color: white; }
-    .btn-warning:hover { background: #e67e22; }
+    .btn-success { background: var(--st-success-500, #22C55E); color: white; }
+    .btn-success:hover { background: var(--st-success-600, #16A34A); }
+    .btn-danger { background: var(--st-error-500, #EF4444); color: white; }
+    .btn-danger:hover { background: var(--st-error-600, #DC2626); }
+    .btn-warning { background: var(--st-warning-500, #F59E0B); color: white; }
+    .btn-warning:hover { background: var(--st-warning-600, #D97706); }
 
     .loading {
       text-align: center;
@@ -87,20 +87,20 @@
       display: inline-block;
       width: 30px;
       height: 30px;
-      border: 3px solid #f3f3f3;
-      border-top: 3px solid #3498db;
+      border: 3px solid var(--st-gray-100, #F3F4F6);
+      border-top: 3px solid var(--st-primary-500, #6366F1);
       border-radius: 50%;
       animation: spin 1s linear infinite;
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-    .empty { text-align: center; padding: 60px; color: #999; }
+    .empty { text-align: center; padding: 60px; color: var(--st-text-tertiary, #9CA3AF); }
 
     .tabs {
       display: flex;
       gap: 10px;
       margin-bottom: 20px;
-      border-bottom: 2px solid #e0e0e0;
+      border-bottom: 2px solid var(--st-gray-200, #E5E7EB);
     }
     .tab {
       padding: 12px 24px;
@@ -108,26 +108,26 @@
       border: none;
       border-bottom: 3px solid transparent;
       cursor: pointer;
-      font-size: 16px;
-      font-weight: 600;
-      color: #666;
-      transition: all 0.3s;
+      font-size: var(--st-text-base, 16px);
+      font-weight: var(--st-font-semibold, 600);
+      color: var(--st-text-secondary, #6B7280);
+      transition: all var(--st-duration-normal, 0.2s);
     }
-    .tab:hover { color: #2c3e50; }
+    .tab:hover { color: var(--st-text-primary, #111827); }
     .tab.active {
-      color: #2c3e50;
-      border-bottom-color: #3498db;
+      color: var(--st-text-primary, #111827);
+      border-bottom-color: var(--st-primary-500, #6366F1);
     }
 
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
     .withdrawal-item {
-      background: #fff;
-      border-radius: 12px;
+      background: var(--st-bg-primary, #fff);
+      border-radius: var(--st-radius-xl, 12px);
       padding: 20px;
       margin-bottom: 16px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      box-shadow: var(--st-shadow-sm, 0 2px 8px rgba(0,0,0,0.08));
     }
     .withdrawal-item .header {
       display: flex;
@@ -138,37 +138,37 @@
     .withdrawal-item .amount {
       font-size: 28px;
       font-weight: 700;
-      color: #27ae60;
+      color: var(--st-success-600, #16A34A);
     }
     .withdrawal-item .status {
       padding: 6px 12px;
-      border-radius: 20px;
+      border-radius: var(--st-radius-full, 20px);
       font-size: 13px;
       font-weight: 600;
     }
-    .withdrawal-item .status.pending { background: #fff3cd; color: #856404; }
-    .withdrawal-item .status.approved { background: #d4edda; color: #155724; }
-    .withdrawal-item .status.rejected { background: #f8d7da; color: #721c24; }
+    .withdrawal-item .status.pending { background: var(--st-warning-50, #FFFBEB); color: var(--st-warning-700, #B45309); }
+    .withdrawal-item .status.approved { background: var(--st-success-50, #F0FDF4); color: var(--st-success-700, #15803D); }
+    .withdrawal-item .status.rejected { background: var(--st-error-50, #FEF2F2); color: var(--st-error-700, #B91C1C); }
     .withdrawal-item .info {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 12px;
       margin-bottom: 16px;
       padding: 16px;
-      background: #f8f9fa;
-      border-radius: 8px;
+      background: var(--st-bg-secondary, #F9FAFB);
+      border-radius: var(--st-radius-lg, 8px);
     }
     .withdrawal-item .info-item {
       display: flex;
       flex-direction: column;
     }
     .withdrawal-item .info-item .label {
-      color: #666;
+      color: var(--st-text-secondary, #6B7280);
       font-size: 13px;
       margin-bottom: 4px;
     }
     .withdrawal-item .info-item .value {
-      color: #2c3e50;
+      color: var(--st-text-primary, #111827);
       font-weight: 600;
     }
     .withdrawal-item .actions {
@@ -178,16 +178,16 @@
     .withdrawal-item textarea {
       width: 100%;
       padding: 10px;
-      border: 2px solid #e0e0e0;
-      border-radius: 6px;
-      font-size: 14px;
+      border: 2px solid var(--st-gray-200, #E5E7EB);
+      border-radius: var(--st-radius-md, 6px);
+      font-size: var(--st-text-sm, 14px);
       margin-bottom: 12px;
       font-family: inherit;
       resize: vertical;
       min-height: 60px;
     }
 
-    .badge-free { background: #e0e0e0; color: #666; }
+    .badge-free { background: var(--st-gray-200, #E5E7EB); color: var(--st-text-secondary, #6B7280); }
     .badge-trial { background: #ffecd2; color: #d4a574; }
     .badge-monthly { background: #d5e1df; color: #2d5d5a; }
     .badge-quarterly { background: #a8d5ba; color: #1e5c3a; }
@@ -335,15 +335,15 @@
           </div>
           <div class="stat-card">
             <div class="label">待审核提现</div>
-            <div class="value" style="color: #f39c12;">${withdrawalStats.pending || 0}</div>
+            <div class="value" style="color: var(--st-warning-500, #F59E0B);">${withdrawalStats.pending || 0}</div>
           </div>
           <div class="stat-card">
             <div class="label">已通过提现</div>
-            <div class="value" style="color: #27ae60;">${withdrawalStats.approved || 0}</div>
+            <div class="value" style="color: var(--st-success-600, #16A34A);">${withdrawalStats.approved || 0}</div>
           </div>
           <div class="stat-card">
             <div class="label">提现总额</div>
-            <div class="value" style="color: #3498db;">${withdrawalStats.totalAmount || 0}</div>
+            <div class="value" style="color: var(--st-primary-500, #6366F1);">${withdrawalStats.totalAmount || 0}</div>
           </div>
         `;
       } catch (e) {
@@ -381,7 +381,7 @@
               <button class="btn btn-success" onclick="handleReview(${item.id}, 'APPROVED')">✅ 通过</button>
               <button class="btn btn-danger" onclick="handleReview(${item.id}, 'REJECTED')">❌ 驳回</button>
               <button class="btn btn-warning" onclick="handleReview(${item.id}, 'HIDDEN')">🚫 下架</button>
-              ${item.reportCount > 0 ? `<button class="btn" style="background: #95a5a6; color: white;" onclick="viewReports(${item.id})">查看举报</button>` : ''}
+              ${item.reportCount > 0 ? `<button class="btn" style="background: var(--st-gray-400, #9CA3AF); color: white;" onclick="viewReports(${item.id})">查看举报</button>` : ''}
             </div>
           </div>
         `).join('');
@@ -545,7 +545,7 @@
                   <button class="btn btn-danger" onclick="showRejectNote(${req.id})">
                     ❌ 拒绝
                   </button>
-                  <button class="btn" style="background: #95a5a6; color: white;" onclick="viewUserEarnings(${req.user_id})">
+                  <button class="btn" style="background: var(--st-gray-400, #9CA3AF); color: white;" onclick="viewUserEarnings(${req.user_id})">
                     📊 查看用户收益
                   </button>
                 </div>
@@ -734,27 +734,27 @@
           </div>
           <div class="stat-card">
             <div class="label">今日新增</div>
-            <div class="value" style="color: #27ae60;">${stats.newMembersToday}</div>
+            <div class="value" style="color: var(--st-success-600, #16A34A);">${stats.newMembersToday}</div>
           </div>
           <div class="stat-card">
             <div class="label">本月新增</div>
-            <div class="value" style="color: #3498db;">${stats.newMembersThisMonth}</div>
+            <div class="value" style="color: var(--st-primary-500, #6366F1);">${stats.newMembersThisMonth}</div>
           </div>
           <div class="stat-card">
             <div class="label">即将到期</div>
-            <div class="value" style="color: #f39c12;">${stats.expiringMembers}</div>
+            <div class="value" style="color: var(--st-warning-500, #F59E0B);">${stats.expiringMembers}</div>
           </div>
           <div class="stat-card">
             <div class="label">活跃会员</div>
-            <div class="value" style="color: #e74c3c;">${stats.activeMembers}</div>
+            <div class="value" style="color: var(--st-error-500, #EF4444);">${stats.activeMembers}</div>
           </div>
           <div class="stat-card">
             <div class="label">自动续费</div>
-            <div class="value" style="color: #9b59b6;">${stats.autoRenewCount}</div>
+            <div class="value" style="color: var(--st-primary-700, #4338CA);">${stats.autoRenewCount}</div>
           </div>
           <div class="stat-card">
             <div class="label">本月收入</div>
-            <div class="value" style="color: #1abc9c;">¥${stats.revenue.toFixed(2)}</div>
+            <div class="value" style="color: var(--st-success-500, #22C55E);">¥${stats.revenue.toFixed(2)}</div>
           </div>
         `;
       } catch (e) {
@@ -828,7 +828,7 @@
               <div class="info-item">
                 <div class="label">操作</div>
                 <div class="value">
-                  <button class="btn" style="padding: 4px 8px; font-size: 12px; background: #3498db; color: white;" onclick="viewMemberDetail(${member.id})">
+                  <button class="btn" style="padding: 4px 8px; font-size: 12px; background: var(--st-primary-500, #6366F1); color: white;" onclick="viewMemberDetail(${member.id})">
                     查看详情
                   </button>
                 </div>

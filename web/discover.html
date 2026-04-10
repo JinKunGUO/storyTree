@@ -418,6 +418,178 @@
             text-align: center; padding: var(--st-space-8) var(--st-page-padding-x);
             font-size: var(--st-text-sm); margin-top: var(--st-space-16);
         }
+
+        /* ===== 高级筛选面板 ===== */
+        .advanced-filter-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--st-space-2);
+            padding: var(--st-space-2) var(--st-space-4);
+            background: transparent;
+            border: 2px solid var(--st-gray-200);
+            border-radius: var(--st-radius-full);
+            font-size: var(--st-text-sm);
+            font-weight: var(--st-font-medium);
+            color: var(--st-text-secondary);
+            cursor: pointer;
+            transition: all var(--st-duration-fast);
+            margin-top: var(--st-space-3);
+        }
+        .advanced-filter-toggle:hover,
+        .advanced-filter-toggle.active {
+            background: var(--st-primary-50);
+            border-color: var(--st-primary-300);
+            color: var(--st-primary-600);
+        }
+        .advanced-filter-toggle .toggle-arrow {
+            transition: transform var(--st-duration-fast);
+        }
+        .advanced-filter-toggle.active .toggle-arrow {
+            transform: rotate(180deg);
+        }
+
+        .advanced-filter-panel {
+            display: none;
+            margin-top: var(--st-space-4);
+            padding-top: var(--st-space-4);
+            border-top: 1px solid var(--st-gray-100);
+            animation: slideInUp var(--st-duration-normal) var(--st-ease-out);
+        }
+        .advanced-filter-panel.open { display: block; }
+
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--st-space-4);
+            margin-bottom: var(--st-space-4);
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--st-space-2);
+            min-width: 140px;
+        }
+        .filter-group-label {
+            font-size: var(--st-text-xs);
+            font-weight: var(--st-font-semibold);
+            color: var(--st-text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .filter-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--st-space-2);
+        }
+        .filter-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px var(--st-space-3);
+            background: var(--st-gray-100);
+            border: 1px solid transparent;
+            border-radius: var(--st-radius-full);
+            font-size: var(--st-text-xs);
+            font-weight: var(--st-font-medium);
+            color: var(--st-text-secondary);
+            cursor: pointer;
+            transition: all var(--st-duration-fast);
+            user-select: none;
+        }
+        .filter-chip:hover {
+            background: var(--st-primary-50);
+            color: var(--st-primary-600);
+            border-color: var(--st-primary-200);
+        }
+        .filter-chip.active {
+            background: var(--st-primary-100);
+            color: var(--st-primary-700);
+            border-color: var(--st-primary-300);
+        }
+
+        /* 已激活的筛选标签 */
+        .active-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--st-space-2);
+            margin-top: var(--st-space-3);
+        }
+        .active-filter-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px var(--st-space-3);
+            background: var(--st-primary-100);
+            color: var(--st-primary-700);
+            border-radius: var(--st-radius-full);
+            font-size: var(--st-text-xs);
+            font-weight: var(--st-font-medium);
+        }
+        .active-filter-tag .remove-tag {
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            color: var(--st-primary-500);
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            line-height: 1;
+        }
+        .active-filter-tag .remove-tag:hover { color: var(--st-error-500); }
+
+        /* ===== 视图切换 ===== */
+        .view-toggle {
+            display: flex;
+            gap: 4px;
+            background: var(--st-gray-100);
+            border-radius: var(--st-radius-lg);
+            padding: 3px;
+        }
+        .view-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: transparent;
+            border: none;
+            border-radius: var(--st-radius-md);
+            color: var(--st-text-tertiary);
+            cursor: pointer;
+            transition: all var(--st-duration-fast);
+            font-size: 14px;
+        }
+        .view-btn:hover { color: var(--st-text-primary); }
+        .view-btn.active {
+            background: white;
+            color: var(--st-primary-600);
+            box-shadow: var(--st-shadow-sm);
+        }
+
+        /* 列表视图样式 */
+        .stories-grid.list-view {
+            grid-template-columns: 1fr;
+        }
+        .stories-grid.list-view .story-card {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+        }
+        .stories-grid.list-view .story-card-cover {
+            height: 100%;
+            min-height: 100px;
+            border-radius: var(--st-radius-xl) 0 0 var(--st-radius-xl);
+        }
+        .stories-grid.list-view .story-card-content {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        @media (max-width: 480px) {
+            .stories-grid.list-view .story-card {
+                grid-template-columns: 80px 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -503,6 +675,52 @@
                             <i class="fas fa-check-circle" aria-hidden="true"></i> 已完结
                         </button>
                     </div>
+
+                    <!-- 高级筛选切换按钮 -->
+                    <button class="advanced-filter-toggle" id="advancedFilterToggle" onclick="toggleAdvancedFilter()" aria-expanded="false" aria-controls="advancedFilterPanel">
+                        <i class="fas fa-sliders-h" aria-hidden="true"></i>
+                        高级筛选
+                        <i class="fas fa-chevron-down toggle-arrow" aria-hidden="true"></i>
+                    </button>
+
+                    <!-- 高级筛选面板 -->
+                    <div class="advanced-filter-panel" id="advancedFilterPanel" role="region" aria-label="高级筛选">
+                        <div class="filter-row">
+                            <div class="filter-group">
+                                <div class="filter-group-label">排序方式</div>
+                                <div class="filter-chips" role="group" aria-label="排序方式">
+                                    <button class="filter-chip active" data-type="sort" data-value="default" onclick="toggleFilterChip(this)">默认</button>
+                                    <button class="filter-chip" data-type="sort" data-value="chapters" onclick="toggleFilterChip(this)">章节最多</button>
+                                    <button class="filter-chip" data-type="sort" data-value="bookmarks" onclick="toggleFilterChip(this)">收藏最多</button>
+                                    <button class="filter-chip" data-type="sort" data-value="followers" onclick="toggleFilterChip(this)">关注最多</button>
+                                </div>
+                            </div>
+                            <div class="filter-group">
+                                <div class="filter-group-label">完结状态</div>
+                                <div class="filter-chips" role="group" aria-label="完结状态">
+                                    <button class="filter-chip active" data-type="status" data-value="all" onclick="toggleFilterChip(this)">全部</button>
+                                    <button class="filter-chip" data-type="status" data-value="ongoing" onclick="toggleFilterChip(this)">连载中</button>
+                                    <button class="filter-chip" data-type="status" data-value="completed" onclick="toggleFilterChip(this)">已完结</button>
+                                </div>
+                            </div>
+                            <div class="filter-group">
+                                <div class="filter-group-label">内容长度</div>
+                                <div class="filter-chips" role="group" aria-label="内容长度">
+                                    <button class="filter-chip active" data-type="length" data-value="all" onclick="toggleFilterChip(this)">不限</button>
+                                    <button class="filter-chip" data-type="length" data-value="short" onclick="toggleFilterChip(this)">短篇 (&lt;5章)</button>
+                                    <button class="filter-chip" data-type="length" data-value="medium" onclick="toggleFilterChip(this)">中篇 (5-20章)</button>
+                                    <button class="filter-chip" data-type="length" data-value="long" onclick="toggleFilterChip(this)">长篇 (&gt;20章)</button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 已激活筛选标签 -->
+                        <div class="active-filters" id="activeFilters" style="display:none;"></div>
+                        <div style="display:flex; justify-content:flex-end; margin-top:var(--st-space-3);">
+                            <button class="filter-tab" onclick="resetAdvancedFilters()" style="font-size:var(--st-text-xs);">
+                                <i class="fas fa-undo" aria-hidden="true"></i> 重置筛选
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -531,6 +749,15 @@
                         全部故事
                         <span class="stories-count" id="storiesCount"></span>
                     </h2>
+                    <!-- 视图切换 -->
+                    <div class="view-toggle" role="group" aria-label="切换视图">
+                        <button class="view-btn active" id="gridViewBtn" onclick="switchView('grid')" title="网格视图" aria-label="网格视图" aria-pressed="true">
+                            <i class="fas fa-th" aria-hidden="true"></i>
+                        </button>
+                        <button class="view-btn" id="listViewBtn" onclick="switchView('list')" title="列表视图" aria-label="列表视图" aria-pressed="false">
+                            <i class="fas fa-list" aria-hidden="true"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="stories-grid" id="storiesGrid" aria-live="polite">
                     <!-- 骨架屏 -->
@@ -839,7 +1066,158 @@
             document.querySelectorAll('.filter-tab').forEach(tab => {
                 tab.addEventListener('click', () => applyFilter(tab.dataset.filter));
             });
+
+            // 恢复视图偏好
+            const savedView = localStorage.getItem('discover_view') || 'grid';
+            if (savedView === 'list') switchView('list', false);
         });
+
+        // ===== 高级筛选 =====
+        const advancedFilters = { sort: 'default', status: 'all', length: 'all' };
+
+        function toggleAdvancedFilter() {
+            const panel = document.getElementById('advancedFilterPanel');
+            const toggle = document.getElementById('advancedFilterToggle');
+            const isOpen = panel.classList.toggle('open');
+            toggle.classList.toggle('active', isOpen);
+            toggle.setAttribute('aria-expanded', isOpen);
+        }
+
+        function toggleFilterChip(chip) {
+            const type = chip.dataset.type;
+            const value = chip.dataset.value;
+            // 同组内单选
+            chip.closest('.filter-chips').querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            advancedFilters[type] = value;
+            updateActiveFilterTags();
+            applyAdvancedFilters();
+        }
+
+        function updateActiveFilterTags() {
+            const container = document.getElementById('activeFilters');
+            const tags = [];
+            const labelMap = {
+                sort: { default: null, chapters: '章节最多', bookmarks: '收藏最多', followers: '关注最多' },
+                status: { all: null, ongoing: '连载中', completed: '已完结' },
+                length: { all: null, short: '短篇', medium: '中篇', long: '长篇' }
+            };
+            Object.entries(advancedFilters).forEach(([type, value]) => {
+                const label = labelMap[type]?.[value];
+                if (label) {
+                    tags.push(`<span class="active-filter-tag">
+                        ${label}
+                        <button class="remove-tag" onclick="removeFilterTag('${type}')" aria-label="移除筛选：${label}">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </span>`);
+                }
+            });
+            if (tags.length) {
+                container.innerHTML = tags.join('');
+                container.style.display = 'flex';
+            } else {
+                container.style.display = 'none';
+            }
+        }
+
+        function removeFilterTag(type) {
+            advancedFilters[type] = type === 'sort' ? 'default' : 'all';
+            // 重置对应chip的active状态
+            document.querySelectorAll(`.filter-chip[data-type="${type}"]`).forEach(c => {
+                c.classList.toggle('active', c.dataset.value === advancedFilters[type]);
+            });
+            updateActiveFilterTags();
+            applyAdvancedFilters();
+        }
+
+        function resetAdvancedFilters() {
+            advancedFilters.sort = 'default';
+            advancedFilters.status = 'all';
+            advancedFilters.length = 'all';
+            document.querySelectorAll('.filter-chip').forEach(c => {
+                const defaultValue = c.dataset.type === 'sort' ? 'default' : 'all';
+                c.classList.toggle('active', c.dataset.value === defaultValue);
+            });
+            updateActiveFilterTags();
+            applyAdvancedFilters();
+        }
+
+        function applyAdvancedFilters() {
+            let filtered = [...allStories];
+
+            // 应用基础筛选（来自filter-tab）
+            switch (currentFilter) {
+                case 'popular':
+                    filtered.sort((a, b) => (b._count?.nodes || 0) - (a._count?.nodes || 0));
+                    break;
+                case 'new':
+                    filtered.sort((a, b) => new Date(b.createdAt || b.created_at || 0) - new Date(a.createdAt || a.created_at || 0));
+                    break;
+                case 'completed':
+                    filtered = filtered.filter(s => s.status === 'COMPLETED');
+                    break;
+            }
+
+            // 完结状态过滤
+            if (advancedFilters.status === 'ongoing') {
+                filtered = filtered.filter(s => s.status !== 'COMPLETED');
+            } else if (advancedFilters.status === 'completed') {
+                filtered = filtered.filter(s => s.status === 'COMPLETED');
+            }
+
+            // 内容长度过滤
+            const chapters = s => s._count?.nodes || 0;
+            if (advancedFilters.length === 'short') {
+                filtered = filtered.filter(s => chapters(s) < 5);
+            } else if (advancedFilters.length === 'medium') {
+                filtered = filtered.filter(s => chapters(s) >= 5 && chapters(s) <= 20);
+            } else if (advancedFilters.length === 'long') {
+                filtered = filtered.filter(s => chapters(s) > 20);
+            }
+
+            // 高级排序（覆盖基础排序）
+            if (advancedFilters.sort === 'chapters') {
+                filtered.sort((a, b) => (b._count?.nodes || 0) - (a._count?.nodes || 0));
+            } else if (advancedFilters.sort === 'bookmarks') {
+                filtered.sort((a, b) => (b._count?.bookmarks || 0) - (a._count?.bookmarks || 0));
+            } else if (advancedFilters.sort === 'followers') {
+                filtered.sort((a, b) => (b._count?.followers || 0) - (a._count?.followers || 0));
+            }
+
+            displayStories(filtered);
+            const hotSection = document.getElementById('hotStoriesSection');
+            if (currentFilter !== 'all' || advancedFilters.status !== 'all' || advancedFilters.length !== 'all') {
+                hotSection.style.display = 'none';
+            } else if (allStories.length >= 3) {
+                hotSection.style.display = 'block';
+            }
+        }
+
+        // ===== 视图切换 =====
+        let currentView = 'grid';
+
+        function switchView(view, save = true) {
+            currentView = view;
+            const grid = document.getElementById('storiesGrid');
+            const gridBtn = document.getElementById('gridViewBtn');
+            const listBtn = document.getElementById('listViewBtn');
+
+            if (view === 'list') {
+                grid.classList.add('list-view');
+                gridBtn.classList.remove('active');
+                listBtn.classList.add('active');
+                gridBtn.setAttribute('aria-pressed', 'false');
+                listBtn.setAttribute('aria-pressed', 'true');
+            } else {
+                grid.classList.remove('list-view');
+                gridBtn.classList.add('active');
+                listBtn.classList.remove('active');
+                gridBtn.setAttribute('aria-pressed', 'true');
+                listBtn.setAttribute('aria-pressed', 'false');
+            }
+            if (save) localStorage.setItem('discover_view', view);
+        }
     </script>
     <script src="js/loading.js"></script>
     <script src="js/toast.js"></script>

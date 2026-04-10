@@ -10,32 +10,41 @@
     <link rel="stylesheet" href="styles/utilities.css">
     <link rel="stylesheet" href="libs/fontawesome/css/all.min.css">
     <style>
+        body {
+            background: var(--st-gradient-bg, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--st-space-5, 20px);
+        }
+
         .verify-container {
             max-width: 500px;
-            margin: 100px auto;
-            padding: 40px;
+            width: 100%;
+            padding: var(--st-space-10, 40px);
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            border-radius: var(--st-radius-2xl, 20px);
+            box-shadow: var(--st-shadow-xl, 0 20px 40px rgba(0,0,0,0.15));
             text-align: center;
         }
 
         .verify-icon {
             font-size: 64px;
-            margin-bottom: 20px;
+            margin-bottom: var(--st-space-5, 20px);
         }
 
         .verify-icon.loading {
-            color: #3498db;
+            color: var(--st-primary-500, #6366F1);
             animation: spin 1s linear infinite;
         }
 
         .verify-icon.success {
-            color: #2ecc71;
+            color: var(--st-success-500, #22C55E);
         }
 
         .verify-icon.error {
-            color: #e74c3c;
+            color: var(--st-error-500, #EF4444);
         }
 
         @keyframes spin {
@@ -44,99 +53,124 @@
         }
 
         .verify-title {
-            font-size: 28px;
-            font-weight: 600;
-            margin-bottom: 15px;
-            color: #2c3e50;
+            font-size: var(--st-text-2xl, 28px);
+            font-weight: var(--st-font-semibold, 600);
+            margin-bottom: var(--st-space-4, 15px);
+            color: var(--st-text-primary, #111827);
         }
 
         .verify-message {
-            font-size: 16px;
-            color: #7f8c8d;
-            margin-bottom: 30px;
-            line-height: 1.6;
+            font-size: var(--st-text-base, 16px);
+            color: var(--st-text-secondary, #6B7280);
+            margin-bottom: var(--st-space-8, 30px);
+            line-height: var(--st-leading-relaxed, 1.6);
         }
 
         .verify-actions {
             display: flex;
-            gap: 15px;
+            gap: var(--st-space-4, 15px);
             justify-content: center;
             flex-wrap: wrap;
         }
 
         .btn {
-            padding: 12px 30px;
+            padding: var(--st-space-3, 12px) var(--st-space-8, 30px);
             border: none;
-            border-radius: 6px;
-            font-size: 16px;
+            border-radius: var(--st-radius-lg, 8px);
+            font-size: var(--st-text-base, 16px);
+            font-weight: var(--st-font-medium, 500);
             cursor: pointer;
             text-decoration: none;
-            display: inline-block;
-            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--st-space-2, 8px);
+            transition: all var(--st-duration-normal, 0.2s) var(--st-ease-default);
         }
 
         .btn-primary {
-            background: #3498db;
+            background: var(--st-gradient-brand, linear-gradient(135deg, #6366F1, #8B5CF6));
             color: white;
         }
 
         .btn-primary:hover {
-            background: #2980b9;
-        }
-
-        .btn-secondary {
-            background: #95a5a6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99,102,241,0.35);
+            text-decoration: none;
             color: white;
         }
 
+        .btn-secondary {
+            background: var(--st-gray-200, #E5E7EB);
+            color: var(--st-text-secondary, #6B7280);
+        }
+
         .btn-secondary:hover {
-            background: #7f8c8d;
+            background: var(--st-gray-300, #D1D5DB);
+            text-decoration: none;
+            color: var(--st-text-primary, #111827);
         }
 
         .resend-section {
-            margin-top: 30px;
-            padding-top: 30px;
-            border-top: 1px solid #ecf0f1;
+            margin-top: var(--st-space-8, 30px);
+            padding-top: var(--st-space-8, 30px);
+            border-top: 1px solid var(--st-gray-100, #F3F4F6);
         }
 
         .resend-text {
-            font-size: 14px;
-            color: #7f8c8d;
-            margin-bottom: 15px;
+            font-size: var(--st-text-sm, 14px);
+            color: var(--st-text-tertiary, #9CA3AF);
+            margin-bottom: var(--st-space-4, 15px);
         }
 
         .resend-form {
             display: flex;
-            gap: 10px;
+            gap: var(--st-space-3, 10px);
             justify-content: center;
             align-items: center;
+            flex-wrap: wrap;
         }
 
         .resend-input {
-            padding: 10px 15px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
+            padding: var(--st-space-3, 10px) var(--st-space-4, 15px);
+            border: 2px solid var(--st-gray-200, #E5E7EB);
+            border-radius: var(--st-radius-lg, 8px);
+            font-size: var(--st-text-sm, 14px);
             width: 250px;
+            transition: border-color var(--st-duration-fast, 0.15s);
+            outline: none;
+        }
+
+        .resend-input:focus {
+            border-color: var(--st-primary-500, #6366F1);
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
         }
 
         .btn-resend {
-            padding: 10px 20px;
-            background: #3498db;
+            padding: var(--st-space-3, 10px) var(--st-space-5, 20px);
+            background: var(--st-gradient-brand, linear-gradient(135deg, #6366F1, #8B5CF6));
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: var(--st-radius-lg, 8px);
             cursor: pointer;
-            font-size: 14px;
+            font-size: var(--st-text-sm, 14px);
+            font-weight: var(--st-font-medium, 500);
+            display: inline-flex;
+            align-items: center;
+            gap: var(--st-space-2, 6px);
+            transition: all var(--st-duration-normal, 0.2s);
         }
 
         .btn-resend:hover {
-            background: #2980b9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99,102,241,0.3);
         }
 
         .btn-resend:disabled {
-            background: #95a5a6;
+            background: var(--st-gray-300, #D1D5DB);
+            color: var(--st-gray-500, #6B7280);
             cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
     </style>
 </head>

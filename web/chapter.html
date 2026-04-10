@@ -824,12 +824,12 @@
             box-shadow: var(--st-shadow-lg);
             display: none;
             z-index: 200;
-            min-width: 200px;
+            min-width: 220px;
         }
 
         .settings-panel.active { display: block; }
         .setting-item { margin-bottom: 20px; }
-        .setting-label { font-size: 14px; color: var(--st-gray-500); margin-bottom: 10px; }
+        .setting-label { font-size: 14px; color: var(--st-gray-500); margin-bottom: 10px; font-weight: var(--st-font-medium); }
         .font-size-control { display: flex; gap: 10px; }
 
         .font-btn {
@@ -843,6 +843,82 @@
         }
 
         .font-btn.active { background: var(--st-primary); color: white; border-color: var(--st-primary); }
+
+        /* 阅读主题切换 */
+        .theme-options {
+            display: flex;
+            gap: var(--st-space-3);
+        }
+        .theme-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 6px;
+            background: none;
+            border: 2px solid var(--st-gray-200);
+            border-radius: var(--st-radius-lg);
+            cursor: pointer;
+            transition: all var(--st-duration-fast);
+            font-size: 11px;
+            color: var(--st-text-secondary);
+        }
+        .theme-btn:hover { border-color: var(--st-primary-300); }
+        .theme-btn.active { border-color: var(--st-primary-500); color: var(--st-primary-600); }
+        .theme-preview {
+            width: 36px;
+            height: 24px;
+            border-radius: var(--st-radius-sm);
+            border: 1px solid var(--st-gray-200);
+        }
+        .theme-preview.theme-light { background: #ffffff; }
+        .theme-preview.theme-sepia { background: #f5f0e8; }
+        .theme-preview.theme-dark { background: #1a1a2e; }
+
+        /* 评论排序按钮 */
+        .sort-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: var(--st-space-2) var(--st-space-3);
+            background: var(--st-gray-100);
+            border: 1px solid transparent;
+            border-radius: var(--st-radius-full);
+            font-size: var(--st-text-xs);
+            font-weight: var(--st-font-medium);
+            color: var(--st-text-secondary);
+            cursor: pointer;
+            transition: all var(--st-duration-fast);
+        }
+        .sort-btn:hover { background: var(--st-primary-50); color: var(--st-primary-600); border-color: var(--st-primary-200); }
+        .sort-btn.active { background: var(--st-primary-100); color: var(--st-primary-700); border-color: var(--st-primary-300); }
+
+        /* 阅读主题：护眼模式 */
+        body.theme-sepia .chapter-content,
+        body.theme-sepia .reading-container {
+            background: #f5f0e8;
+        }
+        body.theme-sepia .chapter-text {
+            color: #5b4636;
+        }
+        body.theme-sepia .chapter-title {
+            color: #3d2b1f;
+        }
+
+        /* 阅读主题：深色模式 */
+        body.theme-dark .chapter-content,
+        body.theme-dark .reading-container {
+            background: #1a1a2e;
+        }
+        body.theme-dark .chapter-text {
+            color: #c8c8d8;
+        }
+        body.theme-dark .chapter-title {
+            color: #e0e0f0;
+        }
+        body.theme-dark .chapter-meta {
+            color: #8888aa;
+        }
 
         /* ===== 阅读进度条 ===== */
         .reading-progress-bar-wrapper {
@@ -1405,13 +1481,30 @@
     </div>
 
     <!-- 设置面板 -->
-    <div class="settings-panel" id="settingsPanel">
+    <div class="settings-panel" id="settingsPanel" role="dialog" aria-label="阅读设置">
         <div class="setting-item">
             <div class="setting-label">字体大小</div>
             <div class="font-size-control">
                 <button class="font-btn" data-size="16">小</button>
                 <button class="font-btn active" data-size="18">中</button>
                 <button class="font-btn" data-size="20">大</button>
+            </div>
+        </div>
+        <div class="setting-item" style="margin-bottom:0;">
+            <div class="setting-label">阅读主题</div>
+            <div class="theme-options" role="group" aria-label="阅读主题">
+                <button class="theme-btn active" data-theme="light" onclick="switchTheme('light')" aria-label="浅色主题" aria-pressed="true">
+                    <span class="theme-preview theme-light"></span>
+                    浅色
+                </button>
+                <button class="theme-btn" data-theme="sepia" onclick="switchTheme('sepia')" aria-label="护眼主题" aria-pressed="false">
+                    <span class="theme-preview theme-sepia"></span>
+                    护眼
+                </button>
+                <button class="theme-btn" data-theme="dark" onclick="switchTheme('dark')" aria-label="深色主题" aria-pressed="false">
+                    <span class="theme-preview theme-dark"></span>
+                    深色
+                </button>
             </div>
         </div>
     </div>
@@ -1478,9 +1571,20 @@
 
             <!-- 评论区域 -->
             <div class="comments-section" id="comments-section">
-                <h2 class="comments-header">
-                    评论 (<span id="commentCount">0</span>)
-                </h2>
+                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:var(--st-space-3);">
+                    <h2 class="comments-header" style="margin:0;">
+                        评论 (<span id="commentCount">0</span>)
+                    </h2>
+                    <!-- 评论排序 -->
+                    <div class="comments-sort" role="group" aria-label="评论排序" style="display:flex; gap:var(--st-space-2);">
+                        <button class="sort-btn active" data-sort="new" onclick="switchCommentSort('new')" aria-pressed="true">
+                            <i class="fas fa-clock" style="font-size:12px;"></i> 最新
+                        </button>
+                        <button class="sort-btn" data-sort="hot" onclick="switchCommentSort('hot')" aria-pressed="false">
+                            <i class="fas fa-fire" style="font-size:12px;"></i> 最热
+                        </button>
+                    </div>
+                </div>
 
                 <!-- 发表评论 -->
                 <div class="comment-form">
@@ -2625,8 +2729,77 @@
                     if (chapterText) {
                         chapterText.style.fontSize = fontSize + 'px';
                     }
+                    localStorage.setItem('chapter_font_size', fontSize);
                 });
             });
+
+            // 恢复字体大小偏好
+            const savedFontSize = localStorage.getItem('chapter_font_size');
+            if (savedFontSize) {
+                const btn = document.querySelector(`.font-btn[data-size="${savedFontSize}"]`);
+                if (btn) btn.click();
+            }
+
+            // 恢复主题偏好
+            const savedTheme = localStorage.getItem('chapter_theme') || 'light';
+            if (savedTheme !== 'light') switchTheme(savedTheme, false);
+        }
+
+        // 切换阅读主题
+        function switchTheme(theme, save = true) {
+            // 移除旧主题
+            document.body.classList.remove('theme-light', 'theme-sepia', 'theme-dark');
+            if (theme !== 'light') document.body.classList.add(`theme-${theme}`);
+
+            // 更新按钮状态
+            document.querySelectorAll('.theme-btn').forEach(btn => {
+                const isActive = btn.dataset.theme === theme;
+                btn.classList.toggle('active', isActive);
+                btn.setAttribute('aria-pressed', isActive);
+            });
+
+            if (save) localStorage.setItem('chapter_theme', theme);
+        }
+
+        // ===== 评论排序 =====
+        let currentCommentSort = 'new';
+
+        function switchCommentSort(sort) {
+            if (sort === currentCommentSort) return;
+            currentCommentSort = sort;
+
+            // 更新按钮状态
+            document.querySelectorAll('.sort-btn').forEach(btn => {
+                const isActive = btn.dataset.sort === sort;
+                btn.classList.toggle('active', isActive);
+                btn.setAttribute('aria-pressed', String(isActive));
+            });
+
+            if (!commentSystem || !commentSystem.comments) return;
+
+            // 将置顶评论与普通评论分离，置顶评论不参与排序，始终置顶
+            const pinnedComments = commentSystem.comments.filter(c => c.pinned);
+            const normalComments = commentSystem.comments.filter(c => !c.pinned);
+
+            if (normalComments.length < 2 && pinnedComments.length === 0) return;
+
+            // 只对普通评论排序
+            if (sort === 'hot') {
+                normalComments.sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0));
+            } else {
+                // 最新在前
+                normalComments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            }
+
+            // 置顶评论在最上方，排序后的普通评论跟随其后
+            const sortedComments = [...pinnedComments, ...normalComments];
+
+            const container = document.getElementById('comments-list');
+            if (container) {
+                container.innerHTML = sortedComments
+                    .map(c => commentSystem.renderComment(c))
+                    .join('');
+            }
         }
 
         // ============================================
@@ -2686,43 +2859,35 @@
         }
 
         async function loadToc() {
-            if (!storyId) return;
+            if (!currentChapter) return;
 
             const nav = document.getElementById('tocNav');
             const titleEl = document.getElementById('tocStoryTitle');
             const metaEl = document.getElementById('tocStoryMeta');
 
+            nav.innerHTML = '<div class="toc-loading"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>';
+
             try {
-                const response = await fetch(`/api/stories/${storyId}`);
-                if (!response.ok) throw new Error('加载故事信息失败');
+                // 使用 path 接口：返回从根章节到当前章节的祖先链
+                const response = await fetch(`/api/stories/nodes/${currentChapter.id}/path`);
+                if (!response.ok) throw new Error('加载章节路径失败');
                 const data = await response.json();
-                const story = data.story || data;
 
-                titleEl.textContent = story.title || '未知故事';
-                metaEl.textContent = `共 ${story.node_count || 0} 个章节`;
+                // 更新故事标题
+                titleEl.textContent = data.story?.title || '未知故事';
+                metaEl.textContent = `当前分支共 ${data.path?.length || 0} 章`;
 
-                // 加载章节树（根节点开始）
-                const nodesRes = await fetch(`/api/stories/${storyId}/nodes`);
-                if (!nodesRes.ok) throw new Error('加载章节列表失败');
-                const nodesData = await nodesRes.json();
-                const nodes = nodesData.nodes || nodesData || [];
+                const path = data.path || [];
 
-                if (nodes.length === 0) {
+                if (path.length === 0) {
                     nav.innerHTML = '<div class="toc-loading">暂无章节</div>';
                     return;
                 }
 
-                // 扁平化渲染（按 order/created_at 排序）
-                const sorted = nodes.slice().sort((a, b) => {
-                    if (a.order !== undefined && b.order !== undefined) return a.order - b.order;
-                    return new Date(a.created_at) - new Date(b.created_at);
-                });
+                const currentId = currentChapter.id;
 
-                const currentId = currentChapter?.id;
-
-                nav.innerHTML = sorted.map((node, idx) => {
+                nav.innerHTML = path.map((node, idx) => {
                     const isCurrent = node.id === currentId;
-                    const isAI = node.is_ai_generated;
                     return `
                         <a class="toc-item ${isCurrent ? 'toc-item-current' : ''}"
                            href="/chapter.html?id=${node.id}"
@@ -2730,7 +2895,6 @@
                            title="${escapeHtml(node.title)}">
                             <span class="toc-item-index">${idx + 1}</span>
                             <span class="toc-item-title">${escapeHtml(node.title)}</span>
-                            ${isAI ? '<span class="toc-item-badge">AI</span>' : ''}
                         </a>
                     `;
                 }).join('');
