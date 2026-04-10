@@ -4,7 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>会员中心 - StoryTree</title>
-    <link rel="stylesheet" href="/css/common.css">
+    <link rel="stylesheet" href="styles/design-system.css">
+    <link rel="stylesheet" href="styles/animations.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link rel="stylesheet" href="styles/utilities.css">
+    <link rel="stylesheet" href="libs/fontawesome/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -13,8 +17,8 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: var(--st-font-sans);
+            background: var(--st-gradient-bg);
             min-height: 100vh;
             padding: 20px;
         }
@@ -147,7 +151,7 @@
         .tier-price {
             font-size: 2.5em;
             font-weight: bold;
-            color: #667eea;
+            color: var(--st-primary-500);
         }
 
         .tier-price small {
@@ -196,7 +200,7 @@
         }
 
         .btn-upgrade {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--st-primary-500) 0%, var(--st-primary-700) 100%);
             color: white;
         }
 
@@ -587,6 +591,7 @@
 
         init();
     </script>
+    <script src="js/loading.js"></script>
     <script src="js/toast.js"></script>
     <script src="js/modal.js"></script>
     <script src="js/navbar.js"></script>

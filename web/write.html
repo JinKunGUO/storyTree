@@ -45,7 +45,7 @@
 
         .story-info i {
             font-size: 24px;
-            color: #667eea;
+            color: var(--st-primary-500);
         }
 
         .story-title {
@@ -66,7 +66,7 @@
 
         .chapter-title-input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--st-primary-500);
         }
 
         .editor-container {
@@ -123,7 +123,7 @@
 
         .btn-save {
             background: white;
-            color: #667eea;
+            color: var(--st-primary-500);
         }
 
         .btn-save:hover {
@@ -132,7 +132,7 @@
         }
 
         .btn-publish {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--st-primary-500) 0%, var(--st-primary-700) 100%);
             color: white;
         }
 
@@ -161,7 +161,7 @@
         }
 
         .word-count strong {
-            color: #667eea;
+            color: var(--st-primary-500);
             font-size: 18px;
             margin-left: 5px;
         }
@@ -190,7 +190,7 @@
 
         .loading-spinner {
             font-size: 48px;
-            color: #667eea;
+            color: var(--st-primary-500);
             animation: spin 1s linear infinite;
         }
 
@@ -452,7 +452,7 @@
         }
 
         .btn-use {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--st-primary-500) 0%, var(--st-primary-700) 100%);
             color: white;
         }
 
@@ -463,8 +463,8 @@
 
         .btn-preview {
             background: white;
-            color: #667eea;
-            border: 2px solid #667eea;
+            color: var(--st-primary-500);
+            border: 2px solid var(--st-primary-500);
         }
 
         .btn-preview:hover {
@@ -559,15 +559,15 @@
         }
 
         .polish-style-btn:hover {
-            border-color: #667eea;
-            color: #667eea;
+            border-color: var(--st-primary-500);
+            color: var(--st-primary-500);
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
         }
 
         .polish-style-btn.active {
-            border-color: #667eea;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: var(--st-primary-500);
+            background: linear-gradient(135deg, var(--st-primary-500) 0%, var(--st-primary-700) 100%);
             color: white;
         }
 
@@ -648,7 +648,7 @@
             position: absolute;
             top: -8px;
             right: -8px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--st-primary-500) 0%, var(--st-primary-700) 100%);
             color: white;
             font-size: 11px;
             font-weight: 600;
@@ -737,7 +737,7 @@
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-content">
             <i class="fas fa-spinner loading-spinner"></i>
-            <p style="margin-top: 20px; color: #667eea; font-size: 18px;">保存中...</p>
+            <p style="margin-top: 20px; color: var(--st-primary-500); font-size: 18px;">保存中...</p>
         </div>
     </div>
 
@@ -935,7 +935,7 @@
                                    ">
                             <button id="confirmCustomWordCount" style="
                                 padding: 10px 20px;
-                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                background: linear-gradient(135deg, var(--st-primary-500) 0%, var(--st-primary-700) 100%);
                                 color: white;
                                 border: none;
                                 border-radius: 8px;
@@ -1003,7 +1003,7 @@
     <!-- AI润色模态框 -->
     <div class="ai-modal" id="polishModal">
         <div class="ai-modal-content" style="max-width: 1200px;">
-            <div class="ai-modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="ai-modal-header" style="background: linear-gradient(135deg, var(--st-primary-500) 0%, var(--st-primary-700) 100%);">
                 <h2><i class="fas fa-wand-magic-sparkles"></i> AI润色</h2>
                 <button class="close-btn" id="closePolishModal">×</button>
             </div>
@@ -1040,7 +1040,7 @@
                 <div id="startPolishBtnContainer" style="margin-bottom: 25px; text-align: center;">
                     <button id="startPolishBtn" style="
                         padding: 15px 40px;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        background: linear-gradient(135deg, var(--st-primary-500) 0%, var(--st-primary-700) 100%);
                         color: white;
                         border: none;
                         border-radius: 50px;
@@ -1081,7 +1081,7 @@
                             "></div>
                         </div>
                         <div>
-                            <div style="font-size: 16px; font-weight: 600; margin-bottom: 10px; color: #667eea;">
+                            <div style="font-size: 16px; font-weight: 600; margin-bottom: 10px; color: var(--st-primary-500);">
                                 <i class="fas fa-wand-magic-sparkles"></i> 润色后
                             </div>
                             <div id="polishedText" style="
@@ -1094,7 +1094,7 @@
                                 line-height: 1.8;
                                 color: #333;
                                 white-space: pre-wrap;
-                                border: 2px solid #667eea;
+                                border: 2px solid var(--st-primary-500);
                             "></div>
                         </div>
                     </div>
@@ -1111,7 +1111,7 @@
                 <button class="btn btn-secondary" id="cancelPolishBtn">
                     取消
                 </button>
-                <button class="btn btn-primary" id="applyPolishBtn" style="display: none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 30px; border-radius: 10px; font-weight: 600; cursor: pointer;">
+                <button class="btn btn-primary" id="applyPolishBtn" style="display: none; background: linear-gradient(135deg, var(--st-primary-500) 0%, var(--st-primary-700) 100%); color: white; border: none; padding: 12px 30px; border-radius: 10px; font-weight: 600; cursor: pointer;">
                     <i class="fas fa-check"></i> 应用润色
                 </button>
             </div>
@@ -1422,19 +1422,22 @@
         
         // 显示自动保存成功提示
         function showAutoSaveSuccess() {
-            // 在字数统计旁边显示一个小提示
-            const wordCountEl = document.querySelector('.word-count');
-            const saveIndicator = document.createElement('span');
-            saveIndicator.innerHTML = ' <i class="fas fa-check-circle" style="color: #4caf50; margin-left: 10px;"></i> 已自动保存';
-            saveIndicator.style.cssText = 'font-size: 12px; color: #4caf50; animation: fadeIn 0.3s;';
-            
-            wordCountEl.appendChild(saveIndicator);
-            
-            // 3秒后移除提示
-            setTimeout(() => {
-                saveIndicator.style.animation = 'fadeOut 0.3s';
-                setTimeout(() => saveIndicator.remove(), 300);
-            }, 3000);
+            if (window.toast) {
+                // 使用 toast 显示轻量级提示（info 级别，不打扰用户）
+                toast.info('已自动保存', { duration: 2000 });
+            } else {
+                // 降级：在字数统计旁边显示一个小提示
+                const wordCountEl = document.querySelector('.word-count');
+                if (!wordCountEl) return;
+                const saveIndicator = document.createElement('span');
+                saveIndicator.innerHTML = ' <i class="fas fa-check-circle" style="color: #4caf50; margin-left: 10px;"></i> 已自动保存';
+                saveIndicator.style.cssText = 'font-size: 12px; color: #4caf50; animation: fadeIn 0.3s;';
+                wordCountEl.appendChild(saveIndicator);
+                setTimeout(() => {
+                    saveIndicator.style.animation = 'fadeOut 0.3s';
+                    setTimeout(() => saveIndicator.remove(), 300);
+                }, 3000);
+            }
         }
         
         // 页面卸载时清理定时器
@@ -1875,15 +1878,23 @@
 
         // 显示成功消息
         function showSuccess(message) {
-            showMessage(message, 'success');
+            if (window.toast) {
+                toast.success(message);
+            } else {
+                showMessage(message, 'success');
+            }
         }
 
         // 显示错误消息
         function showError(message) {
-            showMessage(message, 'error');
+            if (window.toast) {
+                toast.error(message);
+            } else {
+                showMessage(message, 'error');
+            }
         }
 
-        // 显示消息
+        // 显示消息（降级兜底）
         function showMessage(message, type = 'info') {
             const messageEl = document.createElement('div');
             messageEl.className = `message message-${type}`;
@@ -1999,7 +2010,7 @@
                             <button id="confirmPointsBtn" style="
                                 flex: 1;
                                 padding: 14px 20px;
-                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                background: linear-gradient(135deg, var(--st-primary-500) 0%, var(--st-primary-700) 100%);
                                 color: white;
                                 border: none;
                                 border-radius: 12px;
@@ -2848,7 +2859,7 @@
                     <button onclick="this.parentElement.parentElement.remove()" style="
                         margin-top: 30px;
                         padding: 12px 30px;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        background: linear-gradient(135deg, var(--st-primary-500) 0%, var(--st-primary-700) 100%);
                         color: white;
                         border: none;
                         border-radius: 10px;
@@ -3637,6 +3648,7 @@
             }
         }
     </script>
+    <script src="js/loading.js"></script>
     <script src="js/toast.js"></script>
     <script src="js/modal.js"></script>
     <script src="js/navbar.js"></script>

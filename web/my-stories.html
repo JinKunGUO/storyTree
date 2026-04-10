@@ -51,8 +51,8 @@
         }
 
         .filter-tab.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
+            color: var(--st-primary-500);
+            border-bottom-color: var(--st-primary-500);
             font-weight: 600;
         }
 
@@ -81,7 +81,7 @@
             width: 100%;
             height: 180px;
             object-fit: cover;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--st-primary-500) 0%, var(--st-primary-700) 100%);
         }
 
         .story-content {
@@ -180,9 +180,9 @@
         }
 
         .action-btn.primary {
-            background: #667eea;
+            background: var(--st-primary-500);
             color: white;
-            border-color: #667eea;
+            border-color: var(--st-primary-500);
         }
 
         .action-btn.primary:hover {
@@ -212,7 +212,7 @@
             align-items: center;
             gap: 8px;
             padding: 12px 24px;
-            background: #667eea;
+            background: var(--st-primary-500);
             color: white;
             border: none;
             border-radius: 8px;
@@ -294,7 +294,7 @@
 
     <link rel="stylesheet" href="libs/fontawesome/css/all.min.css">
     <script>
-        const API_BASE = 'http://localhost:3000';
+        const API_BASE = '/api';
         let allStories = [];
         let currentFilter = 'all';
 
@@ -515,6 +515,7 @@
         // 页面加载时初始化
         loadMyStories();
     </script>
+    <script src="js/loading.js"></script>
     <script src="js/toast.js"></script>
     <script src="js/modal.js"></script>
     <script src="js/navbar.js"></script>

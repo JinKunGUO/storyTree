@@ -171,7 +171,7 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--st-primary-500) 0%, var(--st-primary-700) 100%);
             color: white;
         }
 
@@ -182,8 +182,8 @@
 
         .btn-secondary {
             background: white;
-            color: #667eea;
-            border: 2px solid #667eea;
+            color: var(--st-primary-500);
+            border: 2px solid var(--st-primary-500);
         }
 
         .btn-secondary:hover {
@@ -523,7 +523,7 @@
                     <button onclick="this.parentElement.parentElement.remove()" style="
                         margin-top: 30px;
                         padding: 12px 30px;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        background: linear-gradient(135deg, var(--st-primary-500) 0%, var(--st-primary-700) 100%);
                         color: white;
                         border: none;
                         border-radius: 10px;
@@ -674,6 +674,7 @@
             showMessage(message, 'success');
         }
     </script>
+    <script src="js/loading.js"></script>
     <script src="js/toast.js"></script>
     <script src="js/modal.js"></script>
     <script src="js/navbar.js"></script>

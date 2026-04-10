@@ -34,7 +34,7 @@
             margin: 0 0 20px 0;
             font-size: 20px;
             color: #333;
-            border-bottom: 2px solid #667eea;
+            border-bottom: 2px solid var(--st-primary-500);
             padding-bottom: 10px;
         }
 
@@ -130,7 +130,7 @@
         }
 
         .toggle-switch input:checked + .toggle-slider {
-            background-color: #667eea;
+            background-color: var(--st-primary-500);
         }
 
         .toggle-switch input:checked + .toggle-slider:before {
@@ -161,7 +161,7 @@
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: #667eea;
+            background: var(--st-primary-500);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -208,24 +208,25 @@
 
         .btn-primary {
             padding: 10px 24px;
-            background: var(--st-bg-secondary);
-            color: white;
+            background: #4F46E5;
+            color: #ffffff;
             border: none;
             border-radius: 6px;
             cursor: pointer;
             font-size: 14px;
-            font-weight: 500;
+            font-weight: 600;
+            transition: background 0.2s;
         }
 
         .btn-primary:hover {
-            opacity: 0.9;
+            background: #4338CA;
         }
 
         .btn-secondary {
             padding: 10px 24px;
             background: #fff;
-            color: #667eea;
-            border: 1px solid #667eea;
+            color: var(--st-primary-500);
+            border: 1px solid var(--st-primary-500);
             border-radius: 6px;
             cursor: pointer;
             font-size: 14px;
@@ -354,9 +355,6 @@
                 </a>
                 <a href="/discover" class="nav-link" role="menuitem">
                     <i class="fas fa-compass" aria-hidden="true"></i> 发现故事
-                </a>
-                <a href="/my-stories.html" class="nav-link" role="menuitem">
-                    <i class="fas fa-book" aria-hidden="true"></i> 我的故事
                 </a>
                 <a href="/notifications.html" class="nav-link nav-notification" id="notificationIcon" role="menuitem" aria-label="消息通知" style="display: none;">
                     <i class="fas fa-bell" aria-hidden="true"></i> 消息
@@ -858,6 +856,7 @@
             document.getElementById('allowBranch').addEventListener('change', updateAutoApproveState);
         });
     </script>
+    <script src="js/loading.js"></script>
     <script src="js/toast.js"></script>
     <script src="js/modal.js"></script>
     <script src="js/navbar.js"></script>

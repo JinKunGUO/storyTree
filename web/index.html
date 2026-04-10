@@ -320,6 +320,7 @@
             margin-top: var(--st-space-12);
             padding-top: var(--st-space-8);
             border-top: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: var(--st-space-4);
         }
 
         .hero-stat {
@@ -340,10 +341,7 @@
         }
 
         .hero-scroll-hint {
-            position: absolute;
-            bottom: var(--st-space-8);
-            left: 50%;
-            transform: translateX(-50%);
+            margin-top: var(--st-space-6);
             color: rgba(255, 255, 255, 0.6);
             font-size: var(--st-text-sm);
             display: flex;
@@ -351,6 +349,7 @@
             align-items: center;
             gap: var(--st-space-2);
             animation: bounce 2s infinite;
+            position: relative;
         }
 
         /* ===== 故事区域 ===== */
@@ -634,10 +633,6 @@
             <div class="hero-bg" aria-hidden="true"></div>
             <div class="hero-pattern" aria-hidden="true"></div>
             <div class="hero-content">
-                <div class="hero-badge">
-                    <i class="fas fa-sparkles" aria-hidden="true"></i>
-                    <span>全新创作体验</span>
-                </div>
                 <h1 class="hero-title">
                     <span class="hero-title-highlight">创作</span>属于你的<br>故事宇宙
                 </h1>
@@ -669,10 +664,10 @@
                         <div class="hero-stat-label">精彩章节</div>
                     </div>
                 </div>
-            </div>
-            <div class="hero-scroll-hint" aria-hidden="true">
-                <span>向下探索</span>
-                <i class="fas fa-chevron-down"></i>
+                <div class="hero-scroll-hint" aria-hidden="true">
+                    <span>向下探索</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
             </div>
         </section>
 

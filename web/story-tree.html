@@ -31,7 +31,7 @@
             gap: 8px;
             padding: 10px 20px;
             background: white;
-            color: #667eea;
+            color: var(--st-primary-500);
             border: none;
             border-radius: 10px;
             font-size: 16px;
@@ -81,14 +81,14 @@
         }
 
         .tab-btn.active {
-            color: #667eea;
+            color: var(--st-primary-500);
             background: #f9f9f9;
-            border-bottom-color: #667eea;
+            border-bottom-color: var(--st-primary-500);
         }
 
         .tab-btn:hover:not(.active) {
             background: #f5f5f5;
-            color: #667eea;
+            color: var(--st-primary-500);
         }
 
         /* 内容区 */
@@ -179,14 +179,14 @@
         }
 
         .toolbar-btn:hover {
-            border-color: #667eea;
-            color: #667eea;
+            border-color: var(--st-primary-500);
+            color: var(--st-primary-500);
         }
 
         .toolbar-btn.active {
-            background: #667eea;
+            background: var(--st-primary-500);
             color: white;
-            border-color: #667eea;
+            border-color: var(--st-primary-500);
         }
 
         /* 节点详情卡片 */
@@ -311,7 +311,7 @@
         .loading i {
             font-size: 48px;
             animation: spin 1s linear infinite;
-            color: #667eea;
+            color: var(--st-primary-500);
             margin-bottom: 20px;
         }
 
@@ -749,7 +749,7 @@
         // 获取作者颜色
         function getAuthorColor(authorId, isAI) {
             if (isAI) {
-                return '#764ba2'; // AI固定使用紫色
+                return 'var(--st-primary-700)'; // AI固定使用紫色
             }
             return authorColorMap.get(authorId) || '#4caf50'; // 默认绿色
         }
@@ -825,7 +825,7 @@
                                 <div style="font-size: 13px; line-height: 1.8;">
                                     <i class="fas fa-user" style="color: ${authorColor};"></i> 
                                     <strong style="color: ${authorColor};">作者：${data.author || '未知'}</strong><br/>
-                                    <i class="fas fa-robot"></i> 创作方式：${data.aiGenerated ? '<span style="color: #764ba2;">AI创作 🤖</span>' : '<span style="color: ' + authorColor + ';">人类创作 👤</span>'}<br/>
+                                    <i class="fas fa-robot"></i> 创作方式：${data.aiGenerated ? '<span style="color: var(--st-primary-700);">AI创作 🤖</span>' : '<span style="color: ' + authorColor + ';">人类创作 👤</span>'}<br/>
                                     <i class="fas fa-eye"></i> 阅读：${data.readCount || 0}<br/>
                                     <i class="fas fa-comment"></i> 评论：${data.commentCount || 0}<br/>
                                     <i class="fas fa-star"></i> 评分：${(data.ratingAvg || 0).toFixed(1)} (${data.ratingCount || 0}人)
@@ -905,7 +905,7 @@
                             color: function(params) {
                                 // 根节点使用特殊颜色
                                 if (!params.data.id || params.data.id === currentStory.id) {
-                                    return '#667eea';
+                                    return 'var(--st-primary-500)';
                                 }
                                 // 根据作者ID和AI标识获取颜色
                                 return getAuthorColor(params.data.authorId, params.data.aiGenerated);
@@ -1054,7 +1054,7 @@
                             { 
                                 value: stats.aiNodes, 
                                 name: 'AI创作',
-                                itemStyle: { color: '#764ba2' }
+                                itemStyle: { color: 'var(--st-primary-700)' }
                             },
                             { 
                                 value: stats.humanNodes, 
@@ -1227,6 +1227,7 @@
             }, 3000);
         }
     </script>
+    <script src="js/loading.js"></script>
     <script src="js/toast.js"></script>
     <script src="js/modal.js"></script>
     <script src="js/navbar.js"></script>
