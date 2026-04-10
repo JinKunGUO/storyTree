@@ -626,29 +626,33 @@
 
         // 删除通知
         async function deleteNotification(id) {
-            if (!confirm('确定要删除这条通知吗？')) {
-                return;
-            }
+            const doDelete = async () => {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                
+                try {
+                    const response = await fetch(`/api/notifications/${id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
 
-            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-            
-            try {
-                const response = await fetch(`/api/notifications/${id}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
+                    if (response.ok) {
+                        allNotifications = allNotifications.filter(n => n.id !== id);
+                        renderNotifications();
+                        updateBadge();
+                        showMessage('删除成功', 'success');
                     }
-                });
-
-                if (response.ok) {
-                    allNotifications = allNotifications.filter(n => n.id !== id);
-                    renderNotifications();
-                    updateBadge();
-                    showMessage('删除成功', 'success');
+                } catch (error) {
+                    console.error('删除失败:', error);
+                    showMessage('删除失败，请重试', 'error');
                 }
-            } catch (error) {
-                console.error('删除失败:', error);
-                showMessage('删除失败，请重试', 'error');
+            };
+
+            if (window.showDangerConfirm) {
+                showDangerConfirm('确定要删除这条通知吗？', doDelete, { title: '删除通知', confirmText: '确认删除' });
+            } else if (confirm('确定要删除这条通知吗？')) {
+                await doDelete();
             }
         }
 
@@ -701,6 +705,9 @@
             window.location.href = '/login';
         }
     </script>
+    <script src="js/toast.js"></script>
+    <script src="js/modal.js"></script>
+    <script src="js/navbar.js"></script>
 </body>
 </html>
 

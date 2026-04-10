@@ -4,8 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的故事 - StoryTree</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles/design-system.css">
+    <link rel="stylesheet" href="styles/animations.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link rel="stylesheet" href="styles/utilities.css">
+    <link rel="stylesheet" href="libs/fontawesome/css/all.min.css">
     <style>
+        body {
+            background: var(--st-bg-secondary);
+            min-height: 100vh;
+            padding-top: 64px;
+        }
         .my-stories-container {
             max-width: 1200px;
             margin: 40px auto;
@@ -219,16 +228,36 @@
     </style>
 </head>
 <body>
-    <nav class="navbar">
-        <div class="nav-container">
-            <a href="/" class="logo">
-                <i class="fas fa-tree"></i>
+    <!-- 导航栏 -->
+    <nav class="navbar" id="navbar" role="navigation" aria-label="主导航">
+        <div class="navbar-content">
+            <a href="/" class="nav-brand" aria-label="StoryTree 首页">
+                <i class="fas fa-tree" aria-hidden="true"></i>
                 StoryTree
             </a>
-            <div class="nav-links">
-                <a href="/explore.html">探索</a>
-                <a href="/my-stories.html" class="active">我的故事</a>
-                <a href="/profile.html">个人中心</a>
+            <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleMobileMenu()" aria-label="展开菜单" aria-expanded="false">
+                <i class="fas fa-bars" aria-hidden="true"></i>
+            </button>
+            <div class="nav-menu" id="navMenu" role="menubar">
+                <a href="/" class="nav-link" role="menuitem">
+                    <i class="fas fa-home" aria-hidden="true"></i> 首页
+                </a>
+                <a href="/discover" class="nav-link" role="menuitem">
+                    <i class="fas fa-compass" aria-hidden="true"></i> 发现故事
+                </a>
+                <a href="/my-stories.html" class="nav-link active" role="menuitem">
+                    <i class="fas fa-book" aria-hidden="true"></i> 我的故事
+                </a>
+                <a href="/notifications.html" class="nav-link nav-notification" id="notificationIcon" role="menuitem" aria-label="消息通知">
+                    <i class="fas fa-bell" aria-hidden="true"></i> 消息
+                    <span class="notification-badge" id="notificationBadge" style="display: none;" aria-live="polite">0</span>
+                </a>
+                <a href="/profile" class="nav-link" id="profileLink" role="menuitem" style="display: none;">
+                    <i class="fas fa-user" aria-hidden="true"></i> 个人中心
+                </a>
+                <a href="/login" class="nav-link" id="loginLink" role="menuitem">
+                    <i class="fas fa-sign-in-alt" aria-hidden="true"></i> 登录
+                </a>
             </div>
         </div>
     </nav>
@@ -396,56 +425,52 @@
 
         // 删除故事
         async function deleteStory(storyId, title) {
-            if (!confirm(`确定要删除故事《${title}》吗？此操作不可恢复！`)) {
-                return;
-            }
+            showDangerConfirm(`确定要删除故事《${title}》吗？此操作不可恢复！`, async () => {
+                try {
+                    const token = localStorage.getItem('token');
+                    const response = await fetch(`${API_BASE}/stories/${storyId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
 
-            try {
-                const token = localStorage.getItem('token');
-                const response = await fetch(`${API_BASE}/stories/${storyId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
+                    if (!response.ok) {
+                        throw new Error('Failed to delete story');
                     }
-                });
 
-                if (!response.ok) {
-                    throw new Error('Failed to delete story');
+                    showSuccess('故事已删除');
+                    loadMyStories(); // 重新加载列表
+                } catch (error) {
+                    console.error('Error deleting story:', error);
+                    showError('删除失败');
                 }
-
-                showSuccess('故事已删除');
-                loadMyStories(); // 重新加载列表
-            } catch (error) {
-                console.error('Error deleting story:', error);
-                showError('删除失败');
-            }
+            }, { title: '删除故事', confirmText: '确认删除' });
         }
 
         // 退出协作
         async function leaveCollaboration(storyId) {
-            if (!confirm('确定要退出此故事的协作吗？')) {
-                return;
-            }
+            showConfirm('确定要退出此故事的协作吗？', async () => {
+                try {
+                    const token = localStorage.getItem('token');
+                    const response = await fetch(`${API_BASE}/stories/${storyId}/collaborators/leave`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
 
-            try {
-                const token = localStorage.getItem('token');
-                const response = await fetch(`${API_BASE}/stories/${storyId}/collaborators/leave`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
+                    if (!response.ok) {
+                        throw new Error('Failed to leave collaboration');
                     }
-                });
 
-                if (!response.ok) {
-                    throw new Error('Failed to leave collaboration');
+                    showSuccess('已退出协作');
+                    loadMyStories();
+                } catch (error) {
+                    console.error('Error leaving collaboration:', error);
+                    showError('操作失败');
                 }
-
-                showSuccess('已退出协作');
-                loadMyStories();
-            } catch (error) {
-                console.error('Error leaving collaboration:', error);
-                showError('操作失败');
-            }
+            }, { title: '退出协作', confirmText: '确认退出' });
         }
 
         // 工具函数
@@ -470,11 +495,11 @@
         }
 
         function showSuccess(message) {
-            alert(message); // TODO: 使用更好的通知组件
+            window.toast ? toast.success(message) : alert(message);
         }
 
         function showError(message) {
-            alert(message); // TODO: 使用更好的通知组件
+            window.toast ? toast.error(message) : alert(message);
         }
 
         // 筛选标签切换
@@ -490,6 +515,9 @@
         // 页面加载时初始化
         loadMyStories();
     </script>
+    <script src="js/toast.js"></script>
+    <script src="js/modal.js"></script>
+    <script src="js/navbar.js"></script>
 </body>
 </html>
 

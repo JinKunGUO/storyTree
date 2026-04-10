@@ -556,36 +556,40 @@
 
     // 通过提现
     async function approveWithdrawal(requestId) {
-      if (!confirm('确定要通过这个提现申请吗？')) {
-        return;
-      }
+      const doApprove = async () => {
+        try {
+          const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+          
+          const response = await fetch(`${API_BASE}/withdrawals/admin/${requestId}/review`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              approved: true,
+              note: document.getElementById(`note${requestId}`)?.value || ''
+            })
+          });
 
-      try {
-        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-        
-        const response = await fetch(`${API_BASE}/withdrawals/admin/${requestId}/review`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            approved: true,
-            note: document.getElementById(`note${requestId}`)?.value || ''
-          })
-        });
-
-        const data = await response.json();
-        
-        if (response.ok) {
-          alert('✅ ' + data.message);
-          loadWithdrawalQueue();
-          loadStats();
-        } else {
-          alert('❌ ' + (data.error || '审核失败'));
+          const data = await response.json();
+          
+          if (response.ok) {
+            window.toast ? toast.success(data.message) : alert('✅ ' + data.message);
+            loadWithdrawalQueue();
+            loadStats();
+          } else {
+            window.toast ? toast.error(data.error || '审核失败') : alert('❌ ' + (data.error || '审核失败'));
+          }
+        } catch (e) {
+          window.toast ? toast.error('操作失败: ' + e.message) : alert('操作失败: ' + e.message);
         }
-      } catch (e) {
-        alert('操作失败: ' + e.message);
+      };
+
+      if (window.showConfirm) {
+        showConfirm('确定要通过这个提现申请吗？', doApprove, { title: '通过提现', confirmText: '确认通过' });
+      } else if (confirm('确定要通过这个提现申请吗？')) {
+        await doApprove();
       }
     }
 
@@ -594,40 +598,44 @@
       const note = document.getElementById(`note${requestId}`).value.trim();
       
       if (!note) {
-        alert('拒绝提现时必须填写备注说明原因');
+        window.toast ? toast.warning('拒绝提现时必须填写备注说明原因') : alert('拒绝提现时必须填写备注说明原因');
         return;
       }
 
-      if (!confirm('确定要拒绝这个提现申请吗？金额将退回到用户的收益余额。')) {
-        return;
-      }
+      const doReject = async () => {
+        try {
+          const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+          
+          const response = await fetch(`${API_BASE}/withdrawals/admin/${requestId}/review`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              approved: false,
+              note: note
+            })
+          });
 
-      try {
-        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-        
-        const response = await fetch(`${API_BASE}/withdrawals/admin/${requestId}/review`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            approved: false,
-            note: note
-          })
-        });
-
-        const data = await response.json();
-        
-        if (response.ok) {
-          alert('✅ ' + data.message);
-          loadWithdrawalQueue();
-          loadStats();
-        } else {
-          alert('❌ ' + (data.error || '审核失败'));
+          const data = await response.json();
+          
+          if (response.ok) {
+            window.toast ? toast.success(data.message) : alert('✅ ' + data.message);
+            loadWithdrawalQueue();
+            loadStats();
+          } else {
+            window.toast ? toast.error(data.error || '审核失败') : alert('❌ ' + (data.error || '审核失败'));
+          }
+        } catch (e) {
+          window.toast ? toast.error('操作失败: ' + e.message) : alert('操作失败: ' + e.message);
         }
-      } catch (e) {
-        alert('操作失败: ' + e.message);
+      };
+
+      if (window.showDangerConfirm) {
+        showDangerConfirm('确定要拒绝这个提现申请吗？金额将退回到用户的收益余额。', doReject, { title: '拒绝提现', confirmText: '确认拒绝' });
+      } else if (confirm('确定要拒绝这个提现申请吗？金额将退回到用户的收益余额。')) {
+        await doReject();
       }
     }
 
@@ -833,5 +841,8 @@
     // 启动
     document.addEventListener('DOMContentLoaded', init);
   </script>
+    <script src="js/toast.js"></script>
+    <script src="js/modal.js"></script>
+    <script src="js/navbar.js"></script>
 </body>
 </html>

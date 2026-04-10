@@ -195,7 +195,7 @@ function handleRegister() {
                     }
                 } catch (e) {
                     console.error('保存token错误:', e);
-                    alert('注册成功但保存失败，请检查浏览器设置（可能是隐私模式）');
+                    window.toast ? toast.warning('注册成功但保存失败，请检查浏览器设置（可能是隐私模式）') : alert('注册成功但保存失败，请检查浏览器设置（可能是隐私模式）');
                     return;
                 }
                 
@@ -209,12 +209,12 @@ function handleRegister() {
                 } else if (data.error.includes('邮箱')) {
                     showError('emailError', data.error);
                 } else {
-                    alert(data.error || '注册失败，请重试');
+                    window.toast ? toast.error(data.error || '注册失败，请重试') : alert(data.error || '注册失败，请重试');
                 }
             }
         } catch (error) {
             console.error('注册错误:', error);
-            alert('网络错误，请检查网络连接');
+            window.toast ? toast.error('网络错误，请检查网络连接') : alert('网络错误，请检查网络连接');
         } finally {
             button.disabled = false;
             buttonText.style.display = 'block';
@@ -302,7 +302,7 @@ function handleLogin() {
                     }
                 } catch (e) {
                     console.error('保存token错误:', e);
-                    alert('登录成功但保存失败，请检查浏览器设置（可能是隐私模式）');
+                    window.toast ? toast.warning('登录成功但保存失败，请检查浏览器设置（可能是隐私模式）') : alert('登录成功但保存失败，请检查浏览器设置（可能是隐私模式）');
                     return;
                 }
                 
@@ -316,12 +316,12 @@ function handleLogin() {
                     showError('emailError', data.error);
                     showError('passwordError', data.error);
                 } else {
-                    alert(data.error || '登录失败，请重试');
+                    window.toast ? toast.error(data.error || '登录失败，请重试') : alert(data.error || '登录失败，请重试');
                 }
             }
         } catch (error) {
             console.error('登录错误:', error);
-            alert('网络错误，请检查网络连接');
+            window.toast ? toast.error('网络错误，请检查网络连接') : alert('网络错误，请检查网络连接');
         } finally {
             button.disabled = false;
             buttonText.style.display = 'block';

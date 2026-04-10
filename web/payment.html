@@ -4,11 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>支付订单 - StoryTree</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles/design-system.css">
+    <link rel="stylesheet" href="styles/animations.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link rel="stylesheet" href="styles/utilities.css">
     <link href="libs/fontawesome/css/all.min.css" rel="stylesheet">
     <style>
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--st-bg-secondary);
             min-height: 100vh;
             padding: 20px;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -458,7 +461,7 @@
             const token = getToken();
             
             if (!token) {
-                alert('请先登录');
+                toast.warning('请先登录');
                 window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.pathname);
                 return Promise.reject(new Error('未登录'));
             }
@@ -488,7 +491,7 @@
             const orderId = urlParams.get('orderId');
 
             if (!orderId) {
-                alert('订单号不能为空');
+                toast.warning('订单号不能为空');
                 window.location.href = '/membership.html';
                 return;
             }
@@ -528,7 +531,7 @@
 
             } catch (error) {
                 console.error('加载订单失败:', error);
-                alert('加载订单失败：' + error.message);
+                toast.error('加载订单失败：' + error.message);
                 window.location.href = '/membership.html';
             }
         }
@@ -568,7 +571,7 @@
 
             } catch (error) {
                 console.error('创建支付失败:', error);
-                alert('创建支付失败：' + error.message);
+                toast.error('创建支付失败：' + error.message);
             }
         }
 
@@ -618,12 +621,12 @@
                 if (order.status === 'paid') {
                     showPaymentResult('success', '支付成功', '订单已支付成功，权益已到账');
                 } else if (order.status === 'pending') {
-                    alert('尚未收到支付成功的通知，请继续等待或刷新页面');
+                    toast.warning('尚未收到支付成功的通知，请继续等待或刷新页面');
                 } else {
                     showPaymentResult('failed', '支付失败', '订单状态：' + order.status);
                 }
             } catch (error) {
-                alert('查询失败：' + error.message);
+                toast.error('查询失败：' + error.message);
             }
         }
 
@@ -697,5 +700,7 @@
         // 初始化
         loadOrderInfo();
     </script>
+    <script src="js/toast.js"></script>
+    <script src="js/modal.js"></script>
 </body>
 </html>

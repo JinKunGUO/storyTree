@@ -4,15 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>故事分支树 - StoryTree</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles/design-system.css">
+    <link rel="stylesheet" href="styles/animations.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link rel="stylesheet" href="styles/utilities.css">
     <link href="libs/fontawesome/css/all.min.css" rel="stylesheet">
     <!-- ECharts -->
     <script src="libs/echarts/echarts.min.js"></script>
     <style>
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--st-bg-secondary);
             min-height: 100vh;
-            padding-top: 80px;
+            padding-top: 64px;
         }
 
         .tree-container {
@@ -110,7 +113,7 @@
         }
 
         .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--st-primary-500) 0%, var(--st-primary-700) 100%);
             color: white;
             padding: 25px;
             border-radius: 15px;
@@ -280,7 +283,7 @@
         .detail-btn {
             flex: 1;
             padding: 12px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--st-primary-500) 0%, var(--st-primary-700) 100%);
             color: white;
             border: none;
             border-radius: 10px;
@@ -368,24 +371,35 @@
 </head>
 <body>
     <!-- 导航栏 -->
-    <nav class="navbar">
-        <div class="container">
-            <a href="/" class="logo">
-                <i class="fas fa-book-open"></i>
+    <nav class="navbar" id="navbar" role="navigation" aria-label="主导航">
+        <div class="navbar-content">
+            <a href="/" class="nav-brand" aria-label="StoryTree 首页">
+                <i class="fas fa-tree" aria-hidden="true"></i>
                 StoryTree
             </a>
-            <ul class="nav-menu" id="navMenu">
-                <li><a href="/">首页</a></li>
-                <li><a href="/discover">发现</a></li>
-                <li><a href="/create">创作</a></li>
-                <li><a href="/profile" id="profileLink" style="display: none;">个人中心</a></li>
-                <li><a href="/login" id="loginLink">登录</a></li>
-                <li><a href="#" id="logoutLink" style="display: none;">退出</a></li>
-            </ul>
-            <div class="hamburger" id="hamburger">
-                <span></span>
-                <span></span>
-                <span></span>
+            <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleMobileMenu()" aria-label="展开菜单" aria-expanded="false">
+                <i class="fas fa-bars" aria-hidden="true"></i>
+            </button>
+            <div class="nav-menu" id="navMenu" role="menubar">
+                <a href="/" class="nav-link" role="menuitem">
+                    <i class="fas fa-home" aria-hidden="true"></i> 首页
+                </a>
+                <a href="/discover" class="nav-link" role="menuitem">
+                    <i class="fas fa-compass" aria-hidden="true"></i> 发现故事
+                </a>
+                <a href="/my-stories.html" class="nav-link" role="menuitem">
+                    <i class="fas fa-book" aria-hidden="true"></i> 我的故事
+                </a>
+                <a href="/notifications.html" class="nav-link nav-notification" id="notificationIcon" role="menuitem" aria-label="消息通知" style="display: none;">
+                    <i class="fas fa-bell" aria-hidden="true"></i> 消息
+                    <span class="notification-badge" id="notificationBadge" style="display: none;" aria-live="polite">0</span>
+                </a>
+                <a href="/profile" class="nav-link" id="profileLink" role="menuitem" style="display: none;">
+                    <i class="fas fa-user" aria-hidden="true"></i> 个人中心
+                </a>
+                <a href="/login" class="nav-link" id="loginLink" role="menuitem">
+                    <i class="fas fa-sign-in-alt" aria-hidden="true"></i> 登录
+                </a>
             </div>
         </div>
     </nav>
@@ -1213,6 +1227,9 @@
             }, 3000);
         }
     </script>
+    <script src="js/toast.js"></script>
+    <script src="js/modal.js"></script>
+    <script src="js/navbar.js"></script>
 </body>
 </html>
 

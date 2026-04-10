@@ -4,13 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>积分商城 - StoryTree</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles/design-system.css">
+    <link rel="stylesheet" href="styles/animations.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link rel="stylesheet" href="styles/utilities.css">
     <link href="libs/fontawesome/css/all.min.css" rel="stylesheet">
     <style>
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--st-bg-secondary);
             min-height: 100vh;
-            padding-top: 80px;
+            padding-top: 64px;
         }
 
         .mall-container {
@@ -364,30 +367,40 @@
 </head>
 <body>
     <!-- 导航栏 -->
-    <nav class="navbar">
+    <nav class="navbar" id="navbar" role="navigation" aria-label="主导航">
         <div class="navbar-content">
-            <a href="/" class="nav-brand">
-                <i class="fas fa-tree"></i>
+            <a href="/" class="nav-brand" aria-label="StoryTree 首页">
+                <i class="fas fa-tree" aria-hidden="true"></i>
                 StoryTree
             </a>
-            <div class="nav-menu">
-                <a href="/" class="nav-link">首页</a>
-                <a href="/discover" class="nav-link">发现故事</a>
-                <a href="/membership.html" class="nav-link">
-                    <i class="fas fa-crown"></i> 会员中心
+            <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleMobileMenu()" aria-label="展开菜单" aria-expanded="false">
+                <i class="fas fa-bars" aria-hidden="true"></i>
+            </button>
+            <div class="nav-menu" id="navMenu" role="menubar">
+                <a href="/" class="nav-link" role="menuitem">
+                    <i class="fas fa-home" aria-hidden="true"></i> 首页
                 </a>
-                <a href="/points-mall.html" class="nav-link" style="color: #ff9800;">
-                    <i class="fas fa-shopping-cart"></i> 积分商城
+                <a href="/discover" class="nav-link" role="menuitem">
+                    <i class="fas fa-compass" aria-hidden="true"></i> 发现故事
                 </a>
-                <a href="/notifications.html" class="nav-link" id="notificationLink" style="position: relative;">
-                    <i class="fas fa-bell"></i> 消息
-                    <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                <a href="/membership.html" class="nav-link" role="menuitem">
+                    <i class="fas fa-crown" aria-hidden="true"></i> 会员中心
                 </a>
-                <a href="/profile" class="nav-link" id="profileLink" style="display: none;">
-                    <i class="fas fa-user"></i> 个人中心
+                <a href="/points-mall.html" class="nav-link active" role="menuitem">
+                    <i class="fas fa-shopping-cart" aria-hidden="true"></i> 积分商城
                 </a>
-                <a href="/login" class="nav-link" onclick="logout(); return false;">
-                    <i class="fas fa-sign-out-alt"></i> 退出
+                <a href="/notifications.html" class="nav-link nav-notification" id="notificationIcon" role="menuitem" aria-label="消息通知">
+                    <i class="fas fa-bell" aria-hidden="true"></i> 消息
+                    <span class="notification-badge" id="notificationBadge" style="display: none;" aria-live="polite">0</span>
+                </a>
+                <a href="/profile" class="nav-link" id="profileLink" role="menuitem" style="display: none;">
+                    <i class="fas fa-user" aria-hidden="true"></i> 个人中心
+                </a>
+                <a href="/login" class="nav-link" id="loginLink" role="menuitem">
+                    <i class="fas fa-sign-in-alt" aria-hidden="true"></i> 登录
+                </a>
+                <a href="#" class="nav-link" id="logoutLink" onclick="logout(); return false;" role="menuitem" style="display: none;">
+                    <i class="fas fa-sign-out-alt" aria-hidden="true"></i> 退出
                 </a>
             </div>
         </div>
@@ -590,7 +603,11 @@
             const token = localStorage.getItem('token') || sessionStorage.getItem('token');
             
             if (!token) {
-                if (confirm('请先登录，是否前往登录页面？')) {
+                if (window.showConfirm) {
+                    showConfirm('请先登录，是否前往登录页面？', () => {
+                        window.location.href = '/login?redirect=/points-mall';
+                    }, { title: '需要登录', confirmText: '前往登录' });
+                } else if (confirm('请先登录，是否前往登录页面？')) {
                     window.location.href = '/login?redirect=/points-mall';
                 } else {
                     window.location.href = '/';
@@ -891,5 +908,8 @@
             }
         });
     </script>
+    <script src="js/toast.js"></script>
+    <script src="js/modal.js"></script>
+    <script src="js/navbar.js"></script>
 </body>
 </html>

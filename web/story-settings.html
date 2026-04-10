@@ -4,8 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>故事设置 - StoryTree</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles/design-system.css">
+    <link rel="stylesheet" href="styles/animations.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link rel="stylesheet" href="styles/utilities.css">
+    <link rel="stylesheet" href="libs/fontawesome/css/all.min.css">
     <style>
+        body {
+            background: var(--st-bg-secondary);
+            min-height: 100vh;
+            padding-top: 64px;
+        }
+
         .settings-container {
             max-width: 800px;
             margin: 40px auto;
@@ -198,7 +208,7 @@
 
         .btn-primary {
             padding: 10px 24px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--st-bg-secondary);
             color: white;
             border: none;
             border-radius: 6px;
@@ -329,13 +339,35 @@
 </head>
 <body>
     <!-- 导航栏 -->
-    <nav>
-        <div class="nav-content">
-            <a href="/" class="logo">🌳 StoryTree</a>
-            <div class="nav-links">
-                <a href="/discover.html">发现</a>
-                <a href="/create.html">创作</a>
-                <a href="/profile.html">我的</a>
+    <nav class="navbar" id="navbar" role="navigation" aria-label="主导航">
+        <div class="navbar-content">
+            <a href="/" class="nav-brand" aria-label="StoryTree 首页">
+                <i class="fas fa-tree" aria-hidden="true"></i>
+                StoryTree
+            </a>
+            <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleMobileMenu()" aria-label="展开菜单" aria-expanded="false">
+                <i class="fas fa-bars" aria-hidden="true"></i>
+            </button>
+            <div class="nav-menu" id="navMenu" role="menubar">
+                <a href="/" class="nav-link" role="menuitem">
+                    <i class="fas fa-home" aria-hidden="true"></i> 首页
+                </a>
+                <a href="/discover" class="nav-link" role="menuitem">
+                    <i class="fas fa-compass" aria-hidden="true"></i> 发现故事
+                </a>
+                <a href="/my-stories.html" class="nav-link" role="menuitem">
+                    <i class="fas fa-book" aria-hidden="true"></i> 我的故事
+                </a>
+                <a href="/notifications.html" class="nav-link nav-notification" id="notificationIcon" role="menuitem" aria-label="消息通知" style="display: none;">
+                    <i class="fas fa-bell" aria-hidden="true"></i> 消息
+                    <span class="notification-badge" id="notificationBadge" style="display: none;" aria-live="polite">0</span>
+                </a>
+                <a href="/profile" class="nav-link" id="profileLink" role="menuitem" style="display: none;">
+                    <i class="fas fa-user" aria-hidden="true"></i> 个人中心
+                </a>
+                <a href="/login" class="nav-link" id="loginLink" role="menuitem">
+                    <i class="fas fa-sign-in-alt" aria-hidden="true"></i> 登录
+                </a>
             </div>
         </div>
     </nav>
@@ -614,10 +646,7 @@
 
         // 移除协作者
         async function removeCollaborator(userId) {
-            if (!confirm('确定要移除此协作者吗？')) {
-                return;
-            }
-
+            showDangerConfirm('确定要移除此协作者吗？', async () => {
             try {
                 const response = await fetch(`/api/stories/${storyId}/collaborators/${userId}`, {
                     method: 'DELETE',
@@ -638,6 +667,7 @@
                 console.error('Remove collaborator error:', error);
                 showToast(error.message, true);
             }
+            }, { title: '移除协作者', confirmText: '确认移除', type: 'danger' });
         }
 
         // 加载协作申请列表
@@ -828,6 +858,9 @@
             document.getElementById('allowBranch').addEventListener('change', updateAutoApproveState);
         });
     </script>
+    <script src="js/toast.js"></script>
+    <script src="js/modal.js"></script>
+    <script src="js/navbar.js"></script>
 </body>
 </html>
 

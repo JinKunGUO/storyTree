@@ -1829,10 +1829,7 @@
 
                     // 发布草稿章节
                     async function publishDraft(chapterId) {
-                        if (!confirm('确定要发布这个草稿章节吗？\n\n发布后，其他用户将可以看到这个章节。')) {
-                            return;
-                        }
-
+                        showConfirm('确定要发布这个草稿章节吗？<br><br>发布后，其他用户将可以看到这个章节。', async () => {
                         try {
                             const token = localStorage.getItem('token') || sessionStorage.getItem('token');
                             const publishBtn = document.getElementById('publishDraftBtn');
@@ -1879,6 +1876,7 @@
                             publishBtn.disabled = false;
                             publishBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 发布草稿';
                         }
+                        }, { title: '发布章节', confirmText: '确认发布', type: 'success' });
                     }
 
         // 检查是否是作者
@@ -2703,22 +2701,16 @@
                 console.log('润色API返回数据:', data);
 
                 if (data.polished) {
-                    // 显示确认对话框
-                    const confirmed = confirm(
-                        '润色完成！\n\n' +
-                        '原文字数: ' + content.length + ' 字\n' +
-                        '润色后字数: ' + data.polished.length + ' 字\n\n' +
-                        '点击"确定"应用润色结果，点击"取消"保留原文'
+                    // 显示确认弹窗
+                    showConfirm(
+                        `润色完成！<br><br>原文字数：${content.length} 字<br>润色后字数：${data.polished.length} 字<br><br>是否应用润色结果？`,
+                        () => {
+                            contentTextarea.value = data.polished;
+                            document.getElementById('contentWordCount').textContent = data.polished.length;
+                            showSuccess('润色已应用！');
+                        },
+                        { title: '润色完成', confirmText: '应用润色', cancelText: '保留原文', type: 'success' }
                     );
-
-                    if (confirmed) {
-                        // 应用润色结果
-                        contentTextarea.value = data.polished;
-                        document.getElementById('contentWordCount').textContent = data.polished.length;
-                        showSuccess('润色已应用！');
-                    } else {
-                        showSuccess('已取消润色');
-                    }
                 } else {
                     throw new Error('AI未返回润色结果');
                 }
@@ -3103,5 +3095,8 @@
             }
         }
     </script>
+    <script src="js/toast.js"></script>
+    <script src="js/modal.js"></script>
+    <script src="js/navbar.js"></script>
 </body>
 </html>

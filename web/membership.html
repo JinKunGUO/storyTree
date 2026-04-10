@@ -541,22 +541,33 @@
 
         // 购买会员
         async function purchaseMembership(tier) {
-            try {
-                if (!confirm(`确认购买${getTierName(tier)}吗？`)) return;
-                
-                const order = await apiRequest('/membership/upgrade/create', {
-                    method: 'POST',
-                    body: JSON.stringify({ tier })
-                });
-                
-                // 跳转到支付页面
-                if (confirm(`订单创建成功！\n\n订单金额：¥${order.finalPrice}\n套餐：${order.tierName}\n有效期：${order.durationText}\n\n点击确定前往支付`)) {
-                    window.location.href = `/payment.html?orderId=${order.orderId}`;
+            const doPurchase = async () => {
+                try {
+                    const order = await apiRequest('/membership/upgrade/create', {
+                        method: 'POST',
+                        body: JSON.stringify({ tier })
+                    });
+                    
+                    // 跳转到支付页面
+                    const msg = `订单创建成功！<br><br>订单金额：¥${order.finalPrice}<br>套餐：${order.tierName}<br>有效期：${order.durationText}<br><br>确认前往支付？`;
+                    if (window.showConfirm) {
+                        showConfirm(msg, () => {
+                            window.location.href = `/payment.html?orderId=${order.orderId}`;
+                        }, { title: '订单创建成功', confirmText: '前往支付' });
+                    } else if (confirm(`订单创建成功！\n\n订单金额：¥${order.finalPrice}\n套餐：${order.tierName}\n有效期：${order.durationText}\n\n点击确定前往支付`)) {
+                        window.location.href = `/payment.html?orderId=${order.orderId}`;
+                    }
+                    
+                } catch (error) {
+                    window.toast ? toast.error(`购买失败：${error.message}`) : alert(`购买失败：${error.message}`);
+                    console.error(error);
                 }
-                
-            } catch (error) {
-                alert(`购买失败：${error.message}`);
-                console.error(error);
+            };
+
+            if (window.showConfirm) {
+                showConfirm(`确认购买${getTierName(tier)}吗？`, doPurchase, { title: '确认购买', confirmText: '确认购买' });
+            } else if (confirm(`确认购买${getTierName(tier)}吗？`)) {
+                await doPurchase();
             }
         }
 
@@ -576,5 +587,8 @@
 
         init();
     </script>
+    <script src="js/toast.js"></script>
+    <script src="js/modal.js"></script>
+    <script src="js/navbar.js"></script>
 </body>
 </html>

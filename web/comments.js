@@ -641,36 +641,40 @@ class CommentSystem {
 
     // 删除评论
     async deleteComment(commentId) {
-        if (!confirm('确定要删除这条评论吗？')) {
-            return;
-        }
-
-        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-        if (!token) {
-            this.showError('请先登录');
-            return;
-        }
-
-        try {
-            const response = await fetch(`/api/comments/comments/${commentId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || '删除失败');
+        const doDelete = async () => {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) {
+                this.showError('请先登录');
+                return;
             }
 
-            // 重新加载评论列表
-            await this.loadComments(this.currentPage);
+            try {
+                const response = await fetch(`/api/comments/comments/${commentId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
 
-            this.showSuccess('评论删除成功！');
-        } catch (error) {
-            console.error('删除评论错误:', error);
-            this.showError(error.message || '删除失败，请稍后重试');
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || '删除失败');
+                }
+
+                // 重新加载评论列表
+                await this.loadComments(this.currentPage);
+
+                this.showSuccess('评论删除成功！');
+            } catch (error) {
+                console.error('删除评论错误:', error);
+                this.showError(error.message || '删除失败，请稍后重试');
+            }
+        };
+
+        if (window.showDangerConfirm) {
+            showDangerConfirm('确定要删除这条评论吗？', doDelete, { title: '删除评论', confirmText: '确认删除' });
+        } else if (confirm('确定要删除这条评论吗？')) {
+            await doDelete();
         }
     }
 

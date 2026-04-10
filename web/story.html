@@ -2896,10 +2896,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
         // 退出协作
         async function quitCollaboration(storyId) {
             // 弹出确认对话框
-            if (!confirm('确定要退出协作吗？\n\n退出后：\n• 你将失去共创者身份\n• 无法再续写新的章节\n• 已创作的章节不会被删除\n• 可以重新申请成为协作者')) {
-                return;
-            }
-
+            showConfirm('确定要退出协作吗？<br><br>退出后：<br>• 你将失去共创者身份<br>• 无法再续写新的章节<br>• 已创作的章节不会被删除<br>• 可以重新申请成为协作者', async () => {
             const token = localStorage.getItem('token') || sessionStorage.getItem('token');
             if (!token) {
                 showError('请先登录');
@@ -2929,6 +2926,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                 console.error('退出协作失败:', error);
                 showError(error.message || '退出协作失败，请重试');
             }
+            }, { title: '退出协作', confirmText: '确认退出' });
         }
 
         // 初始化协作申请模态框事件
@@ -4431,10 +4429,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
             console.log('准备删除章节:', chapterId, chapterTitle);
             
             // 显示确认对话框
-            if (!confirm(`确定要删除章节《${chapterTitle}》吗？\n\n此操作不可撤销！`)) {
-                return;
-            }
-
+            showDangerConfirm(`确定要删除章节《${chapterTitle}》吗？<br><br>此操作不可撤销！`, async () => {
             try {
                 const token = localStorage.getItem('token') || sessionStorage.getItem('token');
                 
@@ -4479,6 +4474,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                 console.error('删除章节错误:', error);
                 showError(error.message || '删除章节失败');
             }
+            }, { title: '删除章节', confirmText: '确认删除' });
         };
 
 // ============================================
@@ -5360,5 +5356,8 @@ function getTreeOption(treeData, layout) {
             });
         }
     </script>
+    <script src="js/toast.js"></script>
+    <script src="js/modal.js"></script>
+    <script src="js/navbar.js"></script>
 </body>
 </html>
