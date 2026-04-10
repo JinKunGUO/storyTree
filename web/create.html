@@ -40,9 +40,10 @@
 
         .create-card {
             background: white;
-            border-radius: 20px;
+            border-radius: var(--st-radius-2xl);
             padding: 40px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            box-shadow: var(--st-shadow-xl);
+            border: 1px solid var(--st-gray-100);
         }
 
         .form-group {
@@ -52,15 +53,15 @@
         .form-group label {
             display: block;
             margin-bottom: 10px;
-            font-weight: 600;
-            color: #333;
-            font-size: 16px;
+            font-weight: var(--st-font-semibold);
+            color: var(--st-text-primary);
+            font-size: var(--st-text-base);
         }
 
         .form-group .label-hint {
-            font-weight: 400;
-            color: #999;
-            font-size: 14px;
+            font-weight: var(--st-font-normal);
+            color: var(--st-text-tertiary);
+            font-size: var(--st-text-sm);
             margin-left: 5px;
         }
 
@@ -69,11 +70,12 @@
         .form-select {
             width: 100%;
             padding: 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 16px;
-            transition: all 0.3s ease;
+            border: 2px solid var(--st-gray-200);
+            border-radius: var(--st-radius-lg);
+            font-size: var(--st-text-base);
+            transition: all 0.2s var(--st-ease-default);
             font-family: inherit;
+            color: var(--st-text-primary);
         }
 
         .form-input:focus,
@@ -81,6 +83,7 @@
         .form-select:focus {
             outline: none;
             border-color: var(--st-primary-500);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
         }
 
         .form-textarea {
@@ -90,8 +93,8 @@
 
         .char-count {
             text-align: right;
-            color: #999;
-            font-size: 14px;
+            color: var(--st-text-tertiary);
+            font-size: var(--st-text-sm);
             margin-top: 5px;
         }
 
@@ -105,49 +108,54 @@
             flex: 1;
             padding: 15px 30px;
             border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
+            border-radius: var(--st-radius-lg);
+            font-size: var(--st-text-base);
+            font-weight: var(--st-font-semibold);
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s var(--st-ease-bounce);
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, var(--st-primary-500), var(--st-primary-700));
+            background: var(--st-gradient-brand);
             color: white;
         }
 
         .btn-primary:hover {
+            background: var(--st-gradient-brand-hover);
             transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35);
         }
 
         .btn-primary:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
+            box-shadow: none;
         }
 
         .btn-secondary {
-            background: #f5f5f5;
-            color: #666;
+            background: var(--st-gray-100);
+            color: var(--st-text-secondary);
+            border: 1px solid var(--st-gray-200);
         }
 
         .btn-secondary:hover {
-            background: #e0e0e0;
+            background: var(--st-gray-200);
+            color: var(--st-text-primary);
         }
 
         .tips-section {
-            background: #f8f9fa;
+            background: var(--st-primary-50);
             padding: 20px;
-            border-radius: 10px;
+            border-radius: var(--st-radius-lg);
             margin-top: 30px;
+            border: 1px solid var(--st-primary-100);
         }
 
         .tips-section h3 {
-            color: var(--st-primary-500);
+            color: var(--st-primary-600);
             margin-bottom: 15px;
-            font-size: 18px;
+            font-size: var(--st-text-lg);
         }
 
         .tips-list {
@@ -157,7 +165,7 @@
 
         .tips-list li {
             padding: 8px 0;
-            color: #666;
+            color: var(--st-text-secondary);
             display: flex;
             align-items: flex-start;
             gap: 10px;
@@ -169,17 +177,18 @@
         }
 
         .error-message {
-            color: #e74c3c;
-            font-size: 14px;
+            color: var(--st-error-500);
+            font-size: var(--st-text-sm);
             margin-top: 5px;
             display: none;
         }
 
         .success-message {
-            background: #d4edda;
-            color: #155724;
+            background: var(--st-success-50);
+            color: var(--st-success-700);
+            border: 1px solid var(--st-success-200);
             padding: 15px;
-            border-radius: 10px;
+            border-radius: var(--st-radius-lg);
             margin-bottom: 20px;
             display: none;
         }

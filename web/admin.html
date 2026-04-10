@@ -250,7 +250,7 @@
   </div>
 
   <script>
-    const API_BASE = 'http://localhost:3001/api';
+    const API_BASE = '/api';
     let adminId = null;
 
     // API 调用
@@ -280,7 +280,7 @@
       // 简单的管理员登录
       const username = prompt('请输入管理员用户名：');
       if (!username) {
-        alert('需要登录才能访问管理后台');
+        window.toast ? toast.error('需要登录才能访问管理后台') : console.error('需要登录才能访问管理后台');
         location.href = 'index.html';
         return;
       }
@@ -299,7 +299,7 @@
         loadReviewQueue();
         loadWithdrawalQueue();
       } catch (e) {
-        alert('登录失败: ' + e.message);
+        window.toast ? toast.error('登录失败: ' + e.message) : console.error('登录失败: ' + e.message);
         location.href = 'index.html';
       }
     }
@@ -400,11 +400,11 @@
           status,
           note
         });
-        alert('审核成功');
+        window.toast ? toast.success('审核成功') : console.log('审核成功');
         loadStats();
         loadReviewQueue();
       } catch (e) {
-        alert('审核失败: ' + e.message);
+        window.toast ? toast.error('审核失败: ' + e.message) : console.error('审核失败: ' + e.message);
       }
     }
 
@@ -413,19 +413,31 @@
       try {
         const res = await apiRequest('GET', `/admin/reports/${nodeId}`);
         
-        let reportText = `举报详情：\n\n`;
+        let reportHtml = '<div style="max-height:400px;overflow-y:auto;">';
         res.reports.forEach((report, idx) => {
-          reportText += `${idx + 1}. ${report.reporter.username}\n`;
-          reportText += `   原因：${report.reason}\n`;
-          if (report.description) {
-            reportText += `   说明：${report.description}\n`;
-          }
-          reportText += `   时间：${new Date(report.createdAt).toLocaleString('zh-CN')}\n\n`;
+          reportHtml += `<div style="padding:10px 0;border-bottom:1px solid #eee;">`;
+          reportHtml += `<strong>${idx + 1}. ${report.reporter.username}</strong><br>`;
+          reportHtml += `原因：${report.reason}<br>`;
+          if (report.description) reportHtml += `说明：${report.description}<br>`;
+          reportHtml += `时间：${new Date(report.createdAt).toLocaleString('zh-CN')}`;
+          reportHtml += `</div>`;
         });
+        reportHtml += '</div>';
 
-        alert(reportText);
+        if (window.showModal) {
+          showModal({ title: '举报详情', content: reportHtml, showCancel: false, confirmText: '关闭' });
+        } else {
+          let reportText = `举报详情：\n\n`;
+          res.reports.forEach((report, idx) => {
+            reportText += `${idx + 1}. ${report.reporter.username}\n`;
+            reportText += `   原因：${report.reason}\n`;
+            if (report.description) reportText += `   说明：${report.description}\n`;
+            reportText += `   时间：${new Date(report.createdAt).toLocaleString('zh-CN')}\n\n`;
+          });
+          window.toast ? toast.info('举报详情已打印到控制台') : console.log(reportText);
+        }
       } catch (e) {
-        alert('加载举报详情失败: ' + e.message);
+        window.toast ? toast.error('加载举报详情失败: ' + e.message) : alert('加载举报详情失败: ' + e.message);
       }
     }
 
@@ -650,37 +662,41 @@
         const token = localStorage.getItem('token') || sessionStorage.getItem('token');
         
         const response = await fetch(`${API_BASE}/withdrawals/admin/user-earnings/${userId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        if (!response.ok) {
-          throw new Error('加载用户收益失败');
-        }
+        if (!response.ok) throw new Error('加载用户收益失败');
 
         const data = await response.json();
         
-        let infoText = `用户收益详情\n\n`;
-        infoText += `用户：${data.user.username}\n`;
-        infoText += `收益余额：${data.earningsBalance} 积分\n`;
-        infoText += `总收益：${data.totalEarnings} 积分\n`;
-        infoText += `已提现：${data.withdrawnAmount} 积分\n`;
-        infoText += `待审核：${data.pendingAmount} 积分\n`;
-        infoText += `解锁次数：${data.unlockCount} 次\n\n`;
+        let infoHtml = `<div style="line-height:2;">
+          <div><strong>用户：</strong>${data.user.username}</div>
+          <div><strong>收益余额：</strong>${data.earningsBalance} 积分</div>
+          <div><strong>总收益：</strong>${data.totalEarnings} 积分</div>
+          <div><strong>已提现：</strong>${data.withdrawnAmount} 积分</div>
+          <div><strong>待审核：</strong>${data.pendingAmount} 积分</div>
+          <div><strong>解锁次数：</strong>${data.unlockCount} 次</div>`;
         
         if (data.recentUnlocks && data.recentUnlocks.length > 0) {
-          infoText += `最近解锁记录：\n`;
+          infoHtml += `<hr style="margin:10px 0;"><strong>最近解锁记录：</strong><div style="max-height:200px;overflow-y:auto;margin-top:6px;">`;
           data.recentUnlocks.forEach((unlock, idx) => {
-            infoText += `${idx + 1}. ${unlock.node.title} - ${unlock.unlock_price}积分\n`;
-            infoText += `   解锁人：${unlock.user.username}\n`;
-            infoText += `   时间：${new Date(unlock.unlocked_at).toLocaleString('zh-CN')}\n`;
+            infoHtml += `<div style="padding:4px 0;border-bottom:1px solid #eee;font-size:13px;">`;
+            infoHtml += `${idx + 1}. ${unlock.node.title} — ${unlock.unlock_price}积分<br>`;
+            infoHtml += `&nbsp;&nbsp;解锁人：${unlock.user.username}，${new Date(unlock.unlocked_at).toLocaleString('zh-CN')}`;
+            infoHtml += `</div>`;
           });
+          infoHtml += `</div>`;
         }
+        infoHtml += `</div>`;
 
-        alert(infoText);
+        if (window.showModal) {
+          showModal({ title: '用户收益详情', content: infoHtml, showCancel: false, confirmText: '关闭' });
+        } else {
+          let infoText = `用户收益详情\n\n用户：${data.user.username}\n收益余额：${data.earningsBalance} 积分\n总收益：${data.totalEarnings} 积分\n已提现：${data.withdrawnAmount} 积分\n待审核：${data.pendingAmount} 积分\n解锁次数：${data.unlockCount} 次`;
+          window.toast ? toast.info('用户收益详情已打印到控制台') : console.log(infoText);
+        }
       } catch (e) {
-        alert('加载用户收益失败: ' + e.message);
+        window.toast ? toast.error('加载用户收益失败: ' + e.message) : alert('加载用户收益失败: ' + e.message);
       }
     }
 
@@ -840,7 +856,7 @@
 
     // 查看会员详情
     function viewMemberDetail(memberId) {
-      alert('会员详情功能开发中...\n会员 ID: ' + memberId);
+      window.toast ? toast.info('会员详情功能开发中，会员 ID: ' + memberId) : alert('会员详情功能开发中...\n会员 ID: ' + memberId);
     }
 
     // 启动

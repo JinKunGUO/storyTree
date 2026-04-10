@@ -317,8 +317,11 @@
     </div>
 
     <script src="auth.js"></script>
+    <script src="js/loading.js"></script>
+    <script src="js/toast.js"></script>
+    <script src="js/modal.js"></script>
     <script>
-        const API_BASE = 'http://localhost:3001/api';
+        const API_BASE = '/api';
         let currentStoryId = null;
 
         // 页面加载时初始化
@@ -497,7 +500,7 @@
         // 刷新数据
         async function refreshData() {
             await loadAllData();
-            alert('数据已刷新！');
+            window.toast ? toast.success('数据已刷新！') : alert('数据已刷新！');
         }
 
         // 创建测试故事
@@ -522,7 +525,7 @@
 
                 const data = await response.json();
                 currentStoryId = data.story.id;
-                alert(`测试故事创建成功！ID: ${currentStoryId}`);
+                window.toast ? toast.success(`测试故事创建成功！ID: ${currentStoryId}`) : alert(`测试故事创建成功！ID: ${currentStoryId}`);
             } catch (error) {
                 showError('创建测试故事失败: ' + error.message);
             }
@@ -531,7 +534,7 @@
         // 创建测试章节
         async function createTestChapter() {
             if (!currentStoryId) {
-                alert('请先创建测试故事');
+                window.toast ? toast.warning('请先创建测试故事') : alert('请先创建测试故事');
                 return;
             }
 
@@ -563,12 +566,12 @@
                 }
 
                 const data = await response.json();
-                alert(`章节创建成功！ID: ${data.node.id}\n字数: ${content.length}\n等待3秒后刷新数据...`);
+                window.toast ? toast.success(`章节创建成功！ID: ${data.node.id}，字数: ${content.length}，3秒后刷新数据...`) : alert(`章节创建成功！ID: ${data.node.id}\n字数: ${content.length}\n等待3秒后刷新数据...`);
                 
                 // 等待异步处理
                 setTimeout(async () => {
                     await loadAllData();
-                    alert('数据已刷新！请查看码字数和积分是否增加。');
+                    window.toast ? toast.success('数据已刷新！请查看码字数和积分是否增加。') : alert('数据已刷新！请查看码字数和积分是否增加。');
                 }, 3000);
             } catch (error) {
                 showError('创建测试章节失败: ' + error.message);

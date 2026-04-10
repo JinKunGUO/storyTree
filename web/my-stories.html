@@ -65,16 +65,17 @@
 
         .story-card {
             background: white;
-            border-radius: 12px;
+            border-radius: var(--st-radius-xl);
             overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: var(--st-shadow-sm);
+            border: 1px solid var(--st-gray-100);
             transition: transform 0.3s, box-shadow 0.3s;
             cursor: pointer;
         }
 
         .story-card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            box-shadow: var(--st-shadow-lg);
         }
 
         .story-cover {
@@ -89,9 +90,9 @@
         }
 
         .story-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #333;
+            font-size: var(--st-text-lg);
+            font-weight: var(--st-font-semibold);
+            color: var(--st-text-primary);
             margin-bottom: 8px;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -99,8 +100,8 @@
         }
 
         .story-description {
-            font-size: 14px;
-            color: #666;
+            font-size: var(--st-text-sm);
+            color: var(--st-text-secondary);
             margin-bottom: 12px;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -113,8 +114,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 13px;
-            color: #999;
+            font-size: var(--st-text-xs);
+            color: var(--st-text-tertiary);
             margin-bottom: 12px;
         }
 
@@ -132,51 +133,53 @@
 
         .badge {
             padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 500;
+            border-radius: var(--st-radius-full);
+            font-size: var(--st-text-xs);
+            font-weight: var(--st-font-medium);
         }
 
         .badge-public {
-            background: #e3f2fd;
-            color: #1976d2;
+            background: var(--st-info-50);
+            color: var(--st-info-700);
         }
 
         .badge-private {
-            background: #fce4ec;
-            color: #c2185b;
+            background: var(--st-error-50);
+            color: var(--st-error-700);
         }
 
         .badge-friends {
-            background: #fff3e0;
-            color: #f57c00;
+            background: var(--st-warning-50);
+            color: var(--st-warning-700);
         }
 
         .badge-protected {
-            background: #f3e5f5;
-            color: #7b1fa2;
+            background: var(--st-primary-50);
+            color: var(--st-primary-700);
         }
 
         .story-actions {
             display: flex;
             gap: 8px;
             padding-top: 12px;
-            border-top: 1px solid #eee;
+            border-top: 1px solid var(--st-gray-100);
         }
 
         .action-btn {
             flex: 1;
             padding: 8px 12px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--st-gray-200);
             background: white;
-            border-radius: 6px;
+            border-radius: var(--st-radius-md);
             cursor: pointer;
-            font-size: 13px;
-            transition: all 0.3s;
+            font-size: var(--st-text-xs);
+            color: var(--st-text-secondary);
+            transition: all 0.2s;
         }
 
         .action-btn:hover {
-            background: #f5f5f5;
+            background: var(--st-gray-50);
+            border-color: var(--st-gray-300);
         }
 
         .action-btn.primary {
@@ -186,25 +189,26 @@
         }
 
         .action-btn.primary:hover {
-            background: #5568d3;
+            background: var(--st-primary-600);
+            border-color: var(--st-primary-600);
         }
 
         .empty-state {
             text-align: center;
             padding: 60px 20px;
-            color: #999;
+            color: var(--st-text-tertiary);
         }
 
         .empty-state i {
             font-size: 64px;
             margin-bottom: 20px;
-            opacity: 0.5;
+            opacity: 0.4;
         }
 
         .empty-state h3 {
-            font-size: 20px;
+            font-size: var(--st-text-xl);
             margin-bottom: 10px;
-            color: #666;
+            color: var(--st-text-secondary);
         }
 
         .create-story-btn {
@@ -212,18 +216,21 @@
             align-items: center;
             gap: 8px;
             padding: 12px 24px;
-            background: var(--st-primary-500);
+            background: var(--st-gradient-brand);
             color: white;
             border: none;
-            border-radius: 8px;
-            font-size: 16px;
+            border-radius: var(--st-radius-lg);
+            font-size: var(--st-text-base);
+            font-weight: var(--st-font-semibold);
             cursor: pointer;
             margin-top: 20px;
-            transition: background 0.3s;
+            transition: all 0.2s var(--st-ease-bounce);
         }
 
         .create-story-btn:hover {
-            background: #5568d3;
+            background: var(--st-gradient-brand-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
         }
     </style>
 </head>

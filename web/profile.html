@@ -4144,12 +4144,12 @@ if (codes.length === 0) {
             const expiresInDays = parseInt(document.getElementById('inviteCodeExpireDays').value);
             
             if (!count || count < 1) {
-                alert('请输入有效的生成数量');
+                window.toast ? toast.warning('请输入有效的生成数量') : alert('请输入有效的生成数量');
                 return;
             }
             
             if (!bonusPoints || bonusPoints < 10) {
-                alert('奖励积分不能少于10');
+                window.toast ? toast.warning('奖励积分不能少于10') : alert('奖励积分不能少于10');
                 return;
             }
             
@@ -4180,15 +4180,15 @@ if (codes.length === 0) {
                 });
                 
                 if (response.ok) {
-                    alert(`✅ 成功生成 ${data.count} 个邀请码！`);
+                    window.toast ? toast.success(`成功生成 ${data.count} 个邀请码！`) : alert(`✅ 成功生成 ${data.count} 个邀请码！`);
                     // 刷新邀请码列表
                     await loadInvitationCodes();
                 } else {
-                    alert('❌ ' + (data.error || '生成邀请码失败'));
+                    window.toast ? toast.error(data.error || '生成邀请码失败') : alert('❌ ' + (data.error || '生成邀请码失败'));
                 }
             } catch (error) {
                 console.error('生成邀请码失败:', error);
-                alert('生成失败，请稍后重试');
+                window.toast ? toast.error('生成失败，请稍后重试') : alert('生成失败，请稍后重试');
             }
         }
 
@@ -4198,7 +4198,7 @@ if (codes.length === 0) {
             
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(text).then(() => {
-                    alert('邀请码已复制到剪贴板！');
+                    window.toast ? toast.success('邀请码已复制到剪贴板！') : alert('邀请码已复制到剪贴板！');
                 }).catch(() => {
                     fallbackCopy(text);
                 });
@@ -4217,9 +4217,9 @@ if (codes.length === 0) {
             textarea.select();
             try {
                 document.execCommand('copy');
-                alert('邀请码已复制到剪贴板！');
+                window.toast ? toast.success('邀请码已复制到剪贴板！') : alert('邀请码已复制到剪贴板！');
             } catch (err) {
-                alert('复制失败，请手动复制邀请码');
+                window.toast ? toast.error('复制失败，请手动复制邀请码') : alert('复制失败，请手动复制邀请码');
             }
             document.body.removeChild(textarea);
         }
@@ -4644,12 +4644,12 @@ if (codes.length === 0) {
             const paymentAccount = document.getElementById('paymentAccount').value.trim();
 
             if (!amount || amount < 100) {
-                alert('提现金额最低为100积分');
+                window.toast ? toast.warning('提现金额最低为100积分') : alert('提现金额最低为100积分');
                 return;
             }
 
             if (!paymentAccount) {
-                alert('请输入提现账号');
+                window.toast ? toast.warning('请输入提现账号') : alert('请输入提现账号');
                 return;
             }
 
@@ -4679,15 +4679,15 @@ if (codes.length === 0) {
                 });
                 
                 if (response.ok) {
-                    alert('✅ ' + data.message);
+                    window.toast ? toast.success(data.message) : alert('✅ ' + data.message);
                     // 刷新收益统计
                     await loadEarningsStats();
                 } else {
-                    alert('❌ ' + (data.error || '提现申请失败'));
+                    window.toast ? toast.error(data.error || '提现申请失败') : alert('❌ ' + (data.error || '提现申请失败'));
                 }
             } catch (error) {
                 console.error('提交提现申请失败:', error);
-                alert('提交失败，请稍后重试');
+                window.toast ? toast.error('提交失败，请稍后重试') : alert('提交失败，请稍后重试');
             }
         }
 
@@ -4703,7 +4703,7 @@ if (codes.length === 0) {
                 });
 
                 if (!response.ok) {
-                    alert('加载提现记录失败');
+                    window.toast ? toast.error('加载提现记录失败') : alert('加载提现记录失败');
                     return;
                 }
 
@@ -4833,44 +4833,44 @@ if (codes.length === 0) {
                 document.body.appendChild(overlay);
             } catch (error) {
                 console.error('加载提现记录失败:', error);
-                alert('加载失败，请稍后重试');
+                window.toast ? toast.error('加载失败，请稍后重试') : alert('加载失败，请稍后重试');
             }
         }
 
         // 取消提现申请
         async function cancelWithdrawal(requestId) {
-            if (!window.showConfirm && !confirm('确定要取消这个提现申请吗？金额将退回到收益余额。')) {
-                return;
-            }
-
-            try {
-                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-                
-                const response = await fetch(`/api/withdrawals/${requestId}/cancel`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                const data = await response.json();
-                
-                if (response.ok) {
-                    alert('✅ ' + data.message);
-                    // 关闭对话框
-                    document.querySelectorAll('body > div').forEach(div => {
-                        if (div.style.position === 'fixed') {
-                            div.remove();
-                        }
+            const doCancel = async () => {
+                try {
+                    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                    
+                    const response = await fetch(`/api/withdrawals/${requestId}/cancel`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` }
                     });
-                    // 刷新收益统计
-                    await loadEarningsStats();
-                } else {
-                    alert('❌ ' + (data.error || '取消失败'));
+
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        window.toast ? toast.success(data.message) : alert('✅ ' + data.message);
+                        // 关闭对话框
+                        document.querySelectorAll('body > div').forEach(div => {
+                            if (div.style.position === 'fixed') div.remove();
+                        });
+                        // 刷新收益统计
+                        await loadEarningsStats();
+                    } else {
+                        window.toast ? toast.error(data.error || '取消失败') : alert('❌ ' + (data.error || '取消失败'));
+                    }
+                } catch (error) {
+                    console.error('取消提现申请失败:', error);
+                    window.toast ? toast.error('操作失败，请稍后重试') : alert('操作失败，请稍后重试');
                 }
-            } catch (error) {
-                console.error('取消提现申请失败:', error);
-                alert('操作失败，请稍后重试');
+            };
+
+            if (window.showDangerConfirm) {
+                showDangerConfirm('确定要取消这个提现申请吗？金额将退回到收益余额。', doCancel, { title: '取消提现', confirmText: '确认取消' });
+            } else if (confirm('确定要取消这个提现申请吗？金额将退回到收益余额。')) {
+                await doCancel();
             }
         }
 

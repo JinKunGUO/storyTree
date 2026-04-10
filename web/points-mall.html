@@ -655,7 +655,7 @@
                 }
             } catch (error) {
                 console.error('加载用户信息错误:', error);
-                alert('加载失败，请重新登录');
+                window.toast ? toast.error('加载失败，请重新登录') : console.error('加载失败，请重新登录');
                 logout();
             }
         }
@@ -783,7 +783,7 @@
         // 确认购买
         async function confirmPurchase(points, price) {
             if (!selectedPaymentMethod) {
-                alert('请选择支付方式');
+                window.toast ? toast.warning('请选择支付方式') : alert('请选择支付方式');
                 return;
             }
             
@@ -807,15 +807,15 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    alert('✅ 订单创建成功！即将跳转支付页面...');
+                    window.toast ? toast.success('订单创建成功！即将跳转支付页面...') : alert('✅ 订单创建成功！即将跳转支付页面...');
                     // TODO: 跳转到支付页面
                     // window.location.href = data.paymentUrl;
                 } else {
-                    alert('❌ ' + (data.error || '创建订单失败'));
+                    window.toast ? toast.error(data.error || '创建订单失败') : alert('❌ ' + (data.error || '创建订单失败'));
                 }
             } catch (error) {
                 console.error('创建订单失败:', error);
-                alert('创建订单失败，请稍后重试');
+                window.toast ? toast.error('创建订单失败，请稍后重试') : alert('创建订单失败，请稍后重试');
             }
         }
 
