@@ -1,9 +1,9 @@
 {
   "name": "storytree",
-  "version": "1.0.119",
+  "version": "1.0.120",
   "codename": "M4-BranchCompare",
   "stage": "MVP+",
-  "buildDate": "2026-04-10T10:04:06.754Z",
+  "buildDate": "2026-04-13T03:42:39.294Z",
   "commitHash": "5871535",
   "branch": "UI-UX-improvement-v1",
   "repository": "storytree",
@@ -876,6 +876,12 @@
     },
     "1.0.119": {
       "date": "2026-04-10",
+      "changes": [
+        "版本更新"
+      ]
+    },
+    "1.0.120": {
+      "date": "2026-04-13",
       "changes": [
         "版本更新"
       ]

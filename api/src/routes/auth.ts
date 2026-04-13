@@ -483,4 +483,225 @@ router.post('/resend-verification', async (req, res) => {
   }
 });
 
+// ============================================================
+// 微信小程序登录
+// POST /api/auth/wx-login
+// body: { code, invitationCode? }
+// 流程：code → 微信换取 openid → 查找/创建用户 → 返回 JWT
+// ============================================================
+router.post('/wx-login', async (req, res) => {
+  const { code, invitationCode } = req.body;
+
+  if (!code) {
+    return res.status(400).json({ error: '缺少微信登录 code' });
+  }
+
+  const appId = process.env.WX_APPID;
+  const appSecret = process.env.WX_APP_SECRET;
+
+  if (!appId || !appSecret) {
+    return res.status(500).json({ error: '服务端未配置微信 AppID/AppSecret' });
+  }
+
+  try {
+    // 1. 用 code 换取 openid + session_key
+    const wxUrl = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${appSecret}&js_code=${code}&grant_type=authorization_code`;
+    const wxRes = await fetch(wxUrl);
+    const wxData = await wxRes.json() as any;
+
+    if (wxData.errcode) {
+      console.error('微信 code2session 失败:', wxData);
+      return res.status(400).json({ error: `微信登录失败: ${wxData.errmsg || wxData.errcode}` });
+    }
+
+    const { openid, unionid } = wxData;
+
+    // 2. 查找已绑定该 openid 的用户
+    let user = await prisma.users.findUnique({
+      where: { wx_openid: openid },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        avatar: true,
+        bio: true,
+        emailVerified: true,
+        points: true,
+        level: true,
+        membership_tier: true,
+        membership_expires_at: true,
+        createdAt: true,
+      }
+    });
+
+    let isNewUser = false;
+
+    if (!user) {
+      // 3. 新用户：自动注册
+      isNewUser = true;
+
+      // 生成唯一用户名（wx_ + openid 后8位）
+      const baseUsername = `wx_${openid.slice(-8)}`;
+      let username = baseUsername;
+      let suffix = 1;
+      while (await prisma.users.findUnique({ where: { username } })) {
+        username = `${baseUsername}_${suffix++}`;
+      }
+
+      // 处理邀请码
+      let inviteCodeData = null;
+      let inviterUser = null;
+      if (invitationCode) {
+        inviteCodeData = await prisma.invitation_codes.findUnique({
+          where: { code: invitationCode.toUpperCase() }
+        });
+        if (inviteCodeData?.is_active) {
+          inviterUser = await prisma.users.findUnique({
+            where: { id: inviteCodeData.created_by_id }
+          });
+        }
+      }
+
+      const newUser = await prisma.$transaction(async (tx) => {
+        const created = await tx.users.create({
+          data: {
+            username,
+            email: `wx_${openid}@wx.placeholder`, // 微信用户无邮箱，用占位符
+            password: generateToken(), // 随机密码，微信用户不需要密码登录
+            wx_openid: openid,
+            wx_unionid: unionid || null,
+            emailVerified: true, // 微信登录视为已验证
+            points: inviteCodeData ? inviteCodeData.bonus_points : 0,
+            invited_by_code: invitationCode?.toUpperCase() || null,
+            updatedAt: new Date(),
+          },
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            avatar: true,
+            bio: true,
+            emailVerified: true,
+            points: true,
+            level: true,
+            membership_tier: true,
+            membership_expires_at: true,
+            createdAt: true,
+          }
+        });
+
+        // 邀请码奖励
+        if (inviteCodeData && inviterUser) {
+          const inviterReward = Math.floor(inviteCodeData.bonus_points * 0.5);
+          await tx.invitation_codes.update({
+            where: { code: inviteCodeData.code },
+            data: { used_count: { increment: 1 } }
+          });
+          await tx.users.update({
+            where: { id: inviterUser.id },
+            data: { points: { increment: inviterReward } }
+          });
+          await tx.invitation_records.create({
+            data: {
+              inviter_id: inviterUser.id,
+              invitee_id: created.id,
+              invitation_code: inviteCodeData.code,
+              bonus_points: inviteCodeData.bonus_points
+            }
+          });
+          await tx.notifications.create({
+            data: {
+              user_id: inviterUser.id,
+              type: 'invitation_success',
+              title: '邀请成功',
+              content: `用户 ${username} 通过你的邀请码注册成功，你获得了 ${inviterReward} 积分奖励！`,
+              link: '/profile'
+            }
+          });
+        }
+
+        return created;
+      });
+
+      user = newUser;
+    } else {
+      // 4. 老用户：更新 unionid（如果之前没有）
+      if (unionid && !await prisma.users.findUnique({ where: { wx_unionid: unionid } })) {
+        await prisma.users.update({
+          where: { id: user.id },
+          data: { wx_unionid: unionid }
+        });
+      }
+    }
+
+    res.json({
+      message: isNewUser ? '注册并登录成功' : '登录成功',
+      isNewUser,
+      user,
+      token: generateJWT(user.id, user.username)
+    });
+  } catch (error) {
+    console.error('微信登录错误:', error);
+    res.status(500).json({ error: '微信登录失败，请稍后重试' });
+  }
+});
+
+// ============================================================
+// 绑定微信到已有账号
+// POST /api/auth/bind-wx
+// header: Authorization: Bearer <token>
+// body: { code }
+// ============================================================
+router.post('/bind-wx', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) {
+    return res.status(401).json({ error: '未提供认证令牌' });
+  }
+
+  const { code } = req.body;
+  if (!code) {
+    return res.status(400).json({ error: '缺少微信登录 code' });
+  }
+
+  const appId = process.env.WX_APPID;
+  const appSecret = process.env.WX_APP_SECRET;
+
+  if (!appId || !appSecret) {
+    return res.status(500).json({ error: '服务端未配置微信 AppID/AppSecret' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-this') as { userId: number };
+
+    const wxUrl = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${appSecret}&js_code=${code}&grant_type=authorization_code`;
+    const wxRes = await fetch(wxUrl);
+    const wxData = await wxRes.json() as any;
+
+    if (wxData.errcode) {
+      return res.status(400).json({ error: `微信绑定失败: ${wxData.errmsg || wxData.errcode}` });
+    }
+
+    const { openid, unionid } = wxData;
+
+    // 检查 openid 是否已被其他账号绑定
+    const existing = await prisma.users.findUnique({ where: { wx_openid: openid } });
+    if (existing && existing.id !== decoded.userId) {
+      return res.status(409).json({ error: '该微信号已绑定其他账号' });
+    }
+
+    await prisma.users.update({
+      where: { id: decoded.userId },
+      data: {
+        wx_openid: openid,
+        wx_unionid: unionid || undefined,
+      }
+    });
+
+    res.json({ message: '微信绑定成功' });
+  } catch (error) {
+    console.error('绑定微信错误:', error);
+    res.status(500).json({ error: '绑定失败，请稍后重试' });
+  }
+});
+
 export default router;

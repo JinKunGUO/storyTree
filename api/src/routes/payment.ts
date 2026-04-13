@@ -435,4 +435,253 @@ router.post('/callback/mock', async (req, res) => {
   }
 });
 
+/**
+ * 微信小程序支付 - 统一下单
+ * POST /api/payment/wxpay/create
+ * body: { orderId }  (先创建订单，再调此接口获取支付参数)
+ */
+router.post('/wxpay/create', async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: '未登录' });
+  }
+
+  const { orderId } = req.body;
+  if (!orderId) {
+    return res.status(400).json({ error: '缺少 orderId' });
+  }
+
+  // 检查微信支付配置
+  const appId = process.env.WX_APPID;
+  const mchId = process.env.WX_PAY_MCH_ID;
+  const apiKey = process.env.WX_PAY_API_KEY;
+
+  if (!appId || !mchId || !apiKey) {
+    return res.status(503).json({
+      error: '微信支付暂未开通，请使用其他支付方式',
+      code: 'WXPAY_NOT_CONFIGURED'
+    });
+  }
+
+  try {
+    const order = await prisma.orders.findUnique({ where: { id: orderId } });
+
+    if (!order) {
+      return res.status(404).json({ error: '订单不存在' });
+    }
+    if (order.user_id !== userId) {
+      return res.status(403).json({ error: '无权操作此订单' });
+    }
+    if (order.status !== 'pending') {
+      return res.status(400).json({ error: '订单状态异常，无法支付' });
+    }
+
+    // 获取用户 openid（微信支付必须）
+    const user = await prisma.users.findUnique({
+      where: { id: userId },
+      select: { wx_openid: true }
+    });
+
+    if (!user?.wx_openid) {
+      return res.status(400).json({
+        error: '当前账号未绑定微信，请先使用微信登录或绑定微信',
+        code: 'NO_OPENID'
+      });
+    }
+
+    // 构造微信支付统一下单参数（V2 API）
+    const nonceStr = crypto.randomBytes(16).toString('hex');
+    const timeStamp = Math.floor(Date.now() / 1000).toString();
+    const totalFee = Math.round(order.amount * 100); // 转换为分
+    const notifyUrl = `${process.env.API_BASE_URL || 'https://your-domain.com'}/api/payment/wxpay/callback`;
+
+    const params: Record<string, string> = {
+      appid: appId,
+      mch_id: mchId,
+      nonce_str: nonceStr,
+      body: order.type === 'subscription' ? 'StoryTree会员订阅' : 'StoryTree积分充值',
+      out_trade_no: orderId,
+      total_fee: totalFee.toString(),
+      spbill_create_ip: req.ip || '127.0.0.1',
+      notify_url: notifyUrl,
+      trade_type: 'JSAPI',
+      openid: user.wx_openid,
+    };
+
+    // 生成签名
+    const signStr = Object.keys(params)
+      .sort()
+      .map(k => `${k}=${params[k]}`)
+      .join('&') + `&key=${apiKey}`;
+    const sign = crypto.createHash('md5').update(signStr).digest('hex').toUpperCase();
+    params.sign = sign;
+
+    // 转为 XML
+    const xmlBody = '<xml>' + Object.entries(params).map(([k, v]) => `<${k}><![CDATA[${v}]]></${k}>`).join('') + '</xml>';
+
+    // 调用微信统一下单接口
+    const wxRes = await fetch('https://api.mch.weixin.qq.com/pay/unifiedorder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/xml' },
+      body: xmlBody,
+    });
+    const wxXml = await wxRes.text();
+
+    // 简单解析 XML（生产环境建议用 xml2js 库）
+    const parseXmlValue = (xml: string, tag: string) => {
+      const match = xml.match(new RegExp(`<${tag}><!\\[CDATA\\[(.+?)\\]\\]></${tag}>`));
+      return match ? match[1] : '';
+    };
+
+    const returnCode = parseXmlValue(wxXml, 'return_code');
+    const resultCode = parseXmlValue(wxXml, 'result_code');
+
+    if (returnCode !== 'SUCCESS' || resultCode !== 'SUCCESS') {
+      const errMsg = parseXmlValue(wxXml, 'err_code_des') || parseXmlValue(wxXml, 'return_msg');
+      console.error('微信统一下单失败:', wxXml);
+      return res.status(400).json({ error: `微信支付下单失败: ${errMsg}` });
+    }
+
+    const prepayId = parseXmlValue(wxXml, 'prepay_id');
+
+    // 生成小程序端调起支付的参数（需要二次签名）
+    const payParams: Record<string, string> = {
+      appId,
+      timeStamp,
+      nonceStr: crypto.randomBytes(16).toString('hex'),
+      package: `prepay_id=${prepayId}`,
+      signType: 'MD5',
+    };
+    const paySignStr = Object.keys(payParams)
+      .sort()
+      .map(k => `${k}=${payParams[k as keyof typeof payParams]}`)
+      .join('&') + `&key=${apiKey}`;
+    payParams.paySign = crypto.createHash('md5').update(paySignStr).digest('hex').toUpperCase();
+
+    // 更新订单状态为 paying
+    await prisma.orders.update({
+      where: { id: orderId },
+      data: { payment_method: 'wxpay' }
+    });
+
+    res.json({
+      ...payParams,
+      orderId,
+    });
+  } catch (error) {
+    console.error('微信支付下单失败:', error);
+    res.status(500).json({ error: '创建支付订单失败' });
+  }
+});
+
+/**
+ * 微信支付回调
+ * POST /api/payment/wxpay/callback
+ * 由微信服务器主动调用，验签后处理订单
+ */
+router.post('/wxpay/callback', async (req, res) => {
+  const apiKey = process.env.WX_PAY_API_KEY;
+  if (!apiKey) {
+    return res.status(200).send('<xml><return_code><![CDATA[FAIL]]></return_code><return_msg><![CDATA[未配置支付密钥]]></return_msg></xml>');
+  }
+
+  try {
+    const xmlBody = req.body?.toString?.() || '';
+
+    const parseXmlValue = (xml: string, tag: string) => {
+      const match = xml.match(new RegExp(`<${tag}><!\\[CDATA\\[(.+?)\\]\\]></${tag}>`));
+      return match ? match[1] : '';
+    };
+
+    const returnCode = parseXmlValue(xmlBody, 'return_code');
+    const resultCode = parseXmlValue(xmlBody, 'result_code');
+    const outTradeNo = parseXmlValue(xmlBody, 'out_trade_no');
+    const transactionId = parseXmlValue(xmlBody, 'transaction_id');
+    const sign = parseXmlValue(xmlBody, 'sign');
+
+    if (returnCode !== 'SUCCESS') {
+      return res.status(200).send('<xml><return_code><![CDATA[SUCCESS]]></return_code></xml>');
+    }
+
+    // 验证签名（提取所有字段，去掉 sign，重新签名）
+    const fields: Record<string, string> = {};
+    const fieldRegex = /<(\w+)><!\[CDATA\[(.+?)\]\]><\/\1>/g;
+    let match;
+    while ((match = fieldRegex.exec(xmlBody)) !== null) {
+      if (match[1] !== 'sign') {
+        fields[match[1]] = match[2];
+      }
+    }
+    const signStr = Object.keys(fields).sort().map(k => `${k}=${fields[k]}`).join('&') + `&key=${apiKey}`;
+    const expectedSign = crypto.createHash('md5').update(signStr).digest('hex').toUpperCase();
+
+    if (sign !== expectedSign) {
+      console.error('微信支付回调签名验证失败');
+      return res.status(200).send('<xml><return_code><![CDATA[FAIL]]></return_code><return_msg><![CDATA[签名验证失败]]></return_msg></xml>');
+    }
+
+    if (resultCode !== 'SUCCESS') {
+      return res.status(200).send('<xml><return_code><![CDATA[SUCCESS]]></return_code></xml>');
+    }
+
+    // 查找并处理订单（与 mock 回调逻辑复用）
+    const order = await prisma.orders.findUnique({ where: { id: outTradeNo } });
+    if (!order || order.status !== 'pending') {
+      return res.status(200).send('<xml><return_code><![CDATA[SUCCESS]]></return_code></xml>');
+    }
+
+    await prisma.orders.update({
+      where: { id: outTradeNo },
+      data: {
+        status: 'paid',
+        payment_method: 'wxpay',
+        paid_at: new Date(),
+        transaction_id: transactionId,
+      }
+    });
+
+    // 处理会员/积分
+    if (order.type === 'subscription' && order.tier) {
+      await upgradeMembership(
+        order.user_id, order.tier, order.id,
+        order.amount, order.original_amount || order.amount,
+        order.discount_code || undefined
+      );
+    } else if (order.type === 'points' && order.points) {
+      await addPoints(order.user_id, order.points, 'purchase', '充值积分', parseInt(outTradeNo.split('_')[1] || '0'));
+    }
+
+    res.status(200).send('<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>');
+  } catch (error) {
+    console.error('处理微信支付回调失败:', error);
+    res.status(200).send('<xml><return_code><![CDATA[FAIL]]></return_code></xml>');
+  }
+});
+
+/**
+ * 查询微信支付订单状态（供前端轮询）
+ * GET /api/payment/wxpay/query/:orderId
+ */
+router.get('/wxpay/query/:orderId', async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) return res.status(401).json({ error: '未登录' });
+
+  const { orderId } = req.params;
+
+  try {
+    const order = await prisma.orders.findUnique({ where: { id: orderId } });
+    if (!order || order.user_id !== userId) {
+      return res.status(404).json({ error: '订单不存在' });
+    }
+
+    res.json({
+      orderId: order.id,
+      status: order.status,
+      paidAt: order.paid_at,
+    });
+  } catch (error) {
+    res.status(500).json({ error: '查询失败' });
+  }
+});
+
 export default router;

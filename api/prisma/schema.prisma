@@ -224,6 +224,8 @@ model users {
   has_used_trial             Boolean                   @default(false)
   subscription_type          String?
   subscription_expires       DateTime?
+  wx_openid                  String?                   @unique
+  wx_unionid                 String?                   @unique
   isAdmin                    Boolean                   @default(false) @map("is_admin")
   emailVerified              Boolean                   @default(false) @map("email_verified")
   emailVerificationToken     String?                   @map("email_verification_token")
