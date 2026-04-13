@@ -215,7 +215,11 @@ router.post('/register', async (req, res) => {
         ? `注册成功！你获得了 ${inviteCodeData.bonus_points} 积分奖励，请查收验证邮件`
         : '注册成功，请查收验证邮件',
       user: result,
-      token: generateJWT(result.id, result.username)
+      token: await (async () => {
+        const t = generateJWT(result.id, result.username, false, 'web');
+        await prisma.users.update({ where: { id: result.id }, data: { active_token: t } });
+        return t;
+      })()
     });
   } catch (error) {
     console.error('注册错误:', error);
@@ -255,6 +259,10 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: '邮箱或密码错误' });
     }
 
+    // 生成新 token 并写入 active_token（同时使其他端旧 token 失效）
+    const token = generateJWT(user.id, user.username, false, 'web');
+    await prisma.users.update({ where: { id: user.id }, data: { active_token: token } });
+
     res.json({
       message: '登录成功',
       user: {
@@ -266,7 +274,7 @@ router.post('/login', async (req, res) => {
         emailVerified: user.emailVerified,
         createdAt: user.createdAt,
       },
-      token: generateJWT(user.id, user.username)
+      token
     });
   } catch (error) {
     console.error('登录错误:', error);
@@ -638,7 +646,11 @@ router.post('/wx-login', async (req, res) => {
       message: isNewUser ? '注册并登录成功' : '登录成功',
       isNewUser,
       user,
-      token: generateJWT(user.id, user.username)
+      token: await (async () => {
+        const t = generateJWT(user!.id, user!.username, false, 'miniprogram');
+        await prisma.users.update({ where: { id: user!.id }, data: { active_token: t } });
+        return t;
+      })()
     });
   } catch (error) {
     console.error('微信登录错误:', error);

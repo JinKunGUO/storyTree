@@ -44,8 +44,9 @@ export async function verifyPassword(password: string, hashedPassword: string): 
 }
 
 // 生成JWT token
-export function generateJWT(userId: number, username?: string, isAdmin?: boolean): string {
-  return jwt.sign({ userId, username, isAdmin: isAdmin || false }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+// platform: 'web' | 'miniprogram' | 'app'，用于区分登录端（互踢依赖 active_token，platform 仅作日志/调试用）
+export function generateJWT(userId: number, username?: string, isAdmin?: boolean, platform: string = 'web'): string {
+  return jwt.sign({ userId, username, isAdmin: isAdmin || false, platform }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 }
 
 // 验证JWT token

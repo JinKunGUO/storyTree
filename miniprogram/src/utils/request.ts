@@ -81,9 +81,21 @@ function request<T = unknown>(options: RequestOptions): Promise<T> {
 
         // 401 未授权 - 清除登录状态并跳转登录页
         if (statusCode === 401) {
+          const respData = res.data as ApiResponse & { code?: string }
+          const isKicked = respData?.code === 'TOKEN_REPLACED'
           userStore.logout()
-          uni.navigateTo({ url: '/pages/auth/login/index' })
-          reject(new Error('登录已过期，请重新登录'))
+          uni.showModal({
+            title: isKicked ? '账号已在其他设备登录' : '登录已过期',
+            content: isKicked
+              ? '你的账号已在其他设备登录，当前设备已退出。如非本人操作，请修改密码。'
+              : '登录状态已过期，请重新登录',
+            showCancel: false,
+            confirmText: '重新登录',
+            success: () => {
+              uni.reLaunch({ url: '/pages/auth/login/index' })
+            }
+          })
+          reject(new Error(isKicked ? '账号已在其他设备登录' : '登录已过期，请重新登录'))
           return
         }
 

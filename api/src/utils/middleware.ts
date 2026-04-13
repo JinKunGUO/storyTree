@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyJWT } from './auth';
+import { prisma } from '../index';
 
 // 扩展Request类型以包含userId
 declare global {
@@ -14,8 +15,9 @@ declare global {
 
 /**
  * 认证中间件 - 从Authorization header或x-user-id header获取用户信息
+ * 同时校验 active_token，确保同账号多端互踢：新登录会使旧端 token 失效
  */
-export function authenticateToken(req: Request, res: Response, next: NextFunction) {
+export async function authenticateToken(req: Request, res: Response, next: NextFunction) {
   // 方法1: 从Authorization header获取JWT token
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN格式
@@ -23,6 +25,20 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
   if (token) {
     const decoded = verifyJWT(token);
     if (decoded) {
+      // 校验 active_token：查数据库确认此 token 仍是当前有效 token
+      const user = await prisma.users.findUnique({
+        where: { id: decoded.userId },
+        select: { active_token: true }
+      });
+
+      if (!user || user.active_token !== token) {
+        // token 已被新登录替换，返回特定错误码让前端处理（弹出重新登录提示）
+        return res.status(401).json({
+          error: '账号已在其他设备登录，请重新登录',
+          code: 'TOKEN_REPLACED'
+        });
+      }
+
       req.userId = decoded.userId;
       req.username = decoded.username;
       req.isAdmin = decoded.isAdmin;
@@ -30,9 +46,9 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
     }
   }
 
-  // 方法2: 从x-user-id header获取（用于开发/测试）
+  // 方法2: 从x-user-id header获取（仅用于本地开发/测试，生产环境应禁用）
   const userIdHeader = req.headers['x-user-id'];
-  if (userIdHeader) {
+  if (userIdHeader && process.env.NODE_ENV !== 'production') {
     req.userId = parseInt(userIdHeader as string);
     return next();
   }
@@ -42,7 +58,7 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
 }
 
 /**
- * 可选认证中间件 - 如果有token则解析，没有也继续
+ * 可选认证中间件 - 如果有token则解析，没有也继续（不校验 active_token，避免影响公开接口性能）
  */
 export function optionalAuth(req: Request, res: Response, next: NextFunction) {
   // 方法1: 从Authorization header获取JWT token

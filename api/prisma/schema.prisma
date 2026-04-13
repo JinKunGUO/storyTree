@@ -226,6 +226,7 @@ model users {
   subscription_expires       DateTime?
   wx_openid                  String?                   @unique
   wx_unionid                 String?                   @unique
+  active_token               String?                   // 当前有效 token，新登录时替换旧值，实现单端互踢
   isAdmin                    Boolean                   @default(false) @map("is_admin")
   emailVerified              Boolean                   @default(false) @map("email_verified")
   emailVerificationToken     String?                   @map("email_verification_token")
