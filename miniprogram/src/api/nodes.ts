@@ -35,9 +35,14 @@ export interface Node {
   userRating?: number
 }
 
-// 获取故事的节点树
+// 获取故事的节点树（从 GET /api/stories/:id 的响应中提取）
+// 后端不存在独立的 /api/stories/:id/nodes 接口，节点数据包含在故事详情中
 export function getStoryNodes(storyId: number) {
-  return http.get<{ nodes: Node[]; rootNode: Node }>(`/api/stories/${storyId}/nodes`)
+  return http.get<{ story: any; nodes: Node[] }>(`/api/stories/${storyId}`).then(res => {
+    const nodes = res.nodes || []
+    const rootNode = nodes.find((n: Node) => !n.parent_id) || null
+    return { nodes, rootNode }
+  })
 }
 
 // 获取单个节点
@@ -45,9 +50,12 @@ export function getNode(id: number) {
   return http.get<{ node: Node }>(`/api/nodes/${id}`)
 }
 
-// 获取节点的子节点
+// 获取节点的子节点（分支）
+// 后端不存在 /children 接口，子节点数据在 GET /api/nodes/:id 的 branches 字段中
 export function getNodeChildren(id: number) {
-  return http.get<{ children: Node[] }>(`/api/nodes/${id}/children`)
+  return http.get<{ node: Node; branches: Node[] }>(`/api/nodes/${id}`).then(res => ({
+    children: res.branches || [],
+  }))
 }
 
 // 创建节点（续写）

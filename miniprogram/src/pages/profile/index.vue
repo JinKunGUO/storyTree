@@ -594,6 +594,7 @@ function handleLogout() {
   .btn-logout {
     width: 100%;
     height: 96rpx;
+    line-height: 96rpx;
     background: transparent;
     border: 2rpx solid #ef4444;
     border-radius: 16rpx;

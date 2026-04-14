@@ -457,6 +457,7 @@ function handleBuy() {
   .btn-buy {
     width: 100%;
     height: 96rpx;
+    line-height: 96rpx;
     background: linear-gradient(135deg, #7c6af7 0%, #a78bfa 100%);
     color: #ffffff;
     font-size: 30rpx;

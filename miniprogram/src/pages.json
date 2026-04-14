@@ -41,6 +41,38 @@
       }
     },
     {
+      "path": "pages/profile/stories",
+      "style": {
+        "navigationBarTitleText": "我的故事",
+        "navigationBarBackgroundColor": "#1a1a2e",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/profile/nodes",
+      "style": {
+        "navigationBarTitleText": "我写的章节",
+        "navigationBarBackgroundColor": "#1a1a2e",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/profile/bookmarks",
+      "style": {
+        "navigationBarTitleText": "我的收藏",
+        "navigationBarBackgroundColor": "#1a1a2e",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/profile/following",
+      "style": {
+        "navigationBarTitleText": "我的追更",
+        "navigationBarBackgroundColor": "#1a1a2e",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
       "path": "pages/auth/login/index",
       "style": {
         "navigationBarTitleText": "登录",

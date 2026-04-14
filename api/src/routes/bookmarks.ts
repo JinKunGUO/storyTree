@@ -6,6 +6,60 @@ import { addPoints, POINT_RULES } from '../utils/points';
 const router = Router();
 
 // ============================================
+// 故事收藏列表
+// ============================================
+
+// 获取当前用户收藏的故事列表
+// GET /api/bookmarks?page=1&pageSize=20
+router.get('/', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) {
+    return res.status(401).json({ error: '请先登录' });
+  }
+
+  try {
+    const decoded = verifyJWT(token);
+    if (!decoded) {
+      return res.status(401).json({ error: '无效的Token' });
+    }
+
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 20;
+
+    const total = await prisma.bookmarks.count({
+      where: { user_id: decoded.userId },
+    });
+
+    const bookmarks = await prisma.bookmarks.findMany({
+      where: { user_id: decoded.userId },
+      include: {
+        story: {
+          include: {
+            author: {
+              select: { id: true, username: true, avatar: true },
+            },
+            _count: {
+              select: { nodes: true, followers: true, bookmarks: true },
+            },
+          },
+        },
+      },
+      orderBy: { created_at: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+
+    res.json({
+      bookmarks,
+      pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
+    });
+  } catch (error) {
+    console.error('获取收藏列表错误:', error);
+    res.status(500).json({ error: '获取收藏列表失败' });
+  }
+});
+
+// ============================================
 // 收藏章节功能
 // ============================================
 

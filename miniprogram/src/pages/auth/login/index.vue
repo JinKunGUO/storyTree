@@ -368,6 +368,7 @@ function goForgotPassword() {
 .btn-primary {
   width: 100%;
   height: 96rpx;
+  line-height: 96rpx;
   background: linear-gradient(135deg, #7c6af7 0%, #a78bfa 100%);
   border-radius: 16rpx;
   font-size: 32rpx;
@@ -410,6 +411,7 @@ function goForgotPassword() {
 .btn-wx {
   width: 100%;
   height: 96rpx;
+  line-height: 96rpx;
   background: #07c160;
   border-radius: 16rpx;
   font-size: 32rpx;
@@ -440,6 +442,7 @@ function goForgotPassword() {
 .btn-register {
   width: 100%;
   height: 88rpx;
+  line-height: 88rpx;
   background: transparent;
   border: 2rpx solid #7c6af7;
   border-radius: 16rpx;

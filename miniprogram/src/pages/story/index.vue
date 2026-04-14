@@ -156,7 +156,6 @@
 import { ref, onMounted } from 'vue'
 import { useUserStore } from '@/store/user'
 import { getStory, followStory, unfollowStory, bookmarkStory, unbookmarkStory } from '@/api/stories'
-import { getStoryNodes } from '@/api/nodes'
 import { formatRelativeTime } from '@/utils/helpers'
 import { getImageUrl } from '@/utils/request'
 import type { Story } from '@/api/stories'
@@ -165,7 +164,7 @@ import type { Node } from '@/api/nodes'
 const userStore = useUserStore()
 
 const loading = ref(true)
-const nodesLoading = ref(true)
+const nodesLoading = ref(false)
 const story = ref<Story | null>(null)
 const rootNode = ref<Node | null>(null)
 const isFollowed = ref(false)
@@ -188,24 +187,13 @@ async function loadStory(id: number) {
     isFollowed.value = res.story.isFollowed ?? false
     isBookmarked.value = res.story.isBookmarked ?? false
 
-    // 加载节点树
-    loadNodes(id)
+    // 从同一响应中提取根节点，无需额外请求
+    const nodes = res.nodes || []
+    rootNode.value = nodes.find((n: Node) => !n.parent_id) || null
   } catch (err) {
     console.error('加载故事失败', err)
   } finally {
     loading.value = false
-  }
-}
-
-async function loadNodes(storyId: number) {
-  nodesLoading.value = true
-  try {
-    const res = await getStoryNodes(storyId)
-    rootNode.value = res.rootNode
-  } catch (err) {
-    console.error('加载节点失败', err)
-  } finally {
-    nodesLoading.value = false
   }
 }
 
@@ -493,6 +481,7 @@ function formatTime(date: string) {
   .btn-follow {
     flex: 1;
     height: 88rpx;
+    line-height: 88rpx;
     border: 2rpx solid #7c6af7;
     background: transparent;
     color: #7c6af7;
@@ -508,6 +497,7 @@ function formatTime(date: string) {
   .btn-read {
     flex: 2;
     height: 88rpx;
+    line-height: 88rpx;
     background: linear-gradient(135deg, #7c6af7 0%, #a78bfa 100%);
     color: #ffffff;
     font-size: 28rpx;
@@ -576,6 +566,7 @@ function formatTime(date: string) {
 .btn-collab {
   width: 100%;
   height: 88rpx;
+  line-height: 88rpx;
   background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
   color: #ffffff;
   font-size: 28rpx;

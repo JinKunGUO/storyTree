@@ -400,6 +400,7 @@ function handlePurchase() {
   .btn-buy-member {
     width: 100%;
     height: 96rpx;
+    line-height: 96rpx;
     background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
     color: #ffffff;
     font-size: 32rpx;

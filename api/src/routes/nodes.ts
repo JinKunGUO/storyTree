@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../index';
 import { needsReview } from '../utils/sensitiveWords';
-import { authenticateToken, getUserId } from '../utils/middleware';
+import { authenticateToken, optionalAuth, getUserId } from '../utils/middleware';
 import { updateWordCountAndCheckMilestones } from '../utils/milestone-checker';
 import { addPoints } from '../utils/points';
 import { WORD_REWARD_RATE, MAKEUP_CHANCE_RATE } from '../utils/milestones';
@@ -603,7 +603,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 });
 
 // Get node details with branches
-router.get('/:id', async (req, res) => {
+router.get('/:id', optionalAuth, async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -886,7 +886,7 @@ router.post('/:id/branches', authenticateToken, async (req, res) => {
 });
 
 // Rate a node
-router.post('/:id/rate', async (req, res) => {
+router.post('/:id/rate', authenticateToken, async (req, res) => {
   const userId = getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });

@@ -51,9 +51,9 @@ export function getStories(params?: {
   return http.get<StoryListResponse>('/api/stories', params as Record<string, unknown>)
 }
 
-// 获取故事详情
+// 获取故事详情（后端同时返回 nodes 数组）
 export function getStory(id: number) {
-  return http.get<{ story: Story }>(`/api/stories/${id}`)
+  return http.get<{ story: Story; nodes: import('./nodes').Node[] }>(`/api/stories/${id}`)
 }
 
 // 获取首页推荐故事

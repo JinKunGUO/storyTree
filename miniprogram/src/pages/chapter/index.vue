@@ -262,7 +262,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useUserStore } from '@/store/user'
 import { useAppStore } from '@/store/app'
-import { getNode, getNodeChildren, rateNode, bookmarkNode, unbookmarkNode, incrementReadCount } from '@/api/nodes'
+import { getNode, rateNode, bookmarkNode, unbookmarkNode, incrementReadCount } from '@/api/nodes'
 import { getNodeComments, createComment, voteComment } from '@/api/comments'
 import { formatRelativeTime } from '@/utils/helpers'
 import { getImageUrl } from '@/utils/request'
@@ -325,21 +325,21 @@ onMounted(() => {
 async function loadNode(id: number) {
   loading.value = true
   try {
-    const [nodeRes, childrenRes, commentsRes] = await Promise.all([
+    const [nodeRes, commentsRes] = await Promise.all([
       getNode(id),
-      getNodeChildren(id),
       getNodeComments(id, { page: 1, pageSize: 10 }),
     ])
     node.value = nodeRes.node
-    children.value = childrenRes.children
+    // 后端 GET /api/nodes/:id 同时返回 branches（子节点列表）
+    children.value = (nodeRes as any).branches || []
     comments.value = commentsRes.comments
     totalComments.value = commentsRes.total
     hasMoreComments.value = commentsRes.total > 10
     isBookmarked.value = nodeRes.node.isBookmarked ?? false
     userRating.value = nodeRes.node.userRating ?? 0
 
-    // 增加阅读次数
-    incrementReadCount(id).catch(() => {})
+    // 增加阅读次数（后端 GET /api/nodes/:id 已自动增加，此处跳过避免重复）
+    // incrementReadCount(id).catch(() => {})
   } catch (err) {
     console.error('加载章节失败', err)
   } finally {
