@@ -122,7 +122,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useUserStore } from '@/store/user'
-import { getMyInvitationCodes, getInvitationRecords } from '@/api/users'
+import { getMyInvitationCodes } from '@/api/users'
 import { http, getImageUrl } from '@/utils/request'
 
 const userStore = useUserStore()
@@ -162,15 +162,14 @@ onMounted(async () => {
 async function loadData() {
   loading.value = true
   try {
-    const [codesRes, recordsRes] = await Promise.all([
-      getMyInvitationCodes(),
-      getInvitationRecords(),
-    ])
+    // 后端 GET /api/invitations/my-codes 同时返回 inviteRecords，无需单独请求
+    const codesRes = await getMyInvitationCodes()
     if (codesRes.codes?.length > 0) {
       myCode.value = codesRes.codes[0].code
       inviteBonus.value = codesRes.codes[0].bonus_points || 100
     }
-    records.value = recordsRes.records || []
+    // inviteRecords 字段由后端在 my-codes 响应中直接返回
+    records.value = (codesRes as any).inviteRecords || []
   } catch (e) {
     console.error('加载邀请数据失败', e)
   } finally {

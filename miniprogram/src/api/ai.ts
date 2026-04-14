@@ -1,5 +1,9 @@
 /**
  * AI 相关 API
+ * 后端实际路由（/api/ai）：
+ *   POST /generate   — 生成续写选项（支持 nodeId 或 storyId + context）
+ *   POST /accept     — 采纳 AI 续写分支（创建节点）
+ *   GET  /usage-stats — 获取 AI 使用统计
  */
 
 import http from '@/utils/request'
@@ -18,55 +22,107 @@ export interface AiTask {
   completed_at?: string
 }
 
-// 创建 AI 续写任务
+export interface AiOption {
+  title: string
+  content: string
+  style: string
+}
+
+// 生成 AI 续写选项
+// 后端路由：POST /api/ai/generate
+// 支持两种模式：
+//   - 基于已保存节点：{ nodeId, style?, count? }
+//   - 基于故事+上下文：{ storyId, context?, style?, count? }
 export function createContinueTask(data: {
-  story_id: number
-  node_id: number
+  story_id?: number
+  node_id?: number
+  context?: string
   style?: string
   length?: 'short' | 'medium' | 'long'
 }) {
-  return http.post<{ task: AiTask; message: string }>('/api/ai/continue', data)
+  return http.post<{
+    options: AiOption[]
+    raw: string
+    metadata: { tokensUsed: number; costUsd: string; responseTimeMs: number; success: boolean }
+  }>('/api/ai/generate', {
+    nodeId: data.node_id,
+    storyId: data.story_id,
+    context: data.context,
+    style: data.style,
+    count: data.length === 'short' ? 1 : data.length === 'long' ? 5 : 3,
+  })
 }
 
-// 创建 AI 润色任务
+// 采纳 AI 续写分支（创建节点）
+// 后端路由：POST /api/ai/accept
+export function acceptAiOption(data: {
+  parentNodeId: number
+  title: string
+  content: string
+}) {
+  return http.post<{ node: any }>('/api/ai/accept', data)
+}
+
+// 创建 AI 润色任务（复用 generate 接口，style='润色'）
+// 后端没有独立的 /polish 接口，使用 generate 替代
 export function createPolishTask(data: {
   node_id: number
   content: string
   style?: string
 }) {
-  return http.post<{ task: AiTask; message: string }>('/api/ai/polish', data)
+  return http.post<{
+    options: AiOption[]
+    raw: string
+  }>('/api/ai/generate', {
+    nodeId: data.node_id,
+    style: '润色',
+    count: 1,
+  })
 }
 
-// 创建 AI 插图任务
+// 创建 AI 插图任务（后端暂无此接口，预留）
 export function createIllustrationTask(data: {
   node_id: number
   prompt?: string
 }) {
-  return http.post<{ task: AiTask; message: string }>('/api/ai/illustration', data)
+  return Promise.reject(new Error('AI 插图功能暂未开放'))
 }
 
-// 获取 AI 任务状态
+// 获取 AI 使用统计（后端路由：GET /api/ai/usage-stats）
 export function getAiTask(taskId: number) {
-  return http.get<{ task: AiTask }>(`/api/ai/tasks/${taskId}`)
+  // 后端没有 /tasks/:id 接口，此函数仅作兼容保留
+  return Promise.reject(new Error('暂不支持查询单个任务'))
 }
 
-// 获取用户的 AI 任务列表
+// 获取用户的 AI 任务列表（后端无此接口，兼容保留）
 export function getMyAiTasks(params?: { page?: number; pageSize?: number; status?: string }) {
-  return http.get<{ tasks: AiTask[]; total: number }>('/api/ai/tasks', params as Record<string, unknown>)
+  return Promise.reject(new Error('暂不支持任务列表查询'))
 }
 
-// 创建 AI 摘要任务
+// 创建 AI 摘要任务（后端无独立接口，使用 generate 替代）
 export function createSummaryTask(data: {
   node_id: number
 }) {
-  return http.post<{ task: AiTask; message: string }>('/api/ai/summary', data)
+  return http.post<{
+    options: AiOption[]
+    raw: string
+  }>('/api/ai/generate', {
+    nodeId: data.node_id,
+    style: '摘要',
+    count: 1,
+  })
 }
 
-// 获取任务状态（别名，与 getAiTask 相同）
+// 获取任务状态（别名，兼容保留）
 export const getTaskStatus = getAiTask
 
-// 获取 AI 使用配额
+// 获取 AI 使用统计
+// 后端路由：GET /api/ai/usage-stats
 export function getAiQuota() {
-  return http.get<{ used: number; limit: number; resetAt: string }>('/api/ai/quota')
+  return http.get<{
+    total: { requests: number; tokens: number; cost: string; successRate: string }
+    recent7Days: { requests: number; tokens: number; cost: string }
+  }>('/api/ai/usage-stats')
 }
+
 

@@ -13,8 +13,9 @@ export function getUserProfile(userId: number) {
 }
 
 // 更新用户信息
+// 后端路由：PUT /api/users/profile（不是 /me）
 export function updateProfile(data: { username?: string; bio?: string; avatar?: string }) {
-  return http.put<{ user: UserInfo; message: string }>('/api/users/me', data)
+  return http.put<{ user: UserInfo; message: string }>('/api/users/profile', data)
 }
 
 // 关注用户

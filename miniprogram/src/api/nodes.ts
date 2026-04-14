@@ -84,18 +84,19 @@ export function rateNode(id: number, score: number) {
   return http.post<{ message: string; rating_avg: number }>(`/api/nodes/${id}/rate`, { score })
 }
 
-// 收藏节点
+// 收藏/取消收藏节点（切换型，后端路由：POST /api/bookmarks/node/:nodeId）
 export function bookmarkNode(nodeId: number) {
-  return http.post<{ message: string }>('/api/bookmarks/node', { node_id: nodeId })
+  return http.post<{ message: string; bookmarked: boolean }>(`/api/bookmarks/node/${nodeId}`)
 }
 
-// 取消收藏节点
+// 取消收藏节点（与 bookmarkNode 相同，调用切换接口）
 export function unbookmarkNode(nodeId: number) {
-  return http.delete<{ message: string }>(`/api/bookmarks/node/${nodeId}`)
+  return http.post<{ message: string; bookmarked: boolean }>(`/api/bookmarks/node/${nodeId}`)
 }
 
 // 增加阅读次数
-export function incrementReadCount(id: number) {
-  return http.post<{ message: string }>(`/api/nodes/${id}/read`)
+// 注意：后端 GET /api/nodes/:id 已自动增加 read_count，此函数为空操作，无需额外请求
+export function incrementReadCount(_id: number) {
+  return Promise.resolve({ message: 'read count auto-incremented by GET /api/nodes/:id' })
 }
 

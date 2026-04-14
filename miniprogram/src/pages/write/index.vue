@@ -374,7 +374,12 @@ function selectStory(story: Story) {
 
 function goCreateStory() {
   showStoryPicker.value = false
-  uni.navigateTo({ url: '/pages/write/create-story' })
+  uni.showModal({
+    title: '提示',
+    content: '请先在"发现"页面找到感兴趣的故事，或在首页创建新故事后再续写章节',
+    showCancel: false,
+    confirmText: '知道了',
+  })
 }
 
 function handleBack() {

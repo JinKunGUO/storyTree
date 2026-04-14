@@ -99,14 +99,14 @@ export function unfollowStory(id: number) {
   return http.delete<{ message: string }>(`/api/stories/${id}/follow`)
 }
 
-// 收藏故事
+// 收藏/取消收藏故事（切换型，后端路由：POST /api/bookmarks/story/:storyId）
 export function bookmarkStory(id: number) {
-  return http.post<{ message: string }>(`/api/bookmarks`, { story_id: id })
+  return http.post<{ message: string; bookmarked: boolean }>(`/api/bookmarks/story/${id}`)
 }
 
-// 取消收藏
+// 取消收藏（与 bookmarkStory 相同，调用切换接口）
 export function unbookmarkStory(id: number) {
-  return http.delete<{ message: string }>(`/api/bookmarks/${id}`)
+  return http.post<{ message: string; bookmarked: boolean }>(`/api/bookmarks/story/${id}`)
 }
 
 // 获取用户的故事列表

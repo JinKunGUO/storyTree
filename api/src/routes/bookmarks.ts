@@ -60,6 +60,68 @@ router.get('/', async (req, res) => {
 });
 
 // ============================================
+// 故事收藏切换
+// ============================================
+
+// 切换故事收藏状态（收藏/取消收藏）
+// POST /api/bookmarks/story/:storyId
+router.post('/story/:storyId', async (req, res) => {
+  const { storyId } = req.params;
+  const token = req.headers.authorization?.replace('Bearer ', '');
+
+  if (!token) {
+    return res.status(401).json({ error: '请先登录' });
+  }
+
+  try {
+    const decoded = verifyJWT(token);
+    if (!decoded) {
+      return res.status(401).json({ error: '无效的Token' });
+    }
+
+    const story = await prisma.stories.findUnique({
+      where: { id: parseInt(storyId) },
+      select: { id: true, title: true, author_id: true },
+    });
+
+    if (!story) {
+      return res.status(404).json({ error: '故事不存在' });
+    }
+
+    const existing = await prisma.bookmarks.findFirst({
+      where: { user_id: decoded.userId, story_id: parseInt(storyId) },
+    });
+
+    if (existing) {
+      await prisma.bookmarks.delete({ where: { id: existing.id } });
+      return res.json({ message: '已取消收藏', bookmarked: false });
+    }
+
+    const bookmark = await prisma.bookmarks.create({
+      data: { user_id: decoded.userId, story_id: parseInt(storyId) },
+    });
+
+    // 通知故事作者
+    if (story.author_id !== decoded.userId) {
+      await prisma.notifications.create({
+        data: {
+          user_id: story.author_id,
+          type: 'bookmark',
+          title: '新收藏',
+          content: `${decoded.username || '用户'} 收藏了你的故事《${story.title}》`,
+          link: `/story?id=${storyId}`,
+        },
+      });
+    }
+
+    res.json({ message: '收藏成功', bookmarked: true, bookmark });
+  } catch (error) {
+    console.error('故事收藏切换错误:', error);
+    res.status(500).json({ error: '操作失败' });
+  }
+});
+
+// ============================================
 // 收藏章节功能
 // ============================================
 
