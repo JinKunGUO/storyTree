@@ -76,7 +76,7 @@
         >
           <image
             class="result-cover"
-            :src="story.cover_image || '/static/images/default-cover.png'"
+            :src="getImageUrl(story.cover_image) || '/static/images/default-cover.png'"
             mode="aspectFill"
           />
           <view class="result-info">
@@ -99,6 +99,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { searchStories } from '@/api/stories'
+import { getImageUrl } from '@/utils/request'
 import type { Story } from '@/api/stories'
 
 const keyword = ref('')

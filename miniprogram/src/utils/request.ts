@@ -171,3 +171,15 @@ export const http = {
 
 export default http
 
+/**
+ * 将后端返回的图片相对路径转换为完整 URL
+ * 例如：/uploads/xxx.jpg -> http://localhost:3001/uploads/xxx.jpg
+ */
+export function getImageUrl(path: string | null | undefined): string {
+  if (!path) return ''
+  // 已经是完整 URL（http/https/data:），直接返回
+  if (/^(https?:\/\/|data:)/.test(path)) return path
+  // 相对路径拼接 BASE_URL
+  return `${BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`
+}
+

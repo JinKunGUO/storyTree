@@ -38,7 +38,7 @@
         <view class="author-row">
           <image
             class="author-avatar"
-            :src="node.author.avatar || '/static/images/default-avatar.png'"
+            :src="getImageUrl(node.author.avatar) || '/static/images/default-avatar.png'"
             mode="aspectFill"
           />
           <text class="author-name" :style="{ color: subTextColors[settings.theme] }">
@@ -150,7 +150,7 @@
           <view v-for="comment in comments" :key="comment.id" class="comment-item">
             <image
               class="comment-avatar"
-              :src="comment.user.avatar || '/static/images/default-avatar.png'"
+              :src="getImageUrl(comment.user.avatar) || '/static/images/default-avatar.png'"
               mode="aspectFill"
             />
             <view class="comment-content">
@@ -265,6 +265,7 @@ import { useAppStore } from '@/store/app'
 import { getNode, getNodeChildren, rateNode, bookmarkNode, unbookmarkNode, incrementReadCount } from '@/api/nodes'
 import { getNodeComments, createComment, voteComment } from '@/api/comments'
 import { formatRelativeTime } from '@/utils/helpers'
+import { getImageUrl } from '@/utils/request'
 import type { Node } from '@/api/nodes'
 import type { Comment } from '@/api/comments'
 

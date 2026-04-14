@@ -25,7 +25,7 @@
         <template v-if="selectedStory">
           <image
             class="selected-story-cover"
-            :src="selectedStory.cover_image || '/static/images/default-cover.png'"
+            :src="getImageUrl(selectedStory.cover_image) || '/static/images/default-cover.png'"
             mode="aspectFill"
           />
           <view class="selected-story-info">
@@ -122,7 +122,7 @@
           >
             <image
               class="picker-cover"
-              :src="story.cover_image || '/static/images/default-cover.png'"
+              :src="getImageUrl(story.cover_image) || '/static/images/default-cover.png'"
               mode="aspectFill"
             />
             <view class="picker-info">
@@ -154,6 +154,7 @@ import { useUserStore } from '@/store/user'
 import { createNode, updateNode } from '@/api/nodes'
 import { getUserStories } from '@/api/stories'
 import { createContinueTask, createPolishTask } from '@/api/ai'
+import { getImageUrl } from '@/utils/request'
 import type { Story } from '@/api/stories'
 
 const userStore = useUserStore()

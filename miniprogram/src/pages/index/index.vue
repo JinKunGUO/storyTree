@@ -104,7 +104,7 @@
             >
               <image
                 class="featured-cover"
-                :src="story.cover_image || '/static/images/default-cover.png'"
+                :src="getImageUrl(story.cover_image) || '/static/images/default-cover.png'"
                 mode="aspectFill"
               />
               <view class="featured-overlay">
@@ -157,7 +157,7 @@
           >
             <image
               class="story-cover"
-              :src="story.cover_image || '/static/images/default-cover.png'"
+              :src="getImageUrl(story.cover_image) || '/static/images/default-cover.png'"
               mode="aspectFill"
             />
             <view class="story-info">
@@ -167,7 +167,7 @@
                 <view class="author-info">
                   <image
                     class="author-avatar"
-                    :src="story.author.avatar || '/static/images/default-avatar.png'"
+                    :src="getImageUrl(story.author.avatar) || '/static/images/default-avatar.png'"
                     mode="aspectFill"
                   />
                   <text class="author-name">{{ story.author.username }}</text>
@@ -209,6 +209,7 @@ import { ref, onMounted } from 'vue'
 import { useUserStore } from '@/store/user'
 import { getFeaturedStories, getStories } from '@/api/stories'
 import { getCheckinStatus } from '@/api/checkin'
+import { getImageUrl } from '@/utils/request'
 import type { Story } from '@/api/stories'
 
 const userStore = useUserStore()

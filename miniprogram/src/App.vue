@@ -3,6 +3,7 @@ import { onLaunch, onShow, onHide } from '@dcloudio/uni-app'
 import { createPinia } from 'pinia'
 import { useAppStore } from '@/store/app'
 import { useUserStore } from '@/store/user'
+import { getMe } from '@/api/auth'
 
 const pinia = createPinia()
 
@@ -16,13 +17,11 @@ onLaunch(() => {
 
   // 如果已登录，刷新用户信息
   if (userStore.isLoggedIn) {
-    import('@/api/auth').then(({ getMe }) => {
-      getMe().then(res => {
-        userStore.setUserInfo(res.user as any)
-      }).catch(() => {
-        // token 过期，清除登录状态
-        userStore.logout()
-      })
+    getMe().then(res => {
+      userStore.setUserInfo(res.user as any)
+    }).catch(() => {
+      // token 过期，清除登录状态
+      userStore.logout()
     })
   }
 

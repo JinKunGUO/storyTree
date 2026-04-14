@@ -71,7 +71,7 @@
         <view v-for="record in records" :key="record.id" class="record-item">
           <image
             class="invitee-avatar"
-            :src="record.invitee?.avatar || '/static/images/default-avatar.png'"
+            :src="getImageUrl(record.invitee?.avatar) || '/static/images/default-avatar.png'"
             mode="aspectFill"
           />
           <view class="record-info">
@@ -123,7 +123,7 @@
 import { ref, onMounted } from 'vue'
 import { useUserStore } from '@/store/user'
 import { getMyInvitationCodes, getInvitationRecords } from '@/api/users'
-import { http } from '@/utils/request'
+import { http, getImageUrl } from '@/utils/request'
 
 const userStore = useUserStore()
 const loading = ref(true)

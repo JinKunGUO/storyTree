@@ -5,6 +5,14 @@ import jwt from 'jsonwebtoken';
 const router = Router();
 const prisma = new PrismaClient();
 
+// 将 Date 格式化为本地日期字符串 "YYYY-MM-DD"，避免 toISOString() 的 UTC 偏移问题
+function toLocalDateStr(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 // 验证JWT中间件
 async function authenticateToken(req: any, res: any, next: any) {
   const token = req.headers.authorization?.replace('Bearer ', '');
@@ -236,10 +244,14 @@ router.post('/makeup', authenticateToken, async (req: any, res) => {
       return res.status(400).json({ error: '请提供补签日期' });
     }
 
-    const makeupDate = new Date(date);
+    // 将 "YYYY-MM-DD" 解析为本地时间的午夜，避免 new Date("YYYY-MM-DD") 被当作 UTC 解析
+    const dateParts = (date as string).split('-').map(Number);
+    if (dateParts.length !== 3) {
+      return res.status(400).json({ error: '日期格式错误，请使用 YYYY-MM-DD' });
+    }
+    const makeupDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    makeupDate.setHours(0, 0, 0, 0);
 
     // 验证补签日期
     if (makeupDate >= today) {
@@ -287,13 +299,17 @@ router.post('/makeup', authenticateToken, async (req: any, res) => {
       return res.status(400).json({ error: '该日期已经签到过了' });
     }
 
-    // 【核心修复】重新计算补签后的连续天数
-    // 从补签日期开始，倒推检查到今天的所有日期是否都已签到
+    // 重新计算补签后的连续天数
+    // 需要查询足够远的历史记录，才能正确倒推连续天数
+    // （不能只查 makeupDate~today，否则会忽略更早的连续签到记录）
+    const lookbackDate = new Date(today);
+    lookbackDate.setDate(lookbackDate.getDate() - 400); // 向前查 400 天足够覆盖任何连续天数
+
     const checkinRecords = await prisma.checkin_records.findMany({
       where: {
         user_id: userId,
         checkin_date: {
-          gte: makeupDate,
+          gte: lookbackDate,
           lte: today,
         }
       },
@@ -302,14 +318,14 @@ router.post('/makeup', authenticateToken, async (req: any, res) => {
       }
     });
 
-    // 构建已签到日期集合
+    // 构建已签到日期集合（使用本地日期字符串，避免 UTC 偏移）
     const checkinDates = new Set(checkinRecords.map(r => {
       const d = new Date(r.checkin_date);
-      return d.toISOString().split('T')[0];
+      return toLocalDateStr(d);
     }));
 
     // 添加本次补签日期
-    const makeupDateStr = makeupDate.toISOString().split('T')[0];
+    const makeupDateStr = toLocalDateStr(makeupDate);
     checkinDates.add(makeupDateStr);
 
     // 从今天开始倒推，计算连续天数
@@ -317,7 +333,7 @@ router.post('/makeup', authenticateToken, async (req: any, res) => {
     let currentDate = new Date(today);
     
     while (true) {
-      const dateStr = currentDate.toISOString().split('T')[0];
+      const dateStr = toLocalDateStr(currentDate);
       
       if (checkinDates.has(dateStr)) {
         newConsecutiveDays++;

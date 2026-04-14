@@ -11,7 +11,7 @@
       <view class="cover-section">
         <image
           class="cover-bg"
-          :src="story.cover_image || '/static/images/default-cover.png'"
+          :src="getImageUrl(story.cover_image) || '/static/images/default-cover.png'"
           mode="aspectFill"
         />
         <view class="cover-overlay" />
@@ -37,7 +37,7 @@
           <view class="story-meta">
             <image
               class="author-avatar"
-              :src="story.author.avatar || '/static/images/default-avatar.png'"
+              :src="getImageUrl(story.author.avatar) || '/static/images/default-avatar.png'"
               mode="aspectFill"
             />
             <text class="author-name">{{ story.author.username }}</text>
@@ -158,6 +158,7 @@ import { useUserStore } from '@/store/user'
 import { getStory, followStory, unfollowStory, bookmarkStory, unbookmarkStory } from '@/api/stories'
 import { getStoryNodes } from '@/api/nodes'
 import { formatRelativeTime } from '@/utils/helpers'
+import { getImageUrl } from '@/utils/request'
 import type { Story } from '@/api/stories'
 import type { Node } from '@/api/nodes'
 

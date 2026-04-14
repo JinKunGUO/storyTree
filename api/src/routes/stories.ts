@@ -136,6 +136,52 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
+// Get featured stories (ordered by popularity)
+router.get('/featured', optionalAuth, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 10;
+
+    const stories = await prisma.stories.findMany({
+      where: {
+        nodes: {
+          some: { parent_id: null }
+        }
+      },
+      include: {
+        author: {
+          select: { id: true, username: true, avatar: true }
+        },
+        nodes: {
+          where: { parent_id: null },
+          take: 1,
+          select: {
+            id: true,
+            title: true,
+            content: true,
+            review_status: true
+          }
+        },
+        _count: {
+          select: {
+            nodes: true,
+            bookmarks: true
+          }
+        }
+      },
+      orderBy: [
+        { bookmarks: { _count: 'desc' } },
+        { created_at: 'desc' }
+      ],
+      take: limit
+    });
+
+    res.json({ stories });
+  } catch (error) {
+    console.error('Get featured stories error:', error);
+    res.status(500).json({ error: 'Failed to fetch featured stories' });
+  }
+});
+
 // Get story with full tree
 router.get('/:id', optionalAuth, async (req, res) => {
   const { id } = req.params;

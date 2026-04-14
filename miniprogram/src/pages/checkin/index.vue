@@ -19,7 +19,7 @@
         </view>
 
         <button
-          v-if="!status.hasCheckedIn"
+          v-if="status.canCheckin"
           class="btn-checkin"
           :loading="loading"
           @tap="doCheckin"
@@ -58,15 +58,16 @@
           <text class="makeup-title">补签机会</text>
           <text class="makeup-count">剩余 {{ status.makeupChances }} 次</text>
         </view>
-        <text class="makeup-desc">可以补签最近3天内漏签的日期</text>
+        <text class="makeup-desc">可以补签最近7天内漏签的日期</text>
         <view class="missed-days">
           <view
             v-for="day in missedDays"
             :key="day"
             class="missed-day-btn"
+            :class="{ loading: makeupLoading === day }"
             @tap="doMakeup(day)"
           >
-            {{ day }}
+            {{ makeupLoading === day ? '补签中...' : day }}
           </view>
         </view>
       </view>
@@ -99,27 +100,29 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { getCheckinStatus, doCheckin as apiCheckin, makeupCheckin } from '@/api/checkin'
+import { getCheckinStatus, getCheckinHistory, doCheckin as apiCheckin, makeupCheckin } from '@/api/checkin'
+import type { CheckinRecord } from '@/api/checkin'
 import { useUserStore } from '@/store/user'
 
 const userStore = useUserStore()
 const loading = ref(false)
+const makeupLoading = ref<string | null>(null) // 当前正在补签的日期
 
+// 签到状态（对齐后端 /api/checkin/status 实际字段）
 const status = reactive({
-  hasCheckedIn: false,
+  canCheckin: true,          // 今天是否可签到
+  isMissed: false,           // 昨天是否漏签
   consecutiveDays: 0,
   makeupChances: 0,
-  todayPoints: 10,
-  monthRecords: [] as any[],
+  nextReward: 10,
+  lastCheckinDate: null as string | null,
 })
 
-const todayPoints = computed(() => {
-  const days = status.consecutiveDays
-  let base = 10
-  if (days > 0 && (days + 1) % 7 === 0) base += 20
-  if (days > 0 && (days + 1) % 30 === 0) base += 100
-  return base
-})
+// 本月签到记录（来自 /api/checkin/history）
+const monthRecords = ref<CheckinRecord[]>([])
+
+// 今日可获得积分（来自 status.nextReward，已签到则展示上次奖励）
+const todayPoints = computed(() => status.nextReward)
 
 const calendarDays = computed(() => {
   const now = new Date()
@@ -129,18 +132,17 @@ const calendarDays = computed(() => {
   const firstDay = new Date(year, month, 1).getDay()
 
   const checkedDates = new Set(
-    status.monthRecords.map(r => new Date(r.checkin_date).getDate())
+    monthRecords.value.map(r => new Date(r.checkin_date).getDate())
   )
 
   const days = []
-  // 填充前置空白
   for (let i = 0; i < firstDay; i++) {
     days.push({ day: '', date: `empty-${i}`, inMonth: false, checked: false, isToday: false })
   }
   for (let d = 1; d <= daysInMonth; d++) {
     days.push({
       day: d,
-      date: `${year}-${month + 1}-${d}`,
+      date: `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
       inMonth: true,
       checked: checkedDates.has(d),
       isToday: d === now.getDate(),
@@ -149,16 +151,17 @@ const calendarDays = computed(() => {
   return days
 })
 
+// 最近 7 天内漏签的日期（对齐后端补签限制：7天内）
 const missedDays = computed(() => {
   const now = new Date()
   const checkedDates = new Set(
-    status.monthRecords.map(r => {
+    monthRecords.value.map(r => {
       const d = new Date(r.checkin_date)
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     })
   )
   const missed = []
-  for (let i = 1; i <= 3; i++) {
+  for (let i = 1; i <= 7; i++) {
     const d = new Date(now)
     d.setDate(d.getDate() - i)
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -170,27 +173,58 @@ const missedDays = computed(() => {
 })
 
 onMounted(async () => {
-  await loadStatus()
+  await loadAll()
 })
+
+async function loadAll() {
+  await Promise.all([loadStatus(), loadHistory()])
+}
 
 async function loadStatus() {
   try {
     const res = await getCheckinStatus()
-    Object.assign(status, res)
+    status.canCheckin = res.canCheckin
+    status.isMissed = res.isMissed
+    status.consecutiveDays = res.consecutiveDays
+    status.makeupChances = res.makeupChances
+    status.nextReward = res.nextReward
+    status.lastCheckinDate = res.lastCheckinDate
   } catch (err) {
     console.error('加载签到状态失败', err)
   }
 }
 
+async function loadHistory() {
+  try {
+    const now = new Date()
+    const res = await getCheckinHistory(now.getFullYear(), now.getMonth() + 1)
+    monthRecords.value = res.records
+  } catch (err) {
+    console.error('加载签到历史失败', err)
+  }
+}
+
 async function doCheckin() {
+  // 前端防重：已签到则不允许再次点击
+  if (!status.canCheckin) {
+    uni.showToast({ title: '今日已签到', icon: 'none' })
+    return
+  }
   loading.value = true
   try {
     const res = await apiCheckin()
-    status.hasCheckedIn = true
-    status.consecutiveDays = res.consecutive_days
-    userStore.updateUserInfo({ consecutive_days: res.consecutive_days, points: (userStore.userInfo?.points || 0) + res.points_earned })
-    uni.showToast({ title: `签到成功！+${res.points_earned} 积分`, icon: 'success' })
-    await loadStatus()
+    const { pointsEarned, consecutiveDays, bonusPoints, milestoneMessage } = res.data
+    status.canCheckin = false
+    status.consecutiveDays = consecutiveDays
+    // 同步 userStore
+    userStore.updateUserInfo({
+      consecutive_days: consecutiveDays,
+      points: (userStore.userInfo?.points || 0) + pointsEarned + bonusPoints,
+    })
+    let toastMsg = `签到成功！+${pointsEarned} 积分`
+    if (bonusPoints > 0) toastMsg += `\n🎉 ${milestoneMessage}+${bonusPoints}`
+    uni.showToast({ title: toastMsg, icon: 'success', duration: 2500 })
+    await loadAll()
   } catch (err: any) {
     uni.showToast({ title: err.message || '签到失败', icon: 'none' })
   } finally {
@@ -199,12 +233,23 @@ async function doCheckin() {
 }
 
 async function doMakeup(date: string) {
+  if (makeupLoading.value) return
+  makeupLoading.value = date
   try {
-    await makeupCheckin(date)
-    uni.showToast({ title: '补签成功', icon: 'success' })
-    await loadStatus()
+    const res = await makeupCheckin(date)
+    const { pointsEarned, remainingMakeupChances, newConsecutiveDays } = res.data
+    status.makeupChances = remainingMakeupChances
+    status.consecutiveDays = newConsecutiveDays
+    userStore.updateUserInfo({
+      consecutive_days: newConsecutiveDays,
+      points: (userStore.userInfo?.points || 0) + pointsEarned,
+    })
+    uni.showToast({ title: `补签成功！+${pointsEarned} 积分`, icon: 'success' })
+    await loadAll()
   } catch (err: any) {
     uni.showToast({ title: err.message || '补签失败', icon: 'none' })
+  } finally {
+    makeupLoading.value = null
   }
 }
 </script>

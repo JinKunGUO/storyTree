@@ -116,9 +116,9 @@ export function getUserStories(userId: number, params?: { page?: number; pageSiz
 
 // 搜索故事
 export function searchStories(query: string, params?: { page?: number; pageSize?: number }) {
-  return http.get<StoryListResponse>('/api/search/stories', {
+  return http.get<{ stories: Story[]; nodes: any[]; total: number }>('/api/search', {
     q: query,
-    ...params,
+    type: 'stories',
   } as Record<string, unknown>)
 }
 

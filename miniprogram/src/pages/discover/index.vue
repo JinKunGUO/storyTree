@@ -73,7 +73,7 @@
         >
           <image
             class="story-cover"
-            :src="story.cover_image || '/static/images/default-cover.png'"
+            :src="getImageUrl(story.cover_image) || '/static/images/default-cover.png'"
             mode="aspectFill"
           />
           <view class="story-info">
@@ -81,7 +81,7 @@
             <view class="story-author">
               <image
                 class="author-avatar"
-                :src="story.author.avatar || '/static/images/default-avatar.png'"
+                :src="getImageUrl(story.author.avatar) || '/static/images/default-avatar.png'"
                 mode="aspectFill"
               />
               <text class="author-name">{{ story.author.username }}</text>
@@ -113,6 +113,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { getStories } from '@/api/stories'
+import { getImageUrl } from '@/utils/request'
 import type { Story } from '@/api/stories'
 
 const loading = ref(false)
