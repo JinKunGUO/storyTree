@@ -160,8 +160,8 @@ function handleRegister() {
         const buttonLoading = button.querySelector('.button-loading');
         
         button.disabled = true;
-        buttonText.style.display = 'none';
-        buttonLoading.style.display = 'block';
+        if (buttonText) buttonText.style.display = 'none';
+        if (buttonLoading) buttonLoading.style.display = 'block';
         
         try {
             const response = await fetch('/api/auth/register', {
@@ -217,8 +217,8 @@ function handleRegister() {
             window.toast ? toast.error('网络错误，请检查网络连接') : alert('网络错误，请检查网络连接');
         } finally {
             button.disabled = false;
-            buttonText.style.display = 'block';
-            buttonLoading.style.display = 'none';
+            if (buttonText) buttonText.style.display = 'block';
+            if (buttonLoading) buttonLoading.style.display = 'none';
         }
     });
 }
@@ -260,8 +260,8 @@ function handleLogin() {
         const buttonLoading = button.querySelector('.button-loading');
         
         button.disabled = true;
-        buttonText.style.display = 'none';
-        buttonLoading.style.display = 'block';
+        if (buttonText) buttonText.style.display = 'none';
+        if (buttonLoading) buttonLoading.style.display = 'block';
         
         try {
             const response = await fetch('/api/auth/login', {
@@ -324,8 +324,8 @@ function handleLogin() {
             window.toast ? toast.error('网络错误，请检查网络连接') : alert('网络错误，请检查网络连接');
         } finally {
             button.disabled = false;
-            buttonText.style.display = 'block';
-            buttonLoading.style.display = 'none';
+            if (buttonText) buttonText.style.display = 'block';
+            if (buttonLoading) buttonLoading.style.display = 'none';
         }
     });
 }
