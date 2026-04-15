@@ -92,7 +92,11 @@ function handleMenu(item: any) {
     // 跳转到小程序评分（仅在真机有效）
     uni.showToast({ title: '感谢您的支持！', icon: 'success' })
   } else if (item.action === 'share') {
-    uni.showShareMenu({ withShareTicket: true })
+    try {
+      uni.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
+    } catch (e) {
+      console.warn('showShareMenu not available in devtools')
+    }
   }
 }
 </script>

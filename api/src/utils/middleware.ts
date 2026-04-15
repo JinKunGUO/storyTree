@@ -31,7 +31,9 @@ export async function authenticateToken(req: Request, res: Response, next: NextF
         select: { active_token: true }
       });
 
-      if (!user || user.active_token !== token) {
+      // active_token 为 null 或空字符串时兼容旧会话（字段刚加入，已有 token 尚未写入）
+      // 只有当 active_token 有值且与当前 token 不匹配时，才判定为被顶替
+      if (!user || (!!user.active_token && user.active_token !== token)) {
         // token 已被新登录替换，返回特定错误码让前端处理（弹出重新登录提示）
         return res.status(401).json({
           error: '账号已在其他设备登录，请重新登录',

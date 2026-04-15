@@ -434,7 +434,12 @@ function goChapter(id: number) {
 }
 
 function writeBranch() {
-  uni.navigateTo({ url: `/pages/write/index?storyId=${node.value?.story_id}&parentId=${node.value?.id}` })
+  // write 是 tabBar 页面，不能用 navigateTo；先把参数写入 storage，再 switchTab
+  uni.setStorageSync('st_write_params', JSON.stringify({
+    storyId: node.value?.story_id,
+    parentId: node.value?.id,
+  }))
+  uni.switchTab({ url: '/pages/write/index' })
 }
 
 function goLogin() {
@@ -442,11 +447,20 @@ function goLogin() {
 }
 
 function shareChapter() {
-  uni.showShareMenu({ withShareTicket: true })
+  try {
+    uni.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
+  } catch (e) {
+    console.warn('showShareMenu not available in devtools')
+  }
 }
 
 function goBack() {
-  uni.navigateBack()
+  const pages = getCurrentPages()
+  if (pages.length > 1) {
+    uni.navigateBack()
+  } else {
+    uni.switchTab({ url: '/pages/index/index' })
+  }
 }
 
 function formatTime(date: string) {

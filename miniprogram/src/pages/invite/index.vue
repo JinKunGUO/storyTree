@@ -194,7 +194,11 @@ function copyInviteLink() {
 }
 
 function shareToFriend() {
-  uni.showShareMenu({ withShareTicket: true })
+  try {
+    uni.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
+  } catch (e) {
+    console.warn('showShareMenu not available in devtools')
+  }
 }
 
 function shareToMoments() {

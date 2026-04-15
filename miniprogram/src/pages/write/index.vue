@@ -186,12 +186,28 @@ onMounted(() => {
   const currentPage = pages[pages.length - 1] as any
   const options = currentPage.options || {}
 
+  // 优先读取 URL 参数（navigateTo 方式，如从编辑入口进入）
   if (options.storyId) storyId.value = Number(options.storyId)
   if (options.parentId) parentId.value = Number(options.parentId)
   if (options.nodeId) {
     nodeId.value = Number(options.nodeId)
     isEditing.value = true
     loadNodeForEdit(nodeId.value)
+  }
+
+  // 若无 URL 参数，尝试从 storage 读取（switchTab 传参方式）
+  if (!storyId.value && !options.nodeId) {
+    try {
+      const raw = uni.getStorageSync('st_write_params')
+      if (raw) {
+        const params = JSON.parse(raw)
+        if (params.storyId) storyId.value = Number(params.storyId)
+        if (params.parentId) parentId.value = Number(params.parentId)
+        uni.removeStorageSync('st_write_params')
+      }
+    } catch {
+      // 忽略
+    }
   }
 
   // 加载草稿
@@ -289,7 +305,12 @@ async function handlePublish() {
 
     uni.showToast({ title: '发布成功！', icon: 'success' })
     setTimeout(() => {
-      uni.navigateBack()
+      const pages = getCurrentPages()
+      if (pages.length > 1) {
+        uni.navigateBack()
+      } else {
+        uni.switchTab({ url: '/pages/index/index' })
+      }
     }, 1500)
   } catch (err: any) {
     uni.showToast({ title: err.message || '发布失败', icon: 'none' })
@@ -389,12 +410,22 @@ function handleBack() {
       content: '内容尚未保存，确定要退出吗？',
       success: (res) => {
         if (res.confirm) {
-          uni.navigateBack()
+          const pages = getCurrentPages()
+          if (pages.length > 1) {
+            uni.navigateBack()
+          } else {
+            uni.switchTab({ url: '/pages/index/index' })
+          }
         }
       },
     })
   } else {
-    uni.navigateBack()
+    const pages = getCurrentPages()
+    if (pages.length > 1) {
+      uni.navigateBack()
+    } else {
+      uni.switchTab({ url: '/pages/index/index' })
+    }
   }
 }
 </script>

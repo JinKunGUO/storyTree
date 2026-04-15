@@ -251,7 +251,8 @@ function goMembership() {
 }
 
 function goNotifications() {
-  uni.navigateTo({ url: '/pages/notifications/index' })
+  // notifications 是 tabBar 页面，必须用 switchTab
+  uni.switchTab({ url: '/pages/notifications/index' })
 }
 
 function goMyStories() {

@@ -246,7 +246,12 @@ function goChapter(nodeId: number) {
 }
 
 function startCollaborate() {
-  uni.navigateTo({ url: `/pages/write/index?storyId=${story.value?.id}&parentId=${rootNode.value?.id}` })
+  // write 是 tabBar 页面，不能用 navigateTo；先把参数写入 storage，再 switchTab
+  uni.setStorageSync('st_write_params', JSON.stringify({
+    storyId: story.value?.id,
+    parentId: rootNode.value?.id,
+  }))
+  uni.switchTab({ url: '/pages/write/index' })
 }
 
 function goLogin() {
@@ -254,11 +259,23 @@ function goLogin() {
 }
 
 function shareStory() {
-  uni.showShareMenu({ withShareTicket: true })
+  // withShareTicket 需要在微信公众平台后台开启"获取群ID"权限，否则会 banned
+  // 使用 menus 参数声明支持转发给朋友
+  try {
+    uni.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
+  } catch (e) {
+    // 开发者工具中分享功能受限，真机正常
+    console.warn('showShareMenu not available in devtools')
+  }
 }
 
 function goBack() {
-  uni.navigateBack()
+  const pages = getCurrentPages()
+  if (pages.length > 1) {
+    uni.navigateBack()
+  } else {
+    uni.switchTab({ url: '/pages/index/index' })
+  }
 }
 
 function formatTime(date: string) {
