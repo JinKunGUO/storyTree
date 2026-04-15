@@ -3,13 +3,10 @@
     <!-- 顶部操作栏 -->
     <view class="top-bar">
       <text class="top-title">消息通知</text>
-      <text
-        v-if="unreadCount > 0"
-        class="read-all-btn"
-        @tap="markAllRead"
-      >
-        全部已读
-      </text>
+      <view class="top-actions">
+        <text v-if="unreadCount > 0" class="unread-count-badge">{{ unreadCount > 99 ? '99+' : unreadCount }} 未读</text>
+        <text class="read-all-btn" @tap="markAllRead">全部已读</text>
+      </view>
     </view>
 
     <scroll-view
@@ -44,7 +41,14 @@
             <text class="notif-body">{{ item.content }}</text>
             <text class="notif-time">{{ formatTime(item.created_at) }}</text>
           </view>
-          <text class="notif-arrow">›</text>
+          <view class="notif-right">
+            <text
+              v-if="!item.is_read"
+              class="mark-read-btn"
+              @tap.stop="markSingleRead(item)"
+            >已读</text>
+            <text v-else class="notif-arrow">›</text>
+          </view>
         </view>
       </view>
 
@@ -126,6 +130,18 @@ async function markAllRead() {
   }
 }
 
+async function markSingleRead(item: Notification) {
+  if (item.is_read) return
+  try {
+    await markNotificationRead(item.id)
+    item.is_read = true
+    unreadCount.value = Math.max(0, unreadCount.value - 1)
+    appStore.setUnreadCount(unreadCount.value)
+  } catch (err: any) {
+    uni.showToast({ title: err.message || '操作失败', icon: 'none' })
+  }
+}
+
 async function handleNotificationTap(item: Notification) {
   if (!item.is_read) {
     await markNotificationRead(item.id)
@@ -135,8 +151,43 @@ async function handleNotificationTap(item: Notification) {
   }
 
   if (item.link) {
-    uni.navigateTo({ url: item.link })
+    const miniUrl = convertLinkToMiniUrl(item.link)
+    if (miniUrl) {
+      // tabBar 页面必须用 switchTab
+      const tabBarPages = ['/pages/profile/index', '/pages/notifications/index', '/pages/write/index', '/pages/index/index', '/pages/discover/index']
+      if (tabBarPages.includes(miniUrl.split('?')[0])) {
+        uni.switchTab({ url: miniUrl.split('?')[0] })
+      } else {
+        uni.navigateTo({ url: miniUrl })
+      }
+    }
   }
+}
+
+/**
+ * 将后端存储的 Web 路由转换为小程序路由
+ * 后端格式：/chapter?id=6  /story?id=3  /profile  等
+ * 小程序格式：/pages/chapter/index?id=6
+ */
+function convertLinkToMiniUrl(link: string): string | null {
+  // 解析路径和查询参数
+  const [path, query] = link.split('?')
+  const qs = query ? `?${query}` : ''
+
+  const map: Record<string, string> = {
+    '/chapter':      '/pages/chapter/index',
+    '/story':        '/pages/story/index',
+    '/profile':      '/pages/profile/index',
+    '/checkin':      '/pages/checkin/index',
+    '/points':       '/pages/points/index',
+    '/membership':   '/pages/membership/index',
+    '/notifications':'/pages/notifications/index',
+    '/write':        '/pages/write/index',
+  }
+
+  const miniPath = map[path]
+  if (!miniPath) return null
+  return `${miniPath}${qs}`
 }
 
 function getNotifIcon(type: string) {
@@ -176,9 +227,23 @@ function formatTime(date: string) {
     color: #1e293b;
   }
 
-  .read-all-btn {
-    font-size: 26rpx;
-    color: #7c6af7;
+  .top-actions {
+    display: flex;
+    align-items: center;
+    gap: 16rpx;
+
+    .unread-count-badge {
+      font-size: 22rpx;
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+      padding: 4rpx 14rpx;
+      border-radius: 20rpx;
+    }
+
+    .read-all-btn {
+      font-size: 26rpx;
+      color: #7c6af7;
+    }
   }
 }
 
@@ -273,10 +338,24 @@ function formatTime(date: string) {
       }
     }
 
-    .notif-arrow {
-      font-size: 36rpx;
-      color: #cbd5e1;
+    .notif-right {
+      display: flex;
+      align-items: center;
       flex-shrink: 0;
+
+      .mark-read-btn {
+        font-size: 22rpx;
+        color: #7c6af7;
+        background: rgba(124, 106, 247, 0.1);
+        padding: 6rpx 16rpx;
+        border-radius: 20rpx;
+        white-space: nowrap;
+      }
+
+      .notif-arrow {
+        font-size: 36rpx;
+        color: #cbd5e1;
+      }
     }
   }
 }
@@ -293,4 +372,3 @@ function formatTime(date: string) {
   height: 60rpx;
 }
 </style>
-
