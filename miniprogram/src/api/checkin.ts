@@ -15,13 +15,13 @@ export interface CheckinRecord {
 
 // 对应后端 GET /api/checkin/status 实际返回
 export interface CheckinStatus {
-  canCheckin: boolean        // 今天是否可签到
+  canCheckin: boolean        // true = 今天还没签到；false = 今天已签到
   isMissed: boolean          // 昨天是否漏签（连续中断）
   consecutiveDays: number    // 当前连续签到天数
   makeupChances: number      // 剩余补签次数
   nextReward: number         // 下次签到奖励积分
   lastCheckinDate: string | null
-  reason?: string            // 不可签到时的原因
+  reason?: string            // 不可签到时的原因（如"今天已经签到过了"）
 }
 
 // 对应后端 GET /api/checkin/history 实际返回

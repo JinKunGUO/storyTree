@@ -211,6 +211,7 @@ import { getFeaturedStories, getStories } from '@/api/stories'
 import { getCheckinStatus } from '@/api/checkin'
 import { getImageUrl } from '@/utils/request'
 import type { Story } from '@/api/stories'
+import { onShow } from '@dcloudio/uni-app'
 
 const userStore = useUserStore()
 
@@ -239,6 +240,12 @@ onMounted(async () => {
   }
 })
 
+onShow(() => {
+  if (userStore.isLoggedIn) {
+    checkCheckinStatus()
+  }
+})
+
 async function loadData() {
   loading.value = true
   try {
@@ -260,7 +267,7 @@ async function loadData() {
 async function checkCheckinStatus() {
   try {
     const res = await getCheckinStatus()
-    checkedIn.value = res.hasCheckedIn
+    checkedIn.value = !res.canCheckin
   } catch {
     // 忽略
   }

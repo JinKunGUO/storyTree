@@ -183,6 +183,7 @@ import { useUserStore } from '@/store/user'
 import { useAppStore } from '@/store/app'
 import { getCheckinStatus } from '@/api/checkin'
 import { MEMBERSHIP_LABELS } from '@/utils/constants'
+import { onShow } from '@dcloudio/uni-app'
 
 const userStore = useUserStore()
 const appStore = useAppStore()
@@ -194,7 +195,7 @@ const memberLabel = computed(() => {
   return MEMBERSHIP_LABELS[tier] || '普通用户'
 })
 
-onMounted(() => {
+onShow(() => {
   if (userStore.isLoggedIn) {
     checkCheckin()
   }
@@ -203,7 +204,7 @@ onMounted(() => {
 async function checkCheckin() {
   try {
     const res = await getCheckinStatus()
-    checkedIn.value = res.hasCheckedIn
+    checkedIn.value = !res.canCheckin
   } catch {
     // 忽略
   }

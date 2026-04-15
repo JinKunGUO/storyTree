@@ -258,6 +258,7 @@ async function doMakeup(date: string) {
 .checkin-page {
   min-height: 100vh;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  overflow-x: hidden;
 }
 
 .header {
@@ -281,7 +282,9 @@ async function doMakeup(date: string) {
 
 .content {
   height: calc(100vh - 200rpx);
+  width: 100%;
   padding: 0 24rpx;
+  box-sizing: border-box;
 }
 
 .checkin-card {
