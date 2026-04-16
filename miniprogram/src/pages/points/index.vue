@@ -445,10 +445,14 @@ function handleBuy() {
         background: #ef4444;
         padding: 4rpx 12rpx;
         border-radius: 20rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
 
         text {
           font-size: 18rpx;
           color: #ffffff;
+          line-height: 1;
         }
       }
     }
