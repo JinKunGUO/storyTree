@@ -6,146 +6,43 @@
       <text class="tree-count">{{ totalNodes }} 个节点</text>
     </view>
 
-    <view v-if="rootNode" class="tree-root">
-      <!-- 根节点 -->
-      <view class="tree-node-wrap">
-        <view class="node-row depth-0">
-          <view class="node-body" :class="{ 'node-highlight': props.highlightNodeId === rootNode.id }">
-            <view class="node-main root" @tap="$emit('node-tap', rootNode.id)">
-              <view class="node-dot root-dot">
-                <text class="dot-icon">🌳</text>
+    <view v-if="flatNodes.length > 0" class="tree-list">
+      <view
+        v-for="item in flatNodes"
+        :key="item.node.id"
+        class="tree-node-wrap"
+      >
+        <view class="node-row" :class="item.depth === 0 ? 'depth-0' : 'depth-n'">
+          <!-- 缩进连接线 -->
+          <view v-if="item.depth > 0" class="branch-line" :style="{ marginLeft: (item.depth - 1) * 32 + 'rpx' }" />
+
+          <view
+            class="node-body"
+            :style="item.depth > 0 ? { marginLeft: item.depth * 32 + 'rpx' } : {}"
+            :class="{ 'node-highlight': props.highlightNodeId === item.node.id }"
+          >
+            <view class="node-main" :class="{ root: item.depth === 0 }" @tap="$emit('node-tap', item.node.id)">
+              <view class="node-dot" :class="{ 'root-dot': item.depth === 0 }">
+                <text class="dot-icon">{{ nodeIcon(item) }}</text>
               </view>
               <view class="node-info">
-                <text class="node-title">{{ rootNode.title }}</text>
+                <text class="node-title">{{ item.node.title }}</text>
                 <view class="node-meta">
-                  <text class="meta-author">{{ rootNode.author?.username }}</text>
-                  <text v-if="rootNode.rating_avg > 0" class="meta-rating">★ {{ Number(rootNode.rating_avg).toFixed(1) }}</text>
-                  <text v-if="rootNode.children && rootNode.children.length > 0" class="meta-branch">{{ rootNode.children.length }} 分支</text>
+                  <text class="meta-author">{{ item.node.author?.username }}</text>
+                  <text v-if="item.node.rating_avg > 0" class="meta-rating">★ {{ Number(item.node.rating_avg).toFixed(1) }}</text>
+                  <text v-if="item.node.children && item.node.children.length > 0" class="meta-branch">{{ item.node.children.length }} 分支</text>
                   <text v-else class="meta-leaf">叶子节点</text>
+                  <text v-if="!item.node.is_published" class="meta-draft">草稿</text>
                 </view>
               </view>
               <text class="node-arrow">›</text>
             </view>
             <view v-if="isLoggedIn && isAuthorOrCollab" class="node-actions">
-              <view class="action-btn write-btn" @tap="$emit('write-branch', rootNode.id)">
+              <view class="action-btn write-btn" @tap="$emit('write-branch', item.node.id)">
                 <text>✍️ 续写</text>
               </view>
-              <view class="action-btn ai-btn" @tap="$emit('ai-create', rootNode.id)">
+              <view class="action-btn ai-btn" @tap="$emit('ai-create', item.node.id)">
                 <text>🤖 AI创作</text>
-              </view>
-            </view>
-          </view>
-        </view>
-
-        <!-- 第1层子节点 -->
-        <view v-if="rootNode.children && rootNode.children.length" class="children-wrap">
-          <view
-            v-for="child1 in rootNode.children"
-            :key="child1.id"
-            class="tree-node-wrap"
-          >
-            <view class="node-row depth-1">
-              <view class="branch-line" />
-              <view class="node-body" :class="{ 'node-highlight': props.highlightNodeId === child1.id }">
-                <view class="node-main" @tap="$emit('node-tap', child1.id)">
-                  <view class="node-dot">
-                    <text class="dot-icon">{{ child1.children && child1.children.length ? '🌿' : '🍃' }}</text>
-                  </view>
-                  <view class="node-info">
-                    <text class="node-title">{{ child1.title }}</text>
-                    <view class="node-meta">
-                      <text class="meta-author">{{ child1.author?.username }}</text>
-                      <text v-if="child1.rating_avg > 0" class="meta-rating">★ {{ Number(child1.rating_avg).toFixed(1) }}</text>
-                      <text v-if="child1.children && child1.children.length > 0" class="meta-branch">{{ child1.children.length }} 分支</text>
-                      <text v-else class="meta-leaf">叶子节点</text>
-                    </view>
-                  </view>
-                  <text class="node-arrow">›</text>
-                </view>
-                <view v-if="isLoggedIn && isAuthorOrCollab" class="node-actions">
-                  <view class="action-btn write-btn" @tap="$emit('write-branch', child1.id)">
-                    <text>✍️ 续写</text>
-                  </view>
-                  <view class="action-btn ai-btn" @tap="$emit('ai-create', child1.id)">
-                    <text>🤖 AI创作</text>
-                  </view>
-                </view>
-              </view>
-            </view>
-
-            <!-- 第2层子节点 -->
-            <view v-if="child1.children && child1.children.length" class="children-wrap">
-              <view
-                v-for="child2 in child1.children"
-                :key="child2.id"
-                class="tree-node-wrap"
-              >
-                <view class="node-row depth-2">
-                  <view class="branch-line" />
-                  <view class="node-body" :class="{ 'node-highlight': props.highlightNodeId === child2.id }">
-                    <view class="node-main" @tap="$emit('node-tap', child2.id)">
-                      <view class="node-dot">
-                        <text class="dot-icon">{{ child2.children && child2.children.length ? '🌿' : '🍃' }}</text>
-                      </view>
-                      <view class="node-info">
-                        <text class="node-title">{{ child2.title }}</text>
-                        <view class="node-meta">
-                          <text class="meta-author">{{ child2.author?.username }}</text>
-                          <text v-if="child2.rating_avg > 0" class="meta-rating">★ {{ Number(child2.rating_avg).toFixed(1) }}</text>
-                          <text v-if="child2.children && child2.children.length > 0" class="meta-branch">{{ child2.children.length }} 分支</text>
-                          <text v-else class="meta-leaf">叶子节点</text>
-                        </view>
-                      </view>
-                      <text class="node-arrow">›</text>
-                    </view>
-                    <view v-if="isLoggedIn && isAuthorOrCollab" class="node-actions">
-                      <view class="action-btn write-btn" @tap="$emit('write-branch', child2.id)">
-                        <text>✍️ 续写</text>
-                      </view>
-                      <view class="action-btn ai-btn" @tap="$emit('ai-create', child2.id)">
-                        <text>🤖 AI创作</text>
-                      </view>
-                    </view>
-                  </view>
-                </view>
-
-                <!-- 第3层子节点 -->
-                <view v-if="child2.children && child2.children.length" class="children-wrap">
-                  <view
-                    v-for="child3 in child2.children"
-                    :key="child3.id"
-                    class="tree-node-wrap"
-                  >
-                    <view class="node-row depth-3">
-                      <view class="branch-line" />
-                      <view class="node-body" :class="{ 'node-highlight': props.highlightNodeId === child3.id }">
-                        <view class="node-main" @tap="$emit('node-tap', child3.id)">
-                          <view class="node-dot">
-                            <text class="dot-icon">🍃</text>
-                          </view>
-                          <view class="node-info">
-                            <text class="node-title">{{ child3.title }}</text>
-                            <view class="node-meta">
-                              <text class="meta-author">{{ child3.author?.username }}</text>
-                              <text v-if="child3.rating_avg > 0" class="meta-rating">★ {{ Number(child3.rating_avg).toFixed(1) }}</text>
-                              <text v-if="child3.children && child3.children.length > 0" class="meta-branch">+{{ child3.children.length }}</text>
-                              <text v-else class="meta-leaf">叶子节点</text>
-                            </view>
-                          </view>
-                          <text class="node-arrow">›</text>
-                        </view>
-                        <view v-if="isLoggedIn && isAuthorOrCollab" class="node-actions">
-                          <view class="action-btn write-btn" @tap="$emit('write-branch', child3.id)">
-                            <text>✍️ 续写</text>
-                          </view>
-                          <view class="action-btn ai-btn" @tap="$emit('ai-create', child3.id)">
-                            <text>🤖 AI创作</text>
-                          </view>
-                        </view>
-                      </view>
-                    </view>
-                  </view>
-                </view>
               </view>
             </view>
           </view>
@@ -176,17 +73,34 @@ defineEmits<{
   (e: 'ai-create', id: number): void
 }>()
 
-const totalNodes = computed(() => {
-  if (!props.rootNode) return 0
-  function count(node: Node): number {
-    let n = 1
-    if (node.children) {
-      for (const c of node.children) n += count(c)
+interface FlatNode {
+  node: Node
+  depth: number
+}
+
+/** 将树形结构深度优先展开为线性列表，支持任意层深 */
+function flattenTree(node: Node, depth: number): FlatNode[] {
+  const result: FlatNode[] = [{ node, depth }]
+  if (node.children && node.children.length > 0) {
+    for (const child of node.children) {
+      result.push(...flattenTree(child, depth + 1))
     }
-    return n
   }
-  return count(props.rootNode)
+  return result
+}
+
+const flatNodes = computed<FlatNode[]>(() => {
+  if (!props.rootNode) return []
+  return flattenTree(props.rootNode, 0)
 })
+
+const totalNodes = computed(() => flatNodes.value.length)
+
+function nodeIcon(item: FlatNode): string {
+  if (item.depth === 0) return '🌳'
+  if (item.node.children && item.node.children.length > 0) return '🌿'
+  return '🍃'
+}
 </script>
 
 <style lang="scss" scoped>
@@ -220,37 +134,46 @@ const totalNodes = computed(() => {
   }
 }
 
+.tree-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
 .tree-node-wrap {
   position: relative;
 }
 
 .node-row {
   position: relative;
-  margin-bottom: 12rpx;
 
-  &.depth-0 { margin-bottom: 16rpx; }
+  &.depth-n {
+    display: flex;
+    align-items: flex-start;
+  }
 }
 
 .branch-line {
-  position: absolute;
-  left: -20rpx;
-  top: 28rpx;
-  width: 16rpx;
+  flex-shrink: 0;
+  width: 28rpx;
   height: 2rpx;
   background: #e2e8f0;
+  margin-top: 44rpx; // 垂直居中对齐节点
+  position: relative;
 
   &::before {
     content: '';
     position: absolute;
     left: 0;
-    top: calc(-100% - 2rpx);
-    bottom: 0;
+    top: calc(-44rpx);
     width: 2rpx;
+    height: 44rpx;
     background: #e2e8f0;
   }
 }
 
 .node-body {
+  flex: 1;
   background: #ffffff;
   border-radius: 16rpx;
   border: 1rpx solid #f0f2f5;
@@ -337,6 +260,14 @@ const totalNodes = computed(() => {
       font-size: 22rpx;
       color: #10b981;
     }
+
+    .meta-draft {
+      font-size: 22rpx;
+      color: #f59e0b;
+      background: rgba(245, 158, 11, 0.1);
+      padding: 2rpx 8rpx;
+      border-radius: 6rpx;
+    }
   }
 }
 
@@ -380,21 +311,6 @@ const totalNodes = computed(() => {
     text {
       color: #7c6af7;
     }
-  }
-}
-
-.children-wrap {
-  padding-left: 32rpx;
-  position: relative;
-
-  &::before {
-    content: '';
-    position: absolute;
-    left: 16rpx;
-    top: 0;
-    bottom: 20rpx;
-    width: 2rpx;
-    background: #e2e8f0;
   }
 }
 

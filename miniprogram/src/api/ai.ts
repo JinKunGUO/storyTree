@@ -127,13 +127,14 @@ export function getAiQuota() {
 
 // ——— AI 创作章节（独立创作者模式，ai-v2 接口）———
 
-export type AiSurpriseTime = 'immediate' | '1hour' | 'tonight' | 'tomorrow'
+export type AiSurpriseTime = 'immediate' | '1hour' | 'tonight' | 'tomorrow' | 'custom'
 export type AiWritingStyle = '悬疑' | '温情' | '脑洞' | '科幻' | '武侠' | '现实' | '浪漫' | '奇幻'
 
 export interface AiCreateChapterParams {
   storyId: number
   nodeId: number          // 父节点 id
   surpriseTime: AiSurpriseTime
+  customScheduledAt?: string  // 自定义时间（ISO 字符串），surpriseTime='custom' 时有效
   style?: AiWritingStyle
   wordCount?: number      // 期望字数
   publishImmediately?: boolean  // true=自动发布，false=保存为草稿
@@ -141,7 +142,13 @@ export interface AiCreateChapterParams {
 
 // 提交 AI 创作章节任务
 // 后端路由：POST /api/ai/v2/continuation/submit（挂载于 /api/ai/v2）
+// 自定义时间：surpriseTime='custom' 时，将 customScheduledAt（ISO 字符串）作为 surpriseTime 传给后端
+// 后端 switch default 分支会将其解析为 Date 对象
 export function submitAiCreateChapter(params: AiCreateChapterParams) {
+  const surpriseTimeValue = params.surpriseTime === 'custom'
+    ? (params.customScheduledAt ?? 'immediate')
+    : params.surpriseTime
+
   return http.post<{
     taskId: number
     scheduledAt?: string
@@ -149,7 +156,7 @@ export function submitAiCreateChapter(params: AiCreateChapterParams) {
   }>('/api/ai/v2/continuation/submit', {
     storyId: params.storyId,
     nodeId: params.nodeId,
-    surpriseTime: params.surpriseTime,
+    surpriseTime: surpriseTimeValue,
     style: params.style,
     wordCount: params.wordCount || 1500,
     publishImmediately: params.publishImmediately ?? true,

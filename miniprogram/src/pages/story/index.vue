@@ -254,6 +254,45 @@
                 <text class="time-label">{{ t.label }}</text>
               </view>
             </view>
+
+            <!-- 自定义时间选择器（选中 custom 后展开） -->
+            <view v-if="aiForm.surpriseTime === 'custom'" class="custom-time-picker">
+              <view class="custom-time-row">
+                <!-- 日期选择 -->
+                <picker
+                  mode="date"
+                  :value="aiForm.customDate"
+                  :start="todayStr"
+                  @change="(e: any) => aiForm.customDate = e.detail.value"
+                >
+                  <view class="time-picker-item" :class="{ filled: !!aiForm.customDate }">
+                    <text class="picker-icon">📅</text>
+                    <text class="picker-value">{{ aiForm.customDate || '选择日期' }}</text>
+                    <text class="picker-arrow">›</text>
+                  </view>
+                </picker>
+
+                <!-- 时间选择 -->
+                <picker
+                  mode="time"
+                  :value="aiForm.customTime"
+                  @change="(e: any) => aiForm.customTime = e.detail.value"
+                >
+                  <view class="time-picker-item" :class="{ filled: !!aiForm.customTime }">
+                    <text class="picker-icon">🕐</text>
+                    <text class="picker-value">{{ aiForm.customTime || '选择时间' }}</text>
+                    <text class="picker-arrow">›</text>
+                  </view>
+                </picker>
+              </view>
+
+              <!-- 已选时间预览 -->
+              <view v-if="aiForm.customDate && aiForm.customTime" class="custom-time-preview">
+                <text class="preview-label">AI 将于</text>
+                <text class="preview-time">{{ aiForm.customDate }} {{ aiForm.customTime }}</text>
+                <text class="preview-label">开始创作</text>
+              </view>
+            </view>
           </view>
 
           <!-- 续写风格 -->
@@ -387,11 +426,15 @@ const aiForm = reactive<{
   style?: AiWritingStyle
   wordCount: number
   customWordCount: number | null
+  customDate: string   // 自定义日期，格式 YYYY-MM-DD
+  customTime: string   // 自定义时间，格式 HH:mm
 }>({
   surpriseTime: 'immediate',
   style: undefined,
   wordCount: 1500,
   customWordCount: null,
+  customDate: '',
+  customTime: '',
 })
 
 const timeOptions = [
@@ -399,7 +442,17 @@ const timeOptions = [
   { value: '1hour' as AiSurpriseTime, icon: '⏳', label: '1小时后' },
   { value: 'tonight' as AiSurpriseTime, icon: '🌙', label: '今晚22:00' },
   { value: 'tomorrow' as AiSurpriseTime, icon: '☀️', label: '明天8:00' },
+  { value: 'custom' as AiSurpriseTime, icon: '📅', label: '自定义时间' },
 ]
+
+// 今日日期字符串（YYYY-MM-DD），用于日期 picker 的 start 属性
+const todayStr = computed(() => {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+})
 
 const styleOptions: AiWritingStyle[] = ['悬疑', '温情', '脑洞', '科幻', '武侠', '现实', '浪漫', '奇幻']
 
@@ -429,12 +482,33 @@ function confirmCustomWordCount() {
 async function submitAiCreate(publishImmediately: boolean) {
   if (!aiTargetNodeId.value || !story.value) return
   if (aiSubmitting.value) return
+
+  // 自定义时间校验
+  if (aiForm.surpriseTime === 'custom') {
+    if (!aiForm.customDate || !aiForm.customTime) {
+      uni.showToast({ title: '请选择自定义发布时间', icon: 'none' })
+      return
+    }
+    const selectedTs = new Date(`${aiForm.customDate}T${aiForm.customTime}:00`).getTime()
+    if (selectedTs <= Date.now()) {
+      uni.showToast({ title: '自定义时间必须是将来的时间', icon: 'none' })
+      return
+    }
+  }
+
   aiSubmitting.value = true
   try {
+    // 构造自定义时间 ISO 字符串（带本地时区偏移）
+    let customScheduledAt: string | undefined
+    if (aiForm.surpriseTime === 'custom' && aiForm.customDate && aiForm.customTime) {
+      customScheduledAt = new Date(`${aiForm.customDate}T${aiForm.customTime}:00`).toISOString()
+    }
+
     const res = await submitAiCreateChapter({
       storyId: story.value.id,
       nodeId: aiTargetNodeId.value,
       surpriseTime: aiForm.surpriseTime,
+      customScheduledAt,
       style: aiForm.style,
       wordCount: aiForm.customWordCount || aiForm.wordCount,
       publishImmediately,
@@ -702,6 +776,8 @@ function handleAiCreate(parentNodeId: number) {
   aiForm.style = undefined
   aiForm.wordCount = 1500
   aiForm.customWordCount = null
+  aiForm.customDate = ''
+  aiForm.customTime = ''
   showAiCreatePanel.value = true
 }
 
@@ -1409,6 +1485,79 @@ function formatTime(date: string) {
 
     .time-icon { font-size: 28rpx; }
     .time-label { font-size: 26rpx; color: #1e293b; font-weight: 500; }
+  }
+}
+
+/* 自定义时间选择器 */
+.custom-time-picker {
+  margin-top: 20rpx;
+  padding: 20rpx 24rpx;
+  background: rgba(124, 106, 247, 0.04);
+  border: 1rpx dashed rgba(124, 106, 247, 0.3);
+  border-radius: 16rpx;
+
+  .custom-time-row {
+    display: flex;
+    gap: 16rpx;
+
+    picker {
+      flex: 1;
+    }
+
+    .time-picker-item {
+      display: flex;
+      align-items: center;
+      gap: 8rpx;
+      padding: 18rpx 20rpx;
+      border-radius: 12rpx;
+      border: 2rpx solid #e2e8f0;
+      background: #ffffff;
+
+      &.filled {
+        border-color: #7c6af7;
+        background: rgba(124, 106, 247, 0.06);
+      }
+
+      .picker-icon { font-size: 26rpx; flex-shrink: 0; }
+
+      .picker-value {
+        flex: 1;
+        font-size: 24rpx;
+        color: #94a3b8;
+
+        .filled & {
+          color: #1e293b;
+          font-weight: 500;
+        }
+      }
+
+      .picker-arrow {
+        font-size: 28rpx;
+        color: #94a3b8;
+        flex-shrink: 0;
+      }
+    }
+  }
+
+  .custom-time-preview {
+    display: flex;
+    align-items: center;
+    gap: 8rpx;
+    margin-top: 16rpx;
+    padding: 12rpx 16rpx;
+    background: rgba(124, 106, 247, 0.08);
+    border-radius: 10rpx;
+
+    .preview-label {
+      font-size: 22rpx;
+      color: #7c6af7;
+    }
+
+    .preview-time {
+      font-size: 24rpx;
+      font-weight: 600;
+      color: #7c6af7;
+    }
   }
 }
 
