@@ -97,6 +97,15 @@
       }
     },
     {
+      "path": "pages/story/manage",
+      "style": {
+        "navigationBarTitleText": "管理故事",
+        "navigationBarBackgroundColor": "#1a1a2e",
+        "navigationBarTextStyle": "white",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/chapter/index",
       "style": {
         "navigationBarTitleText": "阅读",

@@ -29,8 +29,13 @@ export interface Story {
     followers: number
     bookmarks: number
   }
+  // 当前登录用户的身份信息（由后端注入）
+  isAuthor?: boolean
   isFollowed?: boolean
   isBookmarked?: boolean
+  isCollaborator?: boolean
+  collaborationRequestStatus?: 'pending' | 'approved' | 'rejected' | null
+  collaborators?: Array<{ id: number; username: string; avatar?: string }>
 }
 
 export interface StoryListResponse {
@@ -120,5 +125,25 @@ export function searchStories(query: string, params?: { page?: number; pageSize?
     q: query,
     type: 'stories',
   } as Record<string, unknown>)
+}
+
+// 申请成为协作者
+export function applyCollaboration(storyId: number, message?: string) {
+  return http.post<{ request: any; message: string }>('/api/collaboration-requests', {
+    story_id: storyId,
+    message: message || '',
+  })
+}
+
+// 主动退出共创（取消自己的协作者身份）
+export function leaveCollaboration(storyId: number) {
+  return http.delete<{ message: string }>(`/api/stories/${storyId}/collaborator`)
+}
+
+// 获取故事的协作者列表
+export function getCollaborators(storyId: number) {
+  return http.get<{ collaborators: Array<{ id: number; username: string; avatar?: string }> }>(
+    `/api/stories/${storyId}/collaborators`
+  )
 }
 
