@@ -24,8 +24,10 @@ export interface Comment {
     votes: number
     other_comments: number
   }
-  replies?: Comment[]
-  userVote?: 'up' | 'down' | null
+  other_comments?: Comment[]  // 后端返回的子评论字段名
+  likeCount?: number          // 后端返回的点赞数
+  dislikeCount?: number
+  userVote?: 'like' | 'dislike' | null  // 后端返回 'like'/'dislike'
 }
 
 export interface CommentsResponse {
@@ -74,6 +76,7 @@ export function deleteComment(id: number) {
 
 // 给评论点赞/踩
 // 后端路由：POST /api/comments/comments/:commentId/vote，参数 voteType: 'like'|'dislike'
+// 注意：再次 POST 相同 voteType 会自动取消投票（后端幂等设计）
 export function voteComment(id: number, voteType: 'up' | 'down') {
   // 后端接受 'like'/'dislike'，前端传来 'up'/'down'，需要转换
   const backendType = voteType === 'up' ? 'like' : 'dislike'
@@ -81,10 +84,5 @@ export function voteComment(id: number, voteType: 'up' | 'down') {
     `/api/comments/comments/${id}/vote`,
     { voteType: backendType }
   )
-}
-
-// 取消投票（通过再次发送相同 voteType 来切换）
-export function unvoteComment(id: number) {
-  return http.delete<{ message: string }>(`/api/comments/comments/${id}/vote`)
 }
 

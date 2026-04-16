@@ -154,7 +154,7 @@ async function handleNotificationTap(item: Notification) {
     const miniUrl = convertLinkToMiniUrl(item.link)
     if (miniUrl) {
       // tabBar 页面必须用 switchTab
-      const tabBarPages = ['/pages/profile/index', '/pages/notifications/index', '/pages/write/index', '/pages/index/index', '/pages/discover/index']
+      const tabBarPages = ['/pages/profile/index', '/pages/notifications/index', '/pages/create/index', '/pages/index/index', '/pages/discover/index']
       if (tabBarPages.includes(miniUrl.split('?')[0])) {
         uni.switchTab({ url: miniUrl.split('?')[0] })
       } else {
@@ -166,23 +166,52 @@ async function handleNotificationTap(item: Notification) {
 
 /**
  * 将后端存储的 Web 路由转换为小程序路由
- * 后端格式：/chapter?id=6  /story?id=3  /profile  等
- * 小程序格式：/pages/chapter/index?id=6
+ * 后端格式：
+ *   /story.html?id=3&node=6#comment-12  → 跳转到章节页（chapter/index?id=6）
+ *   /chapter?id=6                        → 章节页
+ *   /story?id=3                          → 故事详情页
+ *   /profile                             → 个人主页
  */
 function convertLinkToMiniUrl(link: string): string | null {
+  if (!link) return null
+
+  // 去掉 hash 部分（如 #comment-12），小程序不支持 hash 定位
+  const withoutHash = link.split('#')[0]
   // 解析路径和查询参数
-  const [path, query] = link.split('?')
+  const [path, query] = withoutHash.split('?')
   const qs = query ? `?${query}` : ''
 
+  // 后端评论通知格式：/story.html?id=X&node=Y
+  // node 参数就是 node_id（章节 id），直接跳章节页
+  if (path === '/story.html') {
+    // 小程序环境不支持 URLSearchParams，手动解析 query string
+    const qsMap: Record<string, string> = {}
+    if (query) {
+      query.split('&').forEach(pair => {
+        const [k, v] = pair.split('=')
+        if (k) qsMap[decodeURIComponent(k)] = decodeURIComponent(v || '')
+      })
+    }
+    const nodeId = qsMap['node']
+    const storyId = qsMap['id']
+    if (nodeId) {
+      return `/pages/chapter/index?id=${nodeId}`
+    }
+    if (storyId) {
+      return `/pages/story/index?id=${storyId}`
+    }
+    return null
+  }
+
   const map: Record<string, string> = {
-    '/chapter':      '/pages/chapter/index',
-    '/story':        '/pages/story/index',
-    '/profile':      '/pages/profile/index',
-    '/checkin':      '/pages/checkin/index',
-    '/points':       '/pages/points/index',
-    '/membership':   '/pages/membership/index',
-    '/notifications':'/pages/notifications/index',
-    '/write':        '/pages/write/index',
+    '/chapter':       '/pages/chapter/index',
+    '/story':         '/pages/story/index',
+    '/profile':       '/pages/profile/index',
+    '/checkin':       '/pages/checkin/index',
+    '/points':        '/pages/points/index',
+    '/membership':    '/pages/membership/index',
+    '/notifications': '/pages/notifications/index',
+    '/write':         '/pages/write/index',
   }
 
   const miniPath = map[path]

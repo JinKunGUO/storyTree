@@ -1,5 +1,18 @@
 <template>
   <view class="story-page">
+    <!-- AI 任务完成横幅 -->
+    <view
+      v-if="aiTaskBanner.show"
+      class="ai-task-banner"
+      :class="{ 'banner-enter': aiTaskBanner.show }"
+    >
+      <text class="banner-icon">🤖</text>
+      <text class="banner-text">{{ aiTaskBanner.message }}</text>
+      <view class="banner-close" @tap="aiTaskBanner.show = false">
+        <text>×</text>
+      </view>
+    </view>
+
     <!-- 加载状态 -->
     <view v-if="loading" class="loading-page">
       <view class="loading-spinner" />
@@ -75,13 +88,13 @@
           <text class="story-desc">{{ story.description || '暂无简介' }}</text>
 
           <!-- 标签 -->
-          <view v-if="story.tags" class="tag-list">
+          <view v-if="story.tags && story.tags.trim()" class="tag-list">
             <text
-              v-for="tag in story.tags.split(',')"
+              v-for="tag in story.tags.split(',').map(t => t.trim()).filter(t => t)"
               :key="tag"
               class="tag"
             >
-              {{ tag.trim() }}
+              {{ tag }}
             </text>
           </view>
         </view>
@@ -106,36 +119,28 @@
           <button v-if="story.isAuthor" class="btn-manage" @tap="goManage">
             ⚙️ 管理故事
           </button>
-          <button v-if="story.isAuthor || story.isCollaborator" class="btn-write" @tap="startCollaborate">
-            ✍️ 续写章节
-          </button>
         </view>
 
-        <!-- 故事树 -->
+        <!-- 故事分支树 -->
         <view class="section-card">
-          <view class="section-header">
-            <text class="section-title">故事树</text>
-            <text class="section-sub">{{ story._count?.nodes || 0 }} 个节点</text>
-          </view>
-
-          <!-- 节点树加载中 -->
           <view v-if="nodesLoading" class="nodes-loading">
             <text>加载故事树...</text>
           </view>
+          <chapter-tree
+            v-else
+            :root-node="treeRoot"
+            :is-author-or-collab="story.isAuthor || story.isCollaborator"
+            :is-logged-in="userStore.isLoggedIn"
+            :highlight-node-id="highlightNodeId"
+            @node-tap="goChapter"
+            @write-branch="handleWriteBranch"
+            @ai-create="handleAiCreate"
+          />
 
-          <!-- 根节点 -->
-          <view v-else-if="rootNode" class="root-node" @tap="goChapter(rootNode.id)">
-            <view class="node-icon">🌳</view>
-            <view class="node-info">
-              <text class="node-title">{{ rootNode.title }}</text>
-              <view class="node-meta">
-                <text class="node-author">{{ rootNode.author.username }}</text>
-                <text class="node-children">
-                  {{ rootNode._count?.other_nodes || 0 }} 个分支
-                </text>
-              </view>
-            </view>
-            <text class="node-arrow">›</text>
+          <!-- 未登录提示 -->
+          <view v-if="!userStore.isLoggedIn" class="tree-login-tip">
+            <text class="tip-text">登录后可从任意节点续写故事</text>
+            <text class="tip-link" @tap="goLogin">去登录 →</text>
           </view>
         </view>
 
@@ -216,17 +221,142 @@
       <text class="error-text">故事不存在或已被删除</text>
       <button class="btn-back" @tap="goBack">返回</button>
     </view>
+
+    <!-- AI 创作章节弹窗 -->
+    <view v-if="showAiCreatePanel" class="ai-create-mask" @tap.self="showAiCreatePanel = false">
+      <view class="ai-create-panel" @tap.stop>
+        <!-- 标题栏 -->
+        <view class="ai-panel-header">
+          <text class="ai-panel-icon">🤖</text>
+          <text class="ai-panel-title">AI 创作章节</text>
+          <view class="ai-panel-close" @tap="showAiCreatePanel = false">
+            <text>×</text>
+          </view>
+        </view>
+
+        <scroll-view scroll-y class="ai-panel-scroll">
+          <!-- 惊喜时间 -->
+          <view class="ai-section">
+            <view class="ai-section-header">
+              <text class="ai-section-icon">🕐</text>
+              <text class="ai-section-label">选择惊喜时间</text>
+              <text class="ai-section-desc">AI 将在指定时间为你创作新章节</text>
+            </view>
+            <view class="ai-time-grid">
+              <view
+                v-for="t in timeOptions"
+                :key="t.value"
+                class="ai-time-item"
+                :class="{ active: aiForm.surpriseTime === t.value }"
+                @tap="aiForm.surpriseTime = t.value"
+              >
+                <text class="time-icon">{{ t.icon }}</text>
+                <text class="time-label">{{ t.label }}</text>
+              </view>
+            </view>
+          </view>
+
+          <!-- 续写风格 -->
+          <view class="ai-section">
+            <view class="ai-section-header">
+              <text class="ai-section-icon">🎨</text>
+              <text class="ai-section-label">选择续写风格</text>
+            </view>
+            <view class="ai-style-grid">
+              <view
+                v-for="s in styleOptions"
+                :key="s"
+                class="ai-style-item"
+                :class="{ active: aiForm.style === s }"
+                @tap="aiForm.style = aiForm.style === s ? undefined : s"
+              >
+                <text>{{ s }}</text>
+              </view>
+            </view>
+          </view>
+
+          <!-- 期望字数 -->
+          <view class="ai-section">
+            <view class="ai-section-header">
+              <text class="ai-section-icon">📝</text>
+              <text class="ai-section-label">期望生成字数</text>
+              <text class="ai-section-desc">AI 将生成接近此字数的内容</text>
+            </view>
+            <view class="ai-wordcount-row">
+              <view
+                v-for="w in wordCountOptions"
+                :key="w.value"
+                class="ai-wordcount-item"
+                :class="{ active: aiForm.wordCount === w.value && !aiForm.customWordCount }"
+                @tap="selectWordCount(w.value)"
+              >
+                <text class="wc-name">{{ w.label }}</text>
+                <text class="wc-value">约 {{ w.value }} 字</text>
+              </view>
+              <view
+                class="ai-wordcount-item custom"
+                :class="{ active: !!aiForm.customWordCount }"
+                @tap="showWordCountInput = true"
+              >
+                <text class="wc-name">自定义</text>
+                <text class="wc-value">{{ aiForm.customWordCount ? aiForm.customWordCount + ' 字' : '输入字数' }}</text>
+              </view>
+            </view>
+          </view>
+        </scroll-view>
+
+        <!-- 底部操作按钮 -->
+        <view class="ai-panel-footer">
+          <button
+            class="ai-footer-btn draft-btn"
+            :loading="aiSubmitting"
+            @tap="submitAiCreate(false)"
+          >
+            💾 生成后保存为草稿
+          </button>
+          <button
+            class="ai-footer-btn publish-btn"
+            :loading="aiSubmitting"
+            @tap="submitAiCreate(true)"
+          >
+            ✏️ 生成并自动发布
+          </button>
+        </view>
+      </view>
+    </view>
+
+    <!-- 自定义字数输入弹窗 -->
+    <view v-if="showWordCountInput" class="wc-input-mask" @tap.self="showWordCountInput = false">
+      <view class="wc-input-panel" @tap.stop>
+        <text class="wc-input-title">自定义字数</text>
+        <input
+          v-model="customWordCountInput"
+          class="wc-input"
+          type="number"
+          placeholder="请输入字数（100-10000）"
+          maxlength="5"
+        />
+        <view class="wc-input-actions">
+          <view class="wc-cancel" @tap="showWordCountInput = false">取消</view>
+          <view class="wc-confirm" @tap="confirmCustomWordCount">确定</view>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
 import { getStory, followStory, unfollowStory, bookmarkStory, applyCollaboration, leaveCollaboration } from '@/api/stories'
 import { formatRelativeTime } from '@/utils/helpers'
 import { getImageUrl } from '@/utils/request'
+import ChapterTree from '@/components/chapter-tree/index.vue'
+import { submitAiCreateChapter, getAiTaskStatus } from '@/api/ai'
 import type { Story } from '@/api/stories'
 import type { Node } from '@/api/nodes'
+import type { AiWritingStyle, AiSurpriseTime } from '@/api/ai'
 
 const userStore = useUserStore()
 
@@ -234,10 +364,161 @@ const loading = ref(true)
 const nodesLoading = ref(false)
 const story = ref<Story | null>(null)
 const rootNode = ref<Node | null>(null)
+const treeRoot = ref<Node | null>(null)   // 带 children 的树形根节点
 const isFollowed = ref(false)
 const isBookmarked = ref(false)
 const applyLoading = ref(false)
 const leaveLoading = ref(false)
+
+// AI 创作章节弹窗
+const showAiCreatePanel = ref(false)
+const showWordCountInput = ref(false)
+const aiSubmitting = ref(false)
+const customWordCountInput = ref('')
+const aiTargetNodeId = ref<number | null>(null)   // 触发 AI 创作的父节点 id
+
+// AI 任务轮询 & 通知横幅
+const aiTaskBanner = reactive({ show: false, message: '' })
+const highlightNodeId = ref<number | null>(null)   // 新节点高亮 id
+let aiPollTimer: ReturnType<typeof setInterval> | null = null
+
+const aiForm = reactive<{
+  surpriseTime: AiSurpriseTime
+  style?: AiWritingStyle
+  wordCount: number
+  customWordCount: number | null
+}>({
+  surpriseTime: 'immediate',
+  style: undefined,
+  wordCount: 1500,
+  customWordCount: null,
+})
+
+const timeOptions = [
+  { value: 'immediate' as AiSurpriseTime, icon: '⚡', label: '立即生成' },
+  { value: '1hour' as AiSurpriseTime, icon: '⏳', label: '1小时后' },
+  { value: 'tonight' as AiSurpriseTime, icon: '🌙', label: '今晚22:00' },
+  { value: 'tomorrow' as AiSurpriseTime, icon: '☀️', label: '明天8:00' },
+]
+
+const styleOptions: AiWritingStyle[] = ['悬疑', '温情', '脑洞', '科幻', '武侠', '现实', '浪漫', '奇幻']
+
+const wordCountOptions = [
+  { label: '短篇', value: 800 },
+  { label: '中篇', value: 1500 },
+  { label: '长篇', value: 3000 },
+]
+
+function selectWordCount(val: number) {
+  aiForm.wordCount = val
+  aiForm.customWordCount = null
+}
+
+function confirmCustomWordCount() {
+  const n = parseInt(customWordCountInput.value)
+  if (isNaN(n) || n < 100 || n > 10000) {
+    uni.showToast({ title: '请输入100-10000之间的字数', icon: 'none' })
+    return
+  }
+  aiForm.customWordCount = n
+  aiForm.wordCount = n
+  showWordCountInput.value = false
+  customWordCountInput.value = ''
+}
+
+async function submitAiCreate(publishImmediately: boolean) {
+  if (!aiTargetNodeId.value || !story.value) return
+  if (aiSubmitting.value) return
+  aiSubmitting.value = true
+  try {
+    const res = await submitAiCreateChapter({
+      storyId: story.value.id,
+      nodeId: aiTargetNodeId.value,
+      surpriseTime: aiForm.surpriseTime,
+      style: aiForm.style,
+      wordCount: aiForm.customWordCount || aiForm.wordCount,
+      publishImmediately,
+    })
+    showAiCreatePanel.value = false
+    uni.showToast({ title: res.message || (publishImmediately ? '任务已提交，将自动发布' : '任务已提交，完成后保存为草稿'), icon: 'success', duration: 3000 })
+
+    if (res.taskId) {
+      if (res.scheduledAt) {
+        // 定时任务：计算距离执行时间的延迟，到时间后再开始轮询
+        // 提前 10 秒开始轮询，避免因网络延迟错过
+        const delay = Math.max(0, new Date(res.scheduledAt).getTime() - Date.now() - 10000)
+        console.log(`[AI轮询] 定时任务，将在 ${Math.round(delay / 1000)} 秒后开始轮询（scheduledAt: ${res.scheduledAt}）`)
+        setTimeout(() => {
+          startPollTask(res.taskId!, publishImmediately)
+        }, delay)
+      } else {
+        // 立即任务：直接开始轮询
+        startPollTask(res.taskId, publishImmediately)
+      }
+    }
+  } catch (err: any) {
+    uni.showToast({ title: err.message || 'AI 创作提交失败', icon: 'none' })
+  } finally {
+    aiSubmitting.value = false
+  }
+}
+
+/** 轮询 AI 任务状态，完成后刷新章节树并显示顶部横幅
+ * 参照网页端 ai-tasks.html 的轮询思路：
+ * 用 setInterval 定时全量查询任务状态，不依赖递归 setTimeout
+ */
+function startPollTask(taskId: number, publishImmediately: boolean) {
+  stopPollTask()
+  let attempts = 0
+  const maxAttempts = 40  // 最多轮询 40 次（3s × 40 = 2分钟）
+
+  aiPollTimer = setInterval(async () => {
+    attempts++
+    if (attempts > maxAttempts) {
+      stopPollTask()
+      return
+    }
+
+    try {
+      const res = await getAiTaskStatus(taskId)
+
+      if (res.status === 'completed') {
+        stopPollTask()
+        // 刷新章节树
+        if (story.value) {
+          const newNodeId = res.result?.acceptedNodeId ?? null
+          await refreshTree(story.value.id)
+          // 高亮新节点
+          if (newNodeId) {
+            highlightNodeId.value = newNodeId
+            setTimeout(() => { highlightNodeId.value = null }, 4000)
+          }
+        }
+        // 显示顶部横幅
+        const action = publishImmediately ? '已自动发布' : '已保存为草稿'
+        aiTaskBanner.message = `AI 续写章节${action}，下拉可刷新`
+        aiTaskBanner.show = true
+        setTimeout(() => { aiTaskBanner.show = false }, 8000)
+        return
+      }
+
+      if (res.status === 'failed') {
+        stopPollTask()
+        uni.showToast({ title: `AI 创作失败：${res.errorMessage || '未知错误'}`, icon: 'none', duration: 3000 })
+      }
+      // pending / processing：继续等下一个 interval
+    } catch {
+      // 网络错误不中断轮询，等下一个 interval 重试
+    }
+  }, 3000)
+}
+
+function stopPollTask() {
+  if (aiPollTimer !== null) {
+    clearInterval(aiPollTimer)
+    aiPollTimer = null
+  }
+}
 
 onMounted(() => {
   const pages = getCurrentPages()
@@ -248,19 +529,70 @@ onMounted(() => {
   }
 })
 
+// 从 write 页面发布新章节后返回时，刷新章节树（不触发全屏 loading）
+onShow(() => {
+  try {
+    const refreshFlag = uni.getStorageSync('st_story_refresh')
+    if (refreshFlag && story.value && Number(refreshFlag) === story.value.id) {
+      uni.removeStorageSync('st_story_refresh')
+      refreshTree(story.value.id)
+    }
+  } catch {
+    // 忽略
+  }
+})
+
+/** 只刷新章节树，不改变 loading 状态（避免页面闪烁） */
+async function refreshTree(storyId: number) {
+  nodesLoading.value = true
+  try {
+    const res = await getStory(storyId)
+    const nodes = res.nodes || []
+    rootNode.value = nodes.find((n: Node) => !n.parent_id) || null
+    treeRoot.value = buildTree(nodes)
+    // 同步更新章节计数
+    if (story.value && res.story._count) {
+      story.value._count = res.story._count
+    }
+  } catch (err) {
+    console.error('刷新章节树失败', err)
+  } finally {
+    nodesLoading.value = false
+  }
+}
+
+// 将扁平节点数组构建为树形结构
+function buildTree(nodes: Node[]): Node | null {
+  if (!nodes || nodes.length === 0) return null
+  const map = new Map<number, Node>()
+  nodes.forEach(n => map.set(n.id, { ...n, children: [] }))
+  let root: Node | null = null
+  map.forEach(node => {
+    if (!node.parent_id) {
+      root = node
+    } else {
+      const parent = map.get(node.parent_id)
+      if (parent) {
+        if (!parent.children) parent.children = []
+        parent.children.push(node)
+      }
+    }
+  })
+  return root
+}
+
 async function loadStory(id: number) {
   loading.value = true
   try {
     const res = await getStory(id)
     story.value = res.story
-    // isFollowed 优先使用后端注入字段
     isFollowed.value = res.story.isFollowed ?? false
-    // isBookmarked 由后端注入，准确反映当前用户的收藏状态
     isBookmarked.value = res.story.isBookmarked ?? false
 
-    // 从同一响应中提取根节点，无需额外请求
     const nodes = res.nodes || []
     rootNode.value = nodes.find((n: Node) => !n.parent_id) || null
+    // 构建完整分支树
+    treeRoot.value = buildTree(nodes)
   } catch (err) {
     console.error('加载故事失败', err)
   } finally {
@@ -306,15 +638,11 @@ async function toggleBookmark() {
     return
   }
   try {
-    // 书签接口是切换型：同一接口根据当前状态自动收藏/取消收藏，并返回实际结果
     const res = await bookmarkStory(story.value!.id)
     const nowBookmarked = res.bookmarked
     const wasBookmarked = isBookmarked.value
-
     isBookmarked.value = nowBookmarked
     if (story.value) story.value.isBookmarked = nowBookmarked
-
-    // 根据前后状态变化同步计数
     if (story.value?._count) {
       if (!wasBookmarked && nowBookmarked) {
         story.value._count.bookmarks = (story.value._count.bookmarks || 0) + 1
@@ -322,7 +650,6 @@ async function toggleBookmark() {
         story.value._count.bookmarks = Math.max(0, (story.value._count.bookmarks || 0) - 1)
       }
     }
-
     uni.showToast({ title: nowBookmarked ? '收藏成功' : '已取消收藏', icon: nowBookmarked ? 'success' : 'none' })
   } catch (err: any) {
     uni.showToast({ title: err.message || '操作失败', icon: 'none' })
@@ -339,13 +666,43 @@ function goChapter(nodeId: number) {
   uni.navigateTo({ url: `/pages/chapter/index?id=${nodeId}` })
 }
 
-function startCollaborate() {
-  // write 是 tabBar 页面，不能用 navigateTo；先把参数写入 storage，再 switchTab
+// 从指定节点续写（人工写作）
+function handleWriteBranch(parentNodeId: number) {
+  // 从树中查找节点标题，用于 write 页面显示「续写自：xxx」
+  function findNodeTitle(node: Node | null, id: number): string {
+    if (!node) return ''
+    if (node.id === id) return node.title
+    if (node.children) {
+      for (const c of node.children) {
+        const t = findNodeTitle(c, id)
+        if (t) return t
+      }
+    }
+    return ''
+  }
+  const parentTitle = findNodeTitle(treeRoot.value, parentNodeId)
   uni.setStorageSync('st_write_params', JSON.stringify({
     storyId: story.value?.id,
-    parentId: rootNode.value?.id,
+    parentId: parentNodeId,
+    parentTitle,
+    mode: 'write',
   }))
-  uni.switchTab({ url: '/pages/write/index' })
+  uni.navigateTo({ url: '/pages/write/index' })
+}
+
+// 从指定节点发起 AI 创作（打开独立弹窗）
+function handleAiCreate(parentNodeId: number) {
+  if (!userStore.isLoggedIn) {
+    uni.navigateTo({ url: '/pages/auth/login/index' })
+    return
+  }
+  // 重置表单
+  aiTargetNodeId.value = parentNodeId
+  aiForm.surpriseTime = 'immediate'
+  aiForm.style = undefined
+  aiForm.wordCount = 1500
+  aiForm.customWordCount = null
+  showAiCreatePanel.value = true
 }
 
 function goManage() {
@@ -362,13 +719,11 @@ async function applyForCollaboration() {
   try {
     const res = await applyCollaboration(story.value!.id)
     uni.showToast({ title: res.message || '申请已提交', icon: 'success' })
-    // 后端返回自动通过时，直接刷新为协作者状态
     if (story.value) {
       const autoApproved = res.message?.includes('自动通过') || res.message?.includes('现在是协作者')
       if (autoApproved) {
         story.value.isCollaborator = true
         story.value.collaborationRequestStatus = 'approved'
-        // 将自己加入协作者列表
         if (story.value.collaborators && userStore.userInfo) {
           const alreadyIn = story.value.collaborators.some(c => c.id === userStore.userInfo!.id)
           if (!alreadyIn) {
@@ -406,7 +761,6 @@ async function leaveCollab() {
         if (story.value) {
           story.value.isCollaborator = false
           story.value.collaborationRequestStatus = null
-          // 从共创者列表中移除自己
           if (story.value.collaborators && userStore.userInfo) {
             story.value.collaborators = story.value.collaborators.filter(
               c => c.id !== userStore.userInfo!.id
@@ -427,12 +781,9 @@ function goLogin() {
 }
 
 function shareStory() {
-  // 微信小程序分享通过 onShareAppMessage 声明式配置实现，
-  // showShareMenu 在部分环境下受限，改为提示用户长按页面进行分享
   uni.showToast({ title: '长按页面可分享给好友', icon: 'none', duration: 2000 })
 }
 
-// 微信小程序原生分享配置（声明式，供框架调用）
 defineExpose({
   onShareAppMessage() {
     return {
@@ -705,44 +1056,25 @@ function formatTime(date: string) {
   color: #94a3b8;
 }
 
-.root-node {
+.tree-login-tip {
   display: flex;
   align-items: center;
-  gap: 20rpx;
-  padding: 20rpx;
-  background: #f8fafc;
-  border-radius: 16rpx;
+  justify-content: space-between;
+  margin-top: 20rpx;
+  padding: 16rpx 20rpx;
+  background: rgba(124, 106, 247, 0.05);
+  border-radius: 12rpx;
+  border: 1rpx solid rgba(124, 106, 247, 0.12);
 
-  .node-icon {
-    font-size: 48rpx;
+  .tip-text {
+    font-size: 24rpx;
+    color: #64748b;
   }
 
-  .node-info {
-    flex: 1;
-
-    .node-title {
-      font-size: 28rpx;
-      font-weight: 600;
-      color: #1e293b;
-      display: block;
-    }
-
-    .node-meta {
-      display: flex;
-      gap: 16rpx;
-      margin-top: 8rpx;
-
-      .node-author,
-      .node-children {
-        font-size: 22rpx;
-        color: #94a3b8;
-      }
-    }
-  }
-
-  .node-arrow {
-    font-size: 40rpx;
+  .tip-link {
+    font-size: 24rpx;
     color: #7c6af7;
+    font-weight: 600;
   }
 }
 
@@ -978,5 +1310,301 @@ function formatTime(date: string) {
 .bottom-placeholder {
   height: 60rpx;
 }
-</style>
 
+/* ——— AI 创作章节弹窗 ——— */
+.ai-create-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 300;
+  display: flex;
+  align-items: flex-end;
+}
+
+.ai-create-panel {
+  width: 100%;
+  background: #ffffff;
+  border-radius: 32rpx 32rpx 0 0;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom);
+
+  .ai-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 12rpx;
+    padding: 32rpx 32rpx 24rpx;
+    border-bottom: 1rpx solid #f0f2f5;
+
+    .ai-panel-icon { font-size: 36rpx; }
+
+    .ai-panel-title {
+      flex: 1;
+      font-size: 32rpx;
+      font-weight: 700;
+      color: #1e293b;
+    }
+
+    .ai-panel-close {
+      width: 48rpx;
+      height: 48rpx;
+      background: #f0f2f5;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32rpx;
+      color: #64748b;
+    }
+  }
+
+  .ai-panel-scroll {
+    flex: 1;
+    overflow: hidden;
+  }
+}
+
+.ai-section {
+  padding: 28rpx 32rpx 0;
+
+  .ai-section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8rpx;
+    margin-bottom: 20rpx;
+
+    .ai-section-icon { font-size: 28rpx; }
+    .ai-section-label {
+      font-size: 28rpx;
+      font-weight: 600;
+      color: #1e293b;
+    }
+    .ai-section-desc {
+      font-size: 22rpx;
+      color: #94a3b8;
+    }
+  }
+}
+
+.ai-time-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+  margin-bottom: 8rpx;
+
+  .ai-time-item {
+    display: flex;
+    align-items: center;
+    gap: 12rpx;
+    padding: 20rpx 24rpx;
+    border-radius: 16rpx;
+    border: 2rpx solid #e2e8f0;
+    background: #f8fafc;
+
+    &.active {
+      border-color: #7c6af7;
+      background: rgba(124, 106, 247, 0.08);
+    }
+
+    .time-icon { font-size: 28rpx; }
+    .time-label { font-size: 26rpx; color: #1e293b; font-weight: 500; }
+  }
+}
+
+.ai-style-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-bottom: 8rpx;
+
+  .ai-style-item {
+    padding: 14rpx 28rpx;
+    border-radius: 40rpx;
+    border: 2rpx solid #e2e8f0;
+    background: #f8fafc;
+    font-size: 26rpx;
+    color: #475569;
+
+    &.active {
+      border-color: #7c6af7;
+      background: rgba(124, 106, 247, 0.1);
+      color: #7c6af7;
+      font-weight: 600;
+    }
+  }
+}
+
+.ai-wordcount-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 12rpx;
+  margin-bottom: 8rpx;
+
+  .ai-wordcount-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16rpx 8rpx;
+    border-radius: 16rpx;
+    border: 2rpx solid #e2e8f0;
+    background: #f8fafc;
+
+    &.active {
+      border-color: #7c6af7;
+      background: rgba(124, 106, 247, 0.1);
+    }
+
+    &.custom {
+      border-style: dashed;
+    }
+
+    .wc-name { font-size: 24rpx; font-weight: 600; color: #1e293b; }
+    .wc-value { font-size: 20rpx; color: #94a3b8; margin-top: 4rpx; }
+  }
+}
+
+.ai-panel-footer {
+  display: flex;
+  gap: 16rpx;
+  padding: 24rpx 32rpx 32rpx;
+  border-top: 1rpx solid #f0f2f5;
+
+  .ai-footer-btn {
+    flex: 1;
+    padding: 24rpx 0;
+    border-radius: 20rpx;
+    font-size: 26rpx;
+    font-weight: 600;
+    border: none;
+    line-height: 1;
+
+    &.draft-btn {
+      background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+      color: #ffffff;
+    }
+
+    &.publish-btn {
+      background: linear-gradient(135deg, #7c6af7 0%, #a78bfa 100%);
+      color: #ffffff;
+    }
+  }
+}
+
+/* 自定义字数输入弹窗 */
+.wc-input-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wc-input-panel {
+  width: 560rpx;
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 40rpx;
+
+  .wc-input-title {
+    font-size: 30rpx;
+    font-weight: 700;
+    color: #1e293b;
+    display: block;
+    margin-bottom: 24rpx;
+    text-align: center;
+  }
+
+  .wc-input {
+    width: 100%;
+    height: 80rpx;
+    border: 2rpx solid #e2e8f0;
+    border-radius: 16rpx;
+    padding: 0 24rpx;
+    font-size: 28rpx;
+    color: #1e293b;
+    margin-bottom: 32rpx;
+    box-sizing: border-box;
+  }
+
+  .wc-input-actions {
+    display: flex;
+    gap: 20rpx;
+
+    .wc-cancel, .wc-confirm {
+      flex: 1;
+      text-align: center;
+      padding: 20rpx 0;
+      border-radius: 16rpx;
+      font-size: 28rpx;
+      font-weight: 600;
+    }
+
+    .wc-cancel {
+      background: #f0f2f5;
+      color: #64748b;
+    }
+
+    .wc-confirm {
+      background: #7c6af7;
+      color: #ffffff;
+    }
+  }
+}
+
+/* ——— AI 任务完成横幅 ——— */
+.ai-task-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 24rpx 32rpx;
+  padding-top: calc(24rpx + env(safe-area-inset-top));
+  background: linear-gradient(135deg, #7c6af7 0%, #a78bfa 100%);
+  box-shadow: 0 4rpx 20rpx rgba(124, 106, 247, 0.4);
+  animation: bannerSlideDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+
+  .banner-icon {
+    font-size: 32rpx;
+    flex-shrink: 0;
+  }
+
+  .banner-text {
+    flex: 1;
+    font-size: 26rpx;
+    color: #ffffff;
+    font-weight: 500;
+    line-height: 1.5;
+  }
+
+  .banner-close {
+    width: 44rpx;
+    height: 44rpx;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28rpx;
+    color: #ffffff;
+    flex-shrink: 0;
+  }
+}
+
+@keyframes bannerSlideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+</style>

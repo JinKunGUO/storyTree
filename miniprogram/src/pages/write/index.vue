@@ -1,5 +1,5 @@
 <template>
-  <view class="write-page">
+  <view class="write-page" :style="{ '--status-bar-height': statusBarHeight + 'px' }">
     <!-- 顶部工具栏 -->
     <view class="toolbar">
       <view class="toolbar-left">
@@ -16,6 +16,13 @@
           {{ publishing ? '发布中...' : '发布' }}
         </button>
       </view>
+    </view>
+
+    <!-- 父节点信息条（续写时显示，告知用户从哪个节点续写） -->
+    <view v-if="parentNodeTitle" class="parent-node-bar">
+      <text class="parent-label">续写自：</text>
+      <text class="parent-title" @tap="goParentChapter">{{ parentNodeTitle }}</text>
+      <text class="parent-arrow">›</text>
     </view>
 
     <!-- 故事选择（新建时） -->
@@ -88,21 +95,25 @@
           <text v-if="wordCount < 100" class="word-hint">建议至少写100字</text>
         </view>
 
-        <!-- AI 辅助工具 -->
-        <view v-if="userStore.isMember" class="ai-tools">
+        <!-- AI 辅助工具（登录即可使用） -->
+        <view v-if="userStore.isLoggedIn" class="ai-tools">
           <text class="ai-tools-title">✨ AI 辅助</text>
           <view class="ai-actions">
-            <view class="ai-btn" @tap="aiContinue">
+            <view class="ai-btn" @tap="openAiPanel('continue')">
               <text class="ai-btn-icon">🤖</text>
               <text class="ai-btn-label">AI 续写</text>
             </view>
-            <view class="ai-btn" @tap="aiPolish">
+            <view class="ai-btn" @tap="openAiPanel('polish')">
               <text class="ai-btn-icon">✨</text>
               <text class="ai-btn-label">AI 润色</text>
             </view>
-            <view class="ai-btn" @tap="aiSummary">
+            <view class="ai-btn" @tap="openAiPanel('summary')">
               <text class="ai-btn-icon">📋</text>
               <text class="ai-btn-label">生成摘要</text>
+            </view>
+            <view class="ai-btn" @tap="chooseImage">
+              <text class="ai-btn-icon">🎨</text>
+              <text class="ai-btn-label">AI 插图</text>
             </view>
           </view>
         </view>
@@ -138,35 +149,40 @@
       </view>
     </view>
 
-    <!-- AI 加载中 -->
-    <view v-if="aiLoading" class="ai-loading-mask">
-      <view class="ai-loading-box">
-        <view class="ai-spinner" />
-        <text class="ai-loading-text">AI 思考中...</text>
-      </view>
-    </view>
+    <!-- AI 面板 -->
+    <ai-panel
+      :visible="showAiPanel"
+      :story-id="storyId || undefined"
+      :node-id="parentId || undefined"
+      :content="form.content"
+      @close="showAiPanel = false"
+      @apply="onAiApply"
+    />
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useUserStore } from '@/store/user'
-import { createNode, updateNode } from '@/api/nodes'
+import { createNode, updateNode, getNode } from '@/api/nodes'
 import { getUserStories } from '@/api/stories'
-import { createContinueTask, createPolishTask } from '@/api/ai'
 import { getImageUrl } from '@/utils/request'
+import AiPanel from '@/components/ai-panel/index.vue'
 import type { Story } from '@/api/stories'
 
 const userStore = useUserStore()
 
+const statusBarHeight = ref(20) // 状态栏高度（px），默认 20px 兜底
+
 const publishing = ref(false)
-const aiLoading = ref(false)
+const showAiPanel = ref(false)
 const showStoryPicker = ref(false)
 const isEditing = ref(false)
 
 const storyId = ref<number | null>(null)
 const parentId = ref<number | null>(null)
 const nodeId = ref<number | null>(null)
+const parentNodeTitle = ref<string>('')   // 父节点标题，用于展示"续写自：xxx"
 
 const selectedStory = ref<Story | null>(null)
 const myStories = ref<Story[]>([])
@@ -181,7 +197,15 @@ const wordCount = computed(() => {
   return form.content.replace(/\s/g, '').length
 })
 
-onMounted(() => {
+onMounted(async () => {
+  // 动态获取状态栏高度，避免与微信胶囊按钮重叠
+  try {
+    const sysInfo = uni.getSystemInfoSync()
+    statusBarHeight.value = sysInfo.statusBarHeight || 20
+  } catch {
+    statusBarHeight.value = 20
+  }
+
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1] as any
   const options = currentPage.options || {}
@@ -196,13 +220,46 @@ onMounted(() => {
   }
 
   // 若无 URL 参数，尝试从 storage 读取（switchTab 传参方式）
+  let mode = ''
+  let hasPrefill = false
   if (!storyId.value && !options.nodeId) {
+    // 优先检查是否从草稿箱恢复
+    try {
+      const resumeRaw = uni.getStorageSync('st_write_resume')
+      if (resumeRaw) {
+        const resume = JSON.parse(resumeRaw)
+        uni.removeStorageSync('st_write_resume')
+        if (resume.storyId) storyId.value = Number(resume.storyId)
+        if (resume.parentId) parentId.value = Number(resume.parentId)
+        // 直接加载对应草稿
+        if (!isEditing.value) {
+          loadDraft()
+        }
+        if (storyId.value) {
+          loadMyStories()
+        }
+        return
+      }
+    } catch {
+      // 忽略
+    }
+
     try {
       const raw = uni.getStorageSync('st_write_params')
       if (raw) {
         const params = JSON.parse(raw)
         if (params.storyId) storyId.value = Number(params.storyId)
         if (params.parentId) parentId.value = Number(params.parentId)
+        if (params.parentTitle) parentNodeTitle.value = params.parentTitle
+        if (params.prefillContent) {
+          form.content = params.prefillContent
+          hasPrefill = true
+        }
+        if (params.prefillTitle) {
+          form.title = params.prefillTitle
+          hasPrefill = true
+        }
+        if (params.mode) mode = params.mode
         uni.removeStorageSync('st_write_params')
       }
     } catch {
@@ -210,8 +267,16 @@ onMounted(() => {
     }
   }
 
-  // 加载草稿
-  if (!isEditing.value) {
+  // 加载父节点标题（若已从 storage 获取则跳过）
+  if (parentId.value && !parentNodeTitle.value) {
+    loadParentNodeTitle(parentId.value)
+  }
+
+  // 加载草稿：
+  // - 有 prefill 内容（AI 生成）时跳过，避免覆盖
+  // - 编辑模式时跳过
+  // 草稿 key 同时包含 storyId + parentId，避免不同父节点间互相污染
+  if (!isEditing.value && !hasPrefill) {
     loadDraft()
   }
 
@@ -219,12 +284,32 @@ onMounted(() => {
   if (!storyId.value) {
     loadMyStories()
   }
+
+  // AI 模式：直接打开 AI 面板
+  if (mode === 'ai') {
+    setTimeout(() => {
+      showAiPanel.value = true
+    }, 300)
+  }
 })
 
-async function loadNodeForEdit(id: number) {
-  // 加载节点数据进行编辑
+async function loadParentNodeTitle(id: number) {
   try {
-    const { getNode } = await import('@/api/nodes')
+    const res = await getNode(id)
+    parentNodeTitle.value = res.node.title
+  } catch {
+    // 静默失败
+  }
+}
+
+function goParentChapter() {
+  if (parentId.value) {
+    uni.navigateTo({ url: `/pages/chapter/index?id=${parentId.value}` })
+  }
+}
+
+async function loadNodeForEdit(id: number) {
+  try {
     const res = await getNode(id)
     form.title = res.node.title
     form.content = res.node.content
@@ -247,7 +332,7 @@ async function loadMyStories() {
 
 function loadDraft() {
   try {
-    const key = `st_draft_${storyId.value || 'new'}`
+    const key = `st_draft_${storyId.value || 'new'}_p${parentId.value || 0}`
     const draft = uni.getStorageSync(key)
     if (draft) {
       const data = JSON.parse(draft)
@@ -261,8 +346,12 @@ function loadDraft() {
 
 function saveDraft() {
   try {
-    const key = `st_draft_${storyId.value || 'new'}`
-    uni.setStorageSync(key, JSON.stringify({ title: form.title, content: form.content }))
+    const key = `st_draft_${storyId.value || 'new'}_p${parentId.value || 0}`
+    uni.setStorageSync(key, JSON.stringify({
+      title: form.title,
+      content: form.content,
+      savedAt: Date.now(),
+    }))
     uni.showToast({ title: '草稿已保存', icon: 'success' })
   } catch {
     uni.showToast({ title: '保存失败', icon: 'none' })
@@ -300,10 +389,15 @@ async function handlePublish() {
     }
 
     // 清除草稿
-    const key = `st_draft_${storyId.value || 'new'}`
+    const key = `st_draft_${storyId.value || 'new'}_p${parentId.value || 0}`
     uni.removeStorageSync(key)
 
     uni.showToast({ title: '发布成功！', icon: 'success' })
+    // 写入刷新标记，通知故事详情页在 onShow 时重新加载章节树
+    const targetStoryId = storyId.value || selectedStory.value?.id
+    if (targetStoryId) {
+      uni.setStorageSync('st_story_refresh', String(targetStoryId))
+    }
     setTimeout(() => {
       const pages = getCurrentPages()
       if (pages.length > 1) {
@@ -340,47 +434,14 @@ async function chooseImage() {
   })
 }
 
-async function aiContinue() {
-  if (!storyId.value) {
-    uni.showToast({ title: '请先选择故事', icon: 'none' })
-    return
-  }
-  aiLoading.value = true
-  try {
-    const res = await createContinueTask({
-      story_id: storyId.value,
-      node_id: parentId.value || 0,
-      length: 'medium',
-    })
-    uni.showToast({ title: 'AI 续写任务已创建', icon: 'success' })
-  } catch (err: any) {
-    uni.showToast({ title: err.message || 'AI 续写失败', icon: 'none' })
-  } finally {
-    aiLoading.value = false
-  }
+// 打开 AI 面板并预选功能
+function openAiPanel(action?: string) {
+  showAiPanel.value = true
 }
 
-async function aiPolish() {
-  if (!form.content.trim()) {
-    uni.showToast({ title: '请先写一些内容', icon: 'none' })
-    return
-  }
-  aiLoading.value = true
-  try {
-    await createPolishTask({
-      node_id: nodeId.value || 0,
-      content: form.content,
-    })
-    uni.showToast({ title: 'AI 润色任务已创建', icon: 'success' })
-  } catch (err: any) {
-    uni.showToast({ title: err.message || 'AI 润色失败', icon: 'none' })
-  } finally {
-    aiLoading.value = false
-  }
-}
-
-function aiSummary() {
-  uni.showToast({ title: '功能开发中', icon: 'none' })
+// AI 面板生成内容后应用到编辑器
+function onAiApply(content: string) {
+  form.content = form.content ? form.content + '\n\n' + content : content
 }
 
 function onContentInput() {
@@ -404,28 +465,25 @@ function goCreateStory() {
 }
 
 function handleBack() {
-  if (form.content.trim() || form.title.trim()) {
-    uni.showModal({
-      title: '提示',
-      content: '内容尚未保存，确定要退出吗？',
-      success: (res) => {
-        if (res.confirm) {
-          const pages = getCurrentPages()
-          if (pages.length > 1) {
-            uni.navigateBack()
-          } else {
-            uni.switchTab({ url: '/pages/index/index' })
-          }
-        }
-      },
-    })
-  } else {
+  const doBack = () => {
     const pages = getCurrentPages()
     if (pages.length > 1) {
       uni.navigateBack()
     } else {
       uni.switchTab({ url: '/pages/index/index' })
     }
+  }
+
+  if (form.content.trim() || form.title.trim()) {
+    uni.showModal({
+      title: '提示',
+      content: '内容尚未保存，确定要退出吗？',
+      success: (res) => {
+        if (res.confirm) doBack()
+      },
+    })
+  } else {
+    doBack()
   }
 }
 </script>
@@ -442,7 +500,7 @@ function handleBack() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 88rpx 24rpx 16rpx;
+  padding: calc(var(--status-bar-height, 20px) + 10px) 24rpx 16rpx;
   background: #ffffff;
   border-bottom: 1rpx solid #f0f2f5;
 
@@ -569,6 +627,37 @@ function handleBack() {
   padding: 0 0 60rpx;
 }
 
+.parent-node-bar {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 16rpx 32rpx;
+  background: rgba(124, 106, 247, 0.05);
+  border-bottom: 1rpx solid rgba(124, 106, 247, 0.1);
+
+  .parent-label {
+    font-size: 24rpx;
+    color: #94a3b8;
+    flex-shrink: 0;
+  }
+
+  .parent-title {
+    flex: 1;
+    font-size: 24rpx;
+    color: #7c6af7;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .parent-arrow {
+    font-size: 28rpx;
+    color: #cbd5e1;
+    flex-shrink: 0;
+  }
+}
+
 .title-input-wrap {
   display: flex;
   align-items: center;
@@ -635,14 +724,8 @@ function handleBack() {
     gap: 12rpx;
     padding: 16rpx 0;
 
-    .upload-icon {
-      font-size: 32rpx;
-    }
-
-    .upload-text {
-      font-size: 26rpx;
-      color: #94a3b8;
-    }
+    .upload-icon { font-size: 32rpx; }
+    .upload-text { font-size: 26rpx; color: #94a3b8; }
   }
 }
 
@@ -658,9 +741,7 @@ function handleBack() {
   }
 }
 
-.content-placeholder {
-  color: #cbd5e1;
-}
+.content-placeholder { color: #cbd5e1; }
 
 .word-count-bar {
   display: flex;
@@ -668,15 +749,8 @@ function handleBack() {
   gap: 16rpx;
   padding: 0 32rpx 24rpx;
 
-  .word-count {
-    font-size: 24rpx;
-    color: #94a3b8;
-  }
-
-  .word-hint {
-    font-size: 22rpx;
-    color: #f59e0b;
-  }
+  .word-count { font-size: 24rpx; color: #94a3b8; }
+  .word-hint { font-size: 22rpx; color: #f59e0b; }
 }
 
 .ai-tools {
@@ -696,7 +770,7 @@ function handleBack() {
 
   .ai-actions {
     display: flex;
-    gap: 20rpx;
+    gap: 16rpx;
 
     .ai-btn {
       flex: 1;
@@ -708,14 +782,8 @@ function handleBack() {
       background: rgba(255, 255, 255, 0.8);
       border-radius: 16rpx;
 
-      .ai-btn-icon {
-        font-size: 36rpx;
-      }
-
-      .ai-btn-label {
-        font-size: 22rpx;
-        color: #475569;
-      }
+      .ai-btn-icon { font-size: 32rpx; }
+      .ai-btn-label { font-size: 20rpx; color: #475569; }
     }
   }
 }
@@ -803,43 +871,4 @@ function handleBack() {
     height: 88rpx;
   }
 }
-
-.ai-loading-mask {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  z-index: 300;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.ai-loading-box {
-  background: #ffffff;
-  border-radius: 24rpx;
-  padding: 48rpx 60rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20rpx;
-
-  .ai-spinner {
-    width: 60rpx;
-    height: 60rpx;
-    border: 4rpx solid #f0f2f5;
-    border-top-color: #7c6af7;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-
-  .ai-loading-text {
-    font-size: 28rpx;
-    color: #475569;
-  }
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
 </style>
-

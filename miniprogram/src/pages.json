@@ -17,11 +17,20 @@
       }
     },
     {
-      "path": "pages/write/index",
+      "path": "pages/create/index",
       "style": {
         "navigationBarTitleText": "创作",
         "navigationBarBackgroundColor": "#1a1a2e",
         "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/write/index",
+      "style": {
+        "navigationBarTitleText": "写作",
+        "navigationBarBackgroundColor": "#1a1a2e",
+        "navigationBarTextStyle": "white",
+        "navigationStyle": "custom"
       }
     },
     {
@@ -205,7 +214,7 @@
         "selectedIconPath": "static/icons/discover-active.png"
       },
       {
-        "pagePath": "pages/write/index",
+        "pagePath": "pages/create/index",
         "text": "创作",
         "iconPath": "static/icons/write.png",
         "selectedIconPath": "static/icons/write-active.png"

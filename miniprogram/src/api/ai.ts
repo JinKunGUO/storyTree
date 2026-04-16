@@ -125,4 +125,59 @@ export function getAiQuota() {
   }>('/api/ai/usage-stats')
 }
 
+// ——— AI 创作章节（独立创作者模式，ai-v2 接口）———
+
+export type AiSurpriseTime = 'immediate' | '1hour' | 'tonight' | 'tomorrow'
+export type AiWritingStyle = '悬疑' | '温情' | '脑洞' | '科幻' | '武侠' | '现实' | '浪漫' | '奇幻'
+
+export interface AiCreateChapterParams {
+  storyId: number
+  nodeId: number          // 父节点 id
+  surpriseTime: AiSurpriseTime
+  style?: AiWritingStyle
+  wordCount?: number      // 期望字数
+  publishImmediately?: boolean  // true=自动发布，false=保存为草稿
+}
+
+// 提交 AI 创作章节任务
+// 后端路由：POST /api/ai/v2/continuation/submit（挂载于 /api/ai/v2）
+export function submitAiCreateChapter(params: AiCreateChapterParams) {
+  return http.post<{
+    taskId: number
+    scheduledAt?: string
+    message: string
+  }>('/api/ai/v2/continuation/submit', {
+    storyId: params.storyId,
+    nodeId: params.nodeId,
+    surpriseTime: params.surpriseTime,
+    style: params.style,
+    wordCount: params.wordCount || 1500,
+    publishImmediately: params.publishImmediately ?? true,
+    count: 1,
+    mode: 'full',
+  })
+}
+
+// 查询 AI 任务状态
+// 后端路由：GET /api/ai/v2/tasks/:taskId
+export function getAiTaskStatus(taskId: number) {
+  return http.get<{
+    taskId: number
+    taskType: string
+    status: 'pending' | 'processing' | 'completed' | 'failed'
+    createdAt: string
+    scheduledAt?: string
+    startedAt?: string
+    completedAt?: string
+    result?: {
+      options?: Array<{ title: string; content: string; style: string }>
+      savedAsDraft?: boolean
+      autoAccepted?: boolean
+      acceptedNodeId?: number
+      publishStatus?: 'published' | 'draft'
+    }
+    errorMessage?: string
+  }>(`/api/ai/v2/tasks/${taskId}`)
+}
+
 

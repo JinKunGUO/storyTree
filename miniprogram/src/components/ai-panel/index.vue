@@ -176,60 +176,50 @@ async function generate() {
   result.value = ''
 
   try {
-    let res: any
-
     switch (selectedAction.value) {
-      case 'continue':
-        res = await aiApi.createContinueTask({
+      case 'continue': {
+        // /api/ai/generate 是同步接口，直接返回 options 数组
+        const res = await aiApi.createContinueTask({
           story_id: props.storyId,
           node_id: props.nodeId,
           style: selectedStyle.value !== 'default' ? selectedStyle.value : undefined,
         })
+        const options = res.options || []
+        if (options.length > 0) {
+          // 取第一个续写选项的内容
+          result.value = options[0].content || ''
+        } else {
+          error.value = 'AI 未返回续写内容，请重试'
+        }
         break
-      case 'polish':
-        res = await aiApi.createPolishTask({
+      }
+      case 'polish': {
+        const res = await aiApi.createPolishTask({
           node_id: props.nodeId,
           content: props.content || '',
         })
+        const options = res.options || []
+        result.value = options[0]?.content || ''
+        if (!result.value) error.value = 'AI 润色失败，请重试'
         break
-      case 'summary':
-        res = await aiApi.createSummaryTask({
+      }
+      case 'summary': {
+        const res = await aiApi.createSummaryTask({
           node_id: props.nodeId,
         })
+        const options = res.options || []
+        result.value = options[0]?.content || ''
+        if (!result.value) error.value = 'AI 摘要生成失败，请重试'
         break
+      }
       default:
         throw new Error('未知操作类型')
-    }
-
-    // 轮询任务状态
-    if (res?.task?.id) {
-      await pollTaskResult(res.task.id)
     }
   } catch (e: any) {
     error.value = e?.message || 'AI 生成失败，请稍后重试'
   } finally {
     generating.value = false
   }
-}
-
-async function pollTaskResult(taskId: number, retries = 20) {
-  for (let i = 0; i < retries; i++) {
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    try {
-      const res = await aiApi.getTaskStatus(taskId)
-      if (res.task.status === 'completed' && res.task.result_data) {
-        const data = JSON.parse(res.task.result_data)
-        result.value = data.content || data.summary || data.result || ''
-        return
-      }
-      if (res.task.status === 'failed') {
-        throw new Error(res.task.error_message || 'AI 生成失败')
-      }
-    } catch (e) {
-      throw e
-    }
-  }
-  throw new Error('AI 生成超时，请稍后重试')
 }
 
 function copyResult() {

@@ -59,6 +59,7 @@ export function getNodeChildren(id: number) {
 }
 
 // 创建节点（续写）
+// 后端 POST /api/nodes 期望驼峰字段名：storyId / parentId
 export function createNode(data: {
   story_id: number
   parent_id?: number
@@ -66,7 +67,13 @@ export function createNode(data: {
   content: string
   image?: string
 }) {
-  return http.post<{ node: Node }>('/api/nodes', data)
+  return http.post<{ node: Node }>('/api/nodes', {
+    storyId: data.story_id,
+    parentId: data.parent_id,
+    title: data.title,
+    content: data.content,
+    image: data.image,
+  })
 }
 
 // 更新节点

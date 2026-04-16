@@ -1,5 +1,5 @@
 <template>
-  <view class="manage-page">
+  <view class="manage-page" :style="{ '--status-bar-height': statusBarHeight + 'px' }">
     <!-- 顶部栏 -->
     <view class="top-bar">
       <view class="back-btn" @tap="goBack">
@@ -216,6 +216,7 @@ const userStore = useUserStore()
 const loading = ref(true)
 const saving = ref(false)
 const requestsLoading = ref(false)
+const statusBarHeight = ref(20) // 状态栏高度（px），动态获取避免与胶囊按钮重叠
 const storyId = ref<number>(0)
 const story = ref<Story | null>(null)
 
@@ -249,6 +250,14 @@ function onVisibilityChange(e: any) {
 }
 
 onMounted(() => {
+  // 动态获取状态栏高度
+  try {
+    const sysInfo = uni.getSystemInfoSync()
+    statusBarHeight.value = sysInfo.statusBarHeight || 20
+  } catch {
+    statusBarHeight.value = 20
+  }
+
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1] as any
   const id = Number(currentPage.options?.id)
@@ -441,7 +450,7 @@ function formatTime(date: string) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 88rpx 32rpx 20rpx;
+  padding: calc(var(--status-bar-height, 20px) + 10px) 32rpx 20rpx;
   background: #ffffff;
   border-bottom: 1rpx solid #f0f2f5;
 

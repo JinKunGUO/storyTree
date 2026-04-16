@@ -377,13 +377,13 @@ XXX` : ''}`;
     // 解析AI响应
     const options = parseAiResponse(aiResponse);
 
-    // 保存结果
+    // 保存 AI 生成结果（此时节点尚未创建，状态保持 processing）
     await prisma.ai_tasks.update({
       where: { id: taskId },
       data: {
-        status: 'completed',
+        status: 'processing',
         result_data: JSON.stringify({ options, raw: aiResponse }),
-        completed_at: new Date()
+        // 不设置 completed_at，等节点创建完成后再设置
       }
     });
 
@@ -437,31 +437,17 @@ XXX` : ''}`;
       const publishImmediately = inputData.publishImmediately !== undefined ? inputData.publishImmediately : true;
       
       if (options.length > 0) {
-        // 判断是自动接受还是手动确认
-        if (task.scheduled_at) {
-          // 定时任务，根据publishImmediately决定处理方式
-          if (publishImmediately) {
-            // 自动发布第一个选项
-            console.log(`🤖 自动发布第一个AI章节: ${task.id} - ${options[0].title}`);
-            await autoAcceptAiChapter(task, options[0], true);
-          } else {
-            // 保存所有选项为草稿
-            console.log(`📝 保存所有AI章节为草稿: ${task.id} - 共${options.length}个选项`);
-            await saveAllOptionsAsDraft(task, options);
-          }
+        // 无论是定时任务还是立即任务，都根据 publishImmediately 决定处理方式
+        if (publishImmediately) {
+          // 自动发布第一个选项
+          console.log(`🤖 自动发布第一个AI章节: ${task.id} - ${options[0].title}`);
+          await autoAcceptAiChapter(task, options[0], true);
         } else {
-          // 立即任务，发送通知等待用户确认
-          console.log(`📋 等待用户手动确认: ${task.id} - ${options[0].title}`);
-          await notifyAiContinuationReady(userId, taskId, storyTitle, task.story_id || undefined);
+          // 保存所有选项为草稿
+          console.log(`📝 保存所有AI章节为草稿: ${task.id} - 共${options.length}个选项`);
+          await saveAllOptionsAsDraft(task, options);
         }
       }
-    } else {
-      // 这是立即任务，发送通知让用户手动接受
-      const taskInfo = await prisma.ai_tasks.findUnique({
-        where: { id: taskId },
-        select: { story_id: true }
-      });
-      await notifyAiContinuationReady(userId, taskId, storyTitle, taskInfo?.story_id || undefined);
     }
 
     console.log(`✅ AI续写任务完成: ${taskId}`);
@@ -566,11 +552,12 @@ async function saveAllOptionsAsDraft(task: any, options: any[]) {
       console.log(`✅ 草稿创建成功 ${i + 1}/${options.length}: #${node.id} - ${node.title}`);
     }
     
-    // 更新任务状态
+    // 更新任务状态（节点已创建，现在才真正 completed）
     await prisma.ai_tasks.update({
       where: { id: task.id },
       data: { 
         status: 'completed',
+        completed_at: new Date(),
         result_data: JSON.stringify({
           ...JSON.parse(task.result_data || '{}'),
           savedAsDraft: true,
@@ -687,11 +674,12 @@ async function autoAcceptAiChapter(task: any, firstOption: any, publishImmediate
 
     console.log(`✅ ${publishImmediately ? '自动创建' : '草稿创建'}章节成功: #${node.id} - ${node.title}`);
     
-    // 更新任务状态
+    // 更新任务状态（节点已创建，现在才真正 completed）
     await prisma.ai_tasks.update({
       where: { id: task.id },
       data: { 
         status: 'completed',
+        completed_at: new Date(),
         result_data: JSON.stringify({
           ...JSON.parse(task.result_data || '{}'),
           autoAccepted: publishImmediately,

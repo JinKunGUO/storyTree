@@ -1,5 +1,5 @@
 <template>
-  <view class="chapter-page" :style="{ background: bgColors[settings.theme] }">
+  <view class="chapter-page" :style="{ background: bgColors[settings.theme], '--status-bar-height': statusBarHeight + 'px' }">
     <!-- 自定义导航栏 -->
     <view class="custom-navbar" :class="{ hidden: hideNav }">
       <view class="navbar-inner">
@@ -114,17 +114,33 @@
         <!-- 无分支提示 -->
         <view v-else class="no-branch">
           <text class="no-branch-icon">🌿</text>
-          <text class="no-branch-text">这是故事的末端</text>
-          <button
-            v-if="userStore.isLoggedIn"
-            class="btn-write-branch"
-            @tap="writeBranch"
-          >
-            ✍️ 续写新分支
-          </button>
-          <button v-else class="btn-write-branch" @tap="goLogin">
-            登录后续写
-          </button>
+          <text class="no-branch-text">这是故事的末端，等待续写</text>
+        </view>
+
+        <!-- 续写 / AI 创作入口（始终展示，登录后可操作） -->
+        <view class="write-actions-section">
+          <view class="write-actions-title">
+            <text class="write-actions-label">从此节点创作</text>
+          </view>
+          <view class="write-actions-row">
+            <view
+              class="write-action-btn"
+              :class="{ disabled: !userStore.isLoggedIn }"
+              @tap="userStore.isLoggedIn ? writeBranch() : goLogin()"
+            >
+              <text class="write-action-icon">✍️</text>
+              <text class="write-action-text">续写章节</text>
+            </view>
+            <view
+              class="write-action-btn ai-action-btn"
+              :class="{ disabled: !userStore.isLoggedIn }"
+              @tap="userStore.isLoggedIn ? openAiPanel() : goLogin()"
+            >
+              <text class="write-action-icon">🤖</text>
+              <text class="write-action-text">AI 创作</text>
+            </view>
+          </view>
+          <text v-if="!userStore.isLoggedIn" class="write-login-tip" @tap="goLogin">登录后可续写故事 →</text>
         </view>
 
         <!-- 评论区 -->
@@ -158,10 +174,59 @@
               <text class="comment-text">{{ comment.content }}</text>
               <view class="comment-actions">
                 <text class="comment-time">{{ formatTime(comment.created_at) }}</text>
-                <view class="vote-btn" @tap="voteOnComment(comment.id, 'up')">
-                  <text>👍 {{ comment._count?.votes || 0 }}</text>
+                <view
+                  class="vote-btn"
+                  :class="{ voted: comment.userVote === 'like' || (comment as any)._myVote === 'up' }"
+                  @tap="voteOnComment(comment.id, 'up')"
+                >
+                  <text>👍 {{ comment.likeCount ?? comment._count?.votes ?? 0 }}</text>
+                </view>
+                <view class="reply-btn" @tap="openReply(comment.id, comment.user.username)">
+                  <text>回复</text>
                 </view>
               </view>
+
+              <!-- 扁平化回复列表（与网页端一致） -->
+              <block v-if="comment.other_comments && comment.other_comments.length">
+                <view class="replies-wrap">
+                  <!-- 前3条始终显示 -->
+                  <view
+                    v-for="(item, idx) in flattenReplies(comment.other_comments)"
+                    :key="item.comment.id"
+                    class="reply-item"
+                    :class="{ hidden: idx >= 3 && !(comment as any)._showAllReplies }"
+                  >
+                    <text class="reply-username">{{ item.comment.user.username }}</text>
+                    <text v-if="item.replyToUsername" class="reply-to-name"> @{{ item.replyToUsername }}：</text>
+                    <text class="reply-text">{{ item.comment.content }}</text>
+                    <view class="reply-actions">
+                      <text class="reply-time">{{ formatTime(item.comment.created_at) }}</text>
+                      <view
+                        class="reply-vote"
+                        :class="{ voted: item.comment.userVote === 'like' }"
+                        @tap="voteOnComment(item.comment.id, 'up')"
+                      >
+                        <text>👍 {{ item.comment.likeCount ?? 0 }}</text>
+                      </view>
+                      <view class="reply-btn-inline" @tap="openReply(item.comment.id, item.comment.user.username)">
+                        <text>回复</text>
+                      </view>
+                    </view>
+                  </view>
+
+                  <!-- 折叠/展开按钮（超过3条时显示） -->
+                  <view
+                    v-if="flattenReplies(comment.other_comments).length > 3"
+                    class="toggle-replies-btn"
+                    @tap="(comment as any)._showAllReplies = !(comment as any)._showAllReplies"
+                  >
+                    <text v-if="!(comment as any)._showAllReplies">
+                      共 {{ flattenReplies(comment.other_comments).length }} 条回复，点击查看全部 ▼
+                    </text>
+                    <text v-else>收起回复 ▲</text>
+                  </view>
+                </view>
+              </block>
             </view>
           </view>
 
@@ -240,12 +305,16 @@
     </view>
 
     <!-- 评论输入弹窗 -->
-    <view v-if="showCommentInput" class="comment-mask" @tap.self="showCommentInput = false">
+    <view v-if="showCommentInput" class="comment-mask" @tap.self="closeCommentInput">
       <view class="comment-panel">
+        <view v-if="replyTo" class="reply-hint">
+          <text class="reply-hint-text">回复 @{{ replyTo.username }}</text>
+          <text class="reply-hint-cancel" @tap="replyTo = null">取消回复</text>
+        </view>
         <textarea
           v-model="commentText"
           class="comment-textarea"
-          placeholder="写下你的评论..."
+          :placeholder="replyTo ? `回复 @${replyTo.username}...` : '写下你的评论...'"
           :auto-focus="true"
           maxlength="500"
         />
@@ -255,6 +324,16 @@
         </view>
       </view>
     </view>
+
+    <!-- AI 创作面板 -->
+    <ai-panel
+      :visible="showAiPanel"
+      :node-id="node?.id"
+      :story-id="node?.story_id"
+      :content="node?.content || ''"
+      @close="showAiPanel = false"
+      @apply="handleAiApply"
+    />
   </view>
 </template>
 
@@ -266,6 +345,7 @@ import { getNode, rateNode, bookmarkNode, unbookmarkNode, incrementReadCount } f
 import { getNodeComments, createComment, voteComment } from '@/api/comments'
 import { formatRelativeTime } from '@/utils/helpers'
 import { getImageUrl } from '@/utils/request'
+import AiPanel from '@/components/ai-panel/index.vue'
 import type { Node } from '@/api/nodes'
 import type { Comment } from '@/api/comments'
 
@@ -274,9 +354,12 @@ const appStore = useAppStore()
 
 const loading = ref(true)
 const hideNav = ref(false)
+const statusBarHeight = ref(20) // 状态栏高度（px），动态获取避免与胶囊按钮重叠
 const showSettings = ref(false)
 const showCommentInput = ref(false)
+const showAiPanel = ref(false)
 const commentText = ref('')
+const replyTo = ref<{ id: number; username: string } | null>(null) // 当前回复的评论
 
 const node = ref<Node | null>(null)
 const children = ref<Node[]>([])
@@ -314,6 +397,14 @@ const themeOptions = [
 ]
 
 onMounted(() => {
+  // 动态获取状态栏高度
+  try {
+    const sysInfo = uni.getSystemInfoSync()
+    statusBarHeight.value = sysInfo.statusBarHeight || 20
+  } catch {
+    statusBarHeight.value = 20
+  }
+
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1] as any
   const nodeId = Number(currentPage.options?.id)
@@ -394,28 +485,91 @@ async function toggleBookmark() {
 async function submitComment() {
   if (!commentText.value.trim()) return
   try {
-    const res = await createComment({ node_id: node.value!.id, content: commentText.value.trim() })
-    comments.value.unshift(res.comment)
+    const payload: { node_id: number; content: string; parent_id?: number } = {
+      node_id: node.value!.id,
+      content: commentText.value.trim(),
+    }
+    if (replyTo.value) {
+      payload.parent_id = replyTo.value.id
+    }
+    await createComment(payload)
     totalComments.value++
     commentText.value = ''
+    replyTo.value = null
     showCommentInput.value = false
     uni.showToast({ title: '评论成功', icon: 'success' })
+    // 重新加载评论列表（与网页端一致，确保 other_comments 结构正确）
+    const res = await getNodeComments(node.value!.id, { page: 1, pageSize: 10 })
+    comments.value = res.comments
+    hasMoreComments.value = res.total > 10
   } catch (err: any) {
     uni.showToast({ title: err.message || '评论失败', icon: 'none' })
   }
 }
 
+/** 递归查找评论（包括 other_comments 中的子评论） */
+function findComment(list: any[], id: number): any | null {
+  for (const c of list) {
+    if (c.id === id) return c
+    if (c.other_comments?.length) {
+      const found = findComment(c.other_comments, id)
+      if (found) return found
+    }
+  }
+  return null
+}
+
 async function voteOnComment(commentId: number, type: 'up' | 'down') {
-  if (!userStore.isLoggedIn) return
+  if (!userStore.isLoggedIn) {
+    uni.navigateTo({ url: '/pages/auth/login/index' })
+    return
+  }
+  // 递归查找，支持顶级评论和子评论点赞
+  const comment = findComment(comments.value, commentId)
+  if (!comment) return
+
+  // 后端逻辑：POST 相同 voteType 会自动切换（已投则取消，未投则添加）
+  // 后端返回 'like'/'dislike'，本地用 _myVote 缓存当前状态
+  const backendVote = type === 'up' ? 'like' : 'dislike'
+  const alreadyVoted = comment.userVote === backendVote || (comment as any)._myVote === type
   try {
     await voteComment(commentId, type)
-  } catch {
-    // 忽略
+    if (!comment._count) comment._count = { votes: 0 }
+    if (alreadyVoted) {
+      // 取消点赞
+      comment._count.votes = Math.max(0, (comment._count.votes || 0) - 1)
+      comment.likeCount = Math.max(0, (comment.likeCount || 0) - 1)
+      comment.userVote = null;
+      (comment as any)._myVote = null
+    } else {
+      // 新增点赞
+      comment._count.votes = (comment._count.votes || 0) + 1
+      comment.likeCount = (comment.likeCount || 0) + 1
+      comment.userVote = backendVote as 'like' | 'dislike';
+      (comment as any)._myVote = type
+    }
+  } catch (err: any) {
+    uni.showToast({ title: err.message || '操作失败', icon: 'none' })
   }
 }
 
 function toggleNav() {
   hideNav.value = !hideNav.value
+}
+
+function openReply(commentId: number, username: string) {
+  if (!userStore.isLoggedIn) {
+    uni.navigateTo({ url: '/pages/auth/login/index' })
+    return
+  }
+  replyTo.value = { id: commentId, username }
+  showCommentInput.value = true
+}
+
+function closeCommentInput() {
+  showCommentInput.value = false
+  replyTo.value = null
+  commentText.value = ''
 }
 
 function onScroll() {
@@ -434,12 +588,28 @@ function goChapter(id: number) {
 }
 
 function writeBranch() {
-  // write 是 tabBar 页面，不能用 navigateTo；先把参数写入 storage，再 switchTab
   uni.setStorageSync('st_write_params', JSON.stringify({
     storyId: node.value?.story_id,
     parentId: node.value?.id,
+    parentTitle: node.value?.title,
   }))
-  uni.switchTab({ url: '/pages/write/index' })
+  uni.navigateTo({ url: '/pages/write/index' })
+}
+
+function openAiPanel() {
+  showAiPanel.value = true
+}
+
+function handleAiApply(content: string) {
+  // AI 创作完成后，跳转到写作页并预填内容
+  uni.setStorageSync('st_write_params', JSON.stringify({
+    storyId: node.value?.story_id,
+    parentId: node.value?.id,
+    parentTitle: node.value?.title,
+    prefillContent: content || '',
+  }))
+  showAiPanel.value = false
+  uni.navigateTo({ url: '/pages/write/index' })
 }
 
 function goLogin() {
@@ -466,6 +636,27 @@ function goBack() {
 function formatTime(date: string) {
   return formatRelativeTime(date)
 }
+
+/**
+ * 扁平化回复列表（与网页端 comments.js 一致）
+ * 递归将 other_comments 展开为一维数组，并记录被回复的用户名
+ */
+function flattenReplies(
+  replies: any[],
+  parentComment: any = null
+): Array<{ comment: any; replyToUsername: string | null }> {
+  let result: Array<{ comment: any; replyToUsername: string | null }> = []
+  replies.forEach(reply => {
+    result.push({
+      comment: reply,
+      replyToUsername: parentComment ? parentComment.user.username : null,
+    })
+    if (reply.other_comments && reply.other_comments.length > 0) {
+      result = result.concat(flattenReplies(reply.other_comments, reply))
+    }
+  })
+  return result
+}
 </script>
 
 <style lang="scss" scoped>
@@ -480,7 +671,7 @@ function formatTime(date: string) {
   left: 0;
   right: 0;
   z-index: 100;
-  padding-top: 88rpx;
+  padding-top: var(--status-bar-height, 20px);
   transition: opacity 0.3s, transform 0.3s;
 
   &.hidden {
@@ -700,28 +891,80 @@ function formatTime(date: string) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 48rpx 0;
-  margin-bottom: 40rpx;
+  padding: 32rpx 0 16rpx;
 
   .no-branch-icon {
-    font-size: 80rpx;
-    margin-bottom: 16rpx;
+    font-size: 64rpx;
+    margin-bottom: 12rpx;
   }
 
   .no-branch-text {
-    font-size: 28rpx;
+    font-size: 26rpx;
     color: #94a3b8;
-    margin-bottom: 32rpx;
+  }
+}
+
+.write-actions-section {
+  margin-bottom: 40rpx;
+  padding: 24rpx;
+  background: rgba(124, 106, 247, 0.04);
+  border-radius: 20rpx;
+  border: 1rpx solid rgba(124, 106, 247, 0.12);
+
+  .write-actions-title {
+    margin-bottom: 20rpx;
+
+    .write-actions-label {
+      font-size: 26rpx;
+      font-weight: 600;
+      color: #475569;
+    }
   }
 
-  .btn-write-branch {
-    background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
-    color: #ffffff;
-    padding: 20rpx 60rpx;
-    border-radius: 40rpx;
-    font-size: 28rpx;
-    font-weight: 600;
-    border: none;
+  .write-actions-row {
+    display: flex;
+    gap: 20rpx;
+  }
+
+  .write-action-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10rpx;
+    padding: 24rpx 16rpx;
+    background: #ffffff;
+    border-radius: 16rpx;
+    border: 1rpx solid #e2e8f0;
+    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+
+    &.ai-action-btn {
+      background: linear-gradient(135deg, rgba(124, 106, 247, 0.08) 0%, rgba(167, 139, 250, 0.08) 100%);
+      border-color: rgba(124, 106, 247, 0.2);
+    }
+
+    &.disabled {
+      opacity: 0.5;
+    }
+
+    .write-action-icon {
+      font-size: 40rpx;
+    }
+
+    .write-action-text {
+      font-size: 24rpx;
+      font-weight: 600;
+      color: #1e293b;
+    }
+  }
+
+  .write-login-tip {
+    display: block;
+    text-align: center;
+    margin-top: 16rpx;
+    font-size: 24rpx;
+    color: #7c6af7;
   }
 }
 
@@ -814,6 +1057,80 @@ function formatTime(date: string) {
         .vote-btn {
           font-size: 22rpx;
           color: #94a3b8;
+
+          &.voted {
+            color: #7c6af7;
+          }
+        }
+
+        .reply-btn {
+          font-size: 22rpx;
+          color: #94a3b8;
+        }
+      }
+
+      .replies-wrap {
+        margin-top: 12rpx;
+        padding: 16rpx;
+        background: #f8fafc;
+        border-radius: 12rpx;
+
+        .reply-item {
+          margin-bottom: 16rpx;
+
+          &:last-child { margin-bottom: 0; }
+
+          &.hidden { display: none; }
+
+          .reply-username {
+            font-size: 22rpx;
+            font-weight: 600;
+            color: #7c6af7;
+            margin-right: 4rpx;
+          }
+
+          .reply-to-name {
+            font-size: 22rpx;
+            color: #7c6af7;
+            margin-right: 4rpx;
+          }
+
+          .reply-text {
+            font-size: 24rpx;
+            color: #475569;
+          }
+
+          .reply-actions {
+            display: flex;
+            align-items: center;
+            gap: 16rpx;
+            margin-top: 8rpx;
+
+            .reply-time {
+              font-size: 20rpx;
+              color: #94a3b8;
+            }
+
+            .reply-vote {
+              font-size: 20rpx;
+              color: #94a3b8;
+
+              &.voted { color: #7c6af7; }
+            }
+
+            .reply-btn-inline {
+              font-size: 20rpx;
+              color: #94a3b8;
+            }
+          }
+        }
+
+        .toggle-replies-btn {
+          margin-top: 12rpx;
+          padding: 10rpx 0;
+          text-align: center;
+          font-size: 22rpx;
+          color: #7c6af7;
         }
       }
     }
@@ -971,6 +1288,26 @@ function formatTime(date: string) {
   background: #ffffff;
   border-radius: 32rpx 32rpx 0 0;
   padding: 32rpx 40rpx calc(40rpx + env(safe-area-inset-bottom));
+
+  .reply-hint {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12rpx 16rpx;
+    background: rgba(124, 106, 247, 0.08);
+    border-radius: 12rpx;
+    margin-bottom: 16rpx;
+
+    .reply-hint-text {
+      font-size: 24rpx;
+      color: #7c6af7;
+    }
+
+    .reply-hint-cancel {
+      font-size: 22rpx;
+      color: #94a3b8;
+    }
+  }
 
   .comment-textarea {
     width: 100%;
