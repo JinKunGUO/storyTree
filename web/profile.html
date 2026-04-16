@@ -1194,7 +1194,7 @@
                     <i class="fas fa-bell" aria-hidden="true"></i> 消息
                     <span class="notification-badge" id="notificationBadge" style="display: none;" aria-live="polite">0</span>
                 </a>
-                <a href="/profile" class="nav-link active" role="menuitem">
+                <a href="/profile" class="nav-link active" id="profileLink" role="menuitem">
                     <i class="fas fa-user" aria-hidden="true"></i> 个人中心
                 </a>
                 <a href="/login" class="nav-link" onclick="logout(); return false;" role="menuitem">
@@ -1628,6 +1628,13 @@ const points = user.points || 0;
                 }
             }
             
+            // 更新导航栏"个人中心"为用户名
+            const navProfileLink = document.getElementById('profileLink');
+            if (navProfileLink && user.username) {
+                const escaped = user.username.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+                navProfileLink.innerHTML = `<i class="fas fa-user" aria-hidden="true"></i><span class="nav-username" title="${escaped}">${escaped}</span>`;
+            }
+
 profileHeader.innerHTML = `
                 <div class="profile-main-content">
                     <div class="profile-avatar">

@@ -19,172 +19,6 @@
             min-height: 100vh;
         }
 
-        /* ===== 导航栏 ===== */
-        .navbar {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--st-gray-200);
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-            transition: box-shadow var(--st-duration-normal) var(--st-ease-default);
-        }
-
-        .navbar.scrolled {
-            box-shadow: var(--st-shadow-md);
-        }
-
-        .navbar-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            max-width: var(--st-container-xl);
-            margin: 0 auto;
-            height: 64px;
-            padding: 0 var(--st-page-padding-x-lg);
-        }
-
-        .nav-brand {
-            display: flex;
-            align-items: center;
-            gap: var(--st-space-2);
-            font-family: var(--st-font-display);
-            font-size: var(--st-text-2xl);
-            font-weight: var(--st-font-bold);
-            color: var(--st-primary-600);
-            text-decoration: none;
-            transition: color var(--st-duration-fast);
-        }
-
-        .nav-brand:hover {
-            color: var(--st-primary-700);
-            text-decoration: none;
-        }
-
-        .nav-brand i {
-            font-size: 1.5rem;
-        }
-
-        .nav-menu {
-            display: flex;
-            gap: var(--st-space-1);
-            align-items: center;
-        }
-
-        .nav-link {
-            display: flex;
-            align-items: center;
-            gap: var(--st-space-2);
-            color: var(--st-text-secondary);
-            text-decoration: none;
-            padding: var(--st-space-2) var(--st-space-3);
-            border-radius: var(--st-radius-lg);
-            font-size: var(--st-text-sm);
-            font-weight: var(--st-font-medium);
-            transition: all var(--st-duration-fast) var(--st-ease-default);
-        }
-
-        .nav-link:hover {
-            background: var(--st-primary-50);
-            color: var(--st-primary-600);
-            text-decoration: none;
-        }
-
-        .nav-link.active {
-            background: var(--st-primary-100);
-            color: var(--st-primary-700);
-        }
-
-        .nav-link.nav-link-primary {
-            background: var(--st-gradient-brand);
-            color: white;
-            padding: var(--st-space-2) var(--st-space-4);
-        }
-
-        .nav-link.nav-link-primary:hover {
-            background: var(--st-gradient-brand-hover);
-            color: white;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-        }
-
-        /* 通知徽章 */
-        .nav-notification {
-            position: relative;
-        }
-
-        .notification-badge {
-            position: absolute;
-            top: 2px;
-            right: 4px;
-            background: var(--st-error-500);
-            color: white;
-            border-radius: var(--st-radius-full);
-            padding: 1px 5px;
-            font-size: 10px;
-            font-weight: var(--st-font-bold);
-            min-width: 16px;
-            text-align: center;
-            line-height: 1.4;
-        }
-
-        /* 移动端菜单 */
-        .mobile-menu-toggle {
-            display: none;
-            background: none;
-            border: none;
-            font-size: var(--st-text-xl);
-            cursor: pointer;
-            color: var(--st-text-secondary);
-            padding: var(--st-space-2);
-            border-radius: var(--st-radius-md);
-            transition: all var(--st-duration-fast);
-        }
-
-        .mobile-menu-toggle:hover {
-            background: var(--st-gray-100);
-            color: var(--st-text-primary);
-        }
-
-        @media (max-width: 768px) {
-            .navbar-content {
-                padding: 0 var(--st-page-padding-x);
-            }
-
-            .mobile-menu-toggle {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-
-            .nav-menu {
-                display: none;
-                position: fixed;
-                top: 64px;
-                left: 0;
-                right: 0;
-                background: white;
-                flex-direction: column;
-                padding: var(--st-space-4);
-                gap: var(--st-space-1);
-                box-shadow: var(--st-shadow-lg);
-                border-top: 1px solid var(--st-gray-100);
-                z-index: 999;
-            }
-
-            .nav-menu.active {
-                display: flex;
-            }
-
-            .nav-link {
-                width: 100%;
-                padding: var(--st-space-3) var(--st-space-4);
-                font-size: var(--st-text-base);
-            }
-        }
 
         /* ===== 英雄区域 ===== */
         .hero-section {
@@ -813,6 +647,7 @@
                     loadUnreadCount();
                 }
                 if (startBtn) startBtn.href = '/create';
+                loadNavUsername(token, profileLink);
             } else {
                 loginLink.style.display = 'flex';
                 registerLink.style.display = 'flex';
@@ -821,6 +656,19 @@
                 if (notificationIcon) notificationIcon.style.display = 'none';
                 if (startBtn) startBtn.href = '/login';
             }
+        }
+
+        async function loadNavUsername(token, profileLink) {
+            try {
+                const res = await fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (res.ok) {
+                    const data = await res.json();
+                    const username = data.user?.username || '';
+                    if (username && profileLink) {
+                        profileLink.innerHTML = `<i class="fas fa-user" aria-hidden="true"></i><span class="nav-username" title="${escapeHtml(username)}">${escapeHtml(username)}</span>`;
+                    }
+                }
+            } catch (e) { /* 静默失败，保持默认"个人中心"文字 */ }
         }
 
         async function loadUnreadCount() {

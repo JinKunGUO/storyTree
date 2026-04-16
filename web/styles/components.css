@@ -715,9 +715,11 @@
   right: 0;
   height: 64px;
   background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--st-gray-200);
   z-index: 1000;
+  transition: box-shadow var(--st-duration-normal) var(--st-ease-default);
 }
 
 .navbar-content {
@@ -727,7 +729,7 @@
   height: 100%;
   max-width: var(--st-container-xl);
   margin: 0 auto;
-  padding: 0 var(--st-space-6);
+  padding: 0 var(--st-page-padding-x-lg);
 }
 
 .navbar-brand {
@@ -1107,6 +1109,16 @@
   line-height: 1.4;
 }
 
+/* 导航用户名（登录后显示，超长截断） */
+.nav-username {
+  display: inline-block;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
 /* 移动端汉堡按钮 */
 .mobile-menu-toggle {
   display: none;
@@ -1462,6 +1474,10 @@
 
 /* 移动端响应式 */
 @media (max-width: 768px) {
+  .navbar-content {
+    padding: 0 var(--st-page-padding-x);
+  }
+
   .mobile-menu-toggle {
     display: flex;
     align-items: center;

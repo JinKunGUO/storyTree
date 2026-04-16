@@ -217,19 +217,21 @@
                 <a href="/discover" class="nav-link" role="menuitem">
                     <i class="fas fa-compass" aria-hidden="true"></i> 发现故事
                 </a>
-                <a href="/my-stories.html" class="nav-link" id="myStoriesLink" style="display: none;" role="menuitem">
-                    <i class="fas fa-book" aria-hidden="true"></i> 我的故事
+                <a href="/membership.html" class="nav-link" role="menuitem">
+                    <i class="fas fa-crown" aria-hidden="true"></i> 会员中心
+                </a>
+                <a href="/points-mall.html" class="nav-link" role="menuitem">
+                    <i class="fas fa-shopping-cart" aria-hidden="true"></i> 积分商城
                 </a>
                 <a href="/notifications.html" class="nav-link nav-link-active" role="menuitem">
-                    <i class="fas fa-bell" aria-hidden="true"></i> 通知
+                    <i class="fas fa-bell" aria-hidden="true"></i> 消息
                 </a>
-                <a href="/profile.html" class="nav-link" id="profileLink" style="display: none;" role="menuitem">
+                <a href="/login" class="nav-link" id="loginLink" role="menuitem">登录</a>
+                <a href="/register" class="nav-link nav-link-primary" id="registerLink" role="menuitem">注册</a>
+                <a href="/profile" class="nav-link" id="profileLink" style="display: none;" role="menuitem">
                     <i class="fas fa-user" aria-hidden="true"></i> 个人中心
                 </a>
-                <a href="/login.html" class="nav-link" id="loginLink" role="menuitem">
-                    <i class="fas fa-sign-in-alt" aria-hidden="true"></i> 登录
-                </a>
-                <a href="#" class="nav-link" id="logoutLink" style="display: none;" onclick="logout(event)" role="menuitem">
+                <a href="/login" class="nav-link" id="logoutLink" style="display: none;" onclick="logout(event)" role="menuitem">
                     <i class="fas fa-sign-out-alt" aria-hidden="true"></i> 退出
                 </a>
             </div>
@@ -272,7 +274,8 @@
         function checkAuth() {
             const token = localStorage.getItem('token') || sessionStorage.getItem('token');
             if (!token) {
-                window.location.href = '/login';
+                // 携带 redirect 参数，登录后可回到当前页面；用 replace 避免登录页出现在回退历史中
+                window.location.replace('/login.html?redirect=' + encodeURIComponent(window.location.pathname + window.location.search));
                 return false;
             }
             return true;
@@ -291,10 +294,27 @@
             const token = localStorage.getItem('token') || sessionStorage.getItem('token');
             if (token) {
                 document.getElementById('loginLink').style.display = 'none';
+                const registerLink = document.getElementById('registerLink');
+                if (registerLink) registerLink.style.display = 'none';
                 document.getElementById('logoutLink').style.display = 'block';
                 document.getElementById('profileLink').style.display = 'block';
-                document.getElementById('myStoriesLink').style.display = 'block';
+                loadNavUsername(token);
             }
+        }
+
+        async function loadNavUsername(token) {
+            try {
+                const res = await fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (res.ok) {
+                    const data = await res.json();
+                    const username = data.user?.username || '';
+                    const profileLink = document.getElementById('profileLink');
+                    if (username && profileLink) {
+                        const escaped = username.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+                        profileLink.innerHTML = `<i class="fas fa-user" aria-hidden="true"></i><span class="nav-username" title="${escaped}">${escaped}</span>`;
+                    }
+                }
+            } catch (e) { /* 静默失败 */ }
         }
 
         // 加载通知列表

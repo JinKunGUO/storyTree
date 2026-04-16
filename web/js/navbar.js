@@ -20,6 +20,7 @@
         const registerLink = document.getElementById('registerLink');
         const profileLink = document.getElementById('profileLink');
         const logoutLink = document.getElementById('logoutLink');
+        const myStoriesLink = document.getElementById('myStoriesLink');
         const notificationIcon = document.getElementById('notificationIcon');
 
         if (token) {
@@ -27,6 +28,7 @@
             if (registerLink) registerLink.style.display = 'none';
             if (profileLink) profileLink.style.display = 'flex';
             if (logoutLink) logoutLink.style.display = 'flex';
+            if (myStoriesLink) myStoriesLink.style.display = 'flex';
             if (notificationIcon) {
                 notificationIcon.style.display = 'flex';
                 loadUnreadCount();
@@ -36,6 +38,7 @@
             if (registerLink) registerLink.style.display = 'flex';
             if (profileLink) profileLink.style.display = 'none';
             if (logoutLink) logoutLink.style.display = 'none';
+            if (myStoriesLink) myStoriesLink.style.display = 'none';
             if (notificationIcon) notificationIcon.style.display = 'none';
         }
     }

@@ -307,9 +307,9 @@
 
         // 检查登录状态
         function checkAuth() {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
             if (!token) {
-                window.location.href = '/login.html';
+                window.location.replace('/login.html?redirect=' + encodeURIComponent(window.location.pathname + window.location.search));
                 return false;
             }
             return true;
@@ -320,7 +320,7 @@
             if (!checkAuth()) return;
 
             try {
-                const token = localStorage.getItem('token');
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
                 const response = await fetch(`${API_BASE}/stories/my`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -434,7 +434,7 @@
         async function deleteStory(storyId, title) {
             showDangerConfirm(`确定要删除故事《${title}》吗？此操作不可恢复！`, async () => {
                 try {
-                    const token = localStorage.getItem('token');
+                    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
                     const response = await fetch(`${API_BASE}/stories/${storyId}`, {
                         method: 'DELETE',
                         headers: {
@@ -459,7 +459,7 @@
         async function leaveCollaboration(storyId) {
             showConfirm('确定要退出此故事的协作吗？', async () => {
                 try {
-                    const token = localStorage.getItem('token');
+                    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
                     const response = await fetch(`${API_BASE}/stories/${storyId}/collaborators/leave`, {
                         method: 'POST',
                         headers: {

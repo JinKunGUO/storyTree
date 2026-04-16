@@ -237,21 +237,6 @@
             margin-bottom: 20px;
         }
 
-        .back-link {
-            display: inline-block;
-            color: white;
-            text-decoration: none;
-            padding: 10px 20px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 8px;
-            margin-bottom: 20px;
-            transition: background 0.3s ease;
-        }
-
-        .back-link:hover {
-            background: rgba(255,255,255,0.3);
-        }
-
         .quota-description {
             background: #f8f9fa;
             padding: 15px;
@@ -338,9 +323,46 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <a href="/profile.html" class="back-link">← 返回个人中心</a>
-        
+    <!-- 导航栏 -->
+    <nav class="navbar" id="navbar" role="navigation" aria-label="主导航">
+        <div class="navbar-content">
+            <a href="/" class="nav-brand" aria-label="StoryTree 首页">
+                <i class="fas fa-tree" aria-hidden="true"></i>
+                StoryTree
+            </a>
+            <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleMobileMenu()" aria-label="展开菜单" aria-expanded="false">
+                <i class="fas fa-bars" aria-hidden="true"></i>
+            </button>
+            <div class="nav-menu" id="navMenu" role="menubar">
+                <a href="/" class="nav-link" role="menuitem">
+                    <i class="fas fa-home" aria-hidden="true"></i> 首页
+                </a>
+                <a href="/discover" class="nav-link" role="menuitem">
+                    <i class="fas fa-compass" aria-hidden="true"></i> 发现故事
+                </a>
+                <a href="/membership.html" class="nav-link active" role="menuitem">
+                    <i class="fas fa-crown" aria-hidden="true"></i> 会员中心
+                </a>
+                <a href="/points-mall.html" class="nav-link" role="menuitem">
+                    <i class="fas fa-shopping-cart" aria-hidden="true"></i> 积分商城
+                </a>
+                <a href="/notifications.html" class="nav-link nav-notification" id="notificationIcon" style="display: none;" role="menuitem" aria-label="消息通知">
+                    <i class="fas fa-bell" aria-hidden="true"></i> 消息
+                    <span class="notification-badge" id="notificationBadge" style="display: none;" aria-live="polite">0</span>
+                </a>
+                <a href="/login" class="nav-link" id="loginLink" role="menuitem">登录</a>
+                <a href="/register" class="nav-link nav-link-primary" id="registerLink" role="menuitem">注册</a>
+                <a href="/profile" class="nav-link" id="profileLink" style="display: none;" role="menuitem">
+                    <i class="fas fa-user" aria-hidden="true"></i> 个人中心
+                </a>
+                <a href="/login" class="nav-link" id="logoutLink" style="display: none;" onclick="logout(); return false;" role="menuitem">
+                    <i class="fas fa-sign-out-alt" aria-hidden="true"></i> 退出
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container" style="padding-top: 80px;">
         <div class="header">
             <h1>🎯 会员中心</h1>
             <p>升级会员，解锁更多 AI 创作特权</p>
@@ -401,13 +423,88 @@
             return localStorage.getItem('token') || sessionStorage.getItem('token');
         }
 
+        // 退出登录
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('user');
+            window.location.href = '/login';
+            return false;
+        }
+
+        // 更新导航栏显示状态
+        function updateNavbar() {
+            const token = getToken();
+            const show = (id) => { const el = document.getElementById(id); if (el) el.style.display = 'flex'; };
+            const hide = (id) => { const el = document.getElementById(id); if (el) el.style.display = 'none'; };
+            if (token) {
+                hide('loginLink'); hide('registerLink');
+                show('profileLink'); show('logoutLink'); show('notificationIcon');
+                loadUnreadCount(token);
+                loadNavUsername(token);
+            } else {
+                show('loginLink'); show('registerLink');
+                hide('profileLink'); hide('logoutLink'); hide('notificationIcon');
+            }
+        }
+
+        async function loadNavUsername(token) {
+            try {
+                const res = await fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (res.ok) {
+                    const data = await res.json();
+                    const username = data.user?.username || '';
+                    const profileLink = document.getElementById('profileLink');
+                    if (username && profileLink) {
+                        const escaped = username.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+                        profileLink.innerHTML = `<i class="fas fa-user" aria-hidden="true"></i><span class="nav-username" title="${escaped}">${escaped}</span>`;
+                    }
+                }
+            } catch (e) { /* 静默失败 */ }
+        }
+
+        async function loadUnreadCount(token) {
+            if (!token) return;
+            try {
+                const res = await fetch('/api/notifications', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (res.ok) {
+                    const data = await res.json();
+                    const badge = document.getElementById('notificationBadge');
+                    if (badge && data.unreadCount > 0) {
+                        badge.textContent = data.unreadCount > 99 ? '99+' : data.unreadCount;
+                        badge.style.display = 'inline-block';
+                    }
+                }
+            } catch (e) {}
+        }
+
+        // 移动端菜单
+        function toggleMobileMenu() {
+            const menu = document.getElementById('navMenu');
+            const toggle = document.getElementById('mobileMenuToggle');
+            const isOpen = menu.classList.toggle('active');
+            toggle.setAttribute('aria-expanded', isOpen);
+            toggle.querySelector('i').className = isOpen ? 'fas fa-times' : 'fas fa-bars';
+        }
+
+        document.addEventListener('click', e => {
+            const menu = document.getElementById('navMenu');
+            const toggle = document.getElementById('mobileMenuToggle');
+            if (menu?.classList.contains('active') && !menu.contains(e.target) && !toggle?.contains(e.target)) {
+                menu.classList.remove('active');
+                toggle?.setAttribute('aria-expanded', 'false');
+                if (toggle) toggle.querySelector('i').className = 'fas fa-bars';
+            }
+        });
+
         // API 请求
         async function apiRequest(endpoint, options = {}) {
             const token = getToken();
             
             if (!token) {
                 // 如果没有 token，直接跳转到登录页
-                window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.pathname);
+                window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
                 return Promise.reject(new Error('未登录'));
             }
             
@@ -489,7 +586,7 @@
             } catch (error) {
                 console.error('加载会员状态失败:', error);
                 if (error.message.includes('未登录')) {
-                    window.location.href = '/login.html';
+                    window.location.href = '/login';
                 } else {
                     throw error;
                 }
@@ -577,6 +674,7 @@
 
         // 初始化
         async function init() {
+            updateNavbar();
             try {
                 await loadMembershipStatus();
                 await loadTiers();

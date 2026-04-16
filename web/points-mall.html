@@ -389,17 +389,16 @@
                 <a href="/points-mall.html" class="nav-link active" role="menuitem">
                     <i class="fas fa-shopping-cart" aria-hidden="true"></i> 积分商城
                 </a>
-                <a href="/notifications.html" class="nav-link nav-notification" id="notificationIcon" role="menuitem" aria-label="消息通知">
+                <a href="/notifications.html" class="nav-link nav-notification" id="notificationIcon" style="display: none;" role="menuitem" aria-label="消息通知">
                     <i class="fas fa-bell" aria-hidden="true"></i> 消息
                     <span class="notification-badge" id="notificationBadge" style="display: none;" aria-live="polite">0</span>
                 </a>
-                <a href="/profile" class="nav-link" id="profileLink" role="menuitem" style="display: none;">
+                <a href="/login" class="nav-link" id="loginLink" role="menuitem">登录</a>
+                <a href="/register" class="nav-link nav-link-primary" id="registerLink" role="menuitem">注册</a>
+                <a href="/profile" class="nav-link" id="profileLink" style="display: none;" role="menuitem">
                     <i class="fas fa-user" aria-hidden="true"></i> 个人中心
                 </a>
-                <a href="/login" class="nav-link" id="loginLink" role="menuitem">
-                    <i class="fas fa-sign-in-alt" aria-hidden="true"></i> 登录
-                </a>
-                <a href="#" class="nav-link" id="logoutLink" onclick="logout(); return false;" role="menuitem" style="display: none;">
+                <a href="/login" class="nav-link" id="logoutLink" style="display: none;" onclick="logout(); return false;" role="menuitem">
                     <i class="fas fa-sign-out-alt" aria-hidden="true"></i> 退出
                 </a>
             </div>
@@ -598,6 +597,38 @@
         let currentUser = null;
         let selectedPaymentMethod = null;
 
+        // 更新导航栏显示状态
+        function updateNavbar() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            const show = (id) => { const el = document.getElementById(id); if (el) el.style.display = 'flex'; };
+            const hide = (id) => { const el = document.getElementById(id); if (el) el.style.display = 'none'; };
+            if (token) {
+                hide('loginLink'); hide('registerLink');
+                show('profileLink'); show('logoutLink'); show('notificationIcon');
+                loadUnreadCount();
+            } else {
+                show('loginLink'); show('registerLink');
+                hide('profileLink'); hide('logoutLink'); hide('notificationIcon');
+            }
+        }
+
+        // 加载未读消息数
+        async function loadUnreadCount() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) return;
+            try {
+                const res = await fetch('/api/notifications', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (res.ok) {
+                    const data = await res.json();
+                    const badge = document.getElementById('notificationBadge');
+                    if (badge && data.unreadCount > 0) {
+                        badge.textContent = data.unreadCount > 99 ? '99+' : data.unreadCount;
+                        badge.style.display = 'inline-block';
+                    }
+                }
+            } catch (e) {}
+        }
+
         // 检查登录状态
         function checkAuthStatus() {
             const token = localStorage.getItem('token') || sessionStorage.getItem('token');
@@ -647,11 +678,12 @@
                 // 显示用户积分
                 document.getElementById('userPoints').textContent = (data.user.points || 0).toLocaleString();
                 
-                // 显示个人中心链接
+                // 显示用户名（导航栏）
                 const profileLink = document.getElementById('profileLink');
-                if (profileLink) {
-                    profileLink.style.display = 'block';
-                    profileLink.innerHTML = `<i class="fas fa-user"></i> ${data.user.username}`;
+                if (profileLink && data.user.username) {
+                    const name = data.user.username;
+                    const escaped = name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+                    profileLink.innerHTML = `<i class="fas fa-user" aria-hidden="true"></i><span class="nav-username" title="${escaped}">${escaped}</span>`;
                 }
             } catch (error) {
                 console.error('加载用户信息错误:', error);
@@ -903,6 +935,7 @@
 
         // 页面加载
         document.addEventListener('DOMContentLoaded', function() {
+            updateNavbar();
             if (checkAuthStatus()) {
                 loadUserInfo();
             }

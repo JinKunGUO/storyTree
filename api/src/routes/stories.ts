@@ -182,6 +182,124 @@ router.get('/featured', optionalAuth, async (req, res) => {
   }
 });
 
+// 获取我的故事列表（包含私密故事和协作故事）
+// 注意：必须在 /:id 之前注册，否则 "my" 会被当成 id 参数
+router.get('/my', authenticateToken, async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    // 获取我创建的故事
+    const myStories = await prisma.stories.findMany({
+      where: { author_id: userId },
+      include: {
+        author: {
+          select: { id: true, username: true }
+        },
+        _count: {
+          select: {
+            nodes: true,
+            bookmarks: true
+          }
+        }
+      },
+      orderBy: { created_at: 'desc' }
+    });
+
+    // 获取我协作的故事
+    const collaborations = await prisma.story_collaborators.findMany({
+      where: { 
+        user_id: userId,
+        removed_at: null // 仅获取未被移除的协作
+      },
+      include: {
+        story: {
+          include: {
+            author: {
+              select: { id: true, username: true }
+            },
+            _count: {
+              select: {
+                nodes: true,
+                bookmarks: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // 合并结果，标记是否是作者
+    const stories = [
+      ...myStories.map(s => ({ ...s, isAuthor: true, isCollaborator: false })),
+      ...collaborations.map(c => ({ ...c.story, isAuthor: false, isCollaborator: true }))
+    ];
+
+    // 按创建时间倒序排序
+    stories.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    res.json({ stories });
+  } catch (error) {
+    console.error('Get my stories error:', error);
+    res.status(500).json({ error: 'Failed to fetch stories' });
+  }
+});
+
+// 获取分享给我的故事
+// 注意：必须在 /:id 之前注册，否则 "shared-with-me" 会被当成 id 参数
+router.get('/shared-with-me', authenticateToken, async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    // 查找我作为协作者的故事（仅未被移除的）
+    const collaborations = await prisma.story_collaborators.findMany({
+      where: { 
+        user_id: userId,
+        removed_at: null
+      },
+      include: {
+        story: {
+          include: {
+            author: {
+              select: { id: true, username: true, avatar: true }
+            },
+            nodes: {
+              where: { parent_id: null },
+              take: 1,
+              select: {
+                id: true,
+                title: true,
+                content: true,
+                rating_avg: true,
+                rating_count: true
+              }
+            },
+            _count: {
+              select: { nodes: true }
+            }
+          }
+        }
+      },
+      orderBy: { created_at: 'desc' }
+    });
+
+    const stories = collaborations.map(c => ({
+      ...c.story,
+      invited_at: c.created_at
+    }));
+
+    res.json({ stories });
+  } catch (error) {
+    console.error('Get shared stories error:', error);
+    res.status(500).json({ error: 'Failed to fetch shared stories' });
+  }
+});
+
 // Get story with full tree
 router.get('/:id', optionalAuth, async (req, res) => {
   const { id } = req.params;
@@ -652,122 +770,6 @@ router.put('/:id/settings', authenticateToken, checkEditPermission, async (req, 
   } catch (error) {
     console.error('Update story settings error:', error);
     res.status(500).json({ error: '更新设置失败' });
-  }
-});
-
-// 获取我的故事列表（包含私密故事和协作故事）
-router.get('/my', authenticateToken, async (req, res) => {
-  const userId = getUserId(req);
-  if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  try {
-    // 获取我创建的故事
-    const myStories = await prisma.stories.findMany({
-      where: { author_id: userId },
-      include: {
-        author: {
-          select: { id: true, username: true }
-        },
-        _count: {
-          select: {
-            nodes: true,
-            bookmarks: true
-          }
-        }
-      },
-      orderBy: { created_at: 'desc' }
-    });
-
-    // 获取我协作的故事
-    const collaborations = await prisma.story_collaborators.findMany({
-      where: { 
-        user_id: userId,
-        removed_at: null // 仅获取未被移除的协作
-      },
-      include: {
-        story: {
-          include: {
-            author: {
-              select: { id: true, username: true }
-            },
-            _count: {
-              select: {
-                nodes: true,
-                bookmarks: true
-              }
-            }
-          }
-        }
-      }
-    });
-
-    // 合并结果，标记是否是作者
-    const stories = [
-      ...myStories.map(s => ({ ...s, isAuthor: true, isCollaborator: false })),
-      ...collaborations.map(c => ({ ...c.story, isAuthor: false, isCollaborator: true }))
-    ];
-
-    // 按创建时间倒序排序
-    stories.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-    res.json({ stories });
-  } catch (error) {
-    console.error('Get my stories error:', error);
-    res.status(500).json({ error: 'Failed to fetch stories' });
-  }
-});
-
-// 获取分享给我的故事
-router.get('/shared-with-me', authenticateToken, async (req, res) => {
-  const userId = getUserId(req);
-  if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  try {
-    // 查找我作为协作者的故事（仅未被移除的）
-    const collaborations = await prisma.story_collaborators.findMany({
-      where: { 
-        user_id: userId,
-        removed_at: null
-      },
-      include: {
-        story: {
-          include: {
-            author: {
-              select: { id: true, username: true, avatar: true }
-            },
-            nodes: {
-              where: { parent_id: null },
-              take: 1,
-              select: {
-                id: true,
-                title: true,
-                content: true,
-                rating_avg: true,
-                rating_count: true
-              }
-            },
-            _count: {
-              select: { nodes: true }
-            }
-          }
-        }
-      },
-      orderBy: { created_at: 'desc' }
-    });
-
-    const stories = collaborations.map(c => ({
-      ...c.story,
-      invited_at: c.created_at
-    }));
-
-    res.json({ stories });
-  } catch (error) {
-    console.error('Get shared stories error:', error);
-    res.status(500).json({ error: 'Failed to fetch shared stories' });
   }
 });
 
