@@ -623,15 +623,52 @@ router.get('/:id', optionalAuth, async (req, res) => {
       return res.status(404).json({ error: 'Node not found' });
     }
 
-    // Increment read count (only after confirming node exists)
-    await prisma.nodes.update({
-      where: { id: parseInt(id) },
-      data: { read_count: { increment: 1 } }
-    });
+    // 草稿节点权限校验：只有节点作者和故事协作者可以访问
+    const userId = getUserId(req);
+    if (!node.is_published) {
+      let canAccess = false;
+      if (userId) {
+        if (node.author_id === userId || node.story.author_id === userId) {
+          canAccess = true;
+        } else {
+          const collaborator = await prisma.story_collaborators.findFirst({
+            where: { story_id: node.story_id, user_id: userId, removed_at: null }
+          });
+          canAccess = !!collaborator;
+        }
+      }
+      if (!canAccess) {
+        return res.status(403).json({ error: '无权限访问此草稿章节' });
+      }
+    }
 
-    // Get branches with rating info
+    // Increment read count (only for published nodes)
+    if (node.is_published) {
+      await prisma.nodes.update({
+        where: { id: parseInt(id) },
+        data: { read_count: { increment: 1 } }
+      });
+    }
+
+    // Get branches with rating info（只返回已发布的分支，作者/协作者可见草稿分支）
+    let branchFilter: any = { parent_id: parseInt(id) };
+    if (userId) {
+      const isStoryAuthor = node.story.author_id === userId;
+      const isNodeAuthor = node.author_id === userId;
+      if (!isStoryAuthor && !isNodeAuthor) {
+        const collaborator = await prisma.story_collaborators.findFirst({
+          where: { story_id: node.story_id, user_id: userId, removed_at: null }
+        });
+        if (!collaborator) {
+          branchFilter.is_published = true;
+        }
+      }
+    } else {
+      branchFilter.is_published = true;
+    }
+
     const branches = await prisma.nodes.findMany({
-      where: { parent_id: parseInt(id) },
+      where: branchFilter,
       include: {
         author: {
           select: { id: true, username: true }
@@ -653,7 +690,6 @@ router.get('/:id', optionalAuth, async (req, res) => {
     }
 
     // Check if user has rated
-    const userId = getUserId(req);
     let userRating = null;
     if (userId) {
       const rating = await prisma.ratings.findUnique({

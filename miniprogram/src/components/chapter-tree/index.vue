@@ -21,7 +21,11 @@
             :style="item.depth > 0 ? { marginLeft: item.depth * 32 + 'rpx' } : {}"
             :class="{ 'node-highlight': props.highlightNodeId === item.node.id }"
           >
-            <view class="node-main" :class="{ root: item.depth === 0 }" @tap="$emit('node-tap', item.node.id)">
+            <view
+              class="node-main"
+              :class="{ root: item.depth === 0, 'node-draft': !item.node.is_published }"
+              @tap="handleNodeTap(item.node)"
+            >
               <view class="node-dot" :class="{ 'root-dot': item.depth === 0 }">
                 <text class="dot-icon">{{ nodeIcon(item) }}</text>
               </view>
@@ -38,12 +42,29 @@
               <text class="node-arrow">›</text>
             </view>
             <view v-if="isLoggedIn && isAuthorOrCollab" class="node-actions">
-              <view class="action-btn write-btn" @tap="$emit('write-branch', item.node.id)">
-                <text>✍️ 续写</text>
-              </view>
-              <view class="action-btn ai-btn" @tap="$emit('ai-create', item.node.id)">
-                <text>🤖 AI创作</text>
-              </view>
+              <!-- 草稿节点：仅草稿创作者本人或故事主创可以发布 -->
+              <template v-if="!item.node.is_published">
+                <view
+                  v-if="canPublishDraft(item.node)"
+                  class="action-btn publish-btn"
+                  @tap="$emit('publish-draft', item.node.id)"
+                >
+                  <text>📢 发布草稿</text>
+                </view>
+                <!-- 其他协作者：只能看到草稿标记，无发布权限 -->
+                <view v-else class="action-btn draft-readonly-btn">
+                  <text>📝 草稿（只读）</text>
+                </view>
+              </template>
+              <!-- 已发布节点：正常显示续写/AI按钮 -->
+              <template v-else>
+                <view class="action-btn write-btn" @tap="$emit('write-branch', item.node.id)">
+                  <text>✍️ 续写</text>
+                </view>
+                <view class="action-btn ai-btn" @tap="$emit('ai-create', item.node.id)">
+                  <text>🤖 AI创作</text>
+                </view>
+              </template>
             </view>
           </view>
         </view>
@@ -65,12 +86,8 @@ const props = defineProps<{
   isAuthorOrCollab?: boolean
   isLoggedIn?: boolean
   highlightNodeId?: number | null   // 新节点 id，触发高亮浮动动画
-}>()
-
-defineEmits<{
-  (e: 'node-tap', id: number): void
-  (e: 'write-branch', id: number): void
-  (e: 'ai-create', id: number): void
+  currentUserId?: number | null     // 当前登录用户 ID
+  storyAuthorId?: number | null     // 故事主创 ID
 }>()
 
 interface FlatNode {
@@ -100,6 +117,35 @@ function nodeIcon(item: FlatNode): string {
   if (item.depth === 0) return '🌳'
   if (item.node.children && item.node.children.length > 0) return '🌿'
   return '🍃'
+}
+
+const emit = defineEmits<{
+  (e: 'node-tap', id: number): void
+  (e: 'write-branch', id: number): void
+  (e: 'ai-create', id: number): void
+  (e: 'publish-draft', id: number): void
+}>()
+
+/** 处理节点点击：草稿节点不允许非作者/协作者点击进入 */
+function handleNodeTap(node: Node) {
+  if (!node.is_published && !props.isAuthorOrCollab) {
+    // 非作者/协作者点击草稿节点，不做任何操作
+    return
+  }
+  emit('node-tap', node.id)
+}
+
+/**
+ * 判断当前用户是否有权发布某个草稿节点
+ * 规则：草稿创作者本人 或 故事主创 可以发布
+ */
+function canPublishDraft(node: Node): boolean {
+  if (!props.currentUserId) return false
+  // 草稿节点的作者本人
+  if (node.author_id === props.currentUserId) return true
+  // 故事主创
+  if (props.storyAuthorId && props.storyAuthorId === props.currentUserId) return true
+  return false
 }
 </script>
 
@@ -197,6 +243,12 @@ function nodeIcon(item: FlatNode): string {
   &.root {
     background: linear-gradient(135deg, rgba(124, 106, 247, 0.06) 0%, rgba(167, 139, 250, 0.04) 100%);
     border-bottom: 1rpx solid rgba(124, 106, 247, 0.1);
+  }
+
+  // 草稿节点：使用橙色调背景，视觉上与已发布区分
+  &.node-draft {
+    background: rgba(245, 158, 11, 0.04);
+    opacity: 0.85;
   }
 }
 
@@ -310,6 +362,26 @@ function nodeIcon(item: FlatNode): string {
 
     text {
       color: #7c6af7;
+    }
+  }
+
+  .publish-btn {
+    flex: 1;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(5, 150, 105, 0.06));
+
+    text {
+      color: #059669;
+      font-weight: 600;
+    }
+  }
+
+  .draft-readonly-btn {
+    flex: 1;
+    background: rgba(245, 158, 11, 0.04);
+
+    text {
+      color: #d97706;
+      font-size: 22rpx;
     }
   }
 }

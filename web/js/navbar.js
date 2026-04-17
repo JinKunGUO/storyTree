@@ -33,6 +33,8 @@
                 notificationIcon.style.display = 'flex';
                 loadUnreadCount();
             }
+            // 显示用户名（优先从 localStorage 读取，避免额外请求）
+            loadNavUsername(token, profileLink);
         } else {
             if (loginLink) loginLink.style.display = 'flex';
             if (registerLink) registerLink.style.display = 'flex';
@@ -41,6 +43,38 @@
             if (myStoriesLink) myStoriesLink.style.display = 'none';
             if (notificationIcon) notificationIcon.style.display = 'none';
         }
+    }
+
+    // ===== 加载导航栏用户名 =====
+    async function loadNavUsername(token, profileLink) {
+        if (!profileLink) return;
+        try {
+            // 优先从本地缓存读取，减少网络请求
+            const cached = localStorage.getItem('user') || sessionStorage.getItem('user');
+            if (cached) {
+                const user = JSON.parse(cached);
+                const username = user?.username || '';
+                if (username) {
+                    profileLink.innerHTML = `<i class="fas fa-user" aria-hidden="true"></i><span class="nav-username" title="${escapeNavHtml(username)}">${escapeNavHtml(username)}</span>`;
+                    return;
+                }
+            }
+            // 缓存中无用户名，调用接口获取
+            const response = await fetch('/api/auth/me', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                const username = data.user?.username || '';
+                if (username && profileLink) {
+                    profileLink.innerHTML = `<i class="fas fa-user" aria-hidden="true"></i><span class="nav-username" title="${escapeNavHtml(username)}">${escapeNavHtml(username)}</span>`;
+                }
+            }
+        } catch (e) { /* 静默失败，保持默认"个人中心"文字 */ }
+    }
+
+    function escapeNavHtml(str) {
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
     // ===== 未读消息数 =====

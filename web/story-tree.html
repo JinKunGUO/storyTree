@@ -494,6 +494,10 @@
                             <i class="fas fa-pen"></i>
                             续写分支
                         </button>
+                        <button class="detail-btn" id="publishDraftNode" style="display: none; background: linear-gradient(135deg, #059669 0%, #047857 100%);">
+                            <i class="fas fa-paper-plane"></i>
+                            发布草稿
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1081,10 +1085,15 @@
             document.getElementById('nodeTitle').textContent = nodeData.name;
             
             const content = document.getElementById('nodeDetailContent');
+            const isDraft = nodeData.isPublished === false;
             content.innerHTML = `
                 <div class="detail-item">
                     <div class="detail-label">作者</div>
                     <div class="detail-value">${nodeData.author || '未知'}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">状态</div>
+                    <div class="detail-value" style="color: ${isDraft ? '#f59e0b' : '#059669'};">${isDraft ? '📝 草稿' : '✅ 已发布'}</div>
                 </div>
                 <div class="detail-item">
                     <div class="detail-label">路径</div>
@@ -1125,7 +1134,42 @@
                 window.location.href = `/write?storyId=${currentStory.id}&parentId=${selectedNodeId}`;
             };
 
+            // 草稿节点：显示「发布草稿」按钮（仅当前用户是节点作者时）
+            const publishBtn = document.getElementById('publishDraftNode');
+            if (publishBtn) {
+                if (isDraft && window.currentUserId && nodeData.authorId === window.currentUserId) {
+                    publishBtn.style.display = 'flex';
+                    publishBtn.onclick = () => publishDraftNode(selectedNodeId, nodeData.name);
+                } else {
+                    publishBtn.style.display = 'none';
+                }
+            }
+
             document.getElementById('nodeDetail').classList.add('active');
+        }
+
+        // 发布草稿节点
+        async function publishDraftNode(nodeId, nodeTitle) {
+            if (!confirm(`确定要将草稿章节《${nodeTitle}》正式发布吗？\n\n发布后所有读者均可看到此章节。`)) {
+                return;
+            }
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                if (!token) { showError('请先登录'); return; }
+                showSuccess('正在发布...');
+                const response = await fetch(`/api/nodes/${nodeId}/publish`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.error || '发布失败');
+                }
+                showSuccess('草稿已发布！即将刷新...');
+                setTimeout(() => window.location.reload(), 1500);
+            } catch (error) {
+                showError(error.message || '发布失败');
+            }
         }
 
         // 切换标签页

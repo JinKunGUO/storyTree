@@ -380,6 +380,9 @@ function checkAuthStatus() {
     
     console.log('检查登录状态, token:', token ? '存在' : '不存在');
     console.log('用户信息:', user);
+
+    // 将当前用户 ID 挂载到 window，供各页面使用（如草稿发布权限判断）
+    window.currentUserId = user ? (user.id || null) : null;
     
     // 如果在需要登录的页面但未登录，跳转到登录页
     const protectedPages = ['/create', '/write', '/profile', '/admin'];

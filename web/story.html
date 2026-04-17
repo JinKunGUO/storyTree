@@ -20,227 +20,47 @@
             padding-top: 64px;
         }
 
-        /* ===== 导航栏 ===== */
-        .st-navbar {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--st-gray-200);
-            position: fixed;
-            top: 0; left: 0; right: 0;
-            z-index: 1000;
-            height: 64px;
-            transition: box-shadow var(--st-duration-normal) var(--st-ease-default);
+        /* ===== 面包屑导航 ===== */
+        .story-breadcrumb {
+            background: rgba(255, 255, 255, 0.9);
+            border-bottom: 1px solid var(--st-gray-100);
+            position: sticky;
+            top: 64px;
+            z-index: 900;
         }
 
-        .st-navbar.scrolled {
-            box-shadow: var(--st-shadow-md);
-        }
-
-        .st-navbar-inner {
-            max-width: 1400px;
+        .story-breadcrumb-inner {
+            max-width: 1200px;
             margin: 0 auto;
-            padding: 0 var(--st-space-6);
-            height: 100%;
+            padding: 10px 20px;
             display: flex;
             align-items: center;
-            gap: var(--st-space-4);
-        }
-
-        /* Logo */
-        .st-nav-brand {
-            display: flex;
-            align-items: center;
-            gap: var(--st-space-2);
-            font-family: var(--st-font-display);
-            font-size: var(--st-text-xl);
-            font-weight: var(--st-font-bold);
-            color: var(--st-primary-600);
-            text-decoration: none;
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-
-        .st-nav-brand i {
-            font-size: 1.25rem;
-        }
-
-        .st-nav-brand:hover {
-            color: var(--st-primary-700);
-        }
-
-        /* 面包屑 */
-        .st-nav-breadcrumb {
-            display: flex;
-            align-items: center;
-            gap: var(--st-space-2);
-            font-size: var(--st-text-sm);
+            gap: 8px;
+            font-size: 13px;
             color: var(--st-text-tertiary);
-            min-width: 0;
-            flex: 1;
         }
 
-        .st-nav-breadcrumb-sep {
-            color: var(--st-gray-300);
-            flex-shrink: 0;
-        }
-
-        .st-nav-breadcrumb-home {
+        .breadcrumb-home {
             color: var(--st-text-secondary);
             text-decoration: none;
-            flex-shrink: 0;
             transition: color var(--st-duration-fast) var(--st-ease-default);
         }
 
-        .st-nav-breadcrumb-home:hover {
+        .breadcrumb-home:hover {
             color: var(--st-primary-600);
         }
 
-        .st-nav-breadcrumb-story {
+        .breadcrumb-sep {
+            color: var(--st-gray-300);
+        }
+
+        .breadcrumb-current {
             font-weight: var(--st-font-medium);
             color: var(--st-text-primary);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            max-width: 300px;
-        }
-
-        /* 右侧链接 */
-        .st-nav-links {
-            display: flex;
-            align-items: center;
-            gap: var(--st-space-1);
-            margin-left: auto;
-            flex-shrink: 0;
-        }
-
-        .st-nav-link {
-            display: flex;
-            align-items: center;
-            gap: var(--st-space-2);
-            padding: var(--st-space-2) var(--st-space-3);
-            border-radius: var(--st-radius-lg);
-            font-size: var(--st-text-sm);
-            font-weight: var(--st-font-medium);
-            color: var(--st-text-secondary);
-            text-decoration: none;
-            transition: all var(--st-duration-fast) var(--st-ease-default);
-            white-space: nowrap;
-            position: relative;
-        }
-
-        .st-nav-link:hover {
-            background: var(--st-gray-100);
-            color: var(--st-text-primary);
-        }
-
-        .st-nav-link.active {
-            background: var(--st-primary-50);
-            color: var(--st-primary-600);
-        }
-
-        /* 通知徽标 */
-        .st-nav-badge {
-            position: absolute;
-            top: 4px;
-            right: 4px;
-            background: var(--st-error-500);
-            color: white;
-            font-size: 10px;
-            font-weight: var(--st-font-bold);
-            min-width: 16px;
-            height: 16px;
-            border-radius: var(--st-radius-full);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 0 3px;
-        }
-
-        /* 登录/注册按钮 */
-        .st-nav-btn-login {
-            padding: var(--st-space-2) var(--st-space-4);
-            border-radius: var(--st-radius-lg);
-            font-size: var(--st-text-sm);
-            font-weight: var(--st-font-medium);
-            color: var(--st-text-secondary);
-            text-decoration: none;
-            border: 1px solid var(--st-gray-300);
-            transition: all var(--st-duration-fast) var(--st-ease-default);
-        }
-
-        .st-nav-btn-login:hover {
-            border-color: var(--st-primary-400);
-            color: var(--st-primary-600);
-            background: var(--st-primary-50);
-        }
-
-        .st-nav-btn-register {
-            padding: var(--st-space-2) var(--st-space-4);
-            border-radius: var(--st-radius-lg);
-            font-size: var(--st-text-sm);
-            font-weight: var(--st-font-semibold);
-            color: white;
-            text-decoration: none;
-            background: var(--st-gradient-brand);
-            transition: all var(--st-duration-fast) var(--st-ease-default);
-        }
-
-        .st-nav-btn-register:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-        }
-
-        /* 移动端汉堡菜单 */
-        .st-nav-toggle {
-            display: none;
-            align-items: center;
-            justify-content: center;
-            width: 40px;
-            height: 40px;
-            border: none;
-            background: transparent;
-            border-radius: var(--st-radius-lg);
-            color: var(--st-text-secondary);
-            cursor: pointer;
-            margin-left: auto;
-        }
-
-        .st-nav-toggle:hover {
-            background: var(--st-gray-100);
-        }
-
-        @media (max-width: 768px) {
-            .st-nav-breadcrumb {
-                display: none;
-            }
-
-            .st-nav-links {
-                display: none;
-                position: fixed;
-                top: 64px;
-                left: 0; right: 0;
-                background: white;
-                border-bottom: 1px solid var(--st-gray-200);
-                padding: var(--st-space-4);
-                flex-direction: column;
-                align-items: stretch;
-                gap: var(--st-space-1);
-                box-shadow: var(--st-shadow-lg);
-            }
-
-            .st-nav-links.open {
-                display: flex;
-            }
-
-            .st-nav-link {
-                padding: var(--st-space-3) var(--st-space-4);
-            }
-
-            .st-nav-toggle {
-                display: flex;
-            }
+            max-width: 400px;
         }
 
         .story-detail-container {
@@ -1528,54 +1348,55 @@
     </style>
 </head>
 <body>
-    <!-- 导航栏 -->
-    <nav class="st-navbar" id="stNavbar" role="navigation" aria-label="主导航">
-        <div class="st-navbar-inner">
-            <!-- Logo -->
-            <a href="/" class="st-nav-brand" aria-label="StoryTree 首页">
+    <!-- 导航栏（与首页保持一致） -->
+    <nav class="navbar" id="navbar" role="navigation" aria-label="主导航">
+        <div class="navbar-content">
+            <a href="/" class="nav-brand" aria-label="StoryTree 首页">
                 <i class="fas fa-tree" aria-hidden="true"></i>
                 StoryTree
             </a>
-
-            <!-- 面包屑：首页 / 故事名 -->
-            <nav class="st-nav-breadcrumb" aria-label="面包屑导航">
-                <a href="/" class="st-nav-breadcrumb-home">
-                    <i class="fas fa-home" aria-hidden="true"></i> 首页
-                </a>
-                <span class="st-nav-breadcrumb-sep" aria-hidden="true">/</span>
-                <span class="st-nav-breadcrumb-story" id="navStoryTitle">故事详情</span>
-            </nav>
-
-            <!-- 右侧链接 -->
-            <div class="st-nav-links" id="stNavLinks">
-                <a href="/" class="st-nav-link">
-                    <i class="fas fa-home" aria-hidden="true"></i> 首页
-                </a>
-                <a href="/discover" class="st-nav-link">
-                    <i class="fas fa-compass" aria-hidden="true"></i> 发现
-                </a>
-                <a href="/notifications.html" class="st-nav-link" id="stNavNotification" style="display: none;" aria-label="消息通知">
-                    <i class="fas fa-bell" aria-hidden="true"></i>
-                    <span class="st-nav-badge" id="stNavBadge" aria-live="polite"></span>
-                </a>
-                <!-- 已登录 -->
-                <a href="/profile" class="st-nav-link" id="stNavProfile" style="display: none;">
-                    <i class="fas fa-user-circle" aria-hidden="true"></i> 个人中心
-                </a>
-                <a href="/login" class="st-nav-link" id="stNavLogout" style="display: none;" onclick="stLogout(); return false;">
-                    <i class="fas fa-sign-out-alt" aria-hidden="true"></i> 退出
-                </a>
-                <!-- 未登录 -->
-                <a href="/login" class="st-nav-btn-login" id="stNavLogin">登录</a>
-                <a href="/register" class="st-nav-btn-register" id="stNavRegister">注册</a>
-            </div>
-
-            <!-- 移动端切换 -->
-            <button class="st-nav-toggle" id="stNavToggle" aria-label="展开菜单" aria-expanded="false" onclick="stToggleNav()">
+            <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleMobileMenu()" aria-label="展开菜单" aria-expanded="false">
                 <i class="fas fa-bars" aria-hidden="true"></i>
             </button>
+            <div class="nav-menu" id="navMenu" role="menubar">
+                <a href="/" class="nav-link" role="menuitem">
+                    <i class="fas fa-home" aria-hidden="true"></i> 首页
+                </a>
+                <a href="/discover" class="nav-link" role="menuitem">
+                    <i class="fas fa-compass" aria-hidden="true"></i> 发现故事
+                </a>
+                <a href="/membership.html" class="nav-link" role="menuitem">
+                    <i class="fas fa-crown" aria-hidden="true"></i> 会员中心
+                </a>
+                <a href="/points-mall.html" class="nav-link" role="menuitem">
+                    <i class="fas fa-shopping-cart" aria-hidden="true"></i> 积分商城
+                </a>
+                <a href="/notifications.html" class="nav-link nav-notification" id="notificationIcon" style="display: none;" role="menuitem" aria-label="消息通知">
+                    <i class="fas fa-bell" aria-hidden="true"></i> 消息
+                    <span class="notification-badge" id="notificationBadge" style="display: none;" aria-live="polite">0</span>
+                </a>
+                <a href="/login" class="nav-link" id="loginLink" role="menuitem">登录</a>
+                <a href="/register" class="nav-link nav-link-primary" id="registerLink" role="menuitem">注册</a>
+                <a href="/profile" class="nav-link" id="profileLink" style="display: none;" role="menuitem">
+                    <i class="fas fa-user" aria-hidden="true"></i> 个人中心
+                </a>
+                <a href="/login" class="nav-link" id="logoutLink" style="display: none;" onclick="logout(); return false;" role="menuitem">
+                    <i class="fas fa-sign-out-alt" aria-hidden="true"></i> 退出
+                </a>
+            </div>
         </div>
     </nav>
+
+    <!-- 面包屑导航 -->
+    <div class="story-breadcrumb" id="storyBreadcrumb">
+        <div class="story-breadcrumb-inner">
+            <a href="/" class="breadcrumb-home">
+                <i class="fas fa-home" aria-hidden="true"></i> 首页
+            </a>
+            <span class="breadcrumb-sep" aria-hidden="true">/</span>
+            <span class="breadcrumb-current" id="navStoryTitle">故事详情</span>
+        </div>
+    </div>
 
     <!-- 故事详情 -->
     <div class="story-detail-container">
@@ -1773,6 +1594,10 @@
                             <button class="detail-btn" id="readNode">
                                 <i class="fas fa-book-open"></i>
                                 阅读章节
+                            </button>
+                            <button class="detail-btn" id="publishDraftNode" style="display: none; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+                                <i class="fas fa-paper-plane"></i>
+                                发布草稿
                             </button>
                             <button class="detail-btn" id="continueNode">
                                 <i class="fas fa-pen"></i>
@@ -2161,7 +1986,6 @@
     <script>
         // 页面初始化
         document.addEventListener('DOMContentLoaded', function() {
-            stInitNavbar();
             loadStoryDetail();
 
             // 分享按钮
@@ -3526,6 +3350,20 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                         <div class="chapter-status ${chapter.isPublished || chapter.is_published ? 'status-published' : 'status-draft'}">
                             ${chapter.isPublished || chapter.is_published ? '已发布' : '草稿'}
                         </div>
+                        ${(!chapter.isPublished && !chapter.is_published) && (isChapterAuthor || isStoryAuthor) ? `
+                            <button class="chapter-action-btn" onclick="event.stopPropagation(); publishChapter(${chapter.id}, '${chapter.title.replace(/'/g, "\\'")}')}" title="发布草稿" style="
+                                padding: 8px 12px;
+                                background: #059669;
+                                color: white;
+                                border: none;
+                                border-radius: 8px;
+                                cursor: pointer;
+                                transition: all 0.3s;
+                                font-size: 14px;
+                            ">
+                                <i class="fas fa-paper-plane"></i> 发布
+                            </button>
+                        ` : ''}
                         ${canDelete ? `
                             <button class="chapter-action-btn" onclick="event.stopPropagation(); deleteChapter(${chapter.id}, '${chapter.title.replace(/'/g, "\\'")}')}" title="删除章节" style="
                                 padding: 8px 12px;
@@ -3563,86 +3401,6 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
             // 这里应该从后端获取实际字数
             return story.wordCount || 0;
         }
-
-        // ===== 新版导航栏初始化 =====
-        function stInitNavbar() {
-            // 滚动阴影
-            const navbar = document.getElementById('stNavbar');
-            window.addEventListener('scroll', () => {
-                navbar?.classList.toggle('scrolled', window.scrollY > 20);
-            }, { passive: true });
-
-            // 认证状态
-            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-            const loginEl   = document.getElementById('stNavLogin');
-            const registerEl = document.getElementById('stNavRegister');
-            const profileEl = document.getElementById('stNavProfile');
-            const logoutEl  = document.getElementById('stNavLogout');
-            const notifEl   = document.getElementById('stNavNotification');
-
-            if (token) {
-                if (loginEl)    loginEl.style.display    = 'none';
-                if (registerEl) registerEl.style.display = 'none';
-                if (profileEl)  profileEl.style.display  = 'flex';
-                if (logoutEl)   logoutEl.style.display   = 'flex';
-                if (notifEl) {
-                    notifEl.style.display = 'flex';
-                    stLoadNotifBadge(token);
-                }
-            } else {
-                if (loginEl)    loginEl.style.display    = 'inline-flex';
-                if (registerEl) registerEl.style.display = 'inline-flex';
-                if (profileEl)  profileEl.style.display  = 'none';
-                if (logoutEl)   logoutEl.style.display   = 'none';
-                if (notifEl)    notifEl.style.display    = 'none';
-            }
-        }
-
-        async function stLoadNotifBadge(token) {
-            try {
-                const res = await fetch('/api/notifications', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (!res.ok) return;
-                const data = await res.json();
-                const badge = document.getElementById('stNavBadge');
-                if (badge && data.unreadCount > 0) {
-                    badge.textContent = data.unreadCount > 99 ? '99+' : data.unreadCount;
-                    badge.style.display = 'flex';
-                }
-            } catch (e) { /* 静默失败 */ }
-        }
-
-        function stLogout() {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            sessionStorage.removeItem('token');
-            sessionStorage.removeItem('user');
-            window.location.href = '/login';
-        }
-
-        function stToggleNav() {
-            const links  = document.getElementById('stNavLinks');
-            const toggle = document.getElementById('stNavToggle');
-            const isOpen = links?.classList.toggle('open');
-            toggle?.setAttribute('aria-expanded', isOpen);
-            const icon = toggle?.querySelector('i');
-            if (icon) icon.className = isOpen ? 'fas fa-times' : 'fas fa-bars';
-        }
-
-        // 点击导航外侧关闭移动端菜单
-        document.addEventListener('click', (e) => {
-            const links  = document.getElementById('stNavLinks');
-            const toggle = document.getElementById('stNavToggle');
-            if (links?.classList.contains('open') &&
-                !links.contains(e.target) &&
-                !toggle?.contains(e.target)) {
-                links.classList.remove('open');
-                toggle?.setAttribute('aria-expanded', 'false');
-                const icon = toggle?.querySelector('i');
-                if (icon) icon.className = 'fas fa-bars';
-            }
-        });
 
         // 显示错误消息
         function showError(message) {
@@ -4638,6 +4396,49 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
             }, { title: '删除章节', confirmText: '确认删除' });
         };
 
+        // 发布草稿章节
+        window.publishChapter = async function(chapterId, chapterTitle) {
+            console.log('准备发布草稿章节:', chapterId, chapterTitle);
+
+            if (!confirm(`确定要将草稿章节《${chapterTitle}》正式发布吗？\n\n发布后所有读者均可看到此章节。`)) {
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                if (!token) {
+                    throw new Error('请先登录');
+                }
+
+                showMessage('正在发布章节...', 'info');
+
+                const response = await fetch(`/api/nodes/${chapterId}/publish`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || '发布章节失败');
+                }
+
+                const data = await response.json();
+                console.log('章节发布成功:', data);
+
+                showSuccess('草稿已发布！即将刷新页面...');
+
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+
+            } catch (error) {
+                console.error('发布章节错误:', error);
+                showError(error.message || '发布章节失败');
+            }
+        };
+
 // ============================================
         // 分支树和统计功能
         // ============================================
@@ -5439,6 +5240,15 @@ function getTreeOption(treeData, layout) {
                     window.location.href = `/write?storyId=${storyId}&parentId=${nodeId}`;
                 }
             });
+
+            // 发布草稿（树状图节点详情面板中）
+            document.getElementById('publishDraftNode')?.addEventListener('click', function() {
+                const nodeId = this.dataset.nodeId;
+                const nodeTitle = this.dataset.nodeTitle || '该章节';
+                if (nodeId) {
+                    publishChapter(parseInt(nodeId), nodeTitle);
+                }
+            });
         }
 
         // 设置布局
@@ -5560,14 +5370,20 @@ function getTreeOption(treeData, layout) {
             // 保存节点ID到按钮
             document.getElementById('readNode').dataset.nodeId = nodeData.id;
             document.getElementById('continueNode').dataset.nodeId = nodeData.id;
+            const publishDraftBtn = document.getElementById('publishDraftNode');
+            publishDraftBtn.dataset.nodeId = nodeData.id;
+            publishDraftBtn.dataset.nodeTitle = nodeData.name;
             
             // 保存当前选中的节点ID到全局变量，供AI创作使用
             window.currentSelectedNodeId = nodeData.id;
             console.log('当前选中节点:', nodeData.id, nodeData.name);
 
-            // 检查用户权限，决定是否显示"续写分支"按钮
+            // 检查用户权限，决定是否显示"续写分支"和"发布草稿"按钮
             const token = localStorage.getItem('token') || sessionStorage.getItem('token');
             const continueBtn = document.getElementById('continueNode');
+
+            // 默认隐藏发布草稿按钮
+            publishDraftBtn.style.display = 'none';
             
             if (!token) {
                 // 未登录，隐藏续写按钮
@@ -5602,6 +5418,19 @@ function getTreeOption(treeData, layout) {
                                     console.log('❌ 是协作者但不允许续写，隐藏续写分支按钮');
                                 } else {
                                     console.log('❌ 不是作者也不是协作者，隐藏续写分支按钮');
+                                }
+                            }
+
+                            // 发布草稿按钮：节点是草稿 且（当前用户是故事主创 或 是该节点的作者）
+                            if (!nodeData.isPublished) {
+                                const currentUserId = window.currentUserId;
+                                const storyAuthorId = window.currentStory?.author_id || window.currentStory?.authorId;
+                                const nodeAuthorId = nodeData.authorId;
+                                const canPublish = roleData.is_author ||
+                                    (currentUserId && nodeAuthorId && currentUserId === nodeAuthorId);
+                                if (canPublish) {
+                                    publishDraftBtn.style.display = 'block';
+                                    console.log('✅ 可以发布草稿，显示发布草稿按钮');
                                 }
                             }
                         } else {

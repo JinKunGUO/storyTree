@@ -335,9 +335,23 @@ router.get('/:id', optionalAuth, async (req, res) => {
       }
     }
 
+    // 判断当前用户是否是协作者（协作者也可以看到草稿）
+    let isCollaboratorForDraft = false;
+    if (userId && !isAuthor) {
+      const collaboratorRecord = await prisma.story_collaborators.findFirst({
+        where: { story_id: parseInt(id), user_id: userId, removed_at: null }
+      });
+      isCollaboratorForDraft = !!collaboratorRecord;
+    }
+    const canSeeDrafts = isAuthor || isCollaboratorForDraft;
+
     // Get all nodes for this story
+    // 草稿节点（is_published=false）只对作者和协作者可见
     const nodes = await prisma.nodes.findMany({
-      where: { story_id: parseInt(id) },
+      where: {
+        story_id: parseInt(id),
+        ...(canSeeDrafts ? {} : { is_published: true })
+      },
       include: {
         author: {
           select: { id: true, username: true, level: true }
@@ -365,12 +379,9 @@ router.get('/:id', optionalAuth, async (req, res) => {
     let collaborators: any[] = [];
 
     if (userId) {
-      const [followerRecord, collaboratorRecord, collabRequest, bookmarkRecord] = await Promise.all([
+      const [followerRecord, collabRequest, bookmarkRecord] = await Promise.all([
         prisma.story_followers.findUnique({
           where: { story_id_user_id: { story_id: parseInt(id), user_id: userId } }
-        }),
-        prisma.story_collaborators.findFirst({
-          where: { story_id: parseInt(id), user_id: userId, removed_at: null }
         }),
         prisma.collaboration_requests.findUnique({
           where: { story_id_user_id: { story_id: parseInt(id), user_id: userId } }
@@ -380,7 +391,8 @@ router.get('/:id', optionalAuth, async (req, res) => {
         })
       ]);
       isFollowed = !!followerRecord;
-      isCollaborator = !!collaboratorRecord;
+      // isCollaboratorForDraft 已在上方查询过，直接复用
+      isCollaborator = isCollaboratorForDraft;
       collaborationRequestStatus = collabRequest?.status ?? null;
       isBookmarked = !!bookmarkRecord;
     }
@@ -570,11 +582,22 @@ router.get('/:id/tree', optionalAuth, async (req, res) => {
       }
     }
 
+    // 判断当前用户是否是协作者（协作者也可以看到草稿）
+    let isCollaboratorForTree = false;
+    if (userId && !isAuthor) {
+      const collaboratorRecord = await prisma.story_collaborators.findFirst({
+        where: { story_id: parseInt(id), user_id: userId, removed_at: null }
+      });
+      isCollaboratorForTree = !!collaboratorRecord;
+    }
+    const canSeeDraftsInTree = isAuthor || isCollaboratorForTree;
+
     // Get all nodes with their relationships
+    // 草稿节点（is_published=false）只对作者和协作者可见
     const nodes = await prisma.nodes.findMany({
-      where: { 
-        story_id: parseInt(id)
-        // 移除 is_published 限制，显示所有章节（包括草稿）
+      where: {
+        story_id: parseInt(id),
+        ...(canSeeDraftsInTree ? {} : { is_published: true })
       },
       include: {
         author: {

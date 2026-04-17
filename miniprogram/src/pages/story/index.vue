@@ -132,9 +132,12 @@
             :is-author-or-collab="story.isAuthor || story.isCollaborator"
             :is-logged-in="userStore.isLoggedIn"
             :highlight-node-id="highlightNodeId"
+            :current-user-id="userStore.userInfo?.id ?? null"
+            :story-author-id="story.author_id"
             @node-tap="goChapter"
             @write-branch="handleWriteBranch"
             @ai-create="handleAiCreate"
+            @publish-draft="handlePublishDraft"
           />
 
           <!-- 未登录提示 -->
@@ -393,6 +396,7 @@ import { formatRelativeTime } from '@/utils/helpers'
 import { getImageUrl } from '@/utils/request'
 import ChapterTree from '@/components/chapter-tree/index.vue'
 import { submitAiCreateChapter, getAiTaskStatus } from '@/api/ai'
+import { publishNode } from '@/api/nodes'
 import type { Story } from '@/api/stories'
 import type { Node } from '@/api/nodes'
 import type { AiWritingStyle, AiSurpriseTime } from '@/api/ai'
@@ -779,6 +783,32 @@ function handleAiCreate(parentNodeId: number) {
   aiForm.customDate = ''
   aiForm.customTime = ''
   showAiCreatePanel.value = true
+}
+
+// 发布草稿节点
+async function handlePublishDraft(nodeId: number) {
+  uni.showModal({
+    title: '发布草稿',
+    content: '确定要将此草稿章节正式发布吗？发布后所有读者均可看到。',
+    confirmText: '确定发布',
+    confirmColor: '#059669',
+    success: async ({ confirm }) => {
+      if (!confirm) return
+      try {
+        uni.showLoading({ title: '发布中...' })
+        await publishNode(nodeId)
+        uni.hideLoading()
+        uni.showToast({ title: '草稿已发布', icon: 'success' })
+        // 刷新章节树
+        if (story.value) {
+          await refreshTree(story.value.id)
+        }
+      } catch (err: any) {
+        uni.hideLoading()
+        uni.showToast({ title: err.message || '发布失败', icon: 'none' })
+      }
+    }
+  })
 }
 
 function goManage() {

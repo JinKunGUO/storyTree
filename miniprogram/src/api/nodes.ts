@@ -107,3 +107,9 @@ export function incrementReadCount(_id: number) {
   return Promise.resolve({ message: 'read count auto-incremented by GET /api/nodes/:id' })
 }
 
+// 发布草稿章节（将 is_published=false 的章节正式发布）
+// 后端路由：POST /api/nodes/:id/publish
+export function publishNode(id: number) {
+  return http.post<{ node: Node; message: string }>(`/api/nodes/${id}/publish`)
+}
+

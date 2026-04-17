@@ -2008,7 +2008,10 @@
             }
 
             try {
-                const response = await fetch(`/api/nodes/${chapterId}`);
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                const response = await fetch(`/api/nodes/${chapterId}`, {
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                });
                 if (!response.ok) {
                     throw new Error('加载章节失败');
                 }
@@ -3380,7 +3383,10 @@
                 compareGrid.style.opacity = '0.5';
                 
                 // 获取分支详情
-                const response = await fetch(`/api/nodes/${siblingId}`);
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                const response = await fetch(`/api/nodes/${siblingId}`, {
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                });
                 if (!response.ok) {
                     throw new Error('获取分支详情失败');
                 }
@@ -3591,7 +3597,10 @@
         async function checkShowRecommendButton() {
             try {
                 // 检查是否有子分支（使用已有的branches数据或重新获取）
-                const response = await fetch(`/api/nodes/${currentChapter.id}`);
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                const response = await fetch(`/api/nodes/${currentChapter.id}`, {
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                });
                 if (response.ok) {
                     const data = await response.json();
                     // 只有当子分支数量大于1时才显示AI推荐按钮（避免只有一个分支时的歧义）
