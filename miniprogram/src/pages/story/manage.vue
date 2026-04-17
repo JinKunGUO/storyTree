@@ -277,7 +277,13 @@ async function loadStory(id: number) {
     form.title = res.story.title
     form.description = res.story.description || ''
     form.cover_image = res.story.cover_image || ''
-    form.tags = res.story.tags || ''
+    form.tags = res.story.tags ? (() => {
+      try {
+        const parsed = JSON.parse(res.story.tags)
+        if (Array.isArray(parsed)) return parsed.join(',')
+      } catch { /* 不是JSON */ }
+      return res.story.tags
+    })() : ''
     form.visibility = res.story.visibility || 'public'
     form.allow_branch = res.story.allow_branch ?? true
     form.allow_comment = res.story.allow_comment ?? true

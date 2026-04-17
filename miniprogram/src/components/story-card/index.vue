@@ -24,11 +24,11 @@
       </view>
       <view v-if="story.tags" class="tags">
         <text
-          v-for="tag in story.tags.split(',').slice(0, 3)"
+          v-for="tag in parseTags(story.tags).slice(0, 3)"
           :key="tag"
           class="tag"
         >
-          {{ tag.trim() }}
+          {{ tag }}
         </text>
       </view>
     </view>
@@ -45,6 +45,19 @@ defineProps<{
 defineEmits<{
   (e: 'tap', id: number): void
 }>()
+
+function parseTags(raw: string): string[] {
+  if (!raw || !raw.trim()) return []
+  try {
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) {
+      return parsed.map((t: string) => String(t).trim()).filter(Boolean)
+    }
+  } catch {
+    // 不是 JSON，尝试逗号分割
+  }
+  return raw.split(',').map((t: string) => t.trim()).filter(Boolean)
+}
 </script>
 
 <style lang="scss" scoped>

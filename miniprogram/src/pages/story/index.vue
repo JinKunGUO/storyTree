@@ -88,9 +88,9 @@
           <text class="story-desc">{{ story.description || '暂无简介' }}</text>
 
           <!-- 标签 -->
-          <view v-if="story.tags && story.tags.trim()" class="tag-list">
+          <view v-if="parsedTags.length > 0" class="tag-list">
             <text
-              v-for="tag in story.tags.split(',').map(t => t.trim()).filter(t => t)"
+              v-for="tag in parsedTags"
               :key="tag"
               class="tag"
             >
@@ -448,6 +448,21 @@ const timeOptions = [
   { value: 'tomorrow' as AiSurpriseTime, icon: '☀️', label: '明天8:00' },
   { value: 'custom' as AiSurpriseTime, icon: '📅', label: '自定义时间' },
 ]
+
+// 解析标签：兼容 JSON 数组格式（后端存储）和逗号分隔格式（旧数据）
+const parsedTags = computed<string[]>(() => {
+  const raw = story.value?.tags
+  if (!raw || !raw.trim()) return []
+  try {
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) {
+      return parsed.map((t: string) => String(t).trim()).filter(Boolean)
+    }
+  } catch {
+    // 不是 JSON，尝试逗号分割
+  }
+  return raw.split(',').map((t: string) => t.trim()).filter(Boolean)
+})
 
 // 今日日期字符串（YYYY-MM-DD），用于日期 picker 的 start 属性
 const todayStr = computed(() => {
