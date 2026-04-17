@@ -989,6 +989,7 @@
             border-radius: 15px;
             background: #fafafa;
             overflow: hidden;
+            position: relative;
         }
 
         .tree-chart {
@@ -996,116 +997,144 @@
             height: 100%;
         }
 
-        /* 节点详情 */
+        /* 节点详情浮层（绝对定位，跟随节点位置） */
         .node-detail {
-            background: #f9f9f9;
-            padding: 20px;
-            border-radius: 15px;
-            margin-top: 20px;
+            position: absolute;
+            z-index: 200;
+            width: 280px;
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
+            border: 1px solid #E5E7EB;
+            padding: 16px;
             display: none;
+            pointer-events: auto;
         }
 
         .node-detail.active {
             display: block;
-            animation: slideIn 0.3s ease-out;
+            animation: nodePopIn 0.2s ease-out;
         }
 
-        @keyframes slideIn {
+        @keyframes nodePopIn {
             from {
                 opacity: 0;
-                transform: translateY(-10px);
+                transform: scale(0.92) translateY(6px);
             }
             to {
                 opacity: 1;
-                transform: translateY(0);
+                transform: scale(1) translateY(0);
             }
         }
 
         .node-detail-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            gap: 8px;
         }
 
         .node-detail-title {
-            font-size: 20px;
-            font-weight: bold;
-            color: #333;
+            font-size: 14px;
+            font-weight: 700;
+            color: #111827;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 6px;
+            line-height: 1.4;
+            flex: 1;
+            word-break: break-all;
+        }
+
+        .node-detail-title i {
+            color: var(--st-primary-500);
+            font-size: 13px;
+            flex-shrink: 0;
         }
 
         .node-detail-close {
             background: none;
             border: none;
-            font-size: 24px;
-            color: #999;
+            font-size: 18px;
+            color: #9CA3AF;
             cursor: pointer;
-            width: 32px;
-            height: 32px;
+            width: 24px;
+            height: 24px;
             display: flex;
             align-items: center;
             justify-content: center;
             border-radius: 50%;
-            transition: all 0.3s;
+            transition: all 0.2s;
+            flex-shrink: 0;
+            line-height: 1;
         }
 
         .node-detail-close:hover {
-            background: #e0e0e0;
-            color: #333;
+            background: #F3F4F6;
+            color: #374151;
         }
 
         .node-detail-content {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
         .detail-item {
-            background: white;
-            padding: 15px;
-            border-radius: 10px;
+            background: #F9FAFB;
+            padding: 8px 10px;
+            border-radius: 8px;
         }
 
         .detail-label {
-            font-size: 12px;
-            color: #999;
-            margin-bottom: 5px;
+            font-size: 11px;
+            color: #9CA3AF;
+            margin-bottom: 2px;
         }
 
         .detail-value {
-            font-size: 18px;
+            font-size: 15px;
             font-weight: 600;
-            color: #333;
+            color: #111827;
         }
 
         .node-detail-actions {
             display: flex;
-            gap: 10px;
-            margin-top: 15px;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 4px;
         }
 
         .detail-btn {
             flex: 1;
-            padding: 12px;
+            min-width: calc(50% - 3px);
+            padding: 8px 6px;
             background: linear-gradient(135deg, var(--st-primary-500) 0%, var(--st-primary-700) 100%);
             color: white;
             border: none;
-            border-radius: 10px;
-            font-size: 14px;
+            border-radius: 8px;
+            font-size: 12px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            gap: 4px;
+            white-space: nowrap;
         }
 
         .detail-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
+        }
+
+        .detail-btn.btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+        .detail-btn.btn-danger:hover {
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
         }
 
         /* 统计图表容器 */
@@ -1579,37 +1608,41 @@
                     </div>
                     <div class="tree-chart-container">
                         <div class="tree-chart" id="treeChart"></div>
-                    </div>
-                    <!-- 节点详情 -->
-                    <div class="node-detail" id="nodeDetail">
-                        <div class="node-detail-header">
-                            <div class="node-detail-title">
-                                <i class="fas fa-book"></i>
-                                <span id="nodeTitle">章节标题</span>
+                        <!-- 节点详情浮层（绝对定位，跟随节点位置） -->
+                        <div class="node-detail" id="nodeDetail">
+                            <div class="node-detail-header">
+                                <div class="node-detail-title">
+                                    <i class="fas fa-book"></i>
+                                    <span id="nodeTitle">章节标题</span>
+                                </div>
+                                <button class="node-detail-close" id="closeNodeDetail">×</button>
                             </div>
-                            <button class="node-detail-close" id="closeNodeDetail">×</button>
-                        </div>
-                        <div class="node-detail-content" id="nodeDetailContent"></div>
-                        <div class="node-detail-actions">
-                            <button class="detail-btn" id="readNode">
-                                <i class="fas fa-book-open"></i>
-                                阅读章节
-                            </button>
-                            <button class="detail-btn" id="publishDraftNode" style="display: none; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
-                                <i class="fas fa-paper-plane"></i>
-                                发布草稿
-                            </button>
-                            <button class="detail-btn" id="continueNode">
-                                <i class="fas fa-pen"></i>
-                                续写分支
-                            </button>
-<button class="detail-btn" id="aiCreateChapterBtn" style="display: none; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); position: relative;">
-                                <i class="fas fa-robot"></i>
-                                AI 创作章节
-                                <span class="ai-quota-badge" id="aiChapterQuota" title="剩余配额" style="position: absolute; top: -8px; right: -8px; background: linear-gradient(135deg, var(--st-primary-500) 0%, var(--st-primary-700) 100%); color: white; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 12px; min-width: 18px; text-align: center; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);">
-                                    <i class="fas fa-spinner fa-spin"></i>
-                                </span>
-                            </button>
+                            <div class="node-detail-content" id="nodeDetailContent"></div>
+                            <div class="node-detail-actions">
+                                <button class="detail-btn" id="readNode">
+                                    <i class="fas fa-book-open"></i>
+                                    阅读章节
+                                </button>
+                                <button class="detail-btn" id="publishDraftNode" style="display: none; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+                                    <i class="fas fa-paper-plane"></i>
+                                    发布草稿
+                                </button>
+                                <button class="detail-btn" id="continueNode">
+                                    <i class="fas fa-pen"></i>
+                                    续写分支
+                                </button>
+                                <button class="detail-btn" id="aiCreateChapterBtn" style="display: none; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); position: relative;">
+                                    <i class="fas fa-robot"></i>
+                                    AI 创作章节
+                                    <span class="ai-quota-badge" id="aiChapterQuota" title="剩余配额" style="position: absolute; top: -8px; right: -8px; background: linear-gradient(135deg, var(--st-primary-500) 0%, var(--st-primary-700) 100%); color: white; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 12px; min-width: 18px; text-align: center; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                    </span>
+                                </button>
+                                <button class="detail-btn btn-danger" id="deleteNodeBtn" style="display: none;">
+                                    <i class="fas fa-trash-alt"></i>
+                                    删除章节
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -4581,10 +4614,10 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
             const option = getTreeOption(window.treeData, currentLayout);
             treeChart.setOption(option);
 
-            // 点击事件
+            // 点击事件 - 传入鼠标坐标，用于定位浮层
             treeChart.on('click', function(params) {
                 if (params.data && params.data.id) {
-                    showNodeDetail(params.data);
+                    showNodeDetail(params.data, params.event?.offsetX, params.event?.offsetY);
                 }
             });
             
@@ -4603,6 +4636,27 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
             // 响应式
             window.addEventListener('resize', () => {
                 treeChart && treeChart.resize();
+            });
+
+            // 监听用户 roam（拖拽/滚轮缩放）操作，实时同步 zoom 到 window.currentZoom
+            // 这样 applyHighlightStyles 中 setOption 时不会重置用户的视角
+            treeChart.on('georoam', function() {
+                const opt = treeChart.getOption();
+                if (opt && opt.series && opt.series[0] && opt.series[0].zoom != null) {
+                    window.currentZoom = opt.series[0].zoom;
+                }
+            });
+            // ECharts tree 系列的 roam 事件通过 'restore' 触发，也监听一下
+            treeChart.getZr().on('mousewheel', function() {
+                setTimeout(() => {
+                    if (!treeChart) return;
+                    try {
+                        const opt = treeChart.getOption();
+                        if (opt && opt.series && opt.series[0] && opt.series[0].zoom != null) {
+                            window.currentZoom = opt.series[0].zoom;
+                        }
+                    } catch(e) {}
+                }, 50);
             });
 
             // 工具栏事件
@@ -4720,7 +4774,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
             applyStyle(processedData);
 
             treeChart.setOption({
-                series: [{ data: [processedData] }]
+                series: [{ data: [processedData], zoom: window.currentZoom || 1 }]
             }, { notMerge: false, lazyUpdate: false });
         }
 
@@ -5249,6 +5303,17 @@ function getTreeOption(treeData, layout) {
                     publishChapter(parseInt(nodeId), nodeTitle);
                 }
             });
+
+            // 删除章节（树状图节点详情面板中）
+            document.getElementById('deleteNodeBtn')?.addEventListener('click', function() {
+                const nodeId = this.dataset.nodeId;
+                const nodeTitle = this.dataset.nodeTitle || '该章节';
+                if (nodeId) {
+                    // 关闭浮层后再弹确认框
+                    document.getElementById('nodeDetail').classList.remove('active');
+                    deleteChapter(parseInt(nodeId), nodeTitle);
+                }
+            });
         }
 
         // 设置布局
@@ -5324,7 +5389,7 @@ function getTreeOption(treeData, layout) {
         }
 
         // 显示节点详情
-        async function showNodeDetail(nodeData) {
+        async function showNodeDetail(nodeData, clickX, clickY) {
             // 如果是省略号节点，展开被折叠的中间章节
             if (nodeData.isEllipsis) {
                 console.log('点击省略号节点，展开被折叠的章节:', nodeData.collapsedNodes);
@@ -5343,7 +5408,7 @@ function getTreeOption(treeData, layout) {
             document.getElementById('nodeDetailContent').innerHTML = `
                 <div class="detail-item">
                     <div class="detail-label">作者</div>
-                    <div class="detail-value">${nodeData.author || '未知'}</div>
+                    <div class="detail-value" style="font-size:13px;">${nodeData.author || '未知'}</div>
                 </div>
                 <div class="detail-item">
                     <div class="detail-label">阅读量</div>
@@ -5357,14 +5422,6 @@ function getTreeOption(treeData, layout) {
                     <div class="detail-label">分支数</div>
                     <div class="detail-value">${nodeData.branchCount || 0}</div>
                 </div>
-                <div class="detail-item">
-                    <div class="detail-label">评分</div>
-                    <div class="detail-value">${nodeData.ratingAvg ? nodeData.ratingAvg.toFixed(1) : '暂无'}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">创建时间</div>
-                    <div class="detail-value">${nodeData.createdAt ? new Date(nodeData.createdAt).toLocaleDateString('zh-CN') : '未知'}</div>
-                </div>
             `;
 
             // 保存节点ID到按钮
@@ -5373,30 +5430,26 @@ function getTreeOption(treeData, layout) {
             const publishDraftBtn = document.getElementById('publishDraftNode');
             publishDraftBtn.dataset.nodeId = nodeData.id;
             publishDraftBtn.dataset.nodeTitle = nodeData.name;
+            const deleteNodeBtn = document.getElementById('deleteNodeBtn');
+            deleteNodeBtn.dataset.nodeId = nodeData.id;
+            deleteNodeBtn.dataset.nodeTitle = nodeData.name;
             
             // 保存当前选中的节点ID到全局变量，供AI创作使用
             window.currentSelectedNodeId = nodeData.id;
             console.log('当前选中节点:', nodeData.id, nodeData.name);
 
-            // 检查用户权限，决定是否显示"续写分支"和"发布草稿"按钮
-            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-            const continueBtn = document.getElementById('continueNode');
-
-            // 默认隐藏发布草稿按钮
+            // 默认隐藏受权限控制的按钮
             publishDraftBtn.style.display = 'none';
+            deleteNodeBtn.style.display = 'none';
+            document.getElementById('continueNode').style.display = 'none';
+
+            // 检查用户权限
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
             
-            if (!token) {
-                // 未登录，隐藏续写按钮
-                continueBtn.style.display = 'none';
-                console.log('未登录，隐藏续写分支按钮');
-            } else {
-                // 已登录，检查权限
+            if (token) {
                 try {
                     const storyId = window.currentStory?.id;
-                    if (!storyId) {
-                        continueBtn.style.display = 'none';
-                        console.log('故事ID不存在，隐藏续写分支按钮');
-                    } else {
+                    if (storyId) {
                         const roleResponse = await fetch(`/api/stories/${storyId}/role`, {
                             headers: { 'Authorization': `Bearer ${token}` }
                         });
@@ -5404,45 +5457,55 @@ function getTreeOption(treeData, layout) {
                         if (roleResponse.ok) {
                             const roleData = await roleResponse.json();
                             console.log('用户角色:', roleData);
-                            
-                            // 只有作者或有效协作者才能续写
-                            if (roleData.is_author) {
-                                continueBtn.style.display = 'block';
-                                console.log('✅ 是作者，显示续写分支按钮');
-                            } else if (roleData.is_collaborator && roleData.allow_branch) {
-                                continueBtn.style.display = 'block';
-                                console.log('✅ 是协作者且允许续写，显示续写分支按钮');
-                            } else {
-                                continueBtn.style.display = 'none';
-                                if (roleData.is_collaborator && !roleData.allow_branch) {
-                                    console.log('❌ 是协作者但不允许续写，隐藏续写分支按钮');
-                                } else {
-                                    console.log('❌ 不是作者也不是协作者，隐藏续写分支按钮');
-                                }
+                            const currentUserId = window.currentUserId;
+                            const nodeAuthorId = nodeData.authorId;
+                            const isNodeAuthor = currentUserId && nodeAuthorId && currentUserId === nodeAuthorId;
+
+                            // 续写分支：作者或允许续写的协作者
+                            if (roleData.is_author || (roleData.is_collaborator && roleData.allow_branch)) {
+                                document.getElementById('continueNode').style.display = '';
                             }
 
-                            // 发布草稿按钮：节点是草稿 且（当前用户是故事主创 或 是该节点的作者）
-                            if (!nodeData.isPublished) {
-                                const currentUserId = window.currentUserId;
-                                const storyAuthorId = window.currentStory?.author_id || window.currentStory?.authorId;
-                                const nodeAuthorId = nodeData.authorId;
-                                const canPublish = roleData.is_author ||
-                                    (currentUserId && nodeAuthorId && currentUserId === nodeAuthorId);
-                                if (canPublish) {
-                                    publishDraftBtn.style.display = 'block';
-                                    console.log('✅ 可以发布草稿，显示发布草稿按钮');
-                                }
+                            // 发布草稿：节点是草稿 且（故事主创 或 节点作者本人）
+                            if (!nodeData.isPublished && (roleData.is_author || isNodeAuthor)) {
+                                publishDraftBtn.style.display = '';
                             }
-                        } else {
-                            continueBtn.style.display = 'none';
-                            console.log('获取角色失败，隐藏续写分支按钮');
+
+                            // 删除章节：故事主创 或 节点作者本人（与章节列表逻辑一致）
+                            if (roleData.is_author || isNodeAuthor) {
+                                deleteNodeBtn.style.display = '';
+                            }
                         }
                     }
                 } catch (error) {
                     console.error('检查权限失败:', error);
-                    continueBtn.style.display = 'none';
                 }
             }
+
+            // ===== 定位浮层到节点附近 =====
+            const container = document.getElementById('treeChart').parentElement; // tree-chart-container
+            const containerRect = container.getBoundingClientRect();
+            const panelWidth = 280;
+            const panelHeight = detailPanel.offsetHeight || 260; // 估算高度
+
+            let posX = (clickX !== undefined ? clickX : containerRect.width / 2) + 12;
+            let posY = (clickY !== undefined ? clickY : containerRect.height / 2) - 60;
+
+            // 防止超出右边界
+            if (posX + panelWidth > containerRect.width - 8) {
+                posX = (clickX !== undefined ? clickX : containerRect.width / 2) - panelWidth - 12;
+            }
+            // 防止超出下边界
+            if (posY + panelHeight > containerRect.height - 8) {
+                posY = containerRect.height - panelHeight - 8;
+            }
+            // 防止超出上边界
+            if (posY < 8) posY = 8;
+            // 防止超出左边界
+            if (posX < 8) posX = 8;
+
+            detailPanel.style.left = posX + 'px';
+            detailPanel.style.top = posY + 'px';
 
             detailPanel.classList.add('active');
         }
