@@ -81,7 +81,7 @@
       </view>
 
       <!-- 内容区域 -->
-      <scroll-view class="content-scroll" scroll-y>
+      <view class="content-scroll">
         <!-- 简介 -->
         <view class="section-card">
           <text class="section-title">故事简介</text>
@@ -126,7 +126,7 @@
           <view v-if="nodesLoading" class="nodes-loading">
             <text>加载故事树...</text>
           </view>
-          <chapter-tree
+          <tree-chart
             v-else
             :root-node="treeRoot"
             :is-author-or-collab="story.isAuthor || story.isCollaborator"
@@ -138,6 +138,7 @@
             @write-branch="handleWriteBranch"
             @ai-create="handleAiCreate"
             @publish-draft="handlePublishDraft"
+            @delete-node="handleDeleteNode"
           />
 
           <!-- 未登录提示 -->
@@ -215,7 +216,7 @@
         </view>
 
         <view class="bottom-placeholder" />
-      </scroll-view>
+      </view>
     </template>
 
     <!-- 错误状态 -->
@@ -395,8 +396,9 @@ import { getStory, followStory, unfollowStory, bookmarkStory, applyCollaboration
 import { formatRelativeTime } from '@/utils/helpers'
 import { getImageUrl } from '@/utils/request'
 import ChapterTree from '@/components/chapter-tree/index.vue'
+import TreeChart from '@/components/tree-chart/index.vue'
 import { submitAiCreateChapter, getAiTaskStatus } from '@/api/ai'
-import { publishNode } from '@/api/nodes'
+import { publishNode, deleteNode } from '@/api/nodes'
 import type { Story } from '@/api/stories'
 import type { Node } from '@/api/nodes'
 import type { AiWritingStyle, AiSurpriseTime } from '@/api/ai'
@@ -826,6 +828,32 @@ async function handlePublishDraft(nodeId: number) {
   })
 }
 
+// 删除章节节点（故事主创 或 节点作者本人可操作）
+async function handleDeleteNode(nodeId: number, nodeTitle: string) {
+  uni.showModal({
+    title: '删除章节',
+    content: `确定要删除「${nodeTitle}」吗？删除后该章节及其所有子分支将无法恢复。`,
+    confirmText: '确定删除',
+    confirmColor: '#ef4444',
+    success: async ({ confirm }) => {
+      if (!confirm) return
+      try {
+        uni.showLoading({ title: '删除中...' })
+        await deleteNode(nodeId)
+        uni.hideLoading()
+        uni.showToast({ title: '章节已删除', icon: 'success' })
+        // 刷新章节树
+        if (story.value) {
+          await refreshTree(story.value.id)
+        }
+      } catch (err: any) {
+        uni.hideLoading()
+        uni.showToast({ title: err.message || '删除失败', icon: 'none' })
+      }
+    }
+  })
+}
+
 function goManage() {
   uni.navigateTo({ url: `/pages/story/manage?id=${story.value?.id}` })
 }
@@ -1081,10 +1109,6 @@ function formatTime(date: string) {
       }
     }
   }
-}
-
-.content-scroll {
-  height: calc(100vh - 520rpx);
 }
 
 .section-card {
