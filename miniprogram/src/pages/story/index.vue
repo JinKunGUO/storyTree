@@ -134,6 +134,7 @@
             :highlight-node-id="highlightNodeId"
             :current-user-id="userStore.userInfo?.id ?? null"
             :story-author-id="story.author_id"
+            :hide-canvas="showAiCreatePanel || showWordCountInput"
             @node-tap="goChapter"
             @write-branch="handleWriteBranch"
             @ai-create="handleAiCreate"
@@ -535,7 +536,7 @@ async function submitAiCreate(publishImmediately: boolean) {
       publishImmediately,
     })
     showAiCreatePanel.value = false
-    uni.showToast({ title: res.message || (publishImmediately ? '任务已提交，将自动发布' : '任务已提交，完成后保存为草稿'), icon: 'success', duration: 3000 })
+    uni.showToast({ title: 'AI任务已提交', icon: 'success', duration: 2000 })
 
     if (res.taskId) {
       if (res.scheduledAt) {
@@ -848,7 +849,13 @@ async function handleDeleteNode(nodeId: number, nodeTitle: string) {
         }
       } catch (err: any) {
         uni.hideLoading()
-        uni.showToast({ title: err.message || '删除失败', icon: 'none' })
+        const errMsg = err.message || '删除失败，请稍后重试'
+        uni.showModal({
+          title: '删除失败',
+          content: errMsg,
+          showCancel: false,
+          confirmText: '知道了',
+        })
       }
     }
   })

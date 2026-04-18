@@ -79,28 +79,37 @@ function request<T = unknown>(options: RequestOptions): Promise<T> {
           return
         }
 
-        // 401 未授权 - 清除登录状态并跳转登录页
+        // 401 未授权
         if (statusCode === 401) {
-          const respData = res.data as ApiResponse & { code?: string }
+          const respData = res.data as ApiResponse & { code?: string; error?: string }
           const isKicked = respData?.code === 'TOKEN_REPLACED'
-          userStore.logout()
-          uni.showModal({
-            title: isKicked ? '账号已在其他设备登录' : '登录已过期',
-            content: isKicked
-              ? '你的账号已在其他设备登录，当前设备已退出。如非本人操作，请修改密码。'
-              : '登录状态已过期，请重新登录',
-            showCancel: false,
-            confirmText: '重新登录',
-            success: () => {
-              uni.reLaunch({ url: '/pages/auth/login/index' })
-            }
-          })
-          reject(new Error(isKicked ? '账号已在其他设备登录' : '登录已过期，请重新登录'))
+
+          if (token) {
+            // 有 token 时收到 401：token 过期或被踢下线，清除登录状态并弹窗提示
+            userStore.logout()
+            uni.showModal({
+              title: isKicked ? '账号已在其他设备登录' : '登录已过期',
+              content: isKicked
+                ? '你的账号已在其他设备登录，当前设备已退出。如非本人操作，请修改密码。'
+                : '登录状态已过期，请重新登录',
+              showCancel: false,
+              confirmText: '重新登录',
+              success: () => {
+                uni.reLaunch({ url: '/pages/auth/login/index' })
+              }
+            })
+            reject(new Error(isKicked ? '账号已在其他设备登录' : '登录已过期，请重新登录'))
+          } else {
+            // 无 token 时收到 401：密码错误、账号不存在等，直接抛出后端错误信息，由调用方处理
+            const errMsg = respData?.error || respData?.message || '用户名或密码错误'
+            reject(new Error(errMsg))
+          }
           return
         }
 
-        // 其他错误
-        const errMsg = (res.data as ApiResponse)?.message || `请求失败 (${statusCode})`
+        // 其他错误：后端通常用 error 字段（如 { error: '...' }），兼容 message 字段
+        const respData = res.data as ApiResponse & { error?: string }
+        const errMsg = respData?.error || respData?.message || `请求失败 (${statusCode})`
         if (showError) {
           uni.showToast({ title: errMsg, icon: 'none', duration: 2000 })
         }

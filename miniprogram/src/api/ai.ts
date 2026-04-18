@@ -149,6 +149,9 @@ export function submitAiCreateChapter(params: AiCreateChapterParams) {
     ? (params.customScheduledAt ?? 'immediate')
     : params.surpriseTime
 
+  // 保存为草稿时生成 3 个选项（与网页端一致），自动发布时只需 1 个
+  const count = (params.publishImmediately === false) ? 3 : 1
+
   return http.post<{
     taskId: number
     scheduledAt?: string
@@ -160,7 +163,7 @@ export function submitAiCreateChapter(params: AiCreateChapterParams) {
     style: params.style,
     wordCount: params.wordCount || 1500,
     publishImmediately: params.publishImmediately ?? true,
-    count: 1,
+    count,
     mode: 'full',
   })
 }

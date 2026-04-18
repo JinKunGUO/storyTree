@@ -81,9 +81,9 @@ export function updateNode(id: number, data: { title?: string; content?: string;
   return http.put<{ node: Node }>(`/api/nodes/${id}`, data)
 }
 
-// 删除节点
+// 删除节点（showError: false，由业务层统一处理错误提示，避免 toast 重复弹出）
 export function deleteNode(id: number) {
-  return http.delete<{ message: string }>(`/api/nodes/${id}`)
+  return http.delete<{ message: string }>(`/api/nodes/${id}`, undefined, { showError: false })
 }
 
 // 给节点评分

@@ -21,7 +21,10 @@
 
     <!-- ECharts Canvas 容器 -->
     <view class="canvas-container" :style="{ height: canvasHeight + 'px' }">
+      <!-- 微信原生组件 canvas 无法被普通 view 覆盖（始终在最上层）
+           任何弹窗/遮罩显示期间必须用 v-if 完全卸载 canvas，否则会穿透弹窗 -->
       <canvas
+        v-if="!hideCanvas && !sheet.visible"
         id="treeCanvas"
         type="2d"
         class="tree-canvas"
@@ -111,9 +114,9 @@
           <text class="action-arrow">›</text>
         </view>
 
-        <!-- 续写分支：已登录 且 故事主创或协作者 且 已发布节点 -->
+        <!-- 续写分支：已登录 且 故事主创或协作者（草稿节点同样允许续写，与网页端一致） -->
         <view
-          v-if="!sheet.isDraft && props.isLoggedIn && props.isAuthorOrCollab"
+          v-if="props.isLoggedIn && props.isAuthorOrCollab"
           class="action-item action-write"
           @tap="onWriteBranch"
         >
@@ -122,9 +125,9 @@
           <text class="action-arrow">›</text>
         </view>
 
-        <!-- AI 创作：已登录 且 故事主创或协作者 且 已发布节点 -->
+        <!-- AI 创作：已登录 且 故事主创或协作者（草稿节点同样允许 AI 创作，与网页端一致） -->
         <view
-          v-if="!sheet.isDraft && props.isLoggedIn && props.isAuthorOrCollab"
+          v-if="props.isLoggedIn && props.isAuthorOrCollab"
           class="action-item action-ai"
           @tap="onAiCreate"
         >
@@ -165,6 +168,8 @@ const props = defineProps<{
   highlightNodeId?: number | null
   currentUserId?: number | null
   storyAuthorId?: number | null
+  /** 为 true 时隐藏 canvas（微信原生组件无法被普通 view 覆盖，弹窗显示期间需隐藏） */
+  hideCanvas?: boolean
 }>()
 
 // ─── Emits ────────────────────────────────────────────────────────────────────
@@ -192,6 +197,9 @@ const totalNodes = ref(0)
 let chartInstance: any = null
 let currentZoom = 1
 let _canvasNode: any = null  // 保存 canvas 节点引用，供 resize 时更新物理像素尺寸
+// onMounted 完成 boundingClientRect 宽度修正后置为 true
+// @ready 触发时若此标志未就绪，说明 onMounted 还没到，忽略（onMounted 会主动调用 initChart）
+let _mountInitDone = false
 
 // Bottom Sheet 状态
 const sheet = reactive({
@@ -314,7 +322,10 @@ class WxCanvas {
 
 // canvas @ready 回调：微信小程序 type="2d" canvas 的 @ready 事件不携带 detail.canvas，
 // 统一通过 SelectorQuery 获取 canvas 节点（这是唯一可靠的方式）
+// 注意：@ready 可能在 onMounted 的 boundingClientRect 修正宽度之前触发，
+// 此时 _mountInitDone 为 false，忽略这次调用，等 onMounted 主动调用 initChart()。
 function onCanvasReady(_e: any) {
+  if (!_mountInitDone) return
   queryCanvas()
 }
 
@@ -336,7 +347,11 @@ function queryCanvas() {
         chartLoading.value = false
         return
       }
-      setupChart(canvasRes.node, canvasRes.width, canvasRes.height)
+      // 注意：canvas 刚被 v-if 创建时，@ready 可能在 CSS 尺寸生效前触发，
+      // 导致 fields({ size: true }) 返回 width/height 为 0。
+      // 这里不传 size，直接让 setupChart 使用已知的 canvasWidth/canvasHeight 值，
+      // 这两个值在 setup 阶段已用 getSystemInfoSync 初始化，onMounted 里已做精确修正。
+      setupChart(canvasRes.node)
     })
 }
 
@@ -345,8 +360,12 @@ function setupChart(canvasNode: any, width?: number, height?: number) {
 
   const sys = uni.getSystemInfoSync()
   const dpr = sys.pixelRatio || 2
-  const w = width || sys.windowWidth
-  const h = height || canvasHeight.value
+  const w = (width && width > 0) ? width : (canvasWidth.value || sys.windowWidth)
+
+  // 直接用 calcCanvasHeight 计算正确高度，避免先用初始值 init 再 resize 导致布局错位
+  // calcCanvasHeight 依赖 canvasWidth.value，需先更新 w
+  canvasWidth.value = w
+  const h = calcCanvasHeight(props.rootNode)
 
   // 设置 canvas 物理像素尺寸
   canvasNode.width  = w * dpr
@@ -448,15 +467,15 @@ function renderChart() {
   const data = nodeToEChartsData(props.rootNode)
   const isHorizontal = layout.value === 'LR'
 
-  // 动态调整 canvas 高度，让节点有足够空间
+  // 动态调整 canvas 高度（布局切换时叶子数/深度方向变化，需重新计算）
   const newH = calcCanvasHeight(props.rootNode)
   if (Math.abs(newH - canvasHeight.value) > 20) {
     canvasHeight.value = newH
-    // 同步更新 canvas 物理像素尺寸
     const dpr = uni.getSystemInfoSync().pixelRatio || 2
     if (_canvasNode) {
       _canvasNode.height = newH * dpr
     }
+    // resize 后需要强制重绘，微信小程序 canvas 不会自动响应
     chartInstance.resize({ width: canvasWidth.value, height: newH })
   }
 
@@ -711,6 +730,46 @@ function onDelete() {
   emit('delete-node', id, title)
 }
 
+// ─── 监听弹窗状态变化：canvas 重新出现时需重新初始化图表 ─────────────────────
+// 微信原生 canvas 组件被 v-if 卸载后，DOM 节点被销毁，重新显示时必须重新 query + init
+function reinitCanvasIfNeeded() {
+  if (!props.rootNode) return
+  chartInstance?.dispose()
+  chartInstance = null
+  _canvasNode = null
+  nextTick(() => {
+    queryCanvas()
+  })
+}
+
+watch(
+  () => props.hideCanvas,
+  (hidden) => {
+    // 只在 hideCanvas 从 true→false 时恢复，且 sheet 也未显示
+    if (!hidden && !sheet.visible) {
+      reinitCanvasIfNeeded()
+    }
+  }
+)
+
+watch(
+  () => sheet.visible,
+  (visible) => {
+    if (!visible) {
+      // sheet 关闭时，closeSheet() 和 emit() 是同步执行的：
+      // 例如 onAiCreate() 先 closeSheet()，再 emit('ai-create')，父组件响应后设置 hideCanvas=true。
+      // 但父组件的 prop 更新是异步的，此时 props.hideCanvas 可能还是 false（旧值），
+      // 导致误判为"需要重建 canvas"，而实际上 canvas 马上就会被 hideCanvas 卸载。
+      // 等一个 nextTick 让父组件的 prop 更新完成，再检查 hideCanvas 状态。
+      nextTick(() => {
+        if (!props.hideCanvas) {
+          reinitCanvasIfNeeded()
+        }
+      })
+    }
+  }
+)
+
 // ─── 监听数据变化 ─────────────────────────────────────────────────────────────
 watch(
   () => props.rootNode,
@@ -757,9 +816,11 @@ watch(
 
 // ─── 生命周期 ─────────────────────────────────────────────────────────────────
 onMounted(() => {
-  nextTick(() => {
-    // canvasWidth/canvasHeight 已在 setup 同步阶段用 getSystemInfoSync 初始化
-    // 这里只做精确修正：查询容器实际宽度（考虑页面内边距等）
+  // 延迟 150ms 再初始化：组件挂载时父页面（story）的封面图、简介等内容
+  // 布局可能尚未稳定，boundingClientRect 会返回错误的宽度导致 canvas 位置偏移。
+  // 等待布局完成后再查询，确保获取到正确的容器尺寸。
+  // 同时，canvas 的 @ready 事件会在此之前触发，通过 _mountInitDone 标志位阻止提前初始化。
+  setTimeout(() => {
     const wxScope = (_internalInstance as any)?.ctx?.$scope
     if (wxScope) {
       wx.createSelectorQuery().in(wxScope)
@@ -768,13 +829,16 @@ onMounted(() => {
           if (rect && rect.width > 0) {
             canvasWidth.value = rect.width
           }
+          // 宽度修正完成，允许 @ready 触发的 queryCanvas 正常执行
+          _mountInitDone = true
           initChart()
         })
         .exec()
     } else {
+      _mountInitDone = true
       initChart()
     }
-  })
+  }, 150)
 })
 
 onUnmounted(() => {
