@@ -125,6 +125,59 @@ export function getAiQuota() {
   }>('/api/ai/usage-stats')
 }
 
+// 获取 AI v2 配额信息（配额 + 积分消耗）
+// 后端路由：GET /api/ai/v2/quota
+export function getAiV2Quota() {
+  return http.get<{
+    quota: {
+      continuation: { used: number; limit: number; remaining: number; unlimited: boolean }
+      polish: { used: number; limit: number; remaining: number; unlimited: boolean }
+      illustration: { used: number; limit: number; remaining: number; unlimited: boolean }
+    }
+    costs: {
+      continuation: number
+      polish: number
+      illustration: number
+    }
+    points: number
+  }>('/api/ai/v2/quota', undefined, { showError: false })
+}
+
+// AI v2 润色（同步等待，后端路由：POST /api/ai/v2/polish）
+export function createV2PolishTask(data: {
+  content: string
+  style?: string
+}) {
+  return http.post<{
+    taskId: number
+    original: string
+    polished: string
+    style: string
+  }>('/api/ai/v2/polish', {
+    content: data.content,
+    style: data.style || 'elegant',
+  }, { showError: false })
+}
+
+// 提交 AI 插图任务（异步，后端路由：POST /api/ai/v2/illustration/submit）
+export function submitIllustrationTask(data: {
+  storyId: number
+  nodeId: number
+  chapterTitle: string
+  chapterContent: string
+}) {
+  return http.post<{
+    taskId: number
+    status: string
+    message: string
+  }>('/api/ai/v2/illustration/submit', {
+    storyId: data.storyId,
+    nodeId: data.nodeId,
+    chapterTitle: data.chapterTitle,
+    chapterContent: data.chapterContent,
+  }, { showError: false })
+}
+
 // ——— AI 创作章节（独立创作者模式，ai-v2 接口）———
 
 export type AiSurpriseTime = 'immediate' | '1hour' | 'tonight' | 'tomorrow' | 'custom'

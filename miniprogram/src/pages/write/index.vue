@@ -95,25 +95,30 @@
           <text v-if="wordCount < 100" class="word-hint">建议至少写100字</text>
         </view>
 
-        <!-- AI 辅助工具（登录即可使用） -->
+        <!-- AI 辅助工具（登录即可使用，与网页端对齐：润色/续写/插图） -->
         <view v-if="userStore.isLoggedIn" class="ai-tools">
           <text class="ai-tools-title">✨ AI 辅助</text>
           <view class="ai-actions">
-            <view class="ai-btn" @tap="openAiPanel('continue')">
-              <text class="ai-btn-icon">🤖</text>
-              <text class="ai-btn-label">AI 续写</text>
-            </view>
             <view class="ai-btn" @tap="openAiPanel('polish')">
               <text class="ai-btn-icon">✨</text>
               <text class="ai-btn-label">AI 润色</text>
+              <view v-if="aiQuota" class="ai-quota-badge" :class="getQuotaBadgeClass('polish')">
+                <text class="ai-quota-text">{{ getQuotaText('polish') }}</text>
+              </view>
             </view>
-            <view class="ai-btn" @tap="openAiPanel('summary')">
-              <text class="ai-btn-icon">📋</text>
-              <text class="ai-btn-label">生成摘要</text>
+            <view class="ai-btn" @tap="openAiPanel('continue')">
+              <text class="ai-btn-icon">✍️</text>
+              <text class="ai-btn-label">AI 续写</text>
+              <view v-if="aiQuota" class="ai-quota-badge" :class="getQuotaBadgeClass('continue')">
+                <text class="ai-quota-text">{{ getQuotaText('continue') }}</text>
+              </view>
             </view>
-            <view class="ai-btn" @tap="chooseImage">
+            <view class="ai-btn" @tap="openAiPanel('illustration')">
               <text class="ai-btn-icon">🎨</text>
               <text class="ai-btn-label">AI 插图</text>
+              <view v-if="aiQuota" class="ai-quota-badge" :class="getQuotaBadgeClass('illustration')">
+                <text class="ai-quota-text">{{ getQuotaText('illustration') }}</text>
+              </view>
             </view>
           </view>
         </view>
@@ -155,6 +160,8 @@
       :story-id="storyId || undefined"
       :node-id="parentId || undefined"
       :content="form.content"
+      :chapter-title="form.title"
+      :initial-tab="aiPanelInitialTab"
       @close="showAiPanel = false"
       @apply="onAiApply"
     />
@@ -167,6 +174,7 @@ import { useUserStore } from '@/store/user'
 import { createNode, updateNode, getNode } from '@/api/nodes'
 import { getUserStories } from '@/api/stories'
 import { getImageUrl } from '@/utils/request'
+import { getAiV2Quota } from '@/api/ai'
 import AiPanel from '@/components/ai-panel/index.vue'
 import type { Story } from '@/api/stories'
 
@@ -176,8 +184,48 @@ const statusBarHeight = ref(20) // 状态栏高度（px），默认 20px 兜底
 
 const publishing = ref(false)
 const showAiPanel = ref(false)
+const aiPanelInitialTab = ref<'continue' | 'polish' | 'illustration'>('polish')
 const showStoryPicker = ref(false)
 const isEditing = ref(false)
+
+// AI 配额数据（用于按钮上的徽章显示）
+const aiQuota = ref<{
+  quota: {
+    continuation: { remaining: number; unlimited: boolean }
+    polish: { remaining: number; unlimited: boolean }
+    illustration: { remaining: number; unlimited: boolean }
+  }
+  costs: { continuation: number; polish: number; illustration: number }
+} | null>(null)
+
+async function loadAiQuota() {
+  if (!userStore.isLoggedIn) return
+  try {
+    aiQuota.value = await getAiV2Quota()
+  } catch {
+    // 静默失败，不影响功能
+  }
+}
+
+function getQuotaText(type: 'continue' | 'polish' | 'illustration'): string {
+  if (!aiQuota.value) return ''
+  const key = type === 'continue' ? 'continuation' : type
+  const q = aiQuota.value.quota[key as keyof typeof aiQuota.value.quota]
+  const cost = aiQuota.value.costs[type === 'continue' ? 'continuation' : type as keyof typeof aiQuota.value.costs]
+  if (q.unlimited) return '∞'
+  if (q.remaining > 0) return String(q.remaining)
+  return `${cost}积分`
+}
+
+function getQuotaBadgeClass(type: 'continue' | 'polish' | 'illustration'): string {
+  if (!aiQuota.value) return ''
+  const key = type === 'continue' ? 'continuation' : type
+  const q = aiQuota.value.quota[key as keyof typeof aiQuota.value.quota]
+  if (q.unlimited) return 'unlimited'
+  if (q.remaining <= 0) return 'exhausted'
+  if (q.remaining <= 3) return 'low'
+  return ''
+}
 
 const storyId = ref<number | null>(null)
 const parentId = ref<number | null>(null)
@@ -284,6 +332,9 @@ onMounted(async () => {
   if (!storyId.value) {
     loadMyStories()
   }
+
+  // 加载 AI 配额（用于按钮徽章显示）
+  loadAiQuota()
 
   // AI 模式：直接打开 AI 面板
   if (mode === 'ai') {
@@ -435,7 +486,8 @@ async function chooseImage() {
 }
 
 // 打开 AI 面板并预选功能
-function openAiPanel(action?: string) {
+function openAiPanel(action: string = 'polish') {
+  aiPanelInitialTab.value = action as 'continue' | 'polish' | 'illustration'
   showAiPanel.value = true
 }
 
@@ -774,16 +826,47 @@ function handleBack() {
 
     .ai-btn {
       flex: 1;
+      position: relative;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 8rpx;
-      padding: 16rpx 0;
+      padding: 20rpx 0 16rpx;
       background: rgba(255, 255, 255, 0.8);
       border-radius: 16rpx;
 
-      .ai-btn-icon { font-size: 32rpx; }
-      .ai-btn-label { font-size: 20rpx; color: #475569; }
+      .ai-btn-icon { font-size: 36rpx; }
+      .ai-btn-label { font-size: 22rpx; color: #475569; font-weight: 500; }
+
+      // 配额徽章（右上角）
+      .ai-quota-badge {
+        position: absolute;
+        top: 8rpx;
+        right: 8rpx;
+        min-width: 32rpx;
+        height: 32rpx;
+        padding: 0 8rpx;
+        border-radius: 16rpx;
+        background: #7c6af7;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+
+        .ai-quota-text {
+          font-size: 18rpx;
+          color: #ffffff;
+          font-weight: 700;
+          line-height: 1;
+        }
+
+        &.unlimited { background: #10b981; }
+        &.low { background: #f59e0b; }
+        &.exhausted {
+          background: #94a3b8;
+          .ai-quota-text { font-size: 16rpx; }
+        }
+      }
     }
   }
 }

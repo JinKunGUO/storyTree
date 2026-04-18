@@ -16,56 +16,108 @@
         </view>
       </view>
 
-      <!-- 功能选项 -->
-      <view class="actions-section">
-        <text class="section-label">选择功能</text>
-        <view class="action-grid">
+      <!-- 功能 Tab（与网页端对齐：润色 / 续写 / 插图） -->
+      <view class="tab-bar">
+        <view
+          v-for="tab in tabs"
+          :key="tab.type"
+          class="tab-item"
+          :class="{ active: activeTab === tab.type }"
+          @tap="switchTab(tab.type)"
+        >
+          <text class="tab-icon">{{ tab.icon }}</text>
+          <text class="tab-label">{{ tab.label }}</text>
+          <!-- 配额徽章 -->
           <view
-            v-for="action in aiActions"
-            :key="action.type"
-            class="action-card"
-            :class="{ active: selectedAction === action.type }"
-            @tap="selectAction(action.type)"
+            v-if="quota"
+            class="quota-badge"
+            :class="quotaBadgeClass(tab.type)"
           >
-            <text class="action-icon">{{ action.icon }}</text>
-            <text class="action-name">{{ action.name }}</text>
-            <text class="action-desc">{{ action.desc }}</text>
+            <text class="quota-text">{{ quotaBadgeText(tab.type) }}</text>
+          </view>
+          <view v-else-if="quotaLoading" class="quota-badge loading">
+            <text class="quota-text">…</text>
           </view>
         </view>
       </view>
 
-      <!-- 风格选择（续写时显示） -->
-      <view v-if="selectedAction === 'continue'" class="style-section">
-        <text class="section-label">写作风格</text>
-        <scroll-view class="style-scroll" scroll-x>
-          <view class="style-list">
+      <!-- ===== 续写面板 ===== -->
+      <view v-if="activeTab === 'continue'" class="tab-content">
+        <view class="section">
+          <text class="section-label">写作风格</text>
+          <scroll-view class="style-scroll" scroll-x>
+            <view class="style-list">
+              <view
+                v-for="style in writingStyles"
+                :key="style.value"
+                class="style-tag"
+                :class="{ active: selectedStyle === style.value }"
+                @tap="selectedStyle = style.value"
+              >
+                {{ style.label }}
+              </view>
+            </view>
+          </scroll-view>
+        </view>
+        <view class="section">
+          <text class="section-label">补充说明（可选）</text>
+          <textarea
+            v-model="customPrompt"
+            class="prompt-input"
+            placeholder="例如：请写得更悬疑一些，加入更多对话..."
+            :maxlength="200"
+            auto-height
+          />
+        </view>
+      </view>
+
+      <!-- ===== 润色面板 ===== -->
+      <view v-if="activeTab === 'polish'" class="tab-content">
+        <view class="section">
+          <text class="section-label">润色风格</text>
+          <view class="style-grid">
             <view
-              v-for="style in writingStyles"
+              v-for="style in polishStyles"
               :key="style.value"
-              class="style-tag"
-              :class="{ active: selectedStyle === style.value }"
-              @tap="selectedStyle = style.value"
+              class="style-card"
+              :class="{ active: selectedPolishStyle === style.value }"
+              @tap="selectedPolishStyle = style.value"
             >
-              {{ style.label }}
+              <text class="style-card-icon">{{ style.icon }}</text>
+              <text class="style-card-name">{{ style.label }}</text>
             </view>
           </view>
-        </scroll-view>
+        </view>
+        <view class="section">
+          <text class="section-label">待润色内容</text>
+          <view class="content-preview">
+            <text class="content-preview-text">{{ contentPreview }}</text>
+          </view>
+        </view>
       </view>
 
-      <!-- 自定义提示词 -->
-      <view class="prompt-section">
-        <text class="section-label">补充说明（可选）</text>
-        <textarea
-          v-model="customPrompt"
-          class="prompt-input"
-          placeholder="例如：请写得更悬疑一些，加入更多对话..."
-          :maxlength="200"
-          auto-height
-        />
+      <!-- ===== 插图面板 ===== -->
+      <view v-if="activeTab === 'illustration'" class="tab-content">
+        <view class="section illustration-intro">
+          <text class="intro-icon">🎨</text>
+          <text class="intro-title">AI 插图生成</text>
+          <text class="intro-desc">AI 将根据章节标题和内容自动生成配套插图，任务完成后将通过通知告知您。</text>
+        </view>
+        <view class="section">
+          <text class="section-label">章节标题</text>
+          <view class="info-row">
+            <text class="info-text">{{ chapterTitle || '（未填写标题）' }}</text>
+          </view>
+        </view>
+        <view v-if="!storyId || !nodeId" class="section">
+          <view class="warn-tip">
+            <text class="warn-text">⚠️ 插图功能需要先保存章节草稿，请先点击「存草稿」</text>
+          </view>
+        </view>
       </view>
 
-      <!-- 生成结果 -->
-      <view v-if="result" class="result-section">
+      <!-- 生成结果（续写 / 润色） -->
+      <view v-if="result && activeTab !== 'illustration'" class="result-section">
         <view class="result-header">
           <text class="section-label">生成结果</text>
           <view class="result-actions">
@@ -87,11 +139,11 @@
       <view class="panel-footer">
         <button
           class="generate-btn"
-          :disabled="!selectedAction || generating"
+          :disabled="!canGenerate || generating"
           :loading="generating"
           @tap="generate"
         >
-          {{ generating ? 'AI 生成中...' : '开始生成' }}
+          {{ generateBtnText }}
         </button>
       </view>
     </view>
@@ -99,54 +151,103 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { aiApi } from '@/api'
+import { ref, computed, watch } from 'vue'
+import { getAiV2Quota, createV2PolishTask, submitIllustrationTask } from '@/api/ai'
+import http from '@/utils/request'
 
 const props = defineProps<{
   visible: boolean
   storyId?: number
-  nodeId?: number
-  content?: string
+  nodeId?: number        // 父节点 id（续写时是父节点，润色/插图时是当前节点）
+  content?: string       // 当前编辑器内容
+  chapterTitle?: string  // 当前章节标题
+  initialTab?: 'continue' | 'polish' | 'illustration'
 }>()
 
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'apply', content: string): void
+  (e: 'image-generated', url: string): void
 }>()
 
-const selectedAction = ref<string>('')
+// ——— 配额 ———
+interface QuotaItem {
+  used: number
+  limit: number
+  remaining: number
+  unlimited: boolean
+}
+interface QuotaData {
+  quota: { continuation: QuotaItem; polish: QuotaItem; illustration: QuotaItem }
+  costs: { continuation: number; polish: number; illustration: number }
+  points: number
+}
+const quota = ref<QuotaData | null>(null)
+const quotaLoading = ref(false)
+
+async function loadQuota() {
+  quotaLoading.value = true
+  try {
+    quota.value = await getAiV2Quota()
+  } catch {
+    // 静默失败，不影响功能
+  } finally {
+    quotaLoading.value = false
+  }
+}
+
+function quotaBadgeText(type: string): string {
+  if (!quota.value) return ''
+  const key = type === 'continue' ? 'continuation' : type === 'polish' ? 'polish' : 'illustration'
+  const q = quota.value.quota[key as keyof typeof quota.value.quota]
+  const cost = quota.value.costs[key as keyof typeof quota.value.costs]
+  if (q.unlimited) return '∞'
+  if (q.remaining > 0) return String(q.remaining)
+  return `${cost}积分`
+}
+
+function quotaBadgeClass(type: string): string {
+  if (!quota.value) return ''
+  const key = type === 'continue' ? 'continuation' : type === 'polish' ? 'polish' : 'illustration'
+  const q = quota.value.quota[key as keyof typeof quota.value.quota]
+  if (q.unlimited) return 'unlimited'
+  if (q.remaining <= 0) return 'exhausted'
+  if (q.remaining <= 3) return 'low'
+  return ''
+}
+
+// ——— Tab ———
+const tabs = [
+  { type: 'polish', icon: '✨', label: 'AI 润色' },
+  { type: 'continue', icon: '✍️', label: 'AI 续写' },
+  { type: 'illustration', icon: '🎨', label: 'AI 插图' },
+]
+
+const activeTab = ref<'continue' | 'polish' | 'illustration'>('polish')
+
+function switchTab(type: string) {
+  activeTab.value = type as 'continue' | 'polish' | 'illustration'
+  result.value = ''
+  error.value = ''
+}
+
+// 面板打开时初始化
+watch(
+  () => props.visible,
+  (val) => {
+    if (val) {
+      activeTab.value = props.initialTab || 'polish'
+      result.value = ''
+      error.value = ''
+      customPrompt.value = ''
+      loadQuota()
+    }
+  }
+)
+
+// ——— 续写 ———
 const selectedStyle = ref('default')
 const customPrompt = ref('')
-const generating = ref(false)
-const result = ref('')
-const error = ref('')
-
-const aiActions = [
-  {
-    type: 'continue',
-    icon: '✍️',
-    name: 'AI 续写',
-    desc: '基于当前内容智能续写',
-  },
-  {
-    type: 'polish',
-    icon: '💎',
-    name: 'AI 润色',
-    desc: '优化文字表达和语言',
-  },
-  {
-    type: 'summary',
-    icon: '📋',
-    name: 'AI 摘要',
-    desc: '生成内容摘要',
-  },
-  {
-    type: 'branch',
-    icon: '🌿',
-    name: 'AI 分支',
-    desc: '生成故事分支方向',
-  },
-]
 
 const writingStyles = [
   { label: '默认', value: 'default' },
@@ -158,62 +259,97 @@ const writingStyles = [
   { label: '现实', value: 'realistic' },
 ]
 
-function selectAction(type: string) {
-  selectedAction.value = type
-  result.value = ''
-  error.value = ''
-}
+// ——— 润色 ———
+const selectedPolishStyle = ref('elegant')
 
-async function generate() {
-  if (!selectedAction.value || generating.value) return
-  if (!props.storyId || !props.nodeId) {
-    error.value = '请先选择故事和章节'
-    return
+const polishStyles = [
+  { value: 'elegant', icon: '💎', label: '优雅精炼' },
+  { value: 'concise', icon: '✂️', label: '简洁明了' },
+  { value: 'vivid', icon: '🌈', label: '生动形象' },
+  { value: 'formal', icon: '📜', label: '正式严谨' },
+]
+
+const contentPreview = computed(() => {
+  const c = props.content || ''
+  return c.length > 100 ? c.slice(0, 100) + '...' : (c || '（编辑器内容为空）')
+})
+
+// ——— 状态 ———
+const generating = ref(false)
+const result = ref('')
+const error = ref('')
+
+const canGenerate = computed(() => {
+  if (activeTab.value === 'illustration') {
+    return !!(props.storyId && props.nodeId && props.chapterTitle)
   }
+  if (activeTab.value === 'continue') {
+    return !!(props.storyId && props.nodeId)
+  }
+  // 润色只需要有内容
+  return !!(props.content && props.content.trim().length >= 10)
+})
+
+const generateBtnText = computed(() => {
+  if (generating.value) return 'AI 生成中...'
+  if (activeTab.value === 'illustration') return '提交插图任务'
+  return '开始生成'
+})
+
+// ——— 生成 ———
+async function generate() {
+  if (!canGenerate.value || generating.value) return
 
   generating.value = true
   error.value = ''
   result.value = ''
 
   try {
-    switch (selectedAction.value) {
-      case 'continue': {
-        // /api/ai/generate 是同步接口，直接返回 options 数组
-        const res = await aiApi.createContinueTask({
-          story_id: props.storyId,
-          node_id: props.nodeId,
-          style: selectedStyle.value !== 'default' ? selectedStyle.value : undefined,
-        })
-        const options = res.options || []
-        if (options.length > 0) {
-          // 取第一个续写选项的内容
-          result.value = options[0].content || ''
-        } else {
-          error.value = 'AI 未返回续写内容，请重试'
-        }
-        break
+    if (activeTab.value === 'continue') {
+      // 使用旧版同步接口生成续写（write页面是草稿阶段，适合快速预览）
+      const res = await http.post<{ options: Array<{ content: string }> }>('/api/ai/generate', {
+        nodeId: props.nodeId,
+        storyId: props.storyId,
+        style: selectedStyle.value !== 'default' ? selectedStyle.value : undefined,
+        count: 1,
+      }, { showError: false })
+      const options = res.options || []
+      if (options.length > 0) {
+        result.value = options[0].content || ''
+      } else {
+        error.value = 'AI 未返回续写内容，请重试'
       }
-      case 'polish': {
-        const res = await aiApi.createPolishTask({
-          node_id: props.nodeId,
-          content: props.content || '',
-        })
-        const options = res.options || []
-        result.value = options[0]?.content || ''
-        if (!result.value) error.value = 'AI 润色失败，请重试'
-        break
+    } else if (activeTab.value === 'polish') {
+      const content = props.content?.trim() || ''
+      if (content.length < 10) {
+        error.value = '请先写一些内容（至少10字）再进行润色'
+        return
       }
-      case 'summary': {
-        const res = await aiApi.createSummaryTask({
-          node_id: props.nodeId,
-        })
-        const options = res.options || []
-        result.value = options[0]?.content || ''
-        if (!result.value) error.value = 'AI 摘要生成失败，请重试'
-        break
+      if (content.length > 5000) {
+        error.value = '内容过长（超过5000字），请减少内容后再润色'
+        return
       }
-      default:
-        throw new Error('未知操作类型')
+      const res = await createV2PolishTask({
+        content,
+        style: selectedPolishStyle.value,
+      })
+      result.value = res.polished || ''
+      if (!result.value) error.value = 'AI 润色失败，请重试'
+      // 润色完成后刷新配额
+      loadQuota()
+    } else if (activeTab.value === 'illustration') {
+      await submitIllustrationTask({
+        storyId: props.storyId!,
+        nodeId: props.nodeId!,
+        chapterTitle: props.chapterTitle || '',
+        chapterContent: props.content || '',
+      })
+      uni.showToast({ title: '插图任务已提交，完成后将通知您', icon: 'none', duration: 3000 })
+      // 插图是异步任务，关闭面板
+      emit('close')
+      // 刷新配额
+      loadQuota()
+      return
     }
   } catch (e: any) {
     error.value = e?.message || 'AI 生成失败，请稍后重试'
@@ -275,10 +411,7 @@ function applyResult() {
         align-items: center;
         gap: 12rpx;
 
-        .panel-icon {
-          font-size: 36rpx;
-        }
-
+        .panel-icon { font-size: 36rpx; }
         .panel-title {
           font-size: 32rpx;
           font-weight: 700;
@@ -303,6 +436,88 @@ function applyResult() {
       }
     }
 
+    // ===== Tab 栏 =====
+    .tab-bar {
+      display: flex;
+      padding: 0 24rpx;
+      border-bottom: 1rpx solid #f0f2f5;
+
+      .tab-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20rpx 8rpx 16rpx;
+        position: relative;
+        gap: 6rpx;
+
+        .tab-icon { font-size: 32rpx; }
+        .tab-label {
+          font-size: 24rpx;
+          color: #94a3b8;
+        }
+
+        &.active {
+          .tab-label { color: #7c6af7; font-weight: 600; }
+          &::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 20%;
+            right: 20%;
+            height: 4rpx;
+            background: #7c6af7;
+            border-radius: 2rpx;
+          }
+        }
+
+        // 配额徽章
+        .quota-badge {
+          position: absolute;
+          top: 12rpx;
+          right: 12rpx;
+          min-width: 32rpx;
+          height: 32rpx;
+          padding: 0 8rpx;
+          border-radius: 16rpx;
+          background: #7c6af7;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          .quota-text {
+            font-size: 18rpx;
+            color: #ffffff;
+            font-weight: 700;
+          }
+
+          &.unlimited {
+            background: #10b981;
+          }
+          &.low {
+            background: #f59e0b;
+          }
+          &.exhausted {
+            background: #94a3b8;
+            .quota-text { font-size: 16rpx; }
+          }
+          &.loading {
+            background: #e2e8f0;
+            .quota-text { color: #94a3b8; }
+          }
+        }
+      }
+    }
+
+    // ===== 内容区 =====
+    .tab-content {
+      padding: 24rpx 32rpx 0;
+    }
+
+    .section {
+      margin-bottom: 24rpx;
+    }
+
     .section-label {
       font-size: 26rpx;
       color: #64748b;
@@ -310,93 +525,135 @@ function applyResult() {
       margin-bottom: 16rpx;
     }
 
-    .actions-section {
-      padding: 24rpx 32rpx;
-
-      .action-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 16rpx;
-
-        .action-card {
-          padding: 24rpx;
-          border-radius: 16rpx;
-          border: 2rpx solid #e2e8f0;
+    // 风格横向滚动（续写）
+    .style-scroll {
+      white-space: nowrap;
+      .style-list {
+        display: flex;
+        gap: 12rpx;
+        .style-tag {
+          display: inline-flex;
+          padding: 10rpx 24rpx;
+          border-radius: 40rpx;
+          border: 1rpx solid #e2e8f0;
+          font-size: 26rpx;
+          color: #475569;
           background: #f8fafc;
-          display: flex;
-          flex-direction: column;
-          gap: 8rpx;
-          transition: all 0.2s;
-
+          white-space: nowrap;
           &.active {
             border-color: #7c6af7;
-            background: rgba(124, 106, 247, 0.06);
-          }
-
-          .action-icon {
-            font-size: 40rpx;
-          }
-
-          .action-name {
-            font-size: 28rpx;
-            font-weight: 600;
-            color: #1e293b;
-          }
-
-          .action-desc {
-            font-size: 22rpx;
-            color: #94a3b8;
+            color: #7c6af7;
+            background: rgba(124, 106, 247, 0.08);
           }
         }
       }
     }
 
-    .style-section {
-      padding: 0 32rpx 24rpx;
+    // 润色风格网格
+    .style-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12rpx;
 
-      .style-scroll {
-        white-space: nowrap;
-
-        .style-list {
-          display: flex;
-          gap: 12rpx;
-
-          .style-tag {
-            display: inline-flex;
-            padding: 10rpx 24rpx;
-            border-radius: 40rpx;
-            border: 1rpx solid #e2e8f0;
-            font-size: 26rpx;
-            color: #475569;
-            background: #f8fafc;
-            white-space: nowrap;
-
-            &.active {
-              border-color: #7c6af7;
-              color: #7c6af7;
-              background: rgba(124, 106, 247, 0.08);
-            }
-          }
-        }
-      }
-    }
-
-    .prompt-section {
-      padding: 0 32rpx 24rpx;
-
-      .prompt-input {
-        width: 100%;
-        min-height: 120rpx;
-        padding: 16rpx;
-        border-radius: 12rpx;
-        border: 1rpx solid #e2e8f0;
-        font-size: 26rpx;
-        color: #1e293b;
+      .style-card {
+        padding: 16rpx 8rpx;
+        border-radius: 16rpx;
+        border: 2rpx solid #e2e8f0;
         background: #f8fafc;
-        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8rpx;
+
+        &.active {
+          border-color: #7c6af7;
+          background: rgba(124, 106, 247, 0.06);
+        }
+
+        .style-card-icon { font-size: 36rpx; }
+        .style-card-name {
+          font-size: 22rpx;
+          color: #475569;
+          text-align: center;
+        }
       }
     }
 
+    // 内容预览
+    .content-preview {
+      padding: 16rpx;
+      background: #f8fafc;
+      border-radius: 12rpx;
+      border: 1rpx solid #e2e8f0;
+      .content-preview-text {
+        font-size: 26rpx;
+        color: #64748b;
+        line-height: 1.7;
+      }
+    }
+
+    // 插图介绍
+    .illustration-intro {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24rpx;
+      background: rgba(124, 106, 247, 0.04);
+      border-radius: 16rpx;
+      border: 1rpx solid rgba(124, 106, 247, 0.12);
+      gap: 12rpx;
+
+      .intro-icon { font-size: 56rpx; }
+      .intro-title {
+        font-size: 30rpx;
+        font-weight: 700;
+        color: #1e293b;
+      }
+      .intro-desc {
+        font-size: 24rpx;
+        color: #64748b;
+        text-align: center;
+        line-height: 1.7;
+      }
+    }
+
+    .info-row {
+      padding: 12rpx 16rpx;
+      background: #f8fafc;
+      border-radius: 12rpx;
+      border: 1rpx solid #e2e8f0;
+      .info-text {
+        font-size: 26rpx;
+        color: #475569;
+      }
+    }
+
+    .warn-tip {
+      padding: 16rpx;
+      background: #fffbeb;
+      border-radius: 12rpx;
+      border: 1rpx solid #fde68a;
+      .warn-text {
+        font-size: 24rpx;
+        color: #92400e;
+        line-height: 1.6;
+      }
+    }
+
+    // 提示词输入
+    .prompt-input {
+      width: 100%;
+      min-height: 100rpx;
+      padding: 16rpx;
+      border-radius: 12rpx;
+      border: 1rpx solid #e2e8f0;
+      font-size: 26rpx;
+      color: #1e293b;
+      background: #f8fafc;
+      box-sizing: border-box;
+    }
+
+    // 生成结果
     .result-section {
       padding: 0 32rpx 24rpx;
 
@@ -430,6 +687,8 @@ function applyResult() {
         background: #f8fafc;
         border-radius: 12rpx;
         border: 1rpx solid #e2e8f0;
+        max-height: 400rpx;
+        overflow-y: auto;
 
         .result-text {
           font-size: 28rpx;
@@ -439,6 +698,7 @@ function applyResult() {
       }
     }
 
+    // 错误提示
     .error-tip {
       margin: 0 32rpx 16rpx;
       padding: 16rpx;
@@ -451,6 +711,7 @@ function applyResult() {
       }
     }
 
+    // 底部按钮
     .panel-footer {
       padding: 16rpx 32rpx 32rpx;
 
@@ -465,6 +726,7 @@ function applyResult() {
         display: flex;
         align-items: center;
         justify-content: center;
+        border: none;
 
         &[disabled] {
           opacity: 0.5;
