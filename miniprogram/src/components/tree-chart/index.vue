@@ -3,13 +3,13 @@
     <!-- 工具栏 -->
     <view class="tree-toolbar">
       <view class="toolbar-left">
-        <view class="tb-btn" :class="{ active: layout === 'LR' }" @tap="setLayout('LR')">
-          <text class="tb-icon">⇒</text>
-          <text class="tb-label">横向</text>
-        </view>
         <view class="tb-btn" :class="{ active: layout === 'TB' }" @tap="setLayout('TB')">
           <text class="tb-icon">⇓</text>
           <text class="tb-label">纵向</text>
+        </view>
+        <view class="tb-btn" :class="{ active: layout === 'LR' }" @tap="setLayout('LR')">
+          <text class="tb-icon">⇒</text>
+          <text class="tb-label">横向</text>
         </view>
       </view>
       <view class="toolbar-right">
@@ -182,7 +182,7 @@ const emit = defineEmits<{
 }>()
 
 // ─── State ────────────────────────────────────────────────────────────────────
-const layout = ref<'LR' | 'TB'>('LR')
+const layout = ref<'LR' | 'TB'>('TB')
 const chartLoading = ref(true)
 const hasData = ref(false)
 
