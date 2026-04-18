@@ -25,14 +25,10 @@
         id="treeCanvas"
         type="2d"
         class="tree-canvas"
-        :style="{
-          width: canvasWidth + 'px',
-          height: canvasHeight + 'px',
-          display: 'block'
-        }"
+        :style="'width:' + canvasWidth + 'px;height:' + canvasHeight + 'px;display:block;'"
         @ready="onCanvasReady"
         @touchstart="onTouchStart"
-        @touchmove="onTouchMove"
+        @touchmove.stop="onTouchMove"
         @touchend="onTouchEnd"
       />
       <view v-if="chartLoading" class="chart-loading">
@@ -195,6 +191,7 @@ const totalNodes = ref(0)
 
 let chartInstance: any = null
 let currentZoom = 1
+let _canvasNode: any = null  // 保存 canvas 节点引用，供 resize 时更新物理像素尺寸
 
 // Bottom Sheet 状态
 const sheet = reactive({
@@ -268,14 +265,12 @@ function nodeToEChartsData(node: Node, depth = 0): any {
   }
 }
 
-// ─── WxCanvas 包装类（参考 echarts-for-weixin 源码）────────────────────────────
+// ─── WxCanvas 包装类（完全对齐 echarts-for-weixin 官方 wx-canvas.js）──────────
 class WxCanvas {
   ctx: any
   canvasId: string
   chart: any
   canvasNode: any
-  // ECharts/ZRender 初始化时会读取 style，必须提供空对象
-  style: Record<string, any> = {}
 
   constructor(ctx: any, canvasId: string, canvasNode: any) {
     this.ctx = ctx
@@ -293,13 +288,11 @@ class WxCanvas {
     this.chart = chart
   }
 
-  // ZRender 会调用这些 DOM 事件方法，小程序环境下用空实现
-  // 触摸事件由我们在 onTouchStart/Move/End 中手动转发给 ZRender handler
+  // ZRender HandlerDomProxy 初始化时会调用 addEventListener/removeEventListener
+  // 微信小程序不需要 ZRender 自动绑定 DOM 事件（我们手动转发 touch 事件），用空实现
   addEventListener() {}
   removeEventListener() {}
-  dispatchEvent() {}
-
-  // ZRender 还会调用 attachEvent/detachEvent（旧版兼容）
+  // 旧版 ZRender 兼容
   attachEvent() {}
   detachEvent() {}
 
@@ -352,16 +345,14 @@ function setupChart(canvasNode: any, width?: number, height?: number) {
 
   const sys = uni.getSystemInfoSync()
   const dpr = sys.pixelRatio || 2
-  // 优先用 SelectorQuery 返回的 CSS 尺寸（单位 px，逻辑像素）
   const w = width || sys.windowWidth
   const h = height || canvasHeight.value
 
-  // 同步 canvas 的物理像素尺寸（必须设置，否则 type="2d" canvas 渲染尺寸不正确）
-  canvasNode.width = w * dpr
+  // 设置 canvas 物理像素尺寸
+  canvasNode.width  = w * dpr
   canvasNode.height = h * dpr
 
-  // 更新 CSS 尺寸状态，让容器高度与 canvas 一致
-  canvasWidth.value = w
+  canvasWidth.value  = w
   canvasHeight.value = h
 
   // 销毁旧实例
@@ -369,7 +360,7 @@ function setupChart(canvasNode: any, width?: number, height?: number) {
     chartInstance.dispose()
     chartInstance = null
   }
-
+  _canvasNode = canvasNode
   const ctx = canvasNode.getContext('2d')
   const wxCanvas = new WxCanvas(ctx, 'treeCanvas', canvasNode)
 
@@ -412,27 +403,61 @@ async function initChart() {
 }
 
 // ─── 渲染 / 更新图表 ──────────────────────────────────────────────────────────
+
+// 计算叶子节点数（决定横向布局时树的高度 / 纵向布局时树的宽度）
+function leafCount(node: Node | null | undefined): number {
+  if (!node) return 0
+  if (!node.children || node.children.length === 0) return 1
+  return node.children.reduce((s, c) => s + leafCount(c), 0)
+}
+
+// 计算树的最大深度（决定横向布局时树的宽度 / 纵向布局时树的高度）
+function treeDepth(node: Node | null | undefined, d = 0): number {
+  if (!node) return d
+  if (!node.children || node.children.length === 0) return d + 1
+  return Math.max(...node.children.map(c => treeDepth(c, d + 1)))
+}
+
+// 根据树的结构动态计算 canvas 高度，确保每个节点都有足够的物理空间
+// 不用 zoom 做初始缩放（zoom 会同时缩小节点间距，导致节点更挤）
+function calcCanvasHeight(rootNode: Node): number {
+  const isHorizontal = layout.value === 'LR'
+  const leaves = leafCount(rootNode)
+  const depth  = treeDepth(rootNode)
+  const sys    = uni.getSystemInfoSync()
+  const W      = canvasWidth.value || sys.windowWidth
+
+  if (isHorizontal) {
+    // 横向：高度由叶子数决定，每个叶子约 52px，最小 400，最大 2400
+    const needed = leaves * 52 + 80  // 80px 上下 padding
+    return Math.min(Math.max(needed, 400), 2400)
+  } else {
+    // 纵向：高度由深度决定，每层约 110px，最小 400，最大 2400
+    // 同时如果叶子数很多，宽度不够时也需要增加高度（纵向叶子铺宽度）
+    const neededByDepth = depth * 110 + 80
+    // 纵向叶子铺宽度：如果叶子数 * 60px > 可用宽度，说明节点会重叠，需要增加高度
+    const leafWidth = leaves * 60
+    const extraH = leafWidth > W * 0.9 ? Math.ceil(leafWidth / (W * 0.9)) * 80 : 0
+    return Math.min(Math.max(neededByDepth + extraH, 400), 2400)
+  }
+}
+
 function renderChart() {
   if (!chartInstance || !props.rootNode) return
 
   const data = nodeToEChartsData(props.rootNode)
   const isHorizontal = layout.value === 'LR'
-  const nodeCount = totalNodes.value || countNodes(props.rootNode)
 
-  // 根据节点数量自动计算初始缩放，节点越多缩放越小，确保全部可见
-  // 横向：节点深度决定宽度；纵向：叶子节点数决定高度
-  // 经验值：每个节点约需 28px，画布宽/高约为 canvasWidth/canvasHeight
-  const canvasW = canvasWidth.value || 375
-  const canvasH = canvasHeight.value || 500
-  const refSize = isHorizontal ? canvasH : canvasW
-  const estimatedSpread = nodeCount * 22  // 每节点估算占用 22px
-  const autoZoom = Math.min(1, refSize / Math.max(estimatedSpread, refSize))
-  // 限制在合理范围内，不要太小
-  const initZoom = Math.max(autoZoom, 0.25)
-
-  // 如果用户没有手动调整过缩放，使用自动缩放
-  if (currentZoom === 1) {
-    currentZoom = initZoom
+  // 动态调整 canvas 高度，让节点有足够空间
+  const newH = calcCanvasHeight(props.rootNode)
+  if (Math.abs(newH - canvasHeight.value) > 20) {
+    canvasHeight.value = newH
+    // 同步更新 canvas 物理像素尺寸
+    const dpr = uni.getSystemInfoSync().pixelRatio || 2
+    if (_canvasNode) {
+      _canvasNode.height = newH * dpr
+    }
+    chartInstance.resize({ width: canvasWidth.value, height: newH })
   }
 
   const option = {
@@ -440,21 +465,22 @@ function renderChart() {
       {
         type: 'tree',
         data: [data],
-        top: isHorizontal ? '5%' : '8%',
-        left: isHorizontal ? '10%' : '5%',
-        bottom: isHorizontal ? '5%' : '10%',
-        right: isHorizontal ? '20%' : '5%',
+        // 留白：横向左侧留给非叶子标签，右侧留给叶子标签
+        // 纵向：顶部留给根节点标签，底部留给叶子标签
+        top:    isHorizontal ? '3%'  : '8%',
+        left:   isHorizontal ? '18%' : '5%',
+        bottom: isHorizontal ? '3%'  : '10%',
+        right:  isHorizontal ? '22%' : '5%',
         orient: layout.value,
         layout: 'orthogonal',
         initialTreeDepth: -1,
         roam: true,
         zoom: currentZoom,
-        center: ['50%', '50%'],
-        scaleLimit: { min: 0.1, max: 4 },
+        scaleLimit: { min: 0.1, max: 5 },
         symbolSize: 10,
         expandAndCollapse: false,
-        animationDuration: 350,
-        animationDurationUpdate: 400,
+        animationDuration: 300,
+        animationDurationUpdate: 350,
         lineStyle: {
           color: '#A5B4FC',
           width: 1.5,
@@ -510,49 +536,106 @@ function renderChart() {
   chartInstance.setOption(option, { notMerge: true })
 }
 
-// ─── 触摸事件（参考 echarts-for-weixin 实现）──────────────────────────────────
+// ─── 触摸事件（完全对齐 echarts-for-weixin 官方实现）────────────────────────────
+
+// 构造一个 ZRender dispatch 可安全使用的事件对象
+// ZRender 内部（如 RoamController）会对事件调用 preventDefault/stopPropagation，
+// 裸对象没有这些方法会报错，必须提供空实现
+function makeZrEvent(x: number, y: number): any {
+  return {
+    zrX: x,
+    zrY: y,
+    preventDefault: () => {},
+    stopPropagation: () => {},
+    cancelBubble: true,
+  }
+}
+
+// 给每个 touch 设置 offsetX/offsetY，供 ZRender GestureMgr 的 clientToLocal 使用
+// 同时给 event 本身加上 zrX/zrY（供 processGesture 内部 findHover 使用）
+// 以及 preventDefault/stopPropagation（供 RoamController 内部 stop() 调用）
 function wrapTouch(event: any) {
   for (let i = 0; i < event.touches.length; i++) {
     const touch = event.touches[i]
     touch.offsetX = touch.x
     touch.offsetY = touch.y
   }
-  // ECharts 内部（如 RoamController）会调用 event.preventDefault/stopPropagation
+  // 用第一个触点坐标作为事件的主坐标
+  if (event.touches.length > 0) {
+    event.zrX = event.touches[0].x
+    event.zrY = event.touches[0].y
+  }
+  // ZRender 内部 stop() 会调用这两个方法，微信 touch 事件没有，必须补充
   if (!event.preventDefault) event.preventDefault = () => {}
   if (!event.stopPropagation) event.stopPropagation = () => {}
   return event
 }
 
+// 双指缩放：记录上一次两指间距，用于计算缩放比例
+let _lastPinchDist = 0
+
 function onTouchStart(e: any) {
-  if (!chartInstance) return
-  if (e.touches.length > 0) {
+  if (!chartInstance || e.touches.length === 0) return
+  console.log('[TreeChart] touchStart touches:', e.touches.length)
+  const handler = chartInstance.getZr().handler
+  if (e.touches.length === 1) {
     const touch = e.touches[0]
-    const handler = chartInstance.getZr().handler
-    const evt = { zrX: touch.x, zrY: touch.y, preventDefault: () => {}, stopPropagation: () => {} }
-    handler.dispatch('mousedown', evt)
-    handler.dispatch('mousemove', evt)
+    handler.dispatch('mousedown', makeZrEvent(touch.x, touch.y))
+    handler.dispatch('mousemove', makeZrEvent(touch.x, touch.y))
     handler.processGesture(wrapTouch(e), 'start')
+  } else if (e.touches.length === 2) {
+    // 双指：先取消第一根手指触发的拖拽状态，再记录初始间距
+    // 微信小程序双指 touchstart 会先触发一次 touches.length=1，再触发一次 touches.length=2
+    // 第一次已经 dispatch 了 mousedown，这里发 mouseup 取消拖拽，避免干扰 pinch
+    const t0 = e.touches[0]
+    handler.dispatch('mouseup', makeZrEvent(t0.x, t0.y))
+    const t1 = e.touches[1]
+    const dx = t1.x - t0.x
+    const dy = t1.y - t0.y
+    _lastPinchDist = Math.sqrt(dx * dx + dy * dy)
+    console.log('[TreeChart] pinch start dist:', _lastPinchDist)
   }
 }
 
 function onTouchMove(e: any) {
-  if (!chartInstance) return
-  if (e.touches.length > 0) {
+  if (!chartInstance || e.touches.length === 0) return
+  console.log('[TreeChart] touchMove touches:', e.touches.length, '_lastPinchDist:', _lastPinchDist)
+  const handler = chartInstance.getZr().handler
+  if (e.touches.length === 1) {
+    // 单指：派发 mousemove 触发拖拽
     const touch = e.touches[0]
-    const handler = chartInstance.getZr().handler
-    const evt = { zrX: touch.x, zrY: touch.y, preventDefault: () => {}, stopPropagation: () => {} }
-    handler.dispatch('mousemove', evt)
+    handler.dispatch('mousemove', makeZrEvent(touch.x, touch.y))
     handler.processGesture(wrapTouch(e), 'change')
+  } else if (e.touches.length === 2) {
+    // 双指：手动计算缩放比例，直接用 dispatchAction 缩放
+    const t0 = e.touches[0]
+    const t1 = e.touches[1]
+    const dx = t1.x - t0.x
+    const dy = t1.y - t0.y
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    console.log('[TreeChart] pinch dist:', dist, 'last:', _lastPinchDist, 'zoom:', currentZoom)
+    if (_lastPinchDist > 0) {
+      const scale = dist / _lastPinchDist
+      // 限制每次缩放幅度，避免过于灵敏
+      const clampedScale = Math.max(0.85, Math.min(1.15, scale))
+      currentZoom = Math.max(0.1, Math.min(4, currentZoom * clampedScale))
+      chartInstance.setOption({ series: [{ zoom: currentZoom }] })
+    }
+    _lastPinchDist = dist
   }
 }
 
 function onTouchEnd(e: any) {
   if (!chartInstance) return
-  const touch = e.changedTouches ? e.changedTouches[0] : { x: 0, y: 0 }
+  const wasPinch = _lastPinchDist > 0
+  _lastPinchDist = 0
+  const touch = e.changedTouches?.[0] || { x: 0, y: 0 }
   const handler = chartInstance.getZr().handler
-  const evt = { zrX: touch.x, zrY: touch.y, preventDefault: () => {}, stopPropagation: () => {} }
-  handler.dispatch('mouseup', evt)
-  handler.dispatch('click', evt)
+  handler.dispatch('mouseup', makeZrEvent(touch.x, touch.y))
+  // 双指缩放结束时不触发 click，避免误触节点
+  if (!wasPinch) {
+    handler.dispatch('click', makeZrEvent(touch.x, touch.y))
+  }
   handler.processGesture(wrapTouch(e), 'end')
 }
 
@@ -699,6 +782,7 @@ onUnmounted(() => {
     chartInstance.dispose()
     chartInstance = null
   }
+  _canvasNode = null
 })
 </script>
 
