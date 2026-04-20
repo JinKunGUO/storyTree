@@ -153,8 +153,8 @@ async function handleNotificationTap(item: Notification) {
   if (item.link) {
     const miniUrl = convertLinkToMiniUrl(item.link)
     if (miniUrl) {
-      // tabBar 页面必须用 switchTab
-      const tabBarPages = ['/pages/profile/index', '/pages/notifications/index', '/pages/create/index', '/pages/index/index', '/pages/discover/index']
+      // tabBar 页面必须用 switchTab（新4 Tab：动态/发现/写作/我的）
+      const tabBarPages = ['/pages/index/index', '/pages/discover/index', '/pages/write/index', '/pages/profile/index']
       if (tabBarPages.includes(miniUrl.split('?')[0])) {
         uni.switchTab({ url: miniUrl.split('?')[0] })
       } else {
@@ -212,6 +212,7 @@ function convertLinkToMiniUrl(link: string): string | null {
     '/membership':    '/pages/membership/index',
     '/notifications': '/pages/notifications/index',
     '/write':         '/pages/write/index',
+    '/create':        '/pages/create/index',
   }
 
   const miniPath = map[path]

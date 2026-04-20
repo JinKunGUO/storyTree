@@ -203,7 +203,7 @@
     "list": [
       {
         "pagePath": "pages/index/index",
-        "text": "首页",
+        "text": "动态",
         "iconPath": "static/icons/home.png",
         "selectedIconPath": "static/icons/home-active.png"
       },
@@ -214,16 +214,10 @@
         "selectedIconPath": "static/icons/discover-active.png"
       },
       {
-        "pagePath": "pages/create/index",
-        "text": "创作",
+        "pagePath": "pages/write/index",
+        "text": "写作",
         "iconPath": "static/icons/write.png",
         "selectedIconPath": "static/icons/write-active.png"
-      },
-      {
-        "pagePath": "pages/notifications/index",
-        "text": "消息",
-        "iconPath": "static/icons/notify.png",
-        "selectedIconPath": "static/icons/notify-active.png"
       },
       {
         "pagePath": "pages/profile/index",

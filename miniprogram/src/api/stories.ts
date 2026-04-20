@@ -119,6 +119,14 @@ export function getUserStories(userId: number, params?: { page?: number; pageSiz
   return http.get<StoryListResponse>(`/api/users/${userId}/stories`, params as Record<string, unknown>)
 }
 
+// 获取用户追更的故事列表（关注动态 - 故事维度）
+export function getFollowedStories(userId: number, params?: { page?: number; pageSize?: number }) {
+  return http.get<{
+    follows: Array<{ story: Story; created_at: string }>
+    pagination: { page: number; pageSize: number; total: number; totalPages: number }
+  }>(`/api/stories/user/${userId}/followed-stories`, params as Record<string, unknown>)
+}
+
 // 搜索故事
 export function searchStories(query: string, params?: { page?: number; pageSize?: number }) {
   return http.get<{ stories: Story[]; nodes: any[]; total: number }>('/api/search', {

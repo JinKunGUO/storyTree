@@ -75,6 +75,21 @@ export interface Notification {
   created_at: string
 }
 
+// 获取关注的作者的最新章节动态（关注动态 - 章节维度）
+// 后端路由：GET /api/users/feed/me
+export function getMyFeed() {
+  return http.get<{
+    feed: Array<{
+      id: number
+      title: string
+      content?: string
+      created_at: string
+      author: { id: number; username: string }
+      story: { id: number; title: string }
+    }>
+  }>('/api/users/feed/me', undefined, { showError: false })
+}
+
 // ==================== 邀请系统 ====================
 
 // 获取我的邀请码列表

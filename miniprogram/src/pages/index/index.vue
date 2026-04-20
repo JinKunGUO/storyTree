@@ -1,7 +1,7 @@
 <template>
   <view class="index-page">
     <!-- 顶部导航栏 -->
-    <view class="navbar">
+    <view class="navbar" :style="{ paddingTop: statusBarHeight + 'px' }">
       <view class="navbar-left">
         <image class="logo" src="/static/images/logo.png" mode="aspectFit" />
         <text class="app-name">StoryTree</text>
@@ -17,101 +17,127 @@
       </view>
     </view>
 
+    <!-- 顶部主 Tab：推荐 / 关注 -->
+    <view class="main-tabs">
+      <view
+        class="main-tab"
+        :class="{ active: mainTab === 'recommend' }"
+        @tap="switchMainTab('recommend')"
+      >推荐</view>
+      <view
+        class="main-tab"
+        :class="{ active: mainTab === 'follow' }"
+        @tap="switchMainTab('follow')"
+      >关注</view>
+      <view class="main-tab-indicator" :style="{ left: mainTab === 'recommend' ? '0' : '50%' }" />
+    </view>
+
+    <!-- ===== 推荐 Tab ===== -->
     <scroll-view
+      v-if="mainTab === 'recommend'"
       class="content"
       scroll-y
       :refresher-enabled="true"
       :refresher-triggered="refreshing"
-      @refresherrefresh="onRefresh"
-      @scrolltolower="onLoadMore"
+      @refresherrefresh="onRefreshRecommend"
     >
-      <!-- 用户欢迎横幅 -->
-      <view v-if="userStore.isLoggedIn" class="welcome-banner">
-        <view class="welcome-left">
-          <image
-            class="avatar"
-            :src="userStore.avatarUrl"
-            mode="aspectFill"
-            @tap="goProfile"
-          />
-          <view class="welcome-info">
-            <text class="welcome-text">你好，{{ userStore.userInfo?.username }}</text>
-            <view class="level-badge">
-              <text class="level-text">Lv.{{ userStore.userInfo?.level }}</text>
-              <text class="points-text">{{ userStore.userInfo?.points }} 积分</text>
+      <!-- 轮播 Banner -->
+      <swiper
+        class="banner-swiper"
+        circular
+        autoplay
+        :interval="4000"
+        indicator-dots
+        indicator-color="rgba(255,255,255,0.4)"
+        indicator-active-color="#ffffff"
+      >
+        <swiper-item
+          v-for="story in bannerStories"
+          :key="story.id"
+          @tap="goStory(story.id)"
+        >
+          <view class="banner-item">
+            <image
+              class="banner-img"
+              :src="getImageUrl(story.cover_image) || '/static/images/default-cover.png'"
+              mode="aspectFill"
+            />
+            <view class="banner-overlay">
+              <view class="banner-tags">
+                <text v-if="story.tags" class="banner-tag">{{ story.tags.split(',')[0] }}</text>
+                <text class="banner-tag hot">🔥 精选</text>
+              </view>
+              <text class="banner-title">{{ story.title }}</text>
+              <view class="banner-meta">
+                <text class="banner-author">{{ story.author?.username }}</text>
+                <text class="banner-dot">·</text>
+                <text class="banner-count">{{ story._count?.nodes || 0 }} 章节</text>
+                <text class="banner-dot">·</text>
+                <text class="banner-follow">{{ story._count?.followers || 0 }} 追更</text>
+              </view>
             </view>
           </view>
-        </view>
-        <view class="streak-info" @tap="goCheckin">
-          <text class="streak-num">{{ userStore.userInfo?.consecutive_days }}</text>
-          <text class="streak-label">连续签到</text>
-        </view>
+        </swiper-item>
+      </swiper>
+
+      <!-- StoryTree 特色品牌区 -->
+      <view class="feature-section">
+        <scroll-view scroll-x class="feature-scroll">
+          <view class="feature-list">
+            <view class="feature-card tree">
+              <text class="feature-icon">🌳</text>
+              <text class="feature-name">树状叙事</text>
+              <text class="feature-desc">故事像树一样生长，每个节点都是新的可能</text>
+            </view>
+            <view class="feature-card collab">
+              <text class="feature-icon">👥</text>
+              <text class="feature-name">协作创作</text>
+              <text class="feature-desc">多位作者共同编织，让故事更加丰富多彩</text>
+            </view>
+            <view class="feature-card community">
+              <text class="feature-icon">📖</text>
+              <text class="feature-name">故事社区</text>
+              <text class="feature-desc">追更你喜爱的故事，关注优秀的创作者</text>
+            </view>
+          </view>
+        </scroll-view>
       </view>
 
-      <!-- 未登录横幅 -->
-      <view v-else class="guest-banner" @tap="goLogin">
-        <view class="guest-content">
-          <text class="guest-title">加入 StoryTree</text>
-          <text class="guest-sub">开启协作创作之旅</text>
-        </view>
-        <view class="guest-btn">
-          <text>立即登录</text>
-        </view>
-      </view>
-
-      <!-- 快捷功能入口 -->
-      <view class="quick-actions">
-        <view class="action-item" @tap="goCreate">
-          <view class="action-icon-wrap action-create">
-            <text class="action-icon">✍️</text>
+      <!-- 热门故事 -->
+      <view class="rec-section">
+        <view class="rec-header">
+          <view class="rec-title-wrap">
+            <text class="rec-dot" />
+            <text class="rec-title">🔥 热门故事</text>
           </view>
-          <text class="action-label">开始创作</text>
+          <text class="rec-more" @tap="goDiscover">更多</text>
         </view>
-        <view class="action-item" @tap="goDiscover">
-          <view class="action-icon-wrap action-discover">
-            <text class="action-icon">🌟</text>
+        <view v-if="loadingRecommend" class="skeleton-grid-2">
+          <view v-for="i in 4" :key="i" class="skeleton-card-v">
+            <view class="sk-cover" />
+            <view class="sk-line" />
+            <view class="sk-line short" />
           </view>
-          <text class="action-label">发现故事</text>
         </view>
-        <view class="action-item" @tap="goMembership">
-          <view class="action-icon-wrap action-member">
-            <text class="action-icon">👑</text>
-          </view>
-          <text class="action-label">会员中心</text>
-        </view>
-        <view class="action-item" @tap="goPoints">
-          <view class="action-icon-wrap action-points">
-            <text class="action-icon">💎</text>
-          </view>
-          <text class="action-label">积分中心</text>
-        </view>
-      </view>
-
-      <!-- 精选故事 -->
-      <view class="section">
-        <view class="section-header">
-          <text class="section-title">精选故事</text>
-          <text class="section-more" @tap="goDiscover">查看更多 →</text>
-        </view>
-
-        <scroll-view class="featured-scroll" scroll-x>
-          <view class="featured-list">
+        <scroll-view v-else scroll-x class="h-story-scroll">
+          <view class="h-story-list">
             <view
-              v-for="story in featuredStories"
+              v-for="story in hotStories"
               :key="story.id"
-              class="featured-card"
+              class="h-story-card"
               @tap="goStory(story.id)"
             >
               <image
-                class="featured-cover"
+                class="h-cover"
                 :src="getImageUrl(story.cover_image) || '/static/images/default-cover.png'"
                 mode="aspectFill"
               />
-              <view class="featured-overlay">
-                <text class="featured-title">{{ story.title }}</text>
-                <view class="featured-meta">
-                  <text class="featured-author">{{ story.author.username }}</text>
-                  <text class="featured-count">{{ story._count?.nodes || 0 }} 章节</text>
+              <view class="h-info">
+                <text class="h-title">{{ story.title }}</text>
+                <text class="h-author">{{ story.author?.username }}</text>
+                <view class="h-stats">
+                  <text class="h-stat">{{ story._count?.nodes || 0 }}章</text>
+                  <text class="h-stat">{{ story._count?.followers || 0 }}追更</text>
                 </view>
               </view>
             </view>
@@ -119,124 +145,493 @@
         </scroll-view>
       </view>
 
-      <!-- 最新故事 -->
-      <view class="section">
-        <view class="section-header">
-          <text class="section-title">最新故事</text>
-          <view class="sort-tabs">
-            <text
-              v-for="tab in sortTabs"
-              :key="tab.value"
-              class="sort-tab"
-              :class="{ active: currentSort === tab.value }"
-              @tap="changeSort(tab.value)"
-            >
-              {{ tab.label }}
-            </text>
+      <!-- 协作中故事 -->
+      <view class="rec-section">
+        <view class="rec-header">
+          <view class="rec-title-wrap">
+            <text class="rec-dot collab" />
+            <text class="rec-title">👥 协作中</text>
           </view>
+          <text class="rec-sub">多位作者共同创作</text>
         </view>
-
-        <!-- 故事列表骨架屏 -->
-        <view v-if="loading && stories.length === 0" class="skeleton-list">
-          <view v-for="i in 3" :key="i" class="skeleton-card">
-            <view class="skeleton-cover" />
-            <view class="skeleton-content">
-              <view class="skeleton-title" />
-              <view class="skeleton-meta" />
+        <view v-if="loadingRecommend" class="skeleton-list-h">
+          <view v-for="i in 3" :key="i" class="skeleton-row">
+            <view class="sk-cover-sm" />
+            <view class="sk-lines">
+              <view class="sk-line" />
+              <view class="sk-line short" />
             </view>
           </view>
         </view>
-
-        <!-- 故事列表 -->
-        <view v-else class="story-list">
+        <view v-else-if="collabStories.length === 0" class="rec-empty">
+          <text class="rec-empty-text">暂无协作故事</text>
+        </view>
+        <view v-else class="collab-list">
           <view
-            v-for="story in stories"
+            v-for="story in collabStories"
             :key="story.id"
-            class="story-card"
+            class="collab-card"
             @tap="goStory(story.id)"
           >
             <image
-              class="story-cover"
+              class="collab-cover"
               :src="getImageUrl(story.cover_image) || '/static/images/default-cover.png'"
               mode="aspectFill"
             />
-            <view class="story-info">
-              <text class="story-title">{{ story.title }}</text>
-              <text class="story-desc">{{ story.description || '暂无简介' }}</text>
-              <view class="story-meta">
-                <view class="author-info">
+            <view class="collab-info">
+              <text class="collab-title">{{ story.title }}</text>
+              <text class="collab-desc">{{ story.description || '暂无简介' }}</text>
+              <view class="collab-meta">
+                <view class="collab-avatars">
                   <image
-                    class="author-avatar"
-                    :src="getImageUrl(story.author.avatar) || '/static/images/default-avatar.png'"
+                    v-for="(c, idx) in (story.collaborators || []).slice(0, 3)"
+                    :key="c.id"
+                    class="collab-avatar"
+                    :style="{ left: idx * 24 + 'rpx', zIndex: 3 - idx }"
+                    :src="getImageUrl(c.avatar) || '/static/images/default-avatar.png'"
                     mode="aspectFill"
                   />
-                  <text class="author-name">{{ story.author.username }}</text>
                 </view>
-                <view class="story-stats">
-                  <text class="stat-item">{{ story._count?.nodes || 0 }} 章</text>
-                  <text class="stat-item">{{ story._count?.followers || 0 }} 追更</text>
-                </view>
+                <text class="collab-count">{{ (story.collaborators || []).length }} 位协作者</text>
               </view>
-              <view v-if="story.tags" class="tag-list">
-                <text
-                  v-for="tag in parseTags(story.tags).slice(0, 3)"
-                  :key="tag"
-                  class="tag"
-                >
-                  {{ tag }}
-                </text>
-              </view>
+            </view>
+            <view class="collab-arrow">›</view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 最新发布 -->
+      <view class="rec-section">
+        <view class="rec-header">
+          <view class="rec-title-wrap">
+            <text class="rec-dot new" />
+            <text class="rec-title">🆕 最新发布</text>
+          </view>
+          <text class="rec-more" @tap="goDiscover">更多</text>
+        </view>
+        <view v-if="loadingRecommend" class="skeleton-list-h">
+          <view v-for="i in 4" :key="i" class="skeleton-row">
+            <view class="sk-cover-sm" />
+            <view class="sk-lines">
+              <view class="sk-line" />
+              <view class="sk-line short" />
             </view>
           </view>
         </view>
-
-        <!-- 加载更多 -->
-        <view v-if="loadingMore" class="loading-more">
-          <text>加载中...</text>
+        <view v-else class="latest-list">
+          <view
+            v-for="story in latestStories"
+            :key="story.id"
+            class="latest-card"
+            @tap="goStory(story.id)"
+          >
+            <image
+              class="latest-cover"
+              :src="getImageUrl(story.cover_image) || '/static/images/default-cover.png'"
+              mode="aspectFill"
+            />
+            <view class="latest-info">
+              <text class="latest-title">{{ story.title }}</text>
+              <text class="latest-author">{{ story.author?.username }}</text>
+              <text class="latest-stats">{{ story._count?.nodes || 0 }} 章 · {{ story._count?.followers || 0 }} 追更</text>
+            </view>
+            <view class="latest-right">
+              <text v-if="story.tags" class="latest-tag">{{ story.tags.split(',')[0] }}</text>
+            </view>
+          </view>
         </view>
-        <view v-if="noMore && stories.length > 0" class="no-more">
-          <text>没有更多了</text>
+      </view>
+
+      <!-- 未登录引导 -->
+      <view v-if="!userStore.isLoggedIn" class="login-guide" @tap="goLogin">
+        <view class="login-guide-inner">
+          <text class="login-guide-icon">✨</text>
+          <view class="login-guide-text">
+            <text class="login-guide-title">登录后体验更多功能</text>
+            <text class="login-guide-sub">追更故事 · 关注作者 · 参与协作</text>
+          </view>
+          <view class="login-guide-btn">立即登录</view>
         </view>
       </view>
 
       <view class="bottom-placeholder" />
     </scroll-view>
+
+    <!-- ===== 关注 Tab ===== -->
+    <template v-if="mainTab === 'follow'">
+      <!-- 未登录提示 -->
+      <view v-if="!userStore.isLoggedIn" class="login-wall">
+        <text class="login-wall-icon">🔐</text>
+        <text class="login-wall-title">登录后查看关注动态</text>
+        <text class="login-wall-sub">追更你喜爱的故事，关注优秀的创作者</text>
+        <view class="login-wall-btn" @tap="goLogin">立即登录</view>
+      </view>
+
+      <!-- 已登录：动态子Tab -->
+      <template v-else>
+        <view class="feed-tabs">
+          <view
+            class="feed-tab"
+            :class="{ active: feedTab === 'stories' }"
+            @tap="switchFeedTab('stories')"
+          >追更故事</view>
+          <view
+            class="feed-tab"
+            :class="{ active: feedTab === 'authors' }"
+            @tap="switchFeedTab('authors')"
+          >关注作者</view>
+          <view class="tab-indicator" :style="{ left: feedTab === 'stories' ? '0' : '50%' }" />
+        </view>
+
+        <scroll-view
+          class="content"
+          scroll-y
+          :refresher-enabled="true"
+          :refresher-triggered="refreshingFeed"
+          @refresherrefresh="onRefreshFeed"
+          @scrolltolower="onLoadMore"
+        >
+          <!-- 追更故事 Tab -->
+          <template v-if="feedTab === 'stories'">
+            <view v-if="loadingFeed && followedStories.length === 0" class="skeleton-list">
+              <view v-for="i in 4" :key="i" class="skeleton-card">
+                <view class="skeleton-cover" />
+                <view class="skeleton-content">
+                  <view class="skeleton-title" />
+                  <view class="skeleton-meta" />
+                  <view class="skeleton-meta short" />
+                </view>
+              </view>
+            </view>
+            <view v-else-if="!loadingFeed && followedStories.length === 0" class="empty-state">
+              <text class="empty-icon">📖</text>
+              <text class="empty-title">还没有追更的故事</text>
+              <text class="empty-sub">去发现页找找感兴趣的故事吧</text>
+              <view class="empty-btn" @tap="goDiscover">去发现</view>
+            </view>
+            <view v-else class="story-feed-list">
+              <view
+                v-for="item in followedStories"
+                :key="item.story.id"
+                class="story-feed-card"
+                @tap="goStory(item.story.id)"
+              >
+                <image
+                  class="story-cover"
+                  :src="getImageUrl(item.story.cover_image) || '/static/images/default-cover.png'"
+                  mode="aspectFill"
+                />
+                <view class="story-info">
+                  <text class="story-title">{{ item.story.title }}</text>
+                  <text class="story-desc">{{ item.story.description || '暂无简介' }}</text>
+                  <view class="story-meta">
+                    <text class="author-name">{{ item.story.author?.username }}</text>
+                    <text class="chapter-count">{{ item.story._count?.nodes || 0 }} 章节</text>
+                  </view>
+                </view>
+                <view class="story-arrow">›</view>
+              </view>
+            </view>
+          </template>
+
+          <!-- 关注作者 Tab -->
+          <template v-else>
+            <view v-if="loadingFeed && authorFeed.length === 0" class="skeleton-list">
+              <view v-for="i in 4" :key="i" class="skeleton-feed">
+                <view class="skeleton-avatar" />
+                <view class="skeleton-content">
+                  <view class="skeleton-title" />
+                  <view class="skeleton-meta" />
+                </view>
+              </view>
+            </view>
+            <view v-else-if="!loadingFeed && authorFeed.length === 0" class="empty-state">
+              <text class="empty-icon">👥</text>
+              <text class="empty-title">还没有关注的作者</text>
+              <text class="empty-sub">去发现优秀的创作者，关注他们的最新动态</text>
+              <view class="empty-btn" @tap="goDiscover">去发现</view>
+            </view>
+            <view v-else class="author-feed-list">
+              <view
+                v-for="item in authorFeed"
+                :key="item.id"
+                class="author-feed-item"
+                @tap="goChapter(item.id)"
+              >
+                <view class="feed-header">
+                  <text class="feed-author">{{ item.author.username }}</text>
+                  <text class="feed-story">在《{{ item.story.title }}》</text>
+                  <text class="feed-action">发布了新章节</text>
+                </view>
+                <view class="feed-chapter">
+                  <text class="chapter-title">{{ item.title }}</text>
+                  <text class="chapter-time">{{ formatTime(item.created_at) }}</text>
+                </view>
+              </view>
+            </view>
+          </template>
+
+          <view v-if="loadingMore" class="loading-more">加载中...</view>
+          <view v-if="noMore && (followedStories.length > 0 || authorFeed.length > 0)" class="no-more">没有更多了</view>
+          <view class="bottom-placeholder" />
+        </scroll-view>
+      </template>
+    </template>
+  </view>
+</template>
+      <!-- 动态 Tab 切换 -->
+      <view class="feed-tabs">
+        <view
+          class="feed-tab"
+          :class="{ active: feedTab === 'stories' }"
+          @tap="feedTab = 'stories'"
+        >追更故事</view>
+        <view
+          class="feed-tab"
+          :class="{ active: feedTab === 'authors' }"
+          @tap="feedTab = 'authors'"
+        >关注作者</view>
+        <view class="tab-indicator" :style="{ left: feedTab === 'stories' ? '0' : '50%' }" />
+      </view>
+
+      <scroll-view
+        class="content"
+        scroll-y
+        :refresher-enabled="true"
+        :refresher-triggered="refreshing"
+        @refresherrefresh="onRefresh"
+        @scrolltolower="onLoadMore"
+      >
+        <!-- 追更故事 Tab -->
+        <template v-if="feedTab === 'stories'">
+          <!-- 骨架屏 -->
+          <view v-if="loading && followedStories.length === 0" class="skeleton-list">
+            <view v-for="i in 4" :key="i" class="skeleton-card">
+              <view class="skeleton-cover" />
+              <view class="skeleton-content">
+                <view class="skeleton-title" />
+                <view class="skeleton-meta" />
+                <view class="skeleton-meta short" />
+              </view>
+            </view>
+          </view>
+
+          <!-- 空状态 -->
+          <view v-else-if="!loading && followedStories.length === 0" class="empty-state">
+            <text class="empty-icon">📖</text>
+            <text class="empty-title">还没有追更的故事</text>
+            <text class="empty-sub">去发现页找找感兴趣的故事吧</text>
+            <view class="empty-btn" @tap="goDiscover">去发现</view>
+          </view>
+
+          <!-- 追更故事列表 -->
+          <view v-else class="story-feed-list">
+            <view
+              v-for="item in followedStories"
+              :key="item.story.id"
+              class="story-feed-card"
+              @tap="goStory(item.story.id)"
+            >
+              <image
+                class="story-cover"
+                :src="getImageUrl(item.story.cover_image) || '/static/images/default-cover.png'"
+                mode="aspectFill"
+              />
+              <view class="story-info">
+                <text class="story-title">{{ item.story.title }}</text>
+                <text class="story-desc">{{ item.story.description || '暂无简介' }}</text>
+                <view class="story-meta">
+                  <text class="author-name">{{ item.story.author?.username }}</text>
+                  <text class="chapter-count">{{ item.story._count?.nodes || 0 }} 章节</text>
+                </view>
+              </view>
+              <view class="story-arrow">›</view>
+            </view>
+          </view>
+        </template>
+
+        <!-- 关注作者 Tab -->
+        <template v-else>
+          <!-- 骨架屏 -->
+          <view v-if="loading && authorFeed.length === 0" class="skeleton-list">
+            <view v-for="i in 4" :key="i" class="skeleton-feed">
+              <view class="skeleton-avatar" />
+              <view class="skeleton-content">
+                <view class="skeleton-title" />
+                <view class="skeleton-meta" />
+              </view>
+            </view>
+          </view>
+
+          <!-- 空状态 -->
+          <view v-else-if="!loading && authorFeed.length === 0" class="empty-state">
+            <text class="empty-icon">👥</text>
+            <text class="empty-title">还没有关注的作者</text>
+            <text class="empty-sub">去发现优秀的创作者，关注他们的最新动态</text>
+            <view class="empty-btn" @tap="goDiscover">去发现</view>
+          </view>
+
+          <!-- 作者动态列表 -->
+          <view v-else class="author-feed-list">
+            <view
+              v-for="item in authorFeed"
+              :key="item.id"
+              class="author-feed-item"
+              @tap="goChapter(item.id)"
+            >
+              <view class="feed-header">
+                <text class="feed-author">{{ item.author.username }}</text>
+                <text class="feed-story">在《{{ item.story.title }}》</text>
+                <text class="feed-action">发布了新章节</text>
+              </view>
+              <view class="feed-chapter">
+                <text class="chapter-title">{{ item.title }}</text>
+                <text class="chapter-time">{{ formatTime(item.created_at) }}</text>
+              </view>
+            </view>
+          </view>
+        </template>
+
+        <!-- 加载更多 -->
+        <view v-if="loadingMore" class="loading-more">加载中...</view>
+        <view v-if="noMore && (followedStories.length > 0 || authorFeed.length > 0)" class="no-more">没有更多了</view>
+
+        <view class="bottom-placeholder" />
+      </scroll-view>
+    </template>
+
+    <!-- 未登录：精选推荐 -->
+    <template v-else>
+      <scroll-view
+        class="content"
+        scroll-y
+        :refresher-enabled="true"
+        :refresher-triggered="refreshing"
+        @refresherrefresh="onRefreshGuest"
+      >
+        <!-- 登录引导横幅 -->
+        <view class="guest-banner" @tap="goLogin">
+          <view class="guest-content">
+            <text class="guest-title">加入 StoryTree</text>
+            <text class="guest-sub">追更故事，关注作者，开启协作创作之旅</text>
+          </view>
+          <view class="guest-btn">
+            <text>立即登录</text>
+          </view>
+        </view>
+
+        <!-- 精选故事 -->
+        <view class="section">
+          <view class="section-header">
+            <text class="section-title">精选故事</text>
+            <text class="section-more" @tap="goDiscover">查看更多 →</text>
+          </view>
+          <scroll-view class="featured-scroll" scroll-x>
+            <view class="featured-list">
+              <view
+                v-for="story in featuredStories"
+                :key="story.id"
+                class="featured-card"
+                @tap="goStory(story.id)"
+              >
+                <image
+                  class="featured-cover"
+                  :src="getImageUrl(story.cover_image) || '/static/images/default-cover.png'"
+                  mode="aspectFill"
+                />
+                <view class="featured-overlay">
+                  <text class="featured-title">{{ story.title }}</text>
+                  <view class="featured-meta">
+                    <text class="featured-author">{{ story.author.username }}</text>
+                    <text class="featured-count">{{ story._count?.nodes || 0 }} 章节</text>
+                  </view>
+                </view>
+              </view>
+            </view>
+          </scroll-view>
+        </view>
+
+        <!-- 最新故事 -->
+        <view class="section">
+          <view class="section-header">
+            <text class="section-title">最新故事</text>
+          </view>
+          <view class="story-list">
+            <view
+              v-for="story in guestStories"
+              :key="story.id"
+              class="story-card"
+              @tap="goStory(story.id)"
+            >
+              <image
+                class="story-cover-sm"
+                :src="getImageUrl(story.cover_image) || '/static/images/default-cover.png'"
+                mode="aspectFill"
+              />
+              <view class="story-info-sm">
+                <text class="story-title-sm">{{ story.title }}</text>
+                <text class="story-author-sm">{{ story.author.username }}</text>
+                <text class="story-count-sm">{{ story._count?.nodes || 0 }} 章 · {{ story._count?.followers || 0 }} 追更</text>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <view class="bottom-placeholder" />
+      </scroll-view>
+    </template>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
-import { getFeaturedStories, getStories } from '@/api/stories'
+import { getFeaturedStories, getStories, getFollowedStories } from '@/api/stories'
+import { getMyFeed } from '@/api/users'
 import { getCheckinStatus } from '@/api/checkin'
 import { getImageUrl } from '@/utils/request'
 import type { Story } from '@/api/stories'
-import { onShow } from '@dcloudio/uni-app'
 
 const userStore = useUserStore()
 
+const statusBarHeight = ref(20)
 const refreshing = ref(false)
 const loading = ref(false)
 const loadingMore = ref(false)
 const noMore = ref(false)
 const checkedIn = ref(false)
 
-const featuredStories = ref<Story[]>([])
-const stories = ref<Story[]>([])
-const currentSort = ref<'latest' | 'popular' | 'trending'>('latest')
-const page = ref(1)
-const pageSize = 10
+// 动态 Tab
+const feedTab = ref<'stories' | 'authors'>('stories')
 
-const sortTabs = [
-  { label: '最新', value: 'latest' as const },
-  { label: '热门', value: 'popular' as const },
-  { label: '趋势', value: 'trending' as const },
-]
+// 已登录：关注动态
+const followedStories = ref<Array<{ story: Story; created_at: string }>>([])
+const authorFeed = ref<Array<{
+  id: number
+  title: string
+  created_at: string
+  author: { id: number; username: string }
+  story: { id: number; title: string }
+}>>([])
+const feedPage = ref(1)
+
+// 未登录：精选推荐
+const featuredStories = ref<Story[]>([])
+const guestStories = ref<Story[]>([])
 
 onMounted(async () => {
-  await loadData()
+  // 获取状态栏高度
+  try {
+    const info = uni.getSystemInfoSync()
+    statusBarHeight.value = info.statusBarHeight || 20
+  } catch { /* ignore */ }
+
   if (userStore.isLoggedIn) {
+    await loadFeed()
     checkCheckinStatus()
+  } else {
+    await loadGuestData()
   }
 })
 
@@ -246,17 +641,60 @@ onShow(() => {
   }
 })
 
-async function loadData() {
+// ===== 已登录：关注动态 =====
+
+async function loadFeed(reset = true) {
+  if (reset) {
+    loading.value = true
+    feedPage.value = 1
+    noMore.value = false
+  }
+  try {
+    if (feedTab.value === 'stories') {
+      const res = await getFollowedStories(userStore.userInfo!.id, { page: feedPage.value, pageSize: 15 })
+      if (reset) {
+        followedStories.value = res.follows
+      } else {
+        followedStories.value.push(...res.follows)
+        noMore.value = res.follows.length < 15
+      }
+    } else {
+      const res = await getMyFeed()
+      authorFeed.value = res.feed
+      noMore.value = true
+    }
+  } catch (err) {
+    console.error('加载动态失败', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function onRefresh() {
+  refreshing.value = true
+  await loadFeed(true)
+  refreshing.value = false
+}
+
+async function onLoadMore() {
+  if (loadingMore.value || noMore.value || feedTab.value === 'authors') return
+  loadingMore.value = true
+  feedPage.value++
+  await loadFeed(false)
+  loadingMore.value = false
+}
+
+// ===== 未登录：精选推荐 =====
+
+async function loadGuestData() {
   loading.value = true
   try {
     const [featuredRes, storiesRes] = await Promise.all([
       getFeaturedStories(),
-      getStories({ page: 1, pageSize, sort: currentSort.value }),
+      getStories({ page: 1, pageSize: 8, sort: 'popular' }),
     ])
     featuredStories.value = featuredRes.stories
-    stories.value = storiesRes.stories
-    page.value = 1
-    noMore.value = storiesRes.stories.length < pageSize
+    guestStories.value = storiesRes.stories
   } catch (err) {
     console.error('加载数据失败', err)
   } finally {
@@ -264,44 +702,28 @@ async function loadData() {
   }
 }
 
+async function onRefreshGuest() {
+  refreshing.value = true
+  await loadGuestData()
+  refreshing.value = false
+}
+
+// ===== 公共 =====
+
 async function checkCheckinStatus() {
   try {
     const res = await getCheckinStatus()
     checkedIn.value = !res.canCheckin
-  } catch {
-    // 忽略
-  }
+  } catch { /* ignore */ }
 }
 
-async function onRefresh() {
-  refreshing.value = true
-  await loadData()
-  refreshing.value = false
-}
-
-async function onLoadMore() {
-  if (loadingMore.value || noMore.value) return
-  loadingMore.value = true
-  try {
-    const res = await getStories({
-      page: page.value + 1,
-      pageSize,
-      sort: currentSort.value,
-    })
-    stories.value.push(...res.stories)
-    page.value++
-    noMore.value = res.stories.length < pageSize
-  } catch (err) {
-    console.error('加载更多失败', err)
-  } finally {
-    loadingMore.value = false
-  }
-}
-
-async function changeSort(sort: typeof currentSort.value) {
-  if (currentSort.value === sort) return
-  currentSort.value = sort
-  await loadData()
+function formatTime(date: string): string {
+  const diff = Date.now() - new Date(date).getTime()
+  if (diff < 60000) return '刚刚'
+  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`
+  if (diff < 604800000) return `${Math.floor(diff / 86400000)} 天前`
+  return new Date(date).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
 }
 
 function goSearch() {
@@ -316,49 +738,20 @@ function goCheckin() {
   uni.navigateTo({ url: '/pages/checkin/index' })
 }
 
-function goProfile() {
-  uni.switchTab({ url: '/pages/profile/index' })
-}
-
 function goLogin() {
   uni.navigateTo({ url: '/pages/auth/login/index' })
-}
-
-function goCreate() {
-  if (!userStore.isLoggedIn) {
-    uni.navigateTo({ url: '/pages/auth/login/index' })
-    return
-  }
-  uni.switchTab({ url: '/pages/write/index' })
 }
 
 function goDiscover() {
   uni.switchTab({ url: '/pages/discover/index' })
 }
 
-function goMembership() {
-  uni.navigateTo({ url: '/pages/membership/index' })
-}
-
-function goPoints() {
-  uni.navigateTo({ url: '/pages/points/index' })
-}
-
 function goStory(id: number) {
   uni.navigateTo({ url: `/pages/story/index?id=${id}` })
 }
 
-function parseTags(raw: string): string[] {
-  if (!raw || !raw.trim()) return []
-  try {
-    const parsed = JSON.parse(raw)
-    if (Array.isArray(parsed)) {
-      return parsed.map((t: string) => String(t).trim()).filter(Boolean)
-    }
-  } catch {
-    // 不是 JSON，尝试逗号分割
-  }
-  return raw.split(',').map((t: string) => t.trim()).filter(Boolean)
+function goChapter(id: number) {
+  uni.navigateTo({ url: `/pages/chapter/index?id=${id}` })
 }
 </script>
 
@@ -366,13 +759,19 @@ function parseTags(raw: string): string[] {
 .index-page {
   min-height: 100vh;
   background: #f0f2f5;
+  display: flex;
+  flex-direction: column;
 }
 
+// ===== 导航栏 =====
 .navbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 88rpx 32rpx 24rpx;
+  padding-left: 32rpx;
+  padding-right: 32rpx;
+  padding-bottom: 20rpx;
+  padding-top: 20rpx; // fallback，实际由 style 覆盖
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
 
   .navbar-left {
@@ -407,9 +806,7 @@ function parseTags(raw: string): string[] {
       align-items: center;
       justify-content: center;
 
-      .icon {
-        font-size: 40rpx;
-      }
+      .icon { font-size: 40rpx; }
 
       .badge-dot {
         position: absolute;
@@ -424,80 +821,224 @@ function parseTags(raw: string): string[] {
   }
 }
 
-.content {
-  height: calc(100vh - 160rpx);
+// ===== 动态 Tab 切换 =====
+.feed-tabs {
+  position: relative;
+  display: flex;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  padding: 0 32rpx 0;
+
+  .feed-tab {
+    flex: 1;
+    text-align: center;
+    font-size: 28rpx;
+    color: rgba(255, 255, 255, 0.5);
+    padding: 16rpx 0 24rpx;
+    font-weight: 500;
+    transition: color 0.2s;
+
+    &.active {
+      color: #ffffff;
+      font-weight: 600;
+    }
+  }
+
+  .tab-indicator {
+    position: absolute;
+    bottom: 0;
+    width: 50%;
+    height: 4rpx;
+    background: #7c6af7;
+    border-radius: 4rpx 4rpx 0 0;
+    transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
 }
 
-.welcome-banner {
-  margin: 24rpx 24rpx 0;
-  background: linear-gradient(135deg, #7c6af7 0%, #a78bfa 100%);
-  border-radius: 24rpx;
-  padding: 28rpx 32rpx;
+// ===== 内容滚动区 =====
+.content {
+  flex: 1;
+  height: 0;
+  min-height: 0;
+}
+
+// ===== 追更故事列表 =====
+.story-feed-list {
+  padding: 16rpx 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.story-feed-card {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 20rpx;
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 20rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
 
-  .welcome-left {
-    display: flex;
-    align-items: center;
-    gap: 20rpx;
+  .story-cover {
+    width: 120rpx;
+    height: 160rpx;
+    border-radius: 12rpx;
+    flex-shrink: 0;
+  }
 
-    .avatar {
-      width: 80rpx;
-      height: 80rpx;
-      border-radius: 50%;
-      border: 3rpx solid rgba(255, 255, 255, 0.4);
+  .story-info {
+    flex: 1;
+    overflow: hidden;
+
+    .story-title {
+      font-size: 30rpx;
+      font-weight: 600;
+      color: #1e293b;
+      display: block;
+      margin-bottom: 8rpx;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    .welcome-info {
-      .welcome-text {
-        font-size: 28rpx;
-        color: #ffffff;
-        font-weight: 600;
+    .story-desc {
+      font-size: 24rpx;
+      color: #64748b;
+      display: block;
+      margin-bottom: 16rpx;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .story-meta {
+      display: flex;
+      align-items: center;
+      gap: 16rpx;
+
+      .author-name {
+        font-size: 22rpx;
+        color: #7c6af7;
       }
 
-      .level-badge {
-        display: flex;
-        align-items: center;
-        gap: 12rpx;
-        margin-top: 6rpx;
-
-        .level-text {
-          font-size: 22rpx;
-          color: rgba(255, 255, 255, 0.8);
-          background: rgba(255, 255, 255, 0.2);
-          padding: 4rpx 12rpx;
-          border-radius: 20rpx;
-        }
-
-        .points-text {
-          font-size: 22rpx;
-          color: rgba(255, 255, 255, 0.8);
-        }
+      .chapter-count {
+        font-size: 22rpx;
+        color: #94a3b8;
       }
     }
   }
 
-  .streak-info {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+  .story-arrow {
+    font-size: 40rpx;
+    color: #cbd5e1;
+    flex-shrink: 0;
+  }
+}
 
-    .streak-num {
-      font-size: 48rpx;
-      font-weight: 700;
-      color: #ffffff;
-      line-height: 1;
+// ===== 关注作者动态 =====
+.author-feed-list {
+  padding: 16rpx 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.author-feed-item {
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 24rpx 28rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
+
+  .feed-header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4rpx;
+    margin-bottom: 16rpx;
+
+    .feed-author {
+      font-size: 26rpx;
+      font-weight: 600;
+      color: #7c6af7;
     }
 
-    .streak-label {
-      font-size: 20rpx;
-      color: rgba(255, 255, 255, 0.7);
-      margin-top: 4rpx;
+    .feed-story {
+      font-size: 24rpx;
+      color: #64748b;
+    }
+
+    .feed-action {
+      font-size: 24rpx;
+      color: #94a3b8;
+    }
+  }
+
+  .feed-chapter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f8fafc;
+    border-radius: 12rpx;
+    padding: 16rpx 20rpx;
+
+    .chapter-title {
+      font-size: 28rpx;
+      color: #1e293b;
+      font-weight: 500;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .chapter-time {
+      font-size: 22rpx;
+      color: #94a3b8;
+      flex-shrink: 0;
+      margin-left: 16rpx;
     }
   }
 }
 
+// ===== 空状态 =====
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120rpx 48rpx;
+
+  .empty-icon {
+    font-size: 100rpx;
+    margin-bottom: 24rpx;
+  }
+
+  .empty-title {
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 12rpx;
+  }
+
+  .empty-sub {
+    font-size: 26rpx;
+    color: #94a3b8;
+    text-align: center;
+    margin-bottom: 40rpx;
+    line-height: 1.6;
+  }
+
+  .empty-btn {
+    background: linear-gradient(135deg, #7c6af7 0%, #a78bfa 100%);
+    color: #ffffff;
+    font-size: 28rpx;
+    font-weight: 600;
+    padding: 20rpx 60rpx;
+    border-radius: 40rpx;
+  }
+}
+
+// ===== 未登录：精选推荐 =====
 .guest-banner {
   margin: 24rpx 24rpx 0;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -509,17 +1050,22 @@ function parseTags(raw: string): string[] {
   border: 1rpx solid rgba(124, 106, 247, 0.3);
 
   .guest-content {
+    flex: 1;
+    margin-right: 24rpx;
+
     .guest-title {
       font-size: 30rpx;
       font-weight: 600;
       color: #ffffff;
+      display: block;
+      margin-bottom: 6rpx;
     }
 
     .guest-sub {
-      font-size: 24rpx;
+      font-size: 22rpx;
       color: #94a3b8;
-      margin-top: 6rpx;
       display: block;
+      line-height: 1.5;
     }
   }
 
@@ -527,50 +1073,12 @@ function parseTags(raw: string): string[] {
     background: #7c6af7;
     padding: 16rpx 28rpx;
     border-radius: 40rpx;
+    flex-shrink: 0;
 
     text {
       font-size: 26rpx;
       color: #ffffff;
       font-weight: 600;
-    }
-  }
-}
-
-.quick-actions {
-  display: flex;
-  justify-content: space-around;
-  padding: 32rpx 24rpx;
-  background: #ffffff;
-  margin: 24rpx 24rpx 0;
-  border-radius: 24rpx;
-
-  .action-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12rpx;
-
-    .action-icon-wrap {
-      width: 96rpx;
-      height: 96rpx;
-      border-radius: 24rpx;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      .action-icon {
-        font-size: 44rpx;
-      }
-
-      &.action-create { background: rgba(124, 106, 247, 0.12); }
-      &.action-discover { background: rgba(245, 158, 11, 0.12); }
-      &.action-member { background: rgba(16, 185, 129, 0.12); }
-      &.action-points { background: rgba(59, 130, 246, 0.12); }
-    }
-
-    .action-label {
-      font-size: 24rpx;
-      color: #475569;
     }
   }
 }
@@ -653,25 +1161,64 @@ function parseTags(raw: string): string[] {
   }
 }
 
-.sort-tabs {
+.story-list {
   display: flex;
-  gap: 8rpx;
+  flex-direction: column;
+  gap: 16rpx;
+}
 
-  .sort-tab {
-    font-size: 24rpx;
-    color: #94a3b8;
-    padding: 8rpx 16rpx;
-    border-radius: 20rpx;
+.story-card {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  background: #ffffff;
+  border-radius: 16rpx;
+  padding: 20rpx;
 
-    &.active {
-      background: rgba(124, 106, 247, 0.12);
-      color: #7c6af7;
+  .story-cover-sm {
+    width: 100rpx;
+    height: 130rpx;
+    border-radius: 10rpx;
+    flex-shrink: 0;
+  }
+
+  .story-info-sm {
+    flex: 1;
+    overflow: hidden;
+
+    .story-title-sm {
+      font-size: 28rpx;
       font-weight: 600;
+      color: #1e293b;
+      display: block;
+      margin-bottom: 8rpx;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .story-author-sm {
+      font-size: 24rpx;
+      color: #7c6af7;
+      display: block;
+      margin-bottom: 8rpx;
+    }
+
+    .story-count-sm {
+      font-size: 22rpx;
+      color: #94a3b8;
     }
   }
 }
 
+// ===== 骨架屏 =====
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 .skeleton-list {
+  padding: 16rpx 24rpx;
   display: flex;
   flex-direction: column;
   gap: 20rpx;
@@ -680,15 +1227,15 @@ function parseTags(raw: string): string[] {
 .skeleton-card {
   display: flex;
   gap: 20rpx;
-  padding: 24rpx;
+  padding: 20rpx;
   background: #ffffff;
   border-radius: 20rpx;
 
   .skeleton-cover {
-    width: 160rpx;
-    height: 120rpx;
+    width: 120rpx;
+    height: 160rpx;
     border-radius: 12rpx;
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
     flex-shrink: 0;
@@ -698,130 +1245,56 @@ function parseTags(raw: string): string[] {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 16rpx;
+    gap: 12rpx;
     padding-top: 8rpx;
-
-    .skeleton-title {
-      height: 32rpx;
-      border-radius: 8rpx;
-      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
-      width: 70%;
-    }
-
-    .skeleton-meta {
-      height: 24rpx;
-      border-radius: 8rpx;
-      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
-      width: 50%;
-    }
   }
 }
 
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-.story-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20rpx;
-}
-
-.story-card {
+.skeleton-feed {
   display: flex;
   gap: 20rpx;
   padding: 24rpx;
   background: #ffffff;
   border-radius: 20rpx;
 
-  .story-cover {
-    width: 160rpx;
-    height: 120rpx;
-    border-radius: 12rpx;
+  .skeleton-avatar {
+    width: 72rpx;
+    height: 72rpx;
+    border-radius: 50%;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
     flex-shrink: 0;
-    background: #f0f2f5;
   }
 
-  .story-info {
+  .skeleton-content {
     flex: 1;
-    overflow: hidden;
-
-    .story-title {
-      font-size: 28rpx;
-      font-weight: 600;
-      color: #1e293b;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      display: block;
-    }
-
-    .story-desc {
-      font-size: 24rpx;
-      color: #64748b;
-      margin-top: 8rpx;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-
-    .story-meta {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-top: 12rpx;
-
-      .author-info {
-        display: flex;
-        align-items: center;
-        gap: 8rpx;
-
-        .author-avatar {
-          width: 36rpx;
-          height: 36rpx;
-          border-radius: 50%;
-        }
-
-        .author-name {
-          font-size: 22rpx;
-          color: #94a3b8;
-        }
-      }
-
-      .story-stats {
-        display: flex;
-        gap: 12rpx;
-
-        .stat-item {
-          font-size: 22rpx;
-          color: #94a3b8;
-        }
-      }
-    }
-
-    .tag-list {
-      display: flex;
-      gap: 8rpx;
-      margin-top: 10rpx;
-      flex-wrap: wrap;
-
-      .tag {
-        font-size: 20rpx;
-        color: #7c6af7;
-        background: rgba(124, 106, 247, 0.08);
-        padding: 4rpx 12rpx;
-        border-radius: 20rpx;
-      }
-    }
+    display: flex;
+    flex-direction: column;
+    gap: 12rpx;
+    padding-top: 8rpx;
   }
 }
 
+.skeleton-title {
+  height: 32rpx;
+  border-radius: 8rpx;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.skeleton-meta {
+  height: 24rpx;
+  border-radius: 8rpx;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+
+  &.short { width: 60%; }
+}
+
+// ===== 通用 =====
 .loading-more,
 .no-more {
   text-align: center;

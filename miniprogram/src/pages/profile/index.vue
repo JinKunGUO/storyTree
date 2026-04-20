@@ -14,6 +14,18 @@
       <!-- 用户信息头部 -->
       <view class="profile-header">
         <view class="header-bg" />
+        <!-- 顶部操作栏：编辑 + 消息通知 -->
+        <view class="header-top-bar" :style="{ paddingTop: statusBarHeight + 'px' }">
+          <text class="header-top-title">我的</text>
+          <view class="header-top-actions">
+            <view class="notif-btn" @tap="goNotifications">
+              <text class="notif-icon-text">🔔</text>
+              <view v-if="appStore.unreadCount > 0" class="notif-badge">
+                <text class="notif-badge-text">{{ appStore.unreadCount > 99 ? '99+' : appStore.unreadCount }}</text>
+              </view>
+            </view>
+          </view>
+        </view>
         <view class="header-content">
           <image
             class="avatar"
@@ -74,13 +86,6 @@
             <view class="quick-item" @tap="goMembership">
               <text class="quick-icon">👑</text>
               <text class="quick-label">会员中心</text>
-            </view>
-            <view class="quick-item" @tap="goNotifications">
-              <text class="quick-icon">🔔</text>
-              <text class="quick-label">消息通知</text>
-              <view v-if="appStore.unreadCount > 0" class="quick-badge red">
-                {{ appStore.unreadCount > 99 ? '99+' : appStore.unreadCount }}
-              </view>
             </view>
           </view>
         </view>
@@ -189,6 +194,7 @@ const userStore = useUserStore()
 const appStore = useAppStore()
 
 const checkedIn = ref(false)
+const statusBarHeight = ref(20)
 
 const memberLabel = computed(() => {
   const tier = userStore.userInfo?.membership_tier || 'free'
@@ -199,6 +205,11 @@ onShow(() => {
   if (userStore.isLoggedIn) {
     checkCheckin()
   }
+  // 获取状态栏高度
+  try {
+    const info = uni.getSystemInfoSync()
+    statusBarHeight.value = info.statusBarHeight || 20
+  } catch { /* ignore */ }
 })
 
 async function checkCheckin() {
@@ -252,8 +263,7 @@ function goMembership() {
 }
 
 function goNotifications() {
-  // notifications 是 tabBar 页面，必须用 switchTab
-  uni.switchTab({ url: '/pages/notifications/index' })
+  uni.navigateTo({ url: '/pages/notifications/index' })
 }
 
 function goMyStories() {
@@ -383,12 +393,69 @@ function handleLogout() {
     opacity: 0.6;
   }
 
+  // 顶部操作栏：标题 + 消息通知按钮
+  .header-top-bar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16rpx 32rpx 0;
+
+    .header-top-title {
+      font-size: 36rpx;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .header-top-actions {
+      display: flex;
+      align-items: center;
+      gap: 16rpx;
+
+      .notif-btn {
+        position: relative;
+        width: 72rpx;
+        height: 72rpx;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        .notif-icon-text {
+          font-size: 36rpx;
+        }
+
+        .notif-badge {
+          position: absolute;
+          top: 4rpx;
+          right: 4rpx;
+          min-width: 32rpx;
+          height: 32rpx;
+          background: #ef4444;
+          border-radius: 16rpx;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0 6rpx;
+          border: 2rpx solid #1a1a2e;
+
+          .notif-badge-text {
+            font-size: 18rpx;
+            color: #ffffff;
+            font-weight: 600;
+          }
+        }
+      }
+    }
+  }
+
   .header-content {
     position: relative;
     display: flex;
     align-items: flex-start;
     gap: 24rpx;
-    padding: 100rpx 32rpx 24rpx;
+    padding: 24rpx 32rpx 24rpx;
 
     .avatar {
       width: 120rpx;
@@ -510,10 +577,10 @@ function handleLogout() {
   border-radius: 24rpx;
   padding: 24rpx;
 
-  .quick-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16rpx;
+    .quick-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16rpx;
 
     .quick-item {
       position: relative;
@@ -610,4 +677,3 @@ function handleLogout() {
   height: 60rpx;
 }
 </style>
-
