@@ -74,21 +74,22 @@
 
     <!-- 购买积分弹窗 -->
     <view v-if="showBuyPoints" class="buy-mask" @tap.self="showBuyPoints = false">
-      <view class="buy-panel">
+      <view class="buy-panel" @tap.stop>
         <text class="buy-title">购买积分</text>
         <view class="buy-options">
           <view
             v-for="option in buyOptions"
             :key="option.points"
             class="buy-option"
-            :class="{ selected: selectedOption === option.points }"
+            :class="{ selected: selectedOption === option.points, popular: option.popular }"
             @tap="selectedOption = option.points"
           >
+            <view v-if="option.popular" class="buy-popular-badge">
+              <text>热门推荐</text>
+            </view>
+            <text class="buy-name">{{ option.name }}</text>
             <text class="buy-points">{{ option.points }} 积分</text>
             <text class="buy-price">¥{{ option.price }}</text>
-            <view v-if="option.bonus" class="buy-bonus">
-              <text>+{{ option.bonus }} 赠送</text>
-            </view>
           </view>
         </view>
         <button class="btn-buy" @tap="handleBuy">立即购买</button>
@@ -122,10 +123,10 @@ const filterTabs = [
 ]
 
 const buyOptions = [
-  { points: 100, price: 1, bonus: 0 },
-  { points: 500, price: 4.5, bonus: 50 },
-  { points: 1000, price: 8, bonus: 200 },
-  { points: 5000, price: 35, bonus: 1500 },
+  { points: 100, price: 9.9, bonus: 0, name: '小额套餐' },
+  { points: 500, price: 45.0, bonus: 0, name: '中额套餐', popular: true },
+  { points: 1000, price: 85.0, bonus: 0, name: '大额套餐' },
+  { points: 2000, price: 160.0, bonus: 0, name: '超值套餐' },
 ]
 
 const filteredRecords = computed(() => {
@@ -421,6 +422,33 @@ function handleBuy() {
       &.selected {
         border-color: #7c6af7;
         background: rgba(124, 106, 247, 0.06);
+      }
+
+      &.popular {
+        border-color: #f59e0b;
+      }
+
+      .buy-popular-badge {
+        position: absolute;
+        top: -12rpx;
+        right: -12rpx;
+        background: linear-gradient(135deg, #f59e0b, #fbbf24);
+        padding: 4rpx 14rpx;
+        border-radius: 20rpx;
+
+        text {
+          font-size: 18rpx;
+          color: #ffffff;
+          font-weight: 600;
+          line-height: 1;
+        }
+      }
+
+      .buy-name {
+        font-size: 22rpx;
+        color: #94a3b8;
+        display: block;
+        margin-bottom: 8rpx;
       }
 
       .buy-points {
