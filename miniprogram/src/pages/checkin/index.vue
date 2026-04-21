@@ -34,7 +34,10 @@
 
       <!-- 本月签到日历 -->
       <view class="calendar-card">
-        <text class="calendar-title">本月签到记录</text>
+        <view class="calendar-header-row">
+          <text class="calendar-title">本月签到记录</text>
+          <text v-if="status.makeupChances > 0" class="makeup-hint">点击漏签日期可补签（剩余 {{ status.makeupChances }} 次）</text>
+        </view>
         <view class="calendar-grid">
           <view
             v-for="day in calendarDays"
@@ -44,30 +47,14 @@
               checked: day.checked,
               today: day.isToday,
               'out-of-month': !day.inMonth,
+              missed: day.isMissed,
+              'making-up': makeupLoading === day.date,
             }"
+            @tap="day.isMissed ? doMakeup(day.date) : undefined"
           >
             <text class="day-num">{{ day.day }}</text>
             <text v-if="day.checked" class="day-check">✓</text>
-          </view>
-        </view>
-      </view>
-
-      <!-- 补签 -->
-      <view v-if="status.makeupChances > 0" class="makeup-card">
-        <view class="makeup-header">
-          <text class="makeup-title">补签机会</text>
-          <text class="makeup-count">剩余 {{ status.makeupChances }} 次</text>
-        </view>
-        <text class="makeup-desc">可以补签最近7天内漏签的日期</text>
-        <view class="missed-days">
-          <view
-            v-for="day in missedDays"
-            :key="day"
-            class="missed-day-btn"
-            :class="{ loading: makeupLoading === day }"
-            @tap="doMakeup(day)"
-          >
-            {{ makeupLoading === day ? '补签中...' : day }}
+            <text v-else-if="day.isMissed" class="day-makeup-icon">+</text>
           </view>
         </view>
       </view>
@@ -130,46 +117,44 @@ const calendarDays = computed(() => {
   const month = now.getMonth()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const firstDay = new Date(year, month, 1).getDay()
+  const todayNum = now.getDate()
 
-  const checkedDates = new Set(
-    monthRecords.value.map(r => new Date(r.checkin_date).getDate())
-  )
-
-  const days = []
-  for (let i = 0; i < firstDay; i++) {
-    days.push({ day: '', date: `empty-${i}`, inMonth: false, checked: false, isToday: false })
-  }
-  for (let d = 1; d <= daysInMonth; d++) {
-    days.push({
-      day: d,
-      date: `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
-      inMonth: true,
-      checked: checkedDates.has(d),
-      isToday: d === now.getDate(),
-    })
-  }
-  return days
-})
-
-// 最近 7 天内漏签的日期（对齐后端补签限制：7天内）
-const missedDays = computed(() => {
-  const now = new Date()
   const checkedDates = new Set(
     monthRecords.value.map(r => {
       const d = new Date(r.checkin_date)
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     })
   )
-  const missed = []
-  for (let i = 1; i <= 7; i++) {
-    const d = new Date(now)
-    d.setDate(d.getDate() - i)
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    if (!checkedDates.has(key)) {
-      missed.push(key)
+
+  // 计算最近7天内漏签且可补签的日期集合
+  const missedSet = new Set<string>()
+  if (status.makeupChances > 0) {
+    for (let i = 1; i <= 7; i++) {
+      const d = new Date(now)
+      d.setDate(d.getDate() - i)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      if (!checkedDates.has(key)) {
+        missedSet.add(key)
+      }
     }
   }
-  return missed
+
+  const days = []
+  for (let i = 0; i < firstDay; i++) {
+    days.push({ day: '', date: `empty-${i}`, inMonth: false, checked: false, isToday: false, isMissed: false })
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    days.push({
+      day: d,
+      date: dateStr,
+      inMonth: true,
+      checked: checkedDates.has(dateStr),
+      isToday: d === todayNum,
+      isMissed: missedSet.has(dateStr),
+    })
+  }
+  return days
 })
 
 onMounted(async () => {
@@ -372,12 +357,25 @@ async function doMakeup(date: string) {
   margin-bottom: 24rpx;
   border: 1rpx solid rgba(255, 255, 255, 0.1);
 
+  .calendar-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20rpx;
+    flex-wrap: wrap;
+    gap: 8rpx;
+  }
+
   .calendar-title {
     font-size: 28rpx;
     font-weight: 600;
     color: #ffffff;
     display: block;
-    margin-bottom: 20rpx;
+  }
+
+  .makeup-hint {
+    font-size: 22rpx;
+    color: #f59e0b;
   }
 
   .calendar-grid {
@@ -406,6 +404,20 @@ async function doMakeup(date: string) {
         background: rgba(124, 106, 247, 0.2);
       }
 
+      // 可补签的漏签格子：琥珀色边框，点击态更明显
+      &.missed {
+        border: 2rpx dashed rgba(245, 158, 11, 0.6);
+        background: rgba(245, 158, 11, 0.08);
+
+        .day-num { color: #f59e0b; }
+        .day-makeup-icon { font-size: 20rpx; color: #f59e0b; font-weight: 700; }
+      }
+
+      // 补签进行中
+      &.making-up {
+        opacity: 0.5;
+      }
+
       .day-num {
         font-size: 22rpx;
         color: rgba(255, 255, 255, 0.7);
@@ -415,53 +427,6 @@ async function doMakeup(date: string) {
         font-size: 16rpx;
         color: #7c6af7;
       }
-    }
-  }
-}
-
-.makeup-card {
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 24rpx;
-  padding: 28rpx;
-  margin-bottom: 24rpx;
-  border: 1rpx solid rgba(245, 158, 11, 0.3);
-
-  .makeup-header {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 12rpx;
-
-    .makeup-title {
-      font-size: 28rpx;
-      font-weight: 600;
-      color: #f59e0b;
-    }
-
-    .makeup-count {
-      font-size: 24rpx;
-      color: rgba(255, 255, 255, 0.6);
-    }
-  }
-
-  .makeup-desc {
-    font-size: 24rpx;
-    color: rgba(255, 255, 255, 0.5);
-    display: block;
-    margin-bottom: 20rpx;
-  }
-
-  .missed-days {
-    display: flex;
-    gap: 16rpx;
-    flex-wrap: wrap;
-
-    .missed-day-btn {
-      padding: 12rpx 24rpx;
-      background: rgba(245, 158, 11, 0.15);
-      border-radius: 20rpx;
-      font-size: 24rpx;
-      color: #f59e0b;
-      border: 1rpx solid rgba(245, 158, 11, 0.3);
     }
   }
 }
