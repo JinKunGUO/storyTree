@@ -60,10 +60,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useUserStore } from '@/store/user'
 import { getImageUrl } from '@/utils/request'
 import { http } from '@/utils/request'
+import { onLoad } from '@dcloudio/uni-app'
 
 const userStore = useUserStore()
 
@@ -71,20 +72,40 @@ const loading = ref(true)
 const loadingMore = ref(false)
 const noMore = ref(false)
 const stories = ref<any[]>([])
+const targetUserId = ref<number | null>(null)
+const pageTitle = ref('我的故事')
 
-onMounted(() => {
+onLoad((options) => {
+  if (options?.userId) {
+    const uid = parseInt(options.userId)
+    targetUserId.value = uid
+    // 加载他人信息以更新标题
+    loadUserInfo(uid)
+  } else {
+    targetUserId.value = userStore.userInfo?.id ?? null
+  }
   loadStories()
 })
+
+async function loadUserInfo(userId: number) {
+  try {
+    const res = await http.get<{ user: { username: string } }>(`/api/users/${userId}`)
+    if (res.user?.username) {
+      pageTitle.value = `${res.user.username} 的故事`
+      uni.setNavigationBarTitle({ title: pageTitle.value })
+    }
+  } catch { /* ignore */ }
+}
 
 async function loadStories() {
   loading.value = true
   try {
-    const userId = userStore.userInfo?.id
+    const userId = targetUserId.value ?? userStore.userInfo?.id
     if (!userId) return
     const res = await http.get<{ stories: any[] }>(`/api/users/${userId}/stories`)
     stories.value = res.stories || []
   } catch (err) {
-    console.error('加载我的故事失败', err)
+    console.error('加载故事失败', err)
   } finally {
     loading.value = false
   }

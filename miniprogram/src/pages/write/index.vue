@@ -170,6 +170,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
 import { createNode, updateNode, getNode } from '@/api/nodes'
 import { getUserStories } from '@/api/stories'
@@ -253,96 +254,103 @@ onMounted(async () => {
   } catch {
     statusBarHeight.value = 20
   }
+})
 
+// onShow 每次显示时执行（包括 switchTab 切回来），处理续写参数
+onShow(async () => {
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1] as any
   const options = currentPage.options || {}
 
   // 优先读取 URL 参数（navigateTo 方式，如从编辑入口进入）
-  if (options.storyId) storyId.value = Number(options.storyId)
-  if (options.parentId) parentId.value = Number(options.parentId)
   if (options.nodeId) {
-    nodeId.value = Number(options.nodeId)
-    isEditing.value = true
-    loadNodeForEdit(nodeId.value)
+    // 编辑模式：只在首次进入时处理（nodeId 不会变）
+    if (!isEditing.value) {
+      nodeId.value = Number(options.nodeId)
+      isEditing.value = true
+      loadNodeForEdit(nodeId.value)
+    }
+    return
   }
 
-  // 若无 URL 参数，尝试从 storage 读取（switchTab 传参方式）
+  // 检查 storage 中是否有新的续写参数（每次 onShow 都检查）
   let mode = ''
   let hasPrefill = false
-  if (!storyId.value && !options.nodeId) {
-    // 优先检查是否从草稿箱恢复
-    try {
-      const resumeRaw = uni.getStorageSync('st_write_resume')
-      if (resumeRaw) {
-        const resume = JSON.parse(resumeRaw)
-        uni.removeStorageSync('st_write_resume')
-        if (resume.storyId) storyId.value = Number(resume.storyId)
-        if (resume.parentId) parentId.value = Number(resume.parentId)
-        // 直接加载对应草稿
-        if (!isEditing.value) {
-          loadDraft()
-        }
-        if (storyId.value) {
-          loadMyStories()
-        }
-        return
-      }
-    } catch {
-      // 忽略
+  let hasNewParams = false
+
+  // 优先检查是否从草稿箱恢复
+  try {
+    const resumeRaw = uni.getStorageSync('st_write_resume')
+    if (resumeRaw) {
+      const resume = JSON.parse(resumeRaw)
+      uni.removeStorageSync('st_write_resume')
+      // 重置状态
+      resetState()
+      if (resume.storyId) storyId.value = Number(resume.storyId)
+      if (resume.parentId) parentId.value = Number(resume.parentId)
+      hasNewParams = true
+      if (!isEditing.value) loadDraft()
+      if (storyId.value) loadMyStories()
+      loadAiQuota()
+      return
     }
+  } catch { /* 忽略 */ }
 
-    try {
-      const raw = uni.getStorageSync('st_write_params')
-      if (raw) {
-        const params = JSON.parse(raw)
-        if (params.storyId) storyId.value = Number(params.storyId)
-        if (params.parentId) parentId.value = Number(params.parentId)
-        if (params.parentTitle) parentNodeTitle.value = params.parentTitle
-        if (params.prefillContent) {
-          form.content = params.prefillContent
-          hasPrefill = true
-        }
-        if (params.prefillTitle) {
-          form.title = params.prefillTitle
-          hasPrefill = true
-        }
-        if (params.mode) mode = params.mode
-        uni.removeStorageSync('st_write_params')
+  // 检查续写/AI 参数
+  try {
+    const raw = uni.getStorageSync('st_write_params')
+    if (raw) {
+      const params = JSON.parse(raw)
+      uni.removeStorageSync('st_write_params')
+      // 重置状态，应用新参数
+      resetState()
+      if (params.storyId) storyId.value = Number(params.storyId)
+      if (params.parentId) parentId.value = Number(params.parentId)
+      if (params.parentTitle) parentNodeTitle.value = params.parentTitle
+      if (params.prefillContent) {
+        form.content = params.prefillContent
+        hasPrefill = true
       }
-    } catch {
-      // 忽略
+      if (params.prefillTitle) {
+        form.title = params.prefillTitle
+        hasPrefill = true
+      }
+      if (params.mode) mode = params.mode
+      hasNewParams = true
     }
-  }
+  } catch { /* 忽略 */ }
 
-  // 加载父节点标题（若已从 storage 获取则跳过）
-  if (parentId.value && !parentNodeTitle.value) {
-    loadParentNodeTitle(parentId.value)
-  }
-
-  // 加载草稿：
-  // - 有 prefill 内容（AI 生成）时跳过，避免覆盖
-  // - 编辑模式时跳过
-  // 草稿 key 同时包含 storyId + parentId，避免不同父节点间互相污染
-  if (!isEditing.value && !hasPrefill) {
-    loadDraft()
-  }
-
-  // 如果没有选定故事，加载我的故事列表
-  if (!storyId.value) {
-    loadMyStories()
-  }
-
-  // 加载 AI 配额（用于按钮徽章显示）
-  loadAiQuota()
-
-  // AI 模式：直接打开 AI 面板
-  if (mode === 'ai') {
-    setTimeout(() => {
-      showAiPanel.value = true
-    }, 300)
+  if (hasNewParams) {
+    // 加载父节点标题（若已从 storage 获取则跳过）
+    if (parentId.value && !parentNodeTitle.value) {
+      loadParentNodeTitle(parentId.value)
+    }
+    if (!isEditing.value && !hasPrefill) loadDraft()
+    if (!storyId.value) loadMyStories()
+    loadAiQuota()
+    if (mode === 'ai') {
+      setTimeout(() => { showAiPanel.value = true }, 300)
+    }
+  } else if (!storyId.value && !isEditing.value) {
+    // 无新参数且无故事（自由写作模式），确保故事列表已加载
+    if (myStories.value.length === 0) loadMyStories()
+    loadAiQuota()
   }
 })
+
+// 重置写作页状态（切换续写目标时调用）
+function resetState() {
+  storyId.value = null
+  parentId.value = null
+  nodeId.value = null
+  parentNodeTitle.value = ''
+  isEditing.value = false
+  selectedStory.value = null
+  form.title = ''
+  form.content = ''
+  form.image = ''
+  showAiPanel.value = false
+}
 
 async function loadParentNodeTitle(id: number) {
   try {

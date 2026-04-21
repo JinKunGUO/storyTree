@@ -121,7 +121,7 @@ function goNewStory() {
 }
 
 function goQuickWrite() {
-  uni.navigateTo({ url: '/pages/write/index' })
+  uni.switchTab({ url: '/pages/write/index' })
 }
 
 function resumeDraft(draft: DraftItem) {
@@ -131,7 +131,7 @@ function resumeDraft(draft: DraftItem) {
     storyId: draft.storyId,
     parentId: draft.parentId,
   }))
-  uni.navigateTo({ url: '/pages/write/index' })
+  uni.switchTab({ url: '/pages/write/index' })
 }
 
 function deleteDraft(draft: DraftItem) {

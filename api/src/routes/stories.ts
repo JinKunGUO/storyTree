@@ -391,7 +391,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
           select: { id: true, username: true, level: true }
         },
         _count: {
-          select: { other_nodes: true }
+          select: { other_nodes: true, comments: true }
         }
       },
       orderBy: { path: 'asc' }

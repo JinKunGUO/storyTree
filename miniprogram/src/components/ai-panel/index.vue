@@ -90,9 +90,17 @@
         </view>
         <view class="section">
           <text class="section-label">待润色内容</text>
-          <view class="content-preview">
+          <view class="content-preview" :class="{ empty: !props.content || props.content.trim().length < 10 }">
             <text class="content-preview-text">{{ contentPreview }}</text>
           </view>
+          <!-- 内容不足时的提示 -->
+          <view v-if="!props.content || !props.content.trim()" class="polish-hint warn">
+            <text class="polish-hint-text">✏️ 请先在编辑器中写一些内容，再使用 AI 润色</text>
+          </view>
+          <view v-else-if="props.content.trim().length < 10" class="polish-hint warn">
+            <text class="polish-hint-text">✏️ 内容至少需要 10 个字才能润色（当前 {{ props.content.trim().length }} 字）</text>
+          </view>
+
         </view>
       </view>
 
@@ -122,7 +130,7 @@
           <text class="section-label">生成结果</text>
           <view class="result-actions">
             <text class="result-action-btn" @tap="copyResult">复制</text>
-            <text class="result-action-btn primary" @tap="applyResult">应用</text>
+            <text class="result-action-btn" @tap="generate" :class="{ disabled: generating }">重新生成</text>
           </view>
         </view>
         <view class="result-content">
@@ -138,6 +146,14 @@
       <!-- 操作按钮 -->
       <view class="panel-footer">
         <button
+          v-if="result && activeTab !== 'illustration'"
+          class="generate-btn apply-btn"
+          @tap="applyResult"
+        >
+          应用
+        </button>
+        <button
+          v-else
           class="generate-btn"
           :disabled="!canGenerate || generating"
           :loading="generating"
@@ -590,6 +606,27 @@ function applyResult() {
         color: #64748b;
         line-height: 1.7;
       }
+      &.empty {
+        border-color: #fca5a5;
+        background: #fff5f5;
+        .content-preview-text { color: #94a3b8; }
+      }
+    }
+
+    // 润色可用性提示
+    .polish-hint {
+      margin-top: 12rpx;
+      padding: 12rpx 16rpx;
+      border-radius: 10rpx;
+      .polish-hint-text {
+        font-size: 24rpx;
+        line-height: 1.6;
+      }
+      &.warn {
+        background: #fffbeb;
+        border: 1rpx solid #fde68a;
+        .polish-hint-text { color: #92400e; }
+      }
     }
 
     // 插图介绍
@@ -715,25 +752,28 @@ function applyResult() {
     .panel-footer {
       padding: 16rpx 32rpx 32rpx;
 
-      .generate-btn {
-        width: 100%;
-        height: 88rpx;
-        background: linear-gradient(135deg, #7c6af7, #a855f7);
-        border-radius: 44rpx;
-        color: #ffffff;
-        font-size: 30rpx;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: none;
+        .generate-btn {
+          width: 100%;
+          height: 88rpx;
+          background: linear-gradient(135deg, #7c6af7, #a855f7);
+          border-radius: 44rpx;
+          color: #ffffff;
+          font-size: 30rpx;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: none;
 
-        &[disabled] {
-          opacity: 0.5;
+          &[disabled] {
+            opacity: 0.5;
+          }
+
+          &.apply-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+          }
         }
-      }
     }
   }
 }
 </style>
-

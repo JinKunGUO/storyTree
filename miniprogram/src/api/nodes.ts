@@ -45,6 +45,29 @@ export function getStoryNodes(storyId: number) {
   })
 }
 
+/**
+ * 从扁平节点数组中构建以 rootId 为根的完整子树（递归）
+ * 用于在章节阅读页展示多层分支图
+ */
+export function buildSubTree(nodes: Node[], rootId: number): Node | null {
+  const map = new Map<number, Node>()
+  // 克隆节点，避免污染原始数据
+  for (const n of nodes) {
+    map.set(n.id, { ...n, children: [] })
+  }
+  // 构建完整树
+  const root = map.get(rootId)
+  if (!root) return null
+  for (const n of map.values()) {
+    if (n.parent_id && map.has(n.parent_id)) {
+      const parent = map.get(n.parent_id)!
+      if (!parent.children) parent.children = []
+      parent.children.push(n)
+    }
+  }
+  return root
+}
+
 // 获取单个节点
 export function getNode(id: number) {
   return http.get<{ node: Node }>(`/api/nodes/${id}`)

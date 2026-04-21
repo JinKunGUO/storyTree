@@ -615,6 +615,9 @@ router.get('/:id', optionalAuth, async (req, res) => {
         },
         story: {
           select: { id: true, title: true, author_id: true }
+        },
+        _count: {
+          select: { comments: true }
         }
       }
     });
@@ -672,6 +675,9 @@ router.get('/:id', optionalAuth, async (req, res) => {
       include: {
         author: {
           select: { id: true, username: true }
+        },
+        _count: {
+          select: { comments: true }
         }
       },
       orderBy: [

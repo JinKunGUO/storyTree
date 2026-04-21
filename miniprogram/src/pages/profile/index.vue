@@ -114,6 +114,11 @@
               <text class="menu-label">我的追更</text>
               <text class="menu-arrow">›</text>
             </view>
+            <view class="menu-item" @tap="goFollowedAuthors">
+              <text class="menu-icon">✍️</text>
+              <text class="menu-label">关注的作者</text>
+              <text class="menu-arrow">›</text>
+            </view>
           </view>
         </view>
 
@@ -280,6 +285,10 @@ function goBookmarks() {
 
 function goFollowing() {
   uni.navigateTo({ url: '/pages/profile/following' })
+}
+
+function goFollowedAuthors() {
+  uni.navigateTo({ url: '/pages/profile/followed-authors' })
 }
 
 function goChangePassword() {

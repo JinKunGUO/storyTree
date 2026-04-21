@@ -783,7 +783,7 @@ function handleWriteBranch(parentNodeId: number) {
     parentTitle,
     mode: 'write',
   }))
-  uni.navigateTo({ url: '/pages/write/index' })
+  uni.switchTab({ url: '/pages/write/index' })
 }
 
 // 从指定节点发起 AI 创作（打开独立弹窗）

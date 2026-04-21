@@ -1,7 +1,7 @@
 <template>
   <view class="chapter-tree">
-    <!-- 标题栏 -->
-    <view class="tree-header">
+    <!-- 标题栏（可由外部隐藏） -->
+    <view v-if="!hideHeader" class="tree-header">
       <text class="tree-title">故事分支树</text>
       <text class="tree-count">{{ totalNodes }} 个节点</text>
     </view>
@@ -88,6 +88,8 @@ const props = defineProps<{
   highlightNodeId?: number | null   // 新节点 id，触发高亮浮动动画
   currentUserId?: number | null     // 当前登录用户 ID
   storyAuthorId?: number | null     // 故事主创 ID
+  hideHeader?: boolean              // 隐藏内置标题栏（由外部提供标题时使用）
+  skipRoot?: boolean                // 跳过根节点自身的渲染，只展示子分支
 }>()
 
 interface FlatNode {
@@ -108,6 +110,14 @@ function flattenTree(node: Node, depth: number): FlatNode[] {
 
 const flatNodes = computed<FlatNode[]>(() => {
   if (!props.rootNode) return []
+  if (props.skipRoot) {
+    // 跳过根节点，将每个直接子分支作为独立的根展开
+    const result: FlatNode[] = []
+    for (const child of props.rootNode.children || []) {
+      result.push(...flattenTree(child, 0))
+    }
+    return result
+  }
   return flattenTree(props.rootNode, 0)
 })
 

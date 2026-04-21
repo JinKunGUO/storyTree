@@ -1,5 +1,10 @@
 <template>
-  <view class="chapter-page" :style="{ background: bgColors[settings.theme], '--status-bar-height': statusBarHeight + 'px' }">
+  <view
+    class="chapter-page"
+    :style="{ background: bgColors[settings.theme], '--status-bar-height': statusBarHeight + 'px' }"
+    @touchstart.passive="onPageTouchStart"
+    @touchend.passive="onPageTouchEnd"
+  >
     <!-- 自定义导航栏 -->
     <view class="custom-navbar" :class="{ hidden: hideNav }">
       <view class="navbar-inner">
@@ -94,20 +99,29 @@
             <text class="branches-title">选择你的故事走向</text>
             <text class="branches-count">{{ children.length }} 个分支</text>
           </view>
-          <view
-            v-for="child in children"
-            :key="child.id"
-            class="branch-card"
-            @tap="goChapter(child.id)"
-          >
-            <view class="branch-info">
-              <text class="branch-title">{{ child.title }}</text>
-              <view class="branch-meta">
-                <text class="branch-author">{{ child.author.username }}</text>
-                <text class="branch-rating">★ {{ child.rating_avg.toFixed(1) }}</text>
+
+          <!-- 只有一个后续节点：直接显示"阅读下一章"按钮 -->
+          <view v-if="children.length === 1" class="next-chapter-btn" @tap="goChapter(children[0].id)">
+            <view class="ncb-left">
+              <text class="ncb-icon">📖</text>
+              <view class="ncb-info">
+                <text class="ncb-label">阅读下一章</text>
+                <text class="ncb-title">{{ children[0].title }}</text>
               </view>
             </view>
-            <text class="branch-arrow">›</text>
+            <text class="ncb-arrow">›</text>
+          </view>
+
+          <!-- 多个后续节点：点击展开全屏分支图 -->
+          <view v-else class="branch-chart-trigger" @tap="showBranchChart = true">
+            <view class="bct-left">
+              <text class="bct-icon">🌿</text>
+              <view class="bct-info">
+                <text class="bct-title">查看故事分支图</text>
+                <text class="bct-sub">{{ children.length }} 个分支，点击展开可视化图</text>
+              </view>
+            </view>
+            <text class="bct-arrow">›</text>
           </view>
         </view>
 
@@ -334,6 +348,33 @@
       @close="showAiPanel = false"
       @apply="handleAiApply"
     />
+
+    <!-- 全屏分支图面板（canvas 原生组件必须在 scroll-view 外渲染，否则定位异常） -->
+    <view v-if="showBranchChart" class="branch-chart-mask">
+      <!-- 遮罩背景区域：点击关闭 -->
+      <view class="branch-chart-mask-bg" @tap="showBranchChart = false" />
+      <!-- 面板主体：阻止事件冒泡到遮罩 -->
+      <view class="branch-chart-panel" @tap.stop>
+        <!-- 面板头部 -->
+        <view class="bcp-header">
+          <view class="bcp-handle" />
+          <view class="bcp-title-row">
+            <text class="bcp-title">故事分支图</text>
+            <view class="bcp-close" @tap="showBranchChart = false">
+              <text class="bcp-close-icon">×</text>
+            </view>
+          </view>
+        </view>
+        <!-- ECharts 分支图（tree-chart 自身 canvas 在顶层正常渲染） -->
+        <tree-chart
+          :root-node="branchTreeRoot"
+          :is-author-or-collab="false"
+          :is-logged-in="userStore.isLoggedIn"
+          :hide-canvas="!showBranchChart || showSettings || showCommentInput || showAiPanel"
+          @node-tap="onBranchNodeTap"
+        />
+      </view>
+    </view>
   </view>
 </template>
 
@@ -341,11 +382,12 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useUserStore } from '@/store/user'
 import { useAppStore } from '@/store/app'
-import { getNode, rateNode, bookmarkNode, unbookmarkNode, incrementReadCount } from '@/api/nodes'
+import { getNode, rateNode, bookmarkNode, unbookmarkNode, incrementReadCount, buildSubTree, getStoryNodes } from '@/api/nodes'
 import { getNodeComments, createComment, voteComment } from '@/api/comments'
 import { formatRelativeTime } from '@/utils/helpers'
 import { getImageUrl } from '@/utils/request'
 import AiPanel from '@/components/ai-panel/index.vue'
+import TreeChart from '@/components/tree-chart/index.vue'
 import type { Node } from '@/api/nodes'
 import type { Comment } from '@/api/comments'
 
@@ -358,10 +400,12 @@ const statusBarHeight = ref(20) // 状态栏高度（px），动态获取避免�
 const showSettings = ref(false)
 const showCommentInput = ref(false)
 const showAiPanel = ref(false)
+const showBranchChart = ref(false)  // 全屏分支图面板
 const commentText = ref('')
 const replyTo = ref<{ id: number; username: string } | null>(null) // 当前回复的评论
 
 const node = ref<Node | null>(null)
+const parent = ref<{ id: number; title: string } | null>(null)  // 父节点（上一章）
 const children = ref<Node[]>([])
 const comments = ref<Comment[]>([])
 const totalComments = ref(0)
@@ -383,6 +427,10 @@ const subTextColors = { light: '#94a3b8', dark: '#64748b', sepia: '#8b7355' }
 const contentStyle = computed(() => ({
   padding: '0 48rpx 40rpx',
 }))
+
+// 以当前节点为根的完整多层分支树（包含所有子孙节点）
+// 初始由 children 构成第一层，加载故事完整树后替换为多层
+const branchTreeRoot = ref<import('@/api/nodes').Node | null>(null)
 
 const lineHeightOptions = [
   { label: '紧凑', value: '1.6' },
@@ -421,16 +469,32 @@ async function loadNode(id: number) {
       getNodeComments(id, { page: 1, pageSize: 10 }),
     ])
     node.value = nodeRes.node
-    // 后端 GET /api/nodes/:id 同时返回 branches（子节点列表）
+    // 后端 GET /api/nodes/:id 同时返回 branches（子节点列表，只有第一层）
     children.value = (nodeRes as any).branches || []
+    parent.value = (nodeRes as any).parent || null
+
+    // 先用第一层子节点构造初始树，让 tree-chart 立即可渲染
+    if (children.value.length > 0) {
+      branchTreeRoot.value = { ...nodeRes.node, children: children.value }
+    }
+
     comments.value = commentsRes.comments
     totalComments.value = commentsRes.total
     hasMoreComments.value = commentsRes.total > 10
     isBookmarked.value = nodeRes.node.isBookmarked ?? false
     userRating.value = nodeRes.node.userRating ?? 0
 
-    // 增加阅读次数（后端 GET /api/nodes/:id 已自动增加，此处跳过避免重复）
-    // incrementReadCount(id).catch(() => {})
+    // 异步加载完整故事节点树，构建多层分支图（不阻塞首屏渲染）
+    if (nodeRes.node.story_id && children.value.length > 0) {
+      getStoryNodes(nodeRes.node.story_id).then(({ nodes }) => {
+        const fullSubTree = buildSubTree(nodes, id)
+        if (fullSubTree) {
+          branchTreeRoot.value = fullSubTree
+        }
+      }).catch(() => {
+        // 完整树加载失败时保留第一层，不影响用户体验
+      })
+    }
   } catch (err) {
     console.error('加载章节失败', err)
   } finally {
@@ -584,7 +648,16 @@ function changeFontSize(delta: number) {
 }
 
 function goChapter(id: number) {
-  uni.navigateTo({ url: `/pages/chapter/index?id=${id}` })
+  // 用 redirectTo 替换当前页，避免连续阅读时页面栈超过 10 层限制
+  uni.redirectTo({ url: `/pages/chapter/index?id=${id}` })
+}
+
+function onBranchNodeTap(id: number) {
+  showBranchChart.value = false
+  // 用 redirectTo 替换当前页，避免页面栈超限；延迟让面板关闭后再跳转
+  setTimeout(() => {
+    uni.redirectTo({ url: `/pages/chapter/index?id=${id}` })
+  }, 150)
 }
 
 function writeBranch() {
@@ -593,7 +666,7 @@ function writeBranch() {
     parentId: node.value?.id,
     parentTitle: node.value?.title,
   }))
-  uni.navigateTo({ url: '/pages/write/index' })
+  uni.switchTab({ url: '/pages/write/index' })
 }
 
 function openAiPanel() {
@@ -609,7 +682,7 @@ function handleAiApply(content: string) {
     prefillContent: content || '',
   }))
   showAiPanel.value = false
-  uni.navigateTo({ url: '/pages/write/index' })
+  uni.switchTab({ url: '/pages/write/index' })
 }
 
 function goLogin() {
@@ -625,12 +698,64 @@ function shareChapter() {
 }
 
 function goBack() {
+  // 优先 navigateBack 回到页面栈中已有的故事详情页
+  // （章节页用 redirectTo 跳转，页面栈里保留了进入前的故事详情页）
   const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
+  const storyPageIdx = pages.findLastIndex((p: any) =>
+    p.route?.includes('story') && !p.route?.includes('chapter')
+  )
+  if (storyPageIdx >= 0) {
+    // 计算需要回退的层数
+    uni.navigateBack({ delta: pages.length - 1 - storyPageIdx })
+  } else if (node.value?.story_id) {
+    // 页面栈里没有故事详情页（如从分享直接进入），则跳转
+    uni.redirectTo({ url: `/pages/story/index?id=${node.value.story_id}` })
   } else {
     uni.switchTab({ url: '/pages/index/index' })
   }
+}
+
+// ─── 左滑返回上一章手势 ─────────────────────────────────────────────────────────
+// 参考微信读书方案：从屏幕左侧 1/4 区域内起始，横向右滑距离 > 60px
+// 且横向位移 > 纵向位移（确保是横向手势，避免与纵向滚动冲突）
+const _swipe = { startX: 0, startY: 0, active: false }
+const _screenWidth = uni.getSystemInfoSync().windowWidth
+
+function onPageTouchStart(e: any) {
+  // 任何弹窗打开时禁用手势，避免误触
+  if (showSettings.value || showCommentInput.value || showAiPanel.value) return
+  const touch = e.touches?.[0]
+  if (!touch) return
+  // 只在左侧 1/4 区域内起始才激活手势（参考 iOS 系统边缘返回的逻辑）
+  if (touch.clientX <= _screenWidth * 0.25) {
+    _swipe.startX = touch.clientX
+    _swipe.startY = touch.clientY
+    _swipe.active = true
+  } else {
+    _swipe.active = false
+  }
+}
+
+function onPageTouchEnd(e: any) {
+  if (!_swipe.active) return
+  _swipe.active = false
+  const touch = e.changedTouches?.[0]
+  if (!touch) return
+  const dx = touch.clientX - _swipe.startX
+  const dy = Math.abs(touch.clientY - _swipe.startY)
+  // 右滑 > 60px 且横向位移大于纵向位移（排除竖向滚动误判）
+  if (dx > 60 && dx > dy) {
+    goPrevChapter()
+  }
+}
+
+function goPrevChapter() {
+  if (!parent.value) {
+    uni.showToast({ title: '已是第一章', icon: 'none', duration: 1200 })
+    return
+  }
+  // 章节间用 redirectTo 跳转，页面栈里没有上一章，直接 redirectTo 替换当前页
+  uni.redirectTo({ url: `/pages/chapter/index?id=${parent.value.id}` })
 }
 
 function formatTime(date: string) {
@@ -845,6 +970,99 @@ function flattenReplies(
     .branches-count {
       font-size: 24rpx;
       color: #94a3b8;
+    }
+  }
+
+  // 只有一个后续节点时的"阅读下一章"按钮
+  .next-chapter-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 28rpx 24rpx;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, rgba(52, 211, 153, 0.06) 100%);
+    border-radius: 20rpx;
+    border: 1rpx solid rgba(16, 185, 129, 0.2);
+
+    .ncb-left {
+      display: flex;
+      align-items: center;
+      gap: 20rpx;
+
+      .ncb-icon {
+        font-size: 48rpx;
+      }
+
+      .ncb-info {
+        display: flex;
+        flex-direction: column;
+        gap: 6rpx;
+
+        .ncb-label {
+          font-size: 22rpx;
+          color: #10b981;
+          font-weight: 500;
+        }
+
+        .ncb-title {
+          font-size: 28rpx;
+          font-weight: 600;
+          color: #1e293b;
+          max-width: 460rpx;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      }
+    }
+
+    .ncb-arrow {
+      font-size: 44rpx;
+      color: #10b981;
+      font-weight: 300;
+    }
+  }
+
+  // 分支图入口按钮
+  .branch-chart-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 28rpx 24rpx;
+    background: linear-gradient(135deg, rgba(124, 106, 247, 0.06) 0%, rgba(167, 139, 250, 0.06) 100%);
+    border-radius: 20rpx;
+    border: 1rpx solid rgba(124, 106, 247, 0.18);
+
+    .bct-left {
+      display: flex;
+      align-items: center;
+      gap: 20rpx;
+
+      .bct-icon {
+        font-size: 48rpx;
+      }
+
+      .bct-info {
+        display: flex;
+        flex-direction: column;
+        gap: 6rpx;
+
+        .bct-title {
+          font-size: 28rpx;
+          font-weight: 600;
+          color: #1e293b;
+        }
+
+        .bct-sub {
+          font-size: 22rpx;
+          color: #94a3b8;
+        }
+      }
+    }
+
+    .bct-arrow {
+      font-size: 44rpx;
+      color: #7c6af7;
+      font-weight: 300;
     }
   }
 
@@ -1341,6 +1559,84 @@ function flattenReplies(
 
 .bottom-placeholder {
   height: 160rpx;
+}
+
+// ── 全屏分支图面板 ──────────────────────────────────────────────────────────────
+.branch-chart-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: flex-end;
+
+  // 半透明背景遮罩（独立节点，点击关闭）
+  .branch-chart-mask-bg {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+  }
+}
+
+.branch-chart-panel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 88vh;
+  background: #ffffff;
+  border-radius: 32rpx 32rpx 0 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  .bcp-header {
+    flex-shrink: 0;
+    padding: 16rpx 32rpx 0;
+
+    .bcp-handle {
+      width: 60rpx;
+      height: 6rpx;
+      border-radius: 3rpx;
+      background: #e2e8f0;
+      margin: 0 auto 20rpx;
+    }
+
+    .bcp-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 20rpx;
+      border-bottom: 1rpx solid #f1f5f9;
+
+      .bcp-title {
+        font-size: 32rpx;
+        font-weight: 700;
+        color: #1e293b;
+      }
+
+      .bcp-close {
+        width: 56rpx;
+        height: 56rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f1f5f9;
+        border-radius: 50%;
+
+        .bcp-close-icon {
+          font-size: 36rpx;
+          color: #64748b;
+          line-height: 1;
+        }
+      }
+    }
+  }
+
+  // tree-chart 组件撑满剩余空间
+  .tree-chart-wrap {
+    flex: 1;
+    overflow: hidden;
+    padding: 16rpx 16rpx 0;
+  }
 }
 </style>
 

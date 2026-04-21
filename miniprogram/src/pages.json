@@ -82,6 +82,14 @@
       }
     },
     {
+      "path": "pages/profile/followed-authors",
+      "style": {
+        "navigationBarTitleText": "关注的作者",
+        "navigationBarBackgroundColor": "#1a1a2e",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
       "path": "pages/profile/edit",
       "style": {
         "navigationBarTitleText": "编辑资料",

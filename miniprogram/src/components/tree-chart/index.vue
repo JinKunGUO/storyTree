@@ -88,6 +88,11 @@
           <text class="stat-num">{{ sheet.branchCount }}</text>
           <text class="stat-lbl">分支</text>
         </view>
+        <view class="stat-divider" />
+        <view class="stat-item">
+          <text class="stat-num stat-rating">{{ sheet.rating > 0 ? sheet.rating : '-' }}</text>
+          <text class="stat-lbl">评分</text>
+        </view>
       </view>
 
       <!-- 操作按钮区 -->
@@ -1078,6 +1083,7 @@ onUnmounted(() => {
   gap: 4rpx;
 
   .stat-num { font-size: 32rpx; font-weight: 700; color: #1e293b; }
+  .stat-num.stat-rating { color: #f59e0b; }
   .stat-lbl { font-size: 22rpx; color: #94a3b8; }
 }
 
