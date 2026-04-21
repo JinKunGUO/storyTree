@@ -380,6 +380,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
+import { onLoad, onShareAppMessage } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
 import { useAppStore } from '@/store/app'
 import { getNode, rateNode, bookmarkNode, unbookmarkNode, incrementReadCount, buildSubTree, getStoryNodes } from '@/api/nodes'
@@ -443,6 +444,21 @@ const themeOptions = [
   { value: 'sepia', bg: '#f5f0e8' },
   { value: 'dark', bg: '#1a1a2e' },
 ]
+
+// 页面加载时开启右上角转发按钮（开发者工具不支持，跳过）
+onLoad(() => {
+  const { platform } = uni.getSystemInfoSync()
+  if (platform === 'devtools') return
+  try {
+    uni.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage'] })
+  } catch (e) { /* ignore */ }
+})
+
+// 定义分享内容
+onShareAppMessage(() => ({
+  title: node.value ? `《${node.value.title}》- StoryTree` : 'StoryTree - 协作式故事创作',
+  path: node.value ? `/pages/chapter/index?id=${node.value.id}` : '/pages/index/index',
+}))
 
 onMounted(() => {
   // 动态获取状态栏高度
@@ -690,11 +706,7 @@ function goLogin() {
 }
 
 function shareChapter() {
-  try {
-    uni.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
-  } catch (e) {
-    console.warn('showShareMenu not available in devtools')
-  }
+  uni.showToast({ title: '请点击右上角"..."分享', icon: 'none' })
 }
 
 function goBack() {

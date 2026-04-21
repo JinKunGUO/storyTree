@@ -153,16 +153,6 @@
               <text class="menu-label">关于 StoryTree</text>
               <text class="menu-arrow">›</text>
             </view>
-            <view class="menu-item" @tap="goPrivacy">
-              <text class="menu-icon">🔒</text>
-              <text class="menu-label">隐私政策</text>
-              <text class="menu-arrow">›</text>
-            </view>
-            <view class="menu-item" @tap="goUserAgreement">
-              <text class="menu-icon">📋</text>
-              <text class="menu-label">用户协议</text>
-              <text class="menu-arrow">›</text>
-            </view>
             <view class="menu-item" @tap="goClearCache">
               <text class="menu-icon">🗑️</text>
               <text class="menu-label">清除缓存</text>
@@ -292,14 +282,6 @@ function goNotificationSettings() {
 
 function goAbout() {
   uni.navigateTo({ url: '/pages/about/index' })
-}
-
-function goPrivacy() {
-  uni.navigateTo({ url: '/pages/about/privacy' })
-}
-
-function goUserAgreement() {
-  uni.navigateTo({ url: '/pages/about/user-agreement' })
 }
 
 function goInvite() {

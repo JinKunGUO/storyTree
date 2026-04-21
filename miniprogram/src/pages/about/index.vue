@@ -51,7 +51,7 @@
 
     <!-- 底部版权 -->
     <view class="footer">
-      <text class="footer-text">© 2024 StoryTree. All rights reserved.</text>
+      <text class="footer-text">© 2026 StoryTree. All rights reserved.</text>
       <text class="footer-text">让每个人都能创作属于自己的故事</text>
     </view>
   </view>
@@ -59,6 +59,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { onLoad, onShareAppMessage } from '@dcloudio/uni-app'
 
 const version = ref('1.0.0')
 
@@ -75,9 +76,22 @@ const menuItems = [
   { icon: '📋', label: '用户协议', path: '/pages/about/user-agreement' },
   { icon: '🔒', label: '隐私政策', path: '/pages/about/privacy' },
   { icon: '📧', label: '联系我们', action: 'contact' },
-  { icon: '⭐', label: '给我们评分', action: 'rate' },
-  { icon: '🔗', label: '分享给朋友', action: 'share' },
 ]
+
+// 页面加载时开启右上角转发按钮（开发者工具不支持，跳过）
+onLoad(() => {
+  const { platform } = uni.getSystemInfoSync()
+  if (platform === 'devtools') return
+  try {
+    uni.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage'] })
+  } catch (e) { /* ignore */ }
+})
+
+// 定义分享内容
+onShareAppMessage(() => ({
+  title: 'StoryTree - 协作式故事创作平台',
+  path: '/pages/index/index',
+}))
 
 function handleMenu(item: any) {
   if (item.path) {
@@ -88,15 +102,6 @@ function handleMenu(item: any) {
       content: '邮箱：support@storytree.com\n微信：storytree_official',
       showCancel: false,
     })
-  } else if (item.action === 'rate') {
-    // 跳转到小程序评分（仅在真机有效）
-    uni.showToast({ title: '感谢您的支持！', icon: 'success' })
-  } else if (item.action === 'share') {
-    try {
-      uni.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
-    } catch (e) {
-      console.warn('showShareMenu not available in devtools')
-    }
   }
 }
 </script>

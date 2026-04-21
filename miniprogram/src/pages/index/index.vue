@@ -373,7 +373,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShow, onLoad } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
 import { getFeaturedStories, getStories, getFollowedStories } from '@/api/stories'
 import { getMyFeed } from '@/api/users'
@@ -412,6 +412,13 @@ const authorFeed = ref<Array<{
   story: { id: number; title: string }
 }>>([])
 const feedPage = ref(1)
+
+// 检测分享落地携带的邀请码，存入 storage 供注册页读取
+onLoad((query: any) => {
+  if (query?.invite) {
+    uni.setStorageSync('pendingInviteCode', query.invite)
+  }
+})
 
 onMounted(async () => {
   try {

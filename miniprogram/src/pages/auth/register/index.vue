@@ -159,6 +159,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
 import { register } from '@/api/auth'
 
@@ -182,6 +183,17 @@ const errors = reactive({
   email: '',
   password: '',
   confirmPassword: '',
+})
+
+// 页面加载时，读取分享落地时存入的邀请码并自动填入（URL 直接带 invite 参数也兼容）
+onLoad((query: any) => {
+  // 优先使用 URL 参数（如从注册页直接链接进入），其次用 storage 里缓存的
+  const codeFromUrl = query?.invite || query?.inviteCode || ''
+  const codeFromStorage = uni.getStorageSync('pendingInviteCode') || ''
+  const code = codeFromUrl || codeFromStorage
+  if (code) {
+    form.invitationCode = code
+  }
 })
 
 // 密码强度计算
@@ -285,6 +297,8 @@ async function handleRegister() {
 
     const res = await register(params)
     userStore.login(res.token, res.user as any)
+    // 注册成功后清除缓存的邀请码
+    uni.removeStorageSync('pendingInviteCode')
     uni.showToast({ title: '注册成功！', icon: 'success' })
 
     setTimeout(() => {

@@ -121,6 +121,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { onLoad, onShareAppMessage } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
 import { getMyInvitationCodes } from '@/api/users'
 import { http, getImageUrl } from '@/utils/request'
@@ -141,6 +142,21 @@ const rules = [
   '积分可用于解锁付费章节，不可提现',
   '如发现刷单等违规行为，平台有权取消奖励并封号',
 ]
+
+// 页面加载时开启右上角转发按钮（开发者工具不支持，跳过）
+onLoad(() => {
+  const { platform } = uni.getSystemInfoSync()
+  if (platform === 'devtools') return
+  try {
+    uni.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage'] })
+  } catch (e) { /* ignore */ }
+})
+
+// 定义分享内容（落地页为首页，邀请码通过 invite 参数传递，让新用户先体验内容再注册）
+onShareAppMessage(() => ({
+  title: '加入 StoryTree，一起创作故事！',
+  path: myCode.value ? `/pages/index/index?invite=${myCode.value}` : '/pages/index/index',
+}))
 
 onMounted(async () => {
   if (!userStore.isLoggedIn) {
@@ -194,11 +210,7 @@ function copyInviteLink() {
 }
 
 function shareToFriend() {
-  try {
-    uni.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
-  } catch (e) {
-    console.warn('showShareMenu not available in devtools')
-  }
+  uni.showToast({ title: '请点击右上角"..."分享', icon: 'none' })
 }
 
 function shareToMoments() {
