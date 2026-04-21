@@ -67,12 +67,10 @@
 
       <!-- 榜单列表 -->
       <view v-else class="rank-list">
-        <!-- 前3名特殊样式 -->
         <view
           v-for="(story, idx) in stories"
           :key="story.id"
           class="rank-item"
-          :class="{ 'top3': idx < 3 }"
           @tap="goStory(story.id)"
         >
           <!-- 排名徽章 -->
@@ -319,11 +317,6 @@ function goStory(id: number) {
 
   &:first-child { border-radius: 20rpx 20rpx 0 0; padding-top: 24rpx; }
   &:last-child { border-bottom: none; border-radius: 0 0 20rpx 20rpx; padding-bottom: 24rpx; }
-
-  // 前3名加强调背景
-  &.top3 {
-    background: linear-gradient(to right, rgba(124, 106, 247, 0.04), transparent);
-  }
 
   // 排名徽章
   .rank-badge {

@@ -14,7 +14,7 @@
       <view v-if="stories.length === 0" class="empty-state">
         <text class="empty-icon">🔖</text>
         <text class="empty-text">还没有收藏故事</text>
-        <text class="empty-sub">在故事详情页点击收藏按钮即可收藏</text>
+        <text class="empty-sub">该功能暂时不可用，去发现更多故事吧</text>
         <button class="btn-discover" @tap="goDiscover">去发现</button>
       </view>
 

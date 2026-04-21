@@ -35,9 +35,6 @@
             <text class="back-icon">←</text>
           </view>
           <view class="nav-actions">
-            <view class="nav-btn" @tap="toggleBookmark">
-              <text>{{ isBookmarked ? '❤️' : '🤍' }}</text>
-            </view>
             <view class="nav-btn" @tap="shareStory">
               <text>📤</text>
             </view>
@@ -71,10 +68,6 @@
             <view class="stat-badge">
               <text class="stat-icon">👥</text>
               <text class="stat-val">{{ story._count?.followers || 0 }} 追更</text>
-            </view>
-            <view class="stat-badge">
-              <text class="stat-icon">🔖</text>
-              <text class="stat-val">{{ story._count?.bookmarks || 0 }} 收藏</text>
             </view>
           </view>
         </view>
@@ -393,7 +386,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
-import { getStory, followStory, unfollowStory, bookmarkStory, applyCollaboration, leaveCollaboration } from '@/api/stories'
+import { getStory, followStory, unfollowStory, applyCollaboration, leaveCollaboration } from '@/api/stories'
 import { formatRelativeTime } from '@/utils/helpers'
 import { getImageUrl } from '@/utils/request'
 import ChapterTree from '@/components/chapter-tree/index.vue'
@@ -412,7 +405,6 @@ const story = ref<Story | null>(null)
 const rootNode = ref<Node | null>(null)
 const treeRoot = ref<Node | null>(null)   // 带 children 的树形根节点
 const isFollowed = ref(false)
-const isBookmarked = ref(false)
 const applyLoading = ref(false)
 const leaveLoading = ref(false)
 
@@ -683,7 +675,6 @@ async function loadStory(id: number) {
     const res = await getStory(id)
     story.value = res.story
     isFollowed.value = res.story.isFollowed ?? false
-    isBookmarked.value = res.story.isBookmarked ?? false
 
     const nodes = res.nodes || []
     rootNode.value = nodes.find((n: Node) => !n.parent_id) || null
@@ -723,30 +714,6 @@ async function toggleFollow() {
       }
       uni.showToast({ title: '追更成功', icon: 'success' })
     }
-  } catch (err: any) {
-    uni.showToast({ title: err.message || '操作失败', icon: 'none' })
-  }
-}
-
-async function toggleBookmark() {
-  if (!userStore.isLoggedIn) {
-    uni.navigateTo({ url: '/pages/auth/login/index' })
-    return
-  }
-  try {
-    const res = await bookmarkStory(story.value!.id)
-    const nowBookmarked = res.bookmarked
-    const wasBookmarked = isBookmarked.value
-    isBookmarked.value = nowBookmarked
-    if (story.value) story.value.isBookmarked = nowBookmarked
-    if (story.value?._count) {
-      if (!wasBookmarked && nowBookmarked) {
-        story.value._count.bookmarks = (story.value._count.bookmarks || 0) + 1
-      } else if (wasBookmarked && !nowBookmarked) {
-        story.value._count.bookmarks = Math.max(0, (story.value._count.bookmarks || 0) - 1)
-      }
-    }
-    uni.showToast({ title: nowBookmarked ? '收藏成功' : '已取消收藏', icon: nowBookmarked ? 'success' : 'none' })
   } catch (err: any) {
     uni.showToast({ title: err.message || '操作失败', icon: 'none' })
   }

@@ -104,11 +104,6 @@
               <text class="menu-label">我写的章节</text>
               <text class="menu-arrow">›</text>
             </view>
-            <view class="menu-item" @tap="goBookmarks">
-              <text class="menu-icon">🔖</text>
-              <text class="menu-label">我的收藏</text>
-              <text class="menu-arrow">›</text>
-            </view>
             <view class="menu-item" @tap="goFollowing">
               <text class="menu-icon">❤️</text>
               <text class="menu-label">我的追更</text>
@@ -277,10 +272,6 @@ function goMyStories() {
 
 function goMyNodes() {
   uni.navigateTo({ url: '/pages/profile/nodes' })
-}
-
-function goBookmarks() {
-  uni.navigateTo({ url: '/pages/profile/bookmarks' })
 }
 
 function goFollowing() {

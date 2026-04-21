@@ -21,17 +21,17 @@ router.get('/', optionalAuth, async (req, res) => {
     // 根据 sort 参数决定 orderBy
     let orderBy: any;
     if (sort === 'popular') {
-      // 热门榜：按收藏数降序，再按追更数降序
-      orderBy = [
-        { bookmarks: { _count: 'desc' } },
-        { followers: { _count: 'desc' } },
-        { created_at: 'desc' },
-      ];
-    } else if (sort === 'trending') {
-      // 趋势榜：按追更数降序，再按节点数降序（近似活跃度）
+      // 热门榜：按追更数降序，再按章节数降序，再按创建时间降序
       orderBy = [
         { followers: { _count: 'desc' } },
         { nodes: { _count: 'desc' } },
+        { created_at: 'desc' },
+      ];
+    } else if (sort === 'trending') {
+      // 趋势榜：按章节数降序（更新活跃度），再按追更数降序
+      orderBy = [
+        { nodes: { _count: 'desc' } },
+        { followers: { _count: 'desc' } },
         { created_at: 'desc' },
       ];
     } else {
@@ -198,12 +198,12 @@ router.get('/featured', optionalAuth, async (req, res) => {
         _count: {
           select: {
             nodes: true,
-            bookmarks: true
+            followers: true
           }
         }
       },
       orderBy: [
-        { bookmarks: { _count: 'desc' } },
+        { followers: { _count: 'desc' } },
         { created_at: 'desc' }
       ],
       take: limit
