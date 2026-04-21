@@ -175,6 +175,12 @@ const props = defineProps<{
   storyAuthorId?: number | null
   /** 为 true 时隐藏 canvas（微信原生组件无法被普通 view 覆盖，弹窗显示期间需隐藏） */
   hideCanvas?: boolean
+  /**
+   * canvas 最大高度（px）。微信原生 canvas 不受 CSS overflow 约束，
+   * 必须从源头限制 canvas 物理尺寸，让它不超出父容器。
+   * 传入面板可用高度，组件会在此范围内自动计算 zoom 让所有节点可见。
+   */
+  maxHeight?: number
 }>()
 
 // ─── Emits ────────────────────────────────────────────────────────────────────
@@ -202,6 +208,9 @@ const totalNodes = ref(0)
 let chartInstance: any = null
 let currentZoom = 1
 let _canvasNode: any = null  // 保存 canvas 节点引用，供 resize 时更新物理像素尺寸
+// canvas 高度上限（由父容器 .tree-chart-wrap 的实际高度决定，onMounted 时查询）
+// 默认用 windowHeight * 0.7，onMounted 修正后会更新
+let _maxCanvasHeight = _initSys.windowHeight * 0.7
 // onMounted 完成 boundingClientRect 宽度修正后置为 true
 // @ready 触发时若此标志未就绪，说明 onMounted 还没到，忽略（onMounted 会主动调用 initChart）
 let _mountInitDone = false
@@ -443,27 +452,48 @@ function treeDepth(node: Node | null | undefined, d = 0): number {
 }
 
 // 根据树的结构动态计算 canvas 高度，确保每个节点都有足够的物理空间
-// 不用 zoom 做初始缩放（zoom 会同时缩小节点间距，导致节点更挤）
+// canvas 高度固定为面板可用高度（maxHeight），通过 zoom 让所有节点在可见范围内显示
 function calcCanvasHeight(rootNode: Node): number {
+  // 优先使用父组件传入的 maxHeight，其次用 onMounted 查询到的 _maxCanvasHeight
+  const maxH = (props.maxHeight && props.maxHeight > 0) ? props.maxHeight : _maxCanvasHeight
+  // canvas 高度就等于面板可用高度，让 canvas 精确填满面板，不超出也不留白
+  return Math.max(maxH, 300)
+}
+
+// 计算初始 zoom，让整棵树在 canvas 范围内完整显示（fit to container）
+// ECharts tree 系列的 zoom 是相对于"默认布局"的缩放比
+// 默认布局下，树会撑满整个 canvas（受 top/left/bottom/right 留白影响）
+// 因此 zoom=1 时树已经适配了 canvas 尺寸，不需要额外缩放
+// 但当节点非常多时，节点间距会变得极小（重叠），需要缩小 zoom 让节点间距合理
+function calcInitialZoom(rootNode: Node): number {
   const isHorizontal = layout.value === 'LR'
   const leaves = leafCount(rootNode)
   const depth  = treeDepth(rootNode)
-  const sys    = uni.getSystemInfoSync()
-  const W      = canvasWidth.value || sys.windowWidth
+  const maxH   = (props.maxHeight && props.maxHeight > 0) ? props.maxHeight : _maxCanvasHeight
+  const W      = canvasWidth.value || uni.getSystemInfoSync().windowWidth
 
+  // 估算"理想情况下"树需要的高度（每个叶子/深度需要的空间）
+  let idealH: number
   if (isHorizontal) {
-    // 横向：高度由叶子数决定，每个叶子约 52px，最小 400，最大 2400
-    const needed = leaves * 52 + 80  // 80px 上下 padding
-    return Math.min(Math.max(needed, 400), 2400)
+    idealH = leaves * 52 + 80
   } else {
-    // 纵向：高度由深度决定，每层约 110px，最小 400，最大 2400
-    // 同时如果叶子数很多，宽度不够时也需要增加高度（纵向叶子铺宽度）
-    const neededByDepth = depth * 110 + 80
-    // 纵向叶子铺宽度：如果叶子数 * 60px > 可用宽度，说明节点会重叠，需要增加高度
-    const leafWidth = leaves * 60
-    const extraH = leafWidth > W * 0.9 ? Math.ceil(leafWidth / (W * 0.9)) * 80 : 0
-    return Math.min(Math.max(neededByDepth + extraH, 400), 2400)
+    idealH = depth * 110 + 80
   }
+
+  // 估算"理想情况下"树需要的宽度
+  let idealW: number
+  if (isHorizontal) {
+    idealW = depth * 120 + 80
+  } else {
+    idealW = leaves * 60 + 40
+  }
+
+  // 计算高度和宽度方向各需要多少缩放才能 fit
+  const zoomByH = idealH > maxH ? maxH / idealH : 1
+  const zoomByW = idealW > W ? W / idealW : 1
+
+  // 取两个方向的最小值（保证两个方向都能 fit），并限制在合理范围
+  return Math.min(Math.max(Math.min(zoomByH, zoomByW), 0.15), 1)
 }
 
 function renderChart() {
@@ -472,7 +502,7 @@ function renderChart() {
   const data = nodeToEChartsData(props.rootNode)
   const isHorizontal = layout.value === 'LR'
 
-  // 动态调整 canvas 高度（布局切换时叶子数/深度方向变化，需重新计算）
+  // canvas 高度固定为面板可用高度，不随节点数量变化
   const newH = calcCanvasHeight(props.rootNode)
   if (Math.abs(newH - canvasHeight.value) > 20) {
     canvasHeight.value = newH
@@ -482,6 +512,12 @@ function renderChart() {
     }
     // resize 后需要强制重绘，微信小程序 canvas 不会自动响应
     chartInstance.resize({ width: canvasWidth.value, height: newH })
+  }
+
+  // currentZoom <= 0 表示需要重新计算自适应 zoom（初始化或重置时）
+  // 否则保留用户手动缩放的值
+  if (currentZoom <= 0) {
+    currentZoom = calcInitialZoom(props.rootNode)
   }
 
   const option = {
@@ -666,7 +702,7 @@ function onTouchEnd(e: any) {
 // ─── 工具栏操作 ───────────────────────────────────────────────────────────────
 function setLayout(l: 'LR' | 'TB') {
   layout.value = l
-  currentZoom = 1  // 重置为1，让renderChart重新计算自动缩放
+  currentZoom = 0  // 置0触发 renderChart 里重新计算自适应 zoom
   renderChart()
 }
 
@@ -681,7 +717,7 @@ function zoomOut() {
 }
 
 function resetZoom() {
-  currentZoom = 1  // 重置为1，让renderChart重新计算自动缩放
+  currentZoom = 0  // 置0触发 renderChart 里重新计算自适应 zoom
   renderChart()
 }
 
@@ -828,17 +864,27 @@ onMounted(() => {
   setTimeout(() => {
     const wxScope = (_internalInstance as any)?.ctx?.$scope
     if (wxScope) {
+      // 同时查询 canvas-container 宽度和 tree-chart-wrap 高度
       wx.createSelectorQuery().in(wxScope)
         .select('.canvas-container')
-        .boundingClientRect((rect: any) => {
-          if (rect && rect.width > 0) {
-            canvasWidth.value = rect.width
+        .boundingClientRect()
+        .select('.tree-chart-wrap')
+        .boundingClientRect()
+        .exec((res: any) => {
+          const containerRect = res[0]
+          const wrapRect = res[1]
+          if (containerRect && containerRect.width > 0) {
+            canvasWidth.value = containerRect.width
+          }
+          // 用父容器实际高度作为 canvas 高度上限，确保 canvas 不超出面板边界
+          // 减去工具栏高度（约 60px）和底部统计行（约 40px）
+          if (wrapRect && wrapRect.height > 0) {
+            _maxCanvasHeight = Math.max(wrapRect.height - 60, 400)
           }
           // 宽度修正完成，允许 @ready 触发的 queryCanvas 正常执行
           _mountInitDone = true
           initChart()
         })
-        .exec()
     } else {
       _mountInitDone = true
       initChart()

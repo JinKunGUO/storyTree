@@ -365,12 +365,13 @@
             </view>
           </view>
         </view>
-        <!-- ECharts 分支图（tree-chart 自身 canvas 在顶层正常渲染） -->
+        <!-- ECharts 分支图（canvas 原生组件不支持 scroll-view 滚动，通过 roam 拖拽查看） -->
         <tree-chart
           :root-node="branchTreeRoot"
           :is-author-or-collab="false"
           :is-logged-in="userStore.isLoggedIn"
           :hide-canvas="!showBranchChart || showSettings || showCommentInput || showAiPanel"
+          :max-height="branchChartMaxHeight"
           @node-tap="onBranchNodeTap"
         />
       </view>
@@ -402,6 +403,9 @@ const showSettings = ref(false)
 const showCommentInput = ref(false)
 const showAiPanel = ref(false)
 const showBranchChart = ref(false)  // 全屏分支图面板
+// 分支图面板可用高度（px）：面板总高 88vh 减去 header 区域，传给 tree-chart 限制 canvas 高度
+// 微信原生 canvas 不受 CSS overflow 约束，必须从源头限制 canvas 物理尺寸
+const branchChartMaxHeight = ref(0)
 const commentText = ref('')
 const replyTo = ref<{ id: number; username: string } | null>(null) // 当前回复的评论
 
@@ -465,8 +469,13 @@ onMounted(() => {
   try {
     const sysInfo = uni.getSystemInfoSync()
     statusBarHeight.value = sysInfo.statusBarHeight || 20
+    // 计算分支图面板可用高度：面板总高 88vh，减去 header（约 90px）、工具栏（约 50px）、底部统计行（约 32px）
+    // 这个高度用于限制 tree-chart 内 canvas 的物理尺寸，防止原生 canvas 超出面板边界
+    const panelH = sysInfo.windowHeight * 0.88
+    branchChartMaxHeight.value = Math.max(panelH - 90 - 50 - 32, 300)
   } catch {
     statusBarHeight.value = 20
+    branchChartMaxHeight.value = 500
   }
 
   const pages = getCurrentPages()
@@ -1643,7 +1652,7 @@ function flattenReplies(
     }
   }
 
-  // tree-chart 组件撑满剩余空间
+  // tree-chart 组件撑满剩余空间，overflow:hidden 确保 canvas 不超出面板边界
   .tree-chart-wrap {
     flex: 1;
     overflow: hidden;
