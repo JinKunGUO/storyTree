@@ -7,21 +7,54 @@ import { canViewStory, canEditStory, checkViewPermission, checkEditPermission } 
 const router = Router();
 
 // List all stories with first node info
+// 支持参数：sort(popular/trending/latest)、tag、page、pageSize
 router.get('/', optionalAuth, async (req, res) => {
   const userId = getUserId(req);
 
   try {
+    const sort = (req.query.sort as string) || 'latest';
+    const tag = req.query.tag as string | undefined;
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const pageSize = Math.min(50, Math.max(1, parseInt(req.query.pageSize as string) || 20));
+    const skip = (page - 1) * pageSize;
+
+    // 根据 sort 参数决定 orderBy
+    let orderBy: any;
+    if (sort === 'popular') {
+      // 热门榜：按收藏数降序，再按追更数降序
+      orderBy = [
+        { bookmarks: { _count: 'desc' } },
+        { followers: { _count: 'desc' } },
+        { created_at: 'desc' },
+      ];
+    } else if (sort === 'trending') {
+      // 趋势榜：按追更数降序，再按节点数降序（近似活跃度）
+      orderBy = [
+        { followers: { _count: 'desc' } },
+        { nodes: { _count: 'desc' } },
+        { created_at: 'desc' },
+      ];
+    } else {
+      // 最新榜（默认）：按创建时间降序
+      orderBy = { created_at: 'desc' };
+    }
+
+    // tag 过滤：tags 字段是逗号分隔的字符串，用 contains 匹配
+    const where: any = {
+      nodes: { some: { parent_id: null } },
+    };
+    if (tag) {
+      where.tags = { contains: tag };
+    }
+
     const stories = await prisma.stories.findMany({
+      where,
       include: {
         author: {
-          select: { id: true, username: true }
+          select: { id: true, username: true, avatar: true }
         },
         nodes: {
-          where: {
-            parent_id: null
-            // 发现页面显示所有故事，不受审核状态限制
-            // 审核机制只影响节点内容的详细显示，不影响故事列表
-          },
+          where: { parent_id: null },
           take: 1,
           select: {
             id: true,
@@ -35,18 +68,19 @@ router.get('/', optionalAuth, async (req, res) => {
         _count: {
           select: {
             nodes: true,
-            bookmarks: true
+            bookmarks: true,
+            followers: true,
           }
         }
       },
-      orderBy: { created_at: 'desc' }
+      orderBy,
+      skip,
+      take: pageSize,
     });
 
-    // 过滤掉没有根节点的故事（只创建了故事但还没有添加第一章）
-    const filteredStories = stories.filter(s => s.nodes.length > 0);
-
-    res.json({ stories: filteredStories });
+    res.json({ stories, page, pageSize });
   } catch (error) {
+    console.error('List stories error:', error);
     res.status(500).json({ error: 'Failed to fetch stories' });
   }
 });

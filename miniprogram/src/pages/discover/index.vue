@@ -1,49 +1,50 @@
 <template>
   <view class="discover-page">
     <!-- 搜索栏 -->
-    <view class="search-bar">
+    <view class="search-header" :style="{ paddingTop: statusBarHeight + 'px' }">
       <view class="search-input-wrap" @tap="goSearch">
         <text class="search-icon">🔍</text>
         <text class="search-placeholder">搜索故事、作者、标签...</text>
       </view>
     </view>
 
-    <!-- 标签筛选 -->
+    <!-- 榜单 Tab（热门/趋势/最新）-->
+    <view class="rank-tabs">
+      <view
+        v-for="tab in sortTabs"
+        :key="tab.value"
+        class="rank-tab"
+        :class="{ active: currentSort === tab.value }"
+        @tap="changeSort(tab.value)"
+      >
+        <text class="rank-tab-icon">{{ tab.icon }}</text>
+        <text class="rank-tab-label">{{ tab.label }}</text>
+      </view>
+      <view
+        class="rank-tab-indicator"
+        :style="{ left: sortTabs.findIndex(t => t.value === currentSort) * 33.33 + '%' }"
+      />
+    </view>
+
+    <!-- 分类标签（横向滚动）-->
     <scroll-view class="tags-scroll" scroll-x>
       <view class="tags-list">
         <view
           class="tag-item"
           :class="{ active: currentTag === '' }"
           @tap="selectTag('')"
-        >
-          全部
-        </view>
+        >全部</view>
         <view
           v-for="tag in popularTags"
           :key="tag"
           class="tag-item"
           :class="{ active: currentTag === tag }"
           @tap="selectTag(tag)"
-        >
-          {{ tag }}
-        </view>
+        >{{ tag }}</view>
       </view>
     </scroll-view>
 
-    <!-- 排序栏 -->
-    <view class="sort-bar">
-      <view
-        v-for="tab in sortTabs"
-        :key="tab.value"
-        class="sort-tab"
-        :class="{ active: currentSort === tab.value }"
-        @tap="changeSort(tab.value)"
-      >
-        {{ tab.label }}
-      </view>
-    </view>
-
-    <!-- 故事列表 -->
+    <!-- 榜单列表 -->
     <scroll-view
       class="story-scroll"
       scroll-y
@@ -53,44 +54,60 @@
       @scrolltolower="onLoadMore"
     >
       <!-- 骨架屏 -->
-      <view v-if="loading && stories.length === 0" class="skeleton-grid">
-        <view v-for="i in 6" :key="i" class="skeleton-card">
-          <view class="skeleton-cover" />
-          <view class="skeleton-info">
-            <view class="skeleton-title" />
-            <view class="skeleton-meta" />
+      <view v-if="loading && stories.length === 0" class="skeleton-rank-list">
+        <view v-for="i in 6" :key="i" class="skeleton-rank-item">
+          <view class="sk-rank" />
+          <view class="sk-cover" />
+          <view class="sk-lines">
+            <view class="sk-line" />
+            <view class="sk-line short" />
           </view>
         </view>
       </view>
 
-      <!-- 故事网格 -->
-      <view v-else class="story-grid">
+      <!-- 榜单列表 -->
+      <view v-else class="rank-list">
+        <!-- 前3名特殊样式 -->
         <view
-          v-for="story in stories"
+          v-for="(story, idx) in stories"
           :key="story.id"
-          class="story-card"
+          class="rank-item"
+          :class="{ 'top3': idx < 3 }"
           @tap="goStory(story.id)"
         >
+          <!-- 排名徽章 -->
+          <view class="rank-badge" :class="['rank-' + (idx + 1)]">
+            <text v-if="idx < 3" class="rank-medal">{{ ['🥇','🥈','🥉'][idx] }}</text>
+            <text v-else class="rank-num">{{ idx + 1 }}</text>
+          </view>
+
+          <!-- 封面 -->
           <image
-            class="story-cover"
+            class="rank-cover"
             :src="getImageUrl(story.cover_image) || '/static/images/default-cover.png'"
             mode="aspectFill"
           />
-          <view class="story-info">
-            <text class="story-title">{{ story.title }}</text>
-            <view class="story-author">
+
+          <!-- 信息 -->
+          <view class="rank-info">
+            <text class="rank-title">{{ story.title }}</text>
+            <view class="rank-author-row">
               <image
-                class="author-avatar"
+                class="rank-avatar"
                 :src="getImageUrl(story.author.avatar) || '/static/images/default-avatar.png'"
                 mode="aspectFill"
               />
-              <text class="author-name">{{ story.author.username }}</text>
+              <text class="rank-author">{{ story.author.username }}</text>
+              <text v-if="story.tags" class="rank-tag">{{ story.tags.split(',')[0] }}</text>
             </view>
-            <view class="story-stats">
-              <text class="stat">{{ story._count?.nodes || 0 }} 章</text>
-              <text class="stat">{{ story._count?.followers || 0 }} 追更</text>
+            <view class="rank-stats">
+              <text class="rank-stat">📖 {{ story._count?.nodes || 0 }} 章</text>
+              <text class="rank-stat">❤️ {{ story._count?.followers || 0 }} 追更</text>
             </view>
           </view>
+
+          <!-- 右侧箭头 -->
+          <text class="rank-arrow">›</text>
         </view>
       </view>
 
@@ -101,10 +118,8 @@
         <text class="empty-sub">换个标签试试？</text>
       </view>
 
-      <!-- 加载更多 -->
       <view v-if="loadingMore" class="loading-more">加载中...</view>
       <view v-if="noMore && stories.length > 0" class="no-more">没有更多了</view>
-
       <view class="bottom-placeholder" />
     </scroll-view>
   </view>
@@ -120,22 +135,31 @@ const loading = ref(false)
 const refreshing = ref(false)
 const loadingMore = ref(false)
 const noMore = ref(false)
+const statusBarHeight = ref(20)
 
 const stories = ref<Story[]>([])
 const currentTag = ref('')
-const currentSort = ref<'latest' | 'popular' | 'trending'>('latest')
+const currentSort = ref<'latest' | 'popular' | 'trending'>('popular')
 const page = ref(1)
-const pageSize = 12
+const pageSize = 20
 
-const popularTags = ['奇幻', '科幻', '悬疑', '言情', '武侠', '历史', '都市', '恐怖', '喜剧', '冒险']
+const popularTags = [
+  '奇幻', '科幻', '悬疑', '言情', '武侠', '历史',
+  '都市', '恐怖', '喜剧', '冒险', '推理', '古风',
+  '末世', '穿越', '校园', '职场',
+]
 
 const sortTabs = [
-  { label: '最新', value: 'latest' as const },
-  { label: '热门', value: 'popular' as const },
-  { label: '趋势', value: 'trending' as const },
+  { label: '热门榜', icon: '🔥', value: 'popular' as const },
+  { label: '趋势榜', icon: '📈', value: 'trending' as const },
+  { label: '最新榜', icon: '🆕', value: 'latest' as const },
 ]
 
 onMounted(() => {
+  try {
+    const info = uni.getSystemInfoSync()
+    statusBarHeight.value = info.statusBarHeight || 20
+  } catch { /* ignore */ }
   loadStories()
 })
 
@@ -209,234 +233,186 @@ function goStory(id: number) {
   flex-direction: column;
 }
 
-.search-bar {
-  padding: 20rpx 24rpx;
-  background: #1a1a2e;
+// ===== 搜索栏 =====
+.search-header {
+  padding: 16rpx 24rpx 20rpx;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
 
   .search-input-wrap {
-    display: flex;
-    align-items: center;
+    display: flex; align-items: center; gap: 12rpx;
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 40rpx;
-    padding: 16rpx 24rpx;
-    gap: 12rpx;
+    border-radius: 40rpx; padding: 16rpx 24rpx;
 
-    .search-icon {
-      font-size: 28rpx;
-    }
-
-    .search-placeholder {
-      font-size: 26rpx;
-      color: rgba(255, 255, 255, 0.4);
-    }
+    .search-icon { font-size: 28rpx; }
+    .search-placeholder { font-size: 26rpx; color: rgba(255, 255, 255, 0.4); }
   }
 }
 
+// ===== 榜单 Tab =====
+.rank-tabs {
+  position: relative;
+  display: flex;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  padding: 0 0 0;
+
+  .rank-tab {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 16rpx 0 24rpx; gap: 4rpx;
+
+    .rank-tab-icon { font-size: 28rpx; opacity: 0.5; }
+    .rank-tab-label { font-size: 24rpx; color: rgba(255, 255, 255, 0.5); font-weight: 500; }
+
+    &.active {
+      .rank-tab-icon { opacity: 1; }
+      .rank-tab-label { color: #fff; font-weight: 700; }
+    }
+  }
+
+  .rank-tab-indicator {
+    position: absolute; bottom: 0; width: 33.33%; height: 4rpx;
+    background: #7c6af7; border-radius: 4rpx 4rpx 0 0;
+    transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+// ===== 分类标签 =====
 .tags-scroll {
-  background: #1a1a2e;
-  padding-bottom: 20rpx;
+  background: #fff;
+  border-bottom: 1rpx solid #f1f5f9;
+  padding-bottom: 16rpx;
 }
 
 .tags-list {
-  display: flex;
-  gap: 16rpx;
-  padding: 0 24rpx;
-  white-space: nowrap;
+  display: flex; gap: 16rpx; padding: 16rpx 24rpx 0; white-space: nowrap;
 }
 
 .tag-item {
-  display: inline-block;
-  padding: 12rpx 28rpx;
-  border-radius: 40rpx;
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.6);
-  background: rgba(255, 255, 255, 0.08);
-  white-space: nowrap;
-  flex-shrink: 0;
+  display: inline-block; padding: 10rpx 24rpx;
+  border-radius: 40rpx; font-size: 24rpx;
+  color: #64748b; background: #f1f5f9;
+  white-space: nowrap; flex-shrink: 0;
 
   &.active {
-    background: #7c6af7;
-    color: #ffffff;
-    font-weight: 600;
+    background: #7c6af7; color: #fff; font-weight: 600;
   }
 }
 
-.sort-bar {
-  display: flex;
-  background: #ffffff;
-  padding: 0 24rpx;
-  border-bottom: 1rpx solid #f0f2f5;
-
-  .sort-tab {
-    padding: 24rpx 20rpx;
-    font-size: 28rpx;
-    color: #94a3b8;
-    position: relative;
-
-    &.active {
-      color: #7c6af7;
-      font-weight: 600;
-
-      &::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: 20rpx;
-        right: 20rpx;
-        height: 4rpx;
-        background: #7c6af7;
-        border-radius: 2rpx;
-      }
-    }
-  }
-}
-
+// ===== 故事滚动区 =====
 .story-scroll {
   flex: 1;
-  height: calc(100vh - 280rpx);
+  height: 0;
+  min-height: 0;
 }
 
-.skeleton-grid,
-.story-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 20rpx;
-  padding: 24rpx;
+// ===== 榜单列表 =====
+.rank-list {
+  padding: 16rpx 24rpx;
+  display: flex; flex-direction: column; gap: 0;
 }
 
-.skeleton-card {
-  background: #ffffff;
-  border-radius: 20rpx;
-  overflow: hidden;
+.rank-item {
+  display: flex; align-items: center; gap: 16rpx;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f1f5f9;
+  background: #fff;
 
-  .skeleton-cover {
-    width: 100%;
-    height: 240rpx;
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
+  &:first-child { border-radius: 20rpx 20rpx 0 0; padding-top: 24rpx; }
+  &:last-child { border-bottom: none; border-radius: 0 0 20rpx 20rpx; padding-bottom: 24rpx; }
+
+  // 前3名加强调背景
+  &.top3 {
+    background: linear-gradient(to right, rgba(124, 106, 247, 0.04), transparent);
   }
 
-  .skeleton-info {
-    padding: 16rpx;
+  // 排名徽章
+  .rank-badge {
+    width: 56rpx; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
 
-    .skeleton-title {
-      height: 28rpx;
-      border-radius: 6rpx;
-      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
-      margin-bottom: 12rpx;
+    .rank-medal { font-size: 36rpx; }
+    .rank-num { font-size: 28rpx; font-weight: 700; color: #94a3b8; }
+  }
+
+  // 封面
+  .rank-cover {
+    width: 100rpx; height: 130rpx; border-radius: 12rpx; flex-shrink: 0;
+    background: #e2e8f0;
+  }
+
+  // 信息
+  .rank-info {
+    flex: 1; overflow: hidden;
+
+    .rank-title {
+      font-size: 30rpx; font-weight: 600; color: #1e293b;
+      display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      margin-bottom: 10rpx;
     }
 
-    .skeleton-meta {
-      height: 22rpx;
-      border-radius: 6rpx;
-      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
-      width: 60%;
+    .rank-author-row {
+      display: flex; align-items: center; gap: 8rpx; margin-bottom: 10rpx;
+
+      .rank-avatar { width: 32rpx; height: 32rpx; border-radius: 50%; background: #e2e8f0; }
+      .rank-author { font-size: 22rpx; color: #7c6af7; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .rank-tag {
+        font-size: 20rpx; color: #7c6af7;
+        background: rgba(124, 106, 247, 0.1);
+        padding: 2rpx 12rpx; border-radius: 20rpx; flex-shrink: 0;
+      }
+    }
+
+    .rank-stats {
+      display: flex; gap: 16rpx;
+      .rank-stat { font-size: 20rpx; color: #94a3b8; }
     }
   }
+
+  .rank-arrow { font-size: 40rpx; color: #cbd5e1; flex-shrink: 0; padding-right: 8rpx; }
 }
 
+// ===== 骨架屏 =====
 @keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
-.story-card {
-  background: #ffffff;
-  border-radius: 20rpx;
-  overflow: hidden;
+%sk {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
 
-  .story-cover {
-    width: 100%;
-    height: 240rpx;
-    background: #f0f2f5;
-  }
+.skeleton-rank-list {
+  padding: 16rpx 24rpx; display: flex; flex-direction: column; gap: 0;
 
-  .story-info {
-    padding: 16rpx;
+  .skeleton-rank-item {
+    display: flex; align-items: center; gap: 16rpx;
+    padding: 20rpx 0; border-bottom: 1rpx solid #f1f5f9; background: #fff;
+    &:last-child { border-bottom: none; }
 
-    .story-title {
-      font-size: 26rpx;
-      font-weight: 600;
-      color: #1e293b;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      display: block;
-    }
-
-    .story-author {
-      display: flex;
-      align-items: center;
-      gap: 8rpx;
-      margin-top: 10rpx;
-
-      .author-avatar {
-        width: 32rpx;
-        height: 32rpx;
-        border-radius: 50%;
-      }
-
-      .author-name {
-        font-size: 22rpx;
-        color: #94a3b8;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-    }
-
-    .story-stats {
-      display: flex;
-      gap: 16rpx;
-      margin-top: 8rpx;
-
-      .stat {
-        font-size: 20rpx;
-        color: #cbd5e1;
+    .sk-rank { width: 56rpx; height: 40rpx; border-radius: 8rpx; @extend %sk; flex-shrink: 0; }
+    .sk-cover { width: 100rpx; height: 130rpx; border-radius: 12rpx; flex-shrink: 0; @extend %sk; }
+    .sk-lines { flex: 1; display: flex; flex-direction: column; gap: 12rpx;
+      .sk-line { height: 24rpx; border-radius: 6rpx; @extend %sk;
+        &.short { width: 60%; }
       }
     }
   }
 }
 
+// ===== 空状态 =====
 .empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 120rpx 0;
-
-  .empty-icon {
-    font-size: 100rpx;
-    margin-bottom: 24rpx;
-  }
-
-  .empty-text {
-    font-size: 30rpx;
-    color: #475569;
-    font-weight: 600;
-  }
-
-  .empty-sub {
-    font-size: 24rpx;
-    color: #94a3b8;
-    margin-top: 12rpx;
-  }
+  display: flex; flex-direction: column; align-items: center; padding: 120rpx 0;
+  .empty-icon { font-size: 100rpx; margin-bottom: 24rpx; }
+  .empty-text { font-size: 30rpx; color: #475569; font-weight: 600; }
+  .empty-sub { font-size: 24rpx; color: #94a3b8; margin-top: 12rpx; }
 }
 
-.loading-more,
-.no-more {
-  text-align: center;
-  padding: 32rpx;
-  font-size: 24rpx;
-  color: #94a3b8;
+.loading-more, .no-more {
+  text-align: center; padding: 32rpx;
+  font-size: 24rpx; color: #94a3b8;
 }
 
-.bottom-placeholder {
-  height: 60rpx;
-}
+.bottom-placeholder { height: 60rpx; }
 </style>
-

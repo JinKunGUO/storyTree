@@ -6,6 +6,45 @@ import { hashPassword, verifyPassword, isValidUsername, isValidPassword } from '
 
 const router = Router();
 
+// 获取动态流（必须在 /:id 之前注册，否则 "feed" 会被当作 :id 参数）
+router.get('/feed/me', authenticateToken, async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    // 获取关注的人的最新节点
+    const feed = await prisma.nodes.findMany({
+      where: {
+        author: {
+          following: {
+            some: {
+              follower_id: userId
+            }
+          }
+        },
+        review_status: 'APPROVED'
+      },
+      include: {
+        author: {
+          select: { id: true, username: true }
+        },
+        story: {
+          select: { id: true, title: true }
+        }
+      },
+      orderBy: { created_at: 'desc' },
+      take: 20
+    });
+
+    res.json({ feed });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch feed' });
+  }
+});
+
 // 获取用户信息
 router.get('/:id', optionalAuth, async (req, res) => {
   const { id } = req.params;
@@ -352,45 +391,6 @@ router.get('/:id/followers', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch followers list' });
-  }
-});
-
-// 获取动态流
-router.get('/feed/me', authenticateToken, async (req, res) => {
-  const userId = getUserId(req);
-  if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  try {
-    // 获取关注的人的最新节点
-    const feed = await prisma.nodes.findMany({
-      where: {
-        author: {
-          followers: {
-            some: {
-              follower_id: userId
-            }
-          }
-        },
-        review_status: 'APPROVED'
-      },
-      include: {
-        author: {
-          select: { id: true, username: true }
-        },
-        story: {
-          select: { id: true, title: true }
-        }
-      },
-      orderBy: { created_at: 'desc' },
-      take: 20
-    });
-
-    res.json({ feed });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to fetch feed' });
   }
 });
 
