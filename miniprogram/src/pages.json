@@ -34,6 +34,15 @@
       }
     },
     {
+      "path": "pages/write/editor",
+      "style": {
+        "navigationBarTitleText": "写作",
+        "navigationBarBackgroundColor": "#1a1a2e",
+        "navigationBarTextStyle": "white",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/notifications/index",
       "style": {
         "navigationBarTitleText": "消息",
@@ -120,6 +129,15 @@
         "navigationBarTitleText": "故事详情",
         "navigationBarBackgroundColor": "#1a1a2e",
         "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/story/create",
+      "style": {
+        "navigationBarTitleText": "新建故事",
+        "navigationBarBackgroundColor": "#1a1a2e",
+        "navigationBarTextStyle": "white",
+        "navigationStyle": "custom"
       }
     },
     {

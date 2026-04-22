@@ -602,6 +602,96 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// 获取当前用户的草稿列表（is_published=false 的节点）
+// GET /api/nodes/my-drafts
+router.get('/my-drafts', authenticateToken, async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const rawDrafts = await prisma.nodes.findMany({
+      where: {
+        author_id: userId,
+        is_published: false,
+      },
+      include: {
+        story: {
+          select: { id: true, title: true }
+        },
+      },
+      orderBy: { updated_at: 'desc' },
+    });
+
+    // 批量查询父节点标题
+    const parentIds = rawDrafts.map(d => d.parent_id).filter((id): id is number => id !== null);
+    const parentNodes = parentIds.length > 0
+      ? await prisma.nodes.findMany({
+          where: { id: { in: parentIds } },
+          select: { id: true, title: true }
+        })
+      : [];
+    const parentMap = new Map(parentNodes.map(n => [n.id, n.title]));
+
+    const drafts = rawDrafts.map(d => ({
+      ...d,
+      parent_title: d.parent_id ? (parentMap.get(d.parent_id) || null) : null,
+    }));
+
+    res.json({ drafts });
+  } catch (error) {
+    console.error('获取草稿列表错误:', error);
+    res.status(500).json({ error: 'Failed to fetch drafts' });
+  }
+});
+
+// 更新草稿内容（仅允许更新未发布节点，不触发审核）
+// PATCH /api/nodes/:id/draft
+router.patch('/:id/draft', authenticateToken, async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { id } = req.params;
+  const { title, content, image } = req.body;
+
+  try {
+    const node = await prisma.nodes.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+
+    if (node.author_id !== userId) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    if (node.is_published) {
+      return res.status(400).json({ error: '已发布章节请使用编辑接口' });
+    }
+
+    const updateData: any = { updated_at: new Date() };
+    if (title !== undefined) updateData.title = title;
+    if (content !== undefined) updateData.content = content;
+    if (image !== undefined) updateData.image = image || null;
+
+    const updated = await prisma.nodes.update({
+      where: { id: parseInt(id) },
+      data: updateData,
+      select: { id: true, title: true, content: true, updated_at: true }
+    });
+
+    res.json({ node: updated, message: '草稿已保存' });
+  } catch (error) {
+    console.error('更新草稿错误:', error);
+    res.status(500).json({ error: 'Failed to update draft' });
+  }
+});
+
 // Get node details with branches
 router.get('/:id', optionalAuth, async (req, res) => {
   const { id } = req.params;

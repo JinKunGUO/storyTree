@@ -136,3 +136,43 @@ export function publishNode(id: number) {
   return http.post<{ node: Node; message: string }>(`/api/nodes/${id}/publish`)
 }
 
+// ─── 草稿相关 API ─────────────────────────────────────────────────────────────
+
+export interface DraftNode extends Node {
+  story: { id: number; title: string }
+  parent_title: string | null
+}
+
+// 获取当前用户的草稿列表（is_published=false 的节点）
+export function getMyDrafts() {
+  return http.get<{ drafts: DraftNode[] }>('/api/nodes/my-drafts')
+}
+
+// 创建草稿节点（is_published=false）
+export function createDraftNode(data: {
+  story_id: number
+  parent_id?: number
+  title: string
+  content: string
+  image?: string
+}) {
+  return http.post<{ node: Node }>('/api/nodes', {
+    storyId: data.story_id,
+    parentId: data.parent_id,
+    title: data.title,
+    content: data.content,
+    image: data.image,
+    isPublished: false,
+  })
+}
+
+// 更新草稿内容（不触发审核，仅限未发布节点）
+export function updateDraftNode(id: number, data: { title?: string; content?: string; image?: string }) {
+  return http.patch<{ node: Node; message: string }>(`/api/nodes/${id}/draft`, data)
+}
+
+// 删除草稿节点（直接复用 deleteNode 接口）
+export function deleteDraftNode(id: number) {
+  return deleteNode(id)
+}
+

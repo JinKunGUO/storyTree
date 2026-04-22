@@ -686,12 +686,9 @@ function onBranchNodeTap(id: number) {
 }
 
 function writeBranch() {
-  uni.setStorageSync('st_write_params', JSON.stringify({
-    storyId: node.value?.story_id,
-    parentId: node.value?.id,
-    parentTitle: node.value?.title,
-  }))
-  uni.switchTab({ url: '/pages/write/index' })
+  uni.navigateTo({
+    url: `/pages/write/editor?storyId=${node.value?.story_id}&parentId=${node.value?.id}&parentTitle=${encodeURIComponent(node.value?.title || '')}`,
+  })
 }
 
 function openAiPanel() {
@@ -700,14 +697,10 @@ function openAiPanel() {
 
 function handleAiApply(content: string) {
   // AI 创作完成后，跳转到写作页并预填内容
-  uni.setStorageSync('st_write_params', JSON.stringify({
-    storyId: node.value?.story_id,
-    parentId: node.value?.id,
-    parentTitle: node.value?.title,
-    prefillContent: content || '',
-  }))
   showAiPanel.value = false
-  uni.switchTab({ url: '/pages/write/index' })
+  uni.navigateTo({
+    url: `/pages/write/editor?storyId=${node.value?.story_id}&parentId=${node.value?.id}&parentTitle=${encodeURIComponent(node.value?.title || '')}&prefillContent=${encodeURIComponent(content || '')}`,
+  })
 }
 
 function goLogin() {

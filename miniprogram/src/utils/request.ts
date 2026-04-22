@@ -175,6 +175,9 @@ export const http = {
   delete<T = unknown>(url: string, data?: Record<string, unknown>, options?: Partial<RequestOptions>) {
     return request<T>({ url, method: 'DELETE', data, ...options })
   },
+  patch<T = unknown>(url: string, data?: Record<string, unknown>, options?: Partial<RequestOptions>) {
+    return request<T>({ url, method: 'PATCH', data, ...options })
+  },
   upload: uploadFile,
 }
 

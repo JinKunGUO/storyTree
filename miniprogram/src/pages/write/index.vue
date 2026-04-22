@@ -1,965 +1,531 @@
 <template>
-  <view class="write-page" :style="{ '--status-bar-height': statusBarHeight + 'px' }">
-    <!-- 顶部工具栏 -->
-    <view class="toolbar">
-      <view class="toolbar-left">
-        <view class="back-btn" @tap="handleBack">
-          <text class="back-icon">←</text>
-        </view>
-        <text class="toolbar-title">{{ isEditing ? '编辑章节' : '新建章节' }}</text>
-      </view>
-      <view class="toolbar-right">
-        <view class="draft-btn" @tap="saveDraft">
-          <text class="draft-text">存草稿</text>
-        </view>
-        <button class="publish-btn" :disabled="publishing" @tap="handlePublish">
-          {{ publishing ? '发布中...' : '发布' }}
-        </button>
-      </view>
+  <view class="write-center-page">
+    <!-- 顶部标题栏 -->
+    <view class="page-header">
+      <text class="page-title">写作中心</text>
     </view>
 
-    <!-- 父节点信息条（续写时显示，告知用户从哪个节点续写） -->
-    <view v-if="parentNodeTitle" class="parent-node-bar">
-      <text class="parent-label">续写自：</text>
-      <text class="parent-title" @tap="goParentChapter">{{ parentNodeTitle }}</text>
-      <text class="parent-arrow">›</text>
+    <!-- 未登录提示 -->
+    <view v-if="!userStore.isLoggedIn" class="login-prompt">
+      <text class="login-prompt-icon">✍️</text>
+      <text class="login-prompt-text">登录后开始创作</text>
+      <button class="login-btn" @tap="goLogin">立即登录</button>
     </view>
 
-    <!-- 故事选择（新建时） -->
-    <view v-if="!isEditing && !storyId" class="story-select-section">
-      <text class="section-label">选择故事</text>
-      <view class="story-select-card" @tap="showStoryPicker = true">
-        <template v-if="selectedStory">
-          <image
-            class="selected-story-cover"
-            :src="getImageUrl(selectedStory.cover_image) || '/static/images/default-cover.png'"
-            mode="aspectFill"
-          />
-          <view class="selected-story-info">
-            <text class="selected-story-title">{{ selectedStory.title }}</text>
-            <text class="selected-story-meta">续写故事</text>
-          </view>
-          <text class="change-text">更换</text>
-        </template>
-        <template v-else>
-          <text class="select-placeholder">+ 选择要续写的故事</text>
-        </template>
+    <template v-else>
+      <!-- 开始新故事按钮 -->
+      <view class="new-story-card" @tap="goCreateStory">
+        <view class="new-story-icon">✨</view>
+        <view class="new-story-info">
+          <text class="new-story-title">开始新故事</text>
+          <text class="new-story-desc">创建一个全新的故事世界</text>
+        </view>
+        <text class="card-arrow">›</text>
       </view>
-    </view>
 
-    <!-- 写作区域 -->
-    <scroll-view class="write-scroll" scroll-y>
-      <view class="write-content">
-        <!-- 章节标题 -->
-        <view class="title-input-wrap">
-          <input
-            v-model="form.title"
-            class="title-input"
-            placeholder="章节标题（必填）"
-            placeholder-class="title-placeholder"
-            maxlength="50"
-          />
-          <text class="title-count">{{ form.title.length }}/50</text>
+      <!-- 草稿箱 -->
+      <view class="section">
+        <view class="section-header">
+          <text class="section-title">草稿箱</text>
+          <text v-if="drafts.length > 0" class="section-count">{{ drafts.length }}</text>
         </view>
 
-        <!-- 封面图片 -->
-        <view class="image-section">
-          <view v-if="form.image" class="image-preview">
-            <image class="preview-img" :src="form.image" mode="aspectFill" />
-            <view class="remove-img" @tap="form.image = ''">
-              <text>×</text>
+        <view v-if="draftsLoading" class="loading-row">
+          <text class="loading-text">加载中...</text>
+        </view>
+
+        <view v-else-if="drafts.length === 0" class="empty-hint">
+          <text class="empty-text">暂无草稿</text>
+        </view>
+
+        <view
+          v-for="draft in drafts"
+          :key="draft.id"
+          class="draft-card"
+          @tap="openDraft(draft)"
+        >
+          <view class="draft-card-main">
+            <view class="draft-icon">📝</view>
+            <view class="draft-info">
+              <text class="draft-title">{{ draft.title || '未命名章节' }}</text>
+              <text class="draft-meta">
+                《{{ draft.story?.title }}》
+                <template v-if="draft.parent_title">续 {{ draft.parent_title }}</template>
+                <template v-else>第一章</template>
+              </text>
+              <text class="draft-time">{{ formatTime(draft.updated_at) }} · {{ getWordCount(draft.content) }}字</text>
             </view>
+            <text class="card-arrow">›</text>
           </view>
-          <view v-else class="image-upload" @tap="chooseImage">
-            <text class="upload-icon">🖼️</text>
-            <text class="upload-text">添加章节插图（可选）</text>
-          </view>
-        </view>
-
-        <!-- 正文编辑器 -->
-        <view class="editor-section">
-          <textarea
-            v-model="form.content"
-            class="content-textarea"
-            placeholder="开始你的故事..."
-            placeholder-class="content-placeholder"
-            :auto-height="true"
-            maxlength="50000"
-            @input="onContentInput"
-          />
-        </view>
-
-        <!-- 字数统计 -->
-        <view class="word-count-bar">
-          <text class="word-count">已写 {{ wordCount }} 字</text>
-          <text v-if="wordCount < 100" class="word-hint">建议至少写100字</text>
-        </view>
-
-        <!-- AI 辅助工具（登录即可使用，与网页端对齐：润色/续写/插图） -->
-        <view v-if="userStore.isLoggedIn" class="ai-tools">
-          <text class="ai-tools-title">✨ AI 辅助</text>
-          <view class="ai-actions">
-            <view class="ai-btn" @tap="openAiPanel('polish')">
-              <text class="ai-btn-icon">✨</text>
-              <text class="ai-btn-label">AI 润色</text>
-              <view v-if="aiQuota" class="ai-quota-badge" :class="getQuotaBadgeClass('polish')">
-                <text class="ai-quota-text">{{ getQuotaText('polish') }}</text>
-              </view>
-            </view>
-            <view class="ai-btn" @tap="openAiPanel('continue')">
-              <text class="ai-btn-icon">✍️</text>
-              <text class="ai-btn-label">AI 续写</text>
-              <view v-if="aiQuota" class="ai-quota-badge" :class="getQuotaBadgeClass('continue')">
-                <text class="ai-quota-text">{{ getQuotaText('continue') }}</text>
-              </view>
-            </view>
-            <view class="ai-btn" @tap="openAiPanel('illustration')">
-              <text class="ai-btn-icon">🎨</text>
-              <text class="ai-btn-label">AI 插图</text>
-              <view v-if="aiQuota" class="ai-quota-badge" :class="getQuotaBadgeClass('illustration')">
-                <text class="ai-quota-text">{{ getQuotaText('illustration') }}</text>
-              </view>
-            </view>
+          <view class="draft-delete-btn" @tap.stop="deleteDraft(draft)">
+            <text class="delete-icon">🗑</text>
           </view>
         </view>
       </view>
-    </scroll-view>
 
-    <!-- 故事选择弹窗 -->
-    <view v-if="showStoryPicker" class="picker-mask" @tap.self="showStoryPicker = false">
-      <view class="picker-panel">
-        <text class="picker-title">选择故事</text>
-        <scroll-view class="picker-scroll" scroll-y>
-          <view
-            v-for="story in myStories"
-            :key="story.id"
-            class="picker-story-item"
-            @tap="selectStory(story)"
-          >
+      <!-- 我的故事 -->
+      <view class="section">
+        <view class="section-header">
+          <text class="section-title">我的故事</text>
+          <text v-if="myStories.length > 0" class="section-count">{{ myStories.length }}</text>
+        </view>
+
+        <view v-if="storiesLoading" class="loading-row">
+          <text class="loading-text">加载中...</text>
+        </view>
+
+        <view v-else-if="myStories.length === 0" class="empty-hint">
+          <text class="empty-text">还没有故事，点击上方开始创作</text>
+        </view>
+
+        <view
+          v-for="story in myStories"
+          :key="story.id"
+          class="story-card"
+        >
+          <view class="story-card-header" @tap="goStory(story.id)">
             <image
-              class="picker-cover"
+              class="story-cover"
               :src="getImageUrl(story.cover_image) || '/static/images/default-cover.png'"
               mode="aspectFill"
             />
-            <view class="picker-info">
-              <text class="picker-title-text">{{ story.title }}</text>
-              <text class="picker-meta">{{ story._count?.nodes || 0 }} 章节</text>
+            <view class="story-info">
+              <text class="story-title">{{ story.title }}</text>
+              <text class="story-meta">
+                {{ story._count?.nodes || 0 }} 章节
+                <template v-if="story.isCollaborator"> · 协作者</template>
+              </text>
+            </view>
+            <text class="card-arrow">›</text>
+          </view>
+          <view class="story-card-actions">
+            <view class="story-action-btn" @tap="continueStory(story)">
+              <text class="action-icon">✍️</text>
+              <text class="action-label">续写</text>
+            </view>
+            <view class="story-action-divider" />
+            <view class="story-action-btn" @tap="manageStory(story.id)">
+              <text class="action-icon">⚙️</text>
+              <text class="action-label">管理</text>
             </view>
           </view>
-          <view v-if="myStories.length === 0" class="picker-empty">
-            <text>还没有故事，先去创建一个吧</text>
-          </view>
-        </scroll-view>
-        <button class="btn-create-story" @tap="goCreateStory">+ 创建新故事</button>
+        </view>
       </view>
-    </view>
-
-    <!-- AI 面板 -->
-    <ai-panel
-      :visible="showAiPanel"
-      :story-id="storyId || undefined"
-      :node-id="parentId || undefined"
-      :content="form.content"
-      :chapter-title="form.title"
-      :initial-tab="aiPanelInitialTab"
-      @close="showAiPanel = false"
-      @apply="onAiApply"
-    />
+    </template>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
-import { createNode, updateNode, getNode } from '@/api/nodes'
-import { getUserStories } from '@/api/stories'
+import { getMyDrafts, deleteDraftNode } from '@/api/nodes'
+import { getMyStories } from '@/api/stories'
 import { getImageUrl } from '@/utils/request'
-import { getAiV2Quota } from '@/api/ai'
-import AiPanel from '@/components/ai-panel/index.vue'
+import type { DraftNode } from '@/api/nodes'
 import type { Story } from '@/api/stories'
 
 const userStore = useUserStore()
 
-const statusBarHeight = ref(20) // 状态栏高度（px），默认 20px 兜底
+const drafts = ref<DraftNode[]>([])
+const myStories = ref<Array<Story & { isAuthor: boolean; isCollaborator: boolean }>>([])
+const draftsLoading = ref(false)
+const storiesLoading = ref(false)
 
-const publishing = ref(false)
-const showAiPanel = ref(false)
-const aiPanelInitialTab = ref<'continue' | 'polish' | 'illustration'>('polish')
-const showStoryPicker = ref(false)
-const isEditing = ref(false)
-
-// AI 配额数据（用于按钮上的徽章显示）
-const aiQuota = ref<{
-  quota: {
-    continuation: { remaining: number; unlimited: boolean }
-    polish: { remaining: number; unlimited: boolean }
-    illustration: { remaining: number; unlimited: boolean }
-  }
-  costs: { continuation: number; polish: number; illustration: number }
-} | null>(null)
-
-async function loadAiQuota() {
-  if (!userStore.isLoggedIn) return
-  try {
-    aiQuota.value = await getAiV2Quota()
-  } catch {
-    // 静默失败，不影响功能
-  }
-}
-
-function getQuotaText(type: 'continue' | 'polish' | 'illustration'): string {
-  if (!aiQuota.value) return ''
-  const key = type === 'continue' ? 'continuation' : type
-  const q = aiQuota.value.quota[key as keyof typeof aiQuota.value.quota]
-  const cost = aiQuota.value.costs[type === 'continue' ? 'continuation' : type as keyof typeof aiQuota.value.costs]
-  if (q.unlimited) return '∞'
-  if (q.remaining > 0) return String(q.remaining)
-  return `${cost}积分`
-}
-
-function getQuotaBadgeClass(type: 'continue' | 'polish' | 'illustration'): string {
-  if (!aiQuota.value) return ''
-  const key = type === 'continue' ? 'continuation' : type
-  const q = aiQuota.value.quota[key as keyof typeof aiQuota.value.quota]
-  if (q.unlimited) return 'unlimited'
-  if (q.remaining <= 0) return 'exhausted'
-  if (q.remaining <= 3) return 'low'
-  return ''
-}
-
-const storyId = ref<number | null>(null)
-const parentId = ref<number | null>(null)
-const nodeId = ref<number | null>(null)
-const parentNodeTitle = ref<string>('')   // 父节点标题，用于展示"续写自：xxx"
-
-const selectedStory = ref<Story | null>(null)
-const myStories = ref<Story[]>([])
-
-const form = reactive({
-  title: '',
-  content: '',
-  image: '',
-})
-
-const wordCount = computed(() => {
-  return form.content.replace(/\s/g, '').length
-})
-
-onMounted(async () => {
-  // 动态获取状态栏高度，避免与微信胶囊按钮重叠
-  try {
-    const sysInfo = uni.getSystemInfoSync()
-    statusBarHeight.value = sysInfo.statusBarHeight || 20
-  } catch {
-    statusBarHeight.value = 20
-  }
-})
-
-// onShow 每次显示时执行（包括 switchTab 切回来），处理续写参数
 onShow(async () => {
-  const pages = getCurrentPages()
-  const currentPage = pages[pages.length - 1] as any
-  const options = currentPage.options || {}
-
-  // 优先读取 URL 参数（navigateTo 方式，如从编辑入口进入）
-  if (options.nodeId) {
-    // 编辑模式：只在首次进入时处理（nodeId 不会变）
-    if (!isEditing.value) {
-      nodeId.value = Number(options.nodeId)
-      isEditing.value = true
-      loadNodeForEdit(nodeId.value)
-    }
-    return
-  }
-
-  // 检查 storage 中是否有新的续写参数（每次 onShow 都检查）
-  let mode = ''
-  let hasPrefill = false
-  let hasNewParams = false
-
-  // 优先检查是否从草稿箱恢复
-  try {
-    const resumeRaw = uni.getStorageSync('st_write_resume')
-    if (resumeRaw) {
-      const resume = JSON.parse(resumeRaw)
-      uni.removeStorageSync('st_write_resume')
-      // 重置状态
-      resetState()
-      if (resume.storyId) storyId.value = Number(resume.storyId)
-      if (resume.parentId) parentId.value = Number(resume.parentId)
-      hasNewParams = true
-      if (!isEditing.value) loadDraft()
-      if (storyId.value) loadMyStories()
-      loadAiQuota()
-      return
-    }
-  } catch { /* 忽略 */ }
-
-  // 检查续写/AI 参数
-  try {
-    const raw = uni.getStorageSync('st_write_params')
-    if (raw) {
-      const params = JSON.parse(raw)
-      uni.removeStorageSync('st_write_params')
-      // 重置状态，应用新参数
-      resetState()
-      if (params.storyId) storyId.value = Number(params.storyId)
-      if (params.parentId) parentId.value = Number(params.parentId)
-      if (params.parentTitle) parentNodeTitle.value = params.parentTitle
-      if (params.prefillContent) {
-        form.content = params.prefillContent
-        hasPrefill = true
-      }
-      if (params.prefillTitle) {
-        form.title = params.prefillTitle
-        hasPrefill = true
-      }
-      if (params.mode) mode = params.mode
-      hasNewParams = true
-    }
-  } catch { /* 忽略 */ }
-
-  if (hasNewParams) {
-    // 加载父节点标题（若已从 storage 获取则跳过）
-    if (parentId.value && !parentNodeTitle.value) {
-      loadParentNodeTitle(parentId.value)
-    }
-    if (!isEditing.value && !hasPrefill) loadDraft()
-    if (!storyId.value) loadMyStories()
-    loadAiQuota()
-    if (mode === 'ai') {
-      setTimeout(() => { showAiPanel.value = true }, 300)
-    }
-  } else if (!storyId.value && !isEditing.value) {
-    // 无新参数且无故事（自由写作模式），确保故事列表已加载
-    if (myStories.value.length === 0) loadMyStories()
-    loadAiQuota()
-  }
+  if (!userStore.isLoggedIn) return
+  loadDrafts()
+  loadStories()
 })
 
-// 重置写作页状态（切换续写目标时调用）
-function resetState() {
-  storyId.value = null
-  parentId.value = null
-  nodeId.value = null
-  parentNodeTitle.value = ''
-  isEditing.value = false
-  selectedStory.value = null
-  form.title = ''
-  form.content = ''
-  form.image = ''
-  showAiPanel.value = false
-}
-
-async function loadParentNodeTitle(id: number) {
+async function loadDrafts() {
+  draftsLoading.value = true
   try {
-    const res = await getNode(id)
-    parentNodeTitle.value = res.node.title
+    const res = await getMyDrafts()
+    drafts.value = res.drafts
   } catch {
     // 静默失败
-  }
-}
-
-function goParentChapter() {
-  if (parentId.value) {
-    uni.navigateTo({ url: `/pages/chapter/index?id=${parentId.value}` })
-  }
-}
-
-async function loadNodeForEdit(id: number) {
-  try {
-    const res = await getNode(id)
-    form.title = res.node.title
-    form.content = res.node.content
-    form.image = res.node.image || ''
-    storyId.value = res.node.story_id
-  } catch (err) {
-    console.error('加载节点失败', err)
-  }
-}
-
-async function loadMyStories() {
-  if (!userStore.isLoggedIn || !userStore.userInfo) return
-  try {
-    const res = await getUserStories(userStore.userInfo.id)
-    myStories.value = res.stories
-  } catch (err) {
-    console.error('加载故事列表失败', err)
-  }
-}
-
-function loadDraft() {
-  try {
-    const key = `st_draft_${storyId.value || 'new'}_p${parentId.value || 0}`
-    const draft = uni.getStorageSync(key)
-    if (draft) {
-      const data = JSON.parse(draft)
-      form.title = data.title || ''
-      form.content = data.content || ''
-    }
-  } catch {
-    // 忽略
-  }
-}
-
-function saveDraft() {
-  try {
-    const key = `st_draft_${storyId.value || 'new'}_p${parentId.value || 0}`
-    uni.setStorageSync(key, JSON.stringify({
-      title: form.title,
-      content: form.content,
-      savedAt: Date.now(),
-    }))
-    uni.showToast({ title: '草稿已保存', icon: 'success' })
-  } catch {
-    uni.showToast({ title: '保存失败', icon: 'none' })
-  }
-}
-
-async function handlePublish() {
-  if (!form.title.trim()) {
-    uni.showToast({ title: '请输入章节标题', icon: 'none' })
-    return
-  }
-  if (!form.content.trim()) {
-    uni.showToast({ title: '请输入章节内容', icon: 'none' })
-    return
-  }
-  if (!storyId.value && !selectedStory.value) {
-    uni.showToast({ title: '请选择所属故事', icon: 'none' })
-    return
-  }
-
-  publishing.value = true
-  try {
-    const data = {
-      story_id: storyId.value || selectedStory.value!.id,
-      parent_id: parentId.value || undefined,
-      title: form.title.trim(),
-      content: form.content.trim(),
-      image: form.image || undefined,
-    }
-
-    if (isEditing.value && nodeId.value) {
-      await updateNode(nodeId.value, { title: data.title, content: data.content, image: data.image })
-    } else {
-      await createNode(data)
-    }
-
-    // 清除草稿
-    const key = `st_draft_${storyId.value || 'new'}_p${parentId.value || 0}`
-    uni.removeStorageSync(key)
-
-    uni.showToast({ title: '发布成功！', icon: 'success' })
-    // 写入刷新标记，通知故事详情页在 onShow 时重新加载章节树
-    const targetStoryId = storyId.value || selectedStory.value?.id
-    if (targetStoryId) {
-      uni.setStorageSync('st_story_refresh', String(targetStoryId))
-    }
-    setTimeout(() => {
-      const pages = getCurrentPages()
-      if (pages.length > 1) {
-        uni.navigateBack()
-      } else {
-        uni.switchTab({ url: '/pages/index/index' })
-      }
-    }, 1500)
-  } catch (err: any) {
-    uni.showToast({ title: err.message || '发布失败', icon: 'none' })
   } finally {
-    publishing.value = false
+    draftsLoading.value = false
   }
 }
 
-async function chooseImage() {
-  uni.chooseImage({
-    count: 1,
-    sizeType: ['compressed'],
-    sourceType: ['album', 'camera'],
+async function loadStories() {
+  storiesLoading.value = true
+  try {
+    const res = await getMyStories()
+    myStories.value = res.stories
+  } catch {
+    // 静默失败
+  } finally {
+    storiesLoading.value = false
+  }
+}
+
+function openDraft(draft: DraftNode) {
+  uni.navigateTo({
+    url: `/pages/write/editor?draftNodeId=${draft.id}`,
+  })
+}
+
+function deleteDraft(draft: DraftNode) {
+  uni.showModal({
+    title: '删除草稿',
+    content: `确定要删除草稿「${draft.title || '未命名章节'}」吗？`,
+    confirmText: '删除',
+    confirmColor: '#ef4444',
     success: async (res) => {
-      const tempPath = res.tempFilePaths[0]
-      try {
-        const uploadRes = await import('@/utils/request').then(m => m.http.upload({
-          url: '/api/upload/image',
-          filePath: tempPath,
-          name: 'image',
-        }))
-        form.image = uploadRes.url
-      } catch (err) {
-        uni.showToast({ title: '图片上传失败', icon: 'none' })
+      if (res.confirm) {
+        try {
+          await deleteDraftNode(draft.id)
+          drafts.value = drafts.value.filter(d => d.id !== draft.id)
+          uni.showToast({ title: '已删除', icon: 'success' })
+        } catch {
+          uni.showToast({ title: '删除失败', icon: 'none' })
+        }
       }
     },
   })
 }
 
-// 打开 AI 面板并预选功能
-function openAiPanel(action: string = 'polish') {
-  aiPanelInitialTab.value = action as 'continue' | 'polish' | 'illustration'
-  showAiPanel.value = true
-}
-
-// AI 面板生成内容后应用到编辑器
-function onAiApply(content: string) {
-  form.content = form.content ? form.content + '\n\n' + content : content
-}
-
-function onContentInput() {
-  // 自动保存草稿（防抖）
-}
-
-function selectStory(story: Story) {
-  selectedStory.value = story
-  storyId.value = story.id
-  showStoryPicker.value = false
-}
-
 function goCreateStory() {
-  showStoryPicker.value = false
+  uni.navigateTo({ url: '/pages/story/create' })
+}
+
+function goStory(id: number) {
+  uni.navigateTo({ url: `/pages/story/index?id=${id}` })
+}
+
+async function continueStory(story: Story) {
+  // 获取故事最新章节，作为续写的父节点
+  // 如果故事没有章节，则写第一章
+  if (!story.root_node_id) {
+    // 还没有章节，写第一章
+    uni.navigateTo({
+      url: `/pages/write/editor?storyId=${story.id}&storyTitle=${encodeURIComponent(story.title)}`,
+    })
+    return
+  }
+
+  // 有章节，让用户选择在哪个节点续写（跳转到故事树页面）
   uni.showModal({
-    title: '提示',
-    content: '请先在"发现"页面找到感兴趣的故事，或在首页创建新故事后再续写章节',
-    showCancel: false,
-    confirmText: '知道了',
+    title: '续写方式',
+    content: '请在故事树中选择要续写的章节',
+    confirmText: '去选择',
+    cancelText: '取消',
+    success: (res) => {
+      if (res.confirm) {
+        uni.navigateTo({ url: `/pages/story/index?id=${story.id}` })
+      }
+    },
   })
 }
 
-function handleBack() {
-  const doBack = () => {
-    const pages = getCurrentPages()
-    if (pages.length > 1) {
-      uni.navigateBack()
-    } else {
-      uni.switchTab({ url: '/pages/index/index' })
-    }
-  }
+function manageStory(id: number) {
+  uni.navigateTo({ url: `/pages/story/manage?id=${id}` })
+}
 
-  if (form.content.trim() || form.title.trim()) {
-    uni.showModal({
-      title: '提示',
-      content: '内容尚未保存，确定要退出吗？',
-      success: (res) => {
-        if (res.confirm) doBack()
-      },
-    })
-  } else {
-    doBack()
-  }
+function goLogin() {
+  uni.navigateTo({ url: '/pages/auth/login/index' })
+}
+
+function formatTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  if (diff < 60000) return '刚刚'
+  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`
+  if (diff < 86400000 * 7) return `${Math.floor(diff / 86400000)} 天前`
+  return new Date(dateStr).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+}
+
+function getWordCount(content: string): number {
+  return content ? content.replace(/\s/g, '').length : 0
 }
 </script>
 
 <style lang="scss" scoped>
-.write-page {
+.write-center-page {
   min-height: 100vh;
-  background: #ffffff;
+  background: #f0f2f5;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.page-header {
+  padding: 60rpx 32rpx 32rpx;
+  background: #1a1a2e;
+
+  .page-title {
+    font-size: 48rpx;
+    font-weight: 700;
+    color: #ffffff;
+  }
+}
+
+// 未登录
+.login-prompt {
   display: flex;
   flex-direction: column;
-}
-
-.toolbar {
-  display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: calc(var(--status-bar-height, 20px) + 10px) 24rpx 16rpx;
-  background: #ffffff;
-  border-bottom: 1rpx solid #f0f2f5;
+  padding: 120rpx 40rpx;
+  gap: 24rpx;
 
-  .toolbar-left {
-    display: flex;
-    align-items: center;
-    gap: 16rpx;
+  .login-prompt-icon { font-size: 80rpx; }
 
-    .back-btn {
-      width: 64rpx;
-      height: 64rpx;
-      display: flex;
-      align-items: center;
-
-      .back-icon {
-        font-size: 36rpx;
-        color: #1e293b;
-      }
-    }
-
-    .toolbar-title {
-      font-size: 30rpx;
-      font-weight: 600;
-      color: #1e293b;
-    }
+  .login-prompt-text {
+    font-size: 30rpx;
+    color: #64748b;
   }
 
-  .toolbar-right {
-    display: flex;
-    align-items: center;
-    gap: 16rpx;
-
-    .draft-btn {
-      padding: 12rpx 24rpx;
-
-      .draft-text {
-        font-size: 26rpx;
-        color: #94a3b8;
-      }
-    }
-
-    .publish-btn {
-      background: #7c6af7;
-      color: #ffffff;
-      padding: 14rpx 32rpx;
-      border-radius: 40rpx;
-      font-size: 26rpx;
-      font-weight: 600;
-      border: none;
-      line-height: 1;
-
-      &[disabled] {
-        opacity: 0.6;
-      }
-    }
-  }
-}
-
-.story-select-section {
-  padding: 24rpx 32rpx;
-  background: #f8fafc;
-  border-bottom: 1rpx solid #f0f2f5;
-
-  .section-label {
-    font-size: 24rpx;
-    color: #94a3b8;
-    display: block;
-    margin-bottom: 12rpx;
-  }
-
-  .story-select-card {
-    display: flex;
-    align-items: center;
-    gap: 16rpx;
-    background: #ffffff;
-    border-radius: 16rpx;
-    padding: 16rpx 20rpx;
-    border: 1rpx solid #e2e8f0;
-
-    .selected-story-cover {
-      width: 80rpx;
-      height: 60rpx;
-      border-radius: 8rpx;
-    }
-
-    .selected-story-info {
-      flex: 1;
-
-      .selected-story-title {
-        font-size: 26rpx;
-        font-weight: 600;
-        color: #1e293b;
-        display: block;
-      }
-
-      .selected-story-meta {
-        font-size: 22rpx;
-        color: #94a3b8;
-        margin-top: 4rpx;
-        display: block;
-      }
-    }
-
-    .change-text {
-      font-size: 24rpx;
-      color: #7c6af7;
-    }
-
-    .select-placeholder {
-      font-size: 26rpx;
-      color: #94a3b8;
-      text-align: center;
-      width: 100%;
-      padding: 8rpx 0;
-    }
-  }
-}
-
-.write-scroll {
-  flex: 1;
-}
-
-.write-content {
-  padding: 0 0 60rpx;
-}
-
-.parent-node-bar {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  padding: 16rpx 32rpx;
-  background: rgba(124, 106, 247, 0.05);
-  border-bottom: 1rpx solid rgba(124, 106, 247, 0.1);
-
-  .parent-label {
-    font-size: 24rpx;
-    color: #94a3b8;
-    flex-shrink: 0;
-  }
-
-  .parent-title {
-    flex: 1;
-    font-size: 24rpx;
-    color: #7c6af7;
-    font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .parent-arrow {
+  .login-btn {
+    background: #7c6af7;
+    color: #ffffff;
+    border: none;
+    border-radius: 40rpx;
+    padding: 20rpx 60rpx;
     font-size: 28rpx;
-    color: #cbd5e1;
-    flex-shrink: 0;
+    font-weight: 600;
+    margin-top: 16rpx;
   }
 }
 
-.title-input-wrap {
+// 新建故事卡片
+.new-story-card {
   display: flex;
   align-items: center;
-  padding: 24rpx 32rpx;
-  border-bottom: 1rpx solid #f0f2f5;
+  gap: 24rpx;
+  margin: 24rpx 24rpx 0;
+  padding: 28rpx 24rpx;
+  background: linear-gradient(135deg, #7c6af7 0%, #a78bfa 100%);
+  border-radius: 20rpx;
+  box-shadow: 0 4rpx 20rpx rgba(124, 106, 247, 0.35);
 
-  .title-input {
+  .new-story-icon {
+    font-size: 48rpx;
+    width: 80rpx;
+    text-align: center;
+  }
+
+  .new-story-info {
     flex: 1;
-    font-size: 36rpx;
-    font-weight: 700;
-    color: #1e293b;
-    height: 80rpx;
-  }
+    display: flex;
+    flex-direction: column;
+    gap: 6rpx;
 
-  .title-count {
-    font-size: 22rpx;
-    color: #cbd5e1;
-    flex-shrink: 0;
-  }
-}
-
-.title-placeholder {
-  color: #cbd5e1;
-  font-weight: normal;
-}
-
-.image-section {
-  padding: 20rpx 32rpx;
-  border-bottom: 1rpx solid #f0f2f5;
-
-  .image-preview {
-    position: relative;
-    display: inline-block;
-
-    .preview-img {
-      width: 200rpx;
-      height: 150rpx;
-      border-radius: 12rpx;
+    .new-story-title {
+      font-size: 30rpx;
+      font-weight: 700;
+      color: #ffffff;
     }
 
-    .remove-img {
-      position: absolute;
-      top: -12rpx;
-      right: -12rpx;
-      width: 40rpx;
-      height: 40rpx;
-      background: rgba(0, 0, 0, 0.6);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      text {
-        font-size: 28rpx;
-        color: #ffffff;
-        line-height: 1;
-      }
+    .new-story-desc {
+      font-size: 24rpx;
+      color: rgba(255, 255, 255, 0.75);
     }
   }
 
-  .image-upload {
+  .card-arrow {
+    font-size: 40rpx;
+    color: rgba(255, 255, 255, 0.6);
+  }
+}
+
+// 分区
+.section {
+  margin-top: 32rpx;
+  padding: 0 24rpx;
+
+  .section-header {
     display: flex;
     align-items: center;
     gap: 12rpx;
-    padding: 16rpx 0;
+    margin-bottom: 16rpx;
 
-    .upload-icon { font-size: 32rpx; }
-    .upload-text { font-size: 26rpx; color: #94a3b8; }
-  }
-}
+    .section-title {
+      font-size: 26rpx;
+      font-weight: 600;
+      color: #94a3b8;
+      letter-spacing: 2rpx;
+      text-transform: uppercase;
+    }
 
-.editor-section {
-  padding: 24rpx 32rpx;
-
-  .content-textarea {
-    width: 100%;
-    min-height: 600rpx;
-    font-size: 30rpx;
-    color: #1e293b;
-    line-height: 1.8;
-  }
-}
-
-.content-placeholder { color: #cbd5e1; }
-
-.word-count-bar {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  padding: 0 32rpx 24rpx;
-
-  .word-count { font-size: 24rpx; color: #94a3b8; }
-  .word-hint { font-size: 22rpx; color: #f59e0b; }
-}
-
-.ai-tools {
-  margin: 0 32rpx;
-  padding: 24rpx;
-  background: linear-gradient(135deg, rgba(124, 106, 247, 0.06) 0%, rgba(167, 139, 250, 0.06) 100%);
-  border-radius: 20rpx;
-  border: 1rpx solid rgba(124, 106, 247, 0.15);
-
-  .ai-tools-title {
-    font-size: 26rpx;
-    font-weight: 600;
-    color: #7c6af7;
-    display: block;
-    margin-bottom: 20rpx;
-  }
-
-  .ai-actions {
-    display: flex;
-    gap: 16rpx;
-
-    .ai-btn {
-      flex: 1;
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8rpx;
-      padding: 20rpx 0 16rpx;
-      background: rgba(255, 255, 255, 0.8);
-      border-radius: 16rpx;
-
-      .ai-btn-icon { font-size: 36rpx; }
-      .ai-btn-label { font-size: 22rpx; color: #475569; font-weight: 500; }
-
-      // 配额徽章（右上角）
-      .ai-quota-badge {
-        position: absolute;
-        top: 8rpx;
-        right: 8rpx;
-        min-width: 32rpx;
-        height: 32rpx;
-        padding: 0 8rpx;
-        border-radius: 16rpx;
-        background: #7c6af7;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-sizing: border-box;
-
-        .ai-quota-text {
-          font-size: 18rpx;
-          color: #ffffff;
-          font-weight: 700;
-          line-height: 1;
-        }
-
-        &.unlimited { background: #10b981; }
-        &.low { background: #f59e0b; }
-        &.exhausted {
-          background: #94a3b8;
-          .ai-quota-text { font-size: 16rpx; }
-        }
-      }
+    .section-count {
+      font-size: 22rpx;
+      color: #7c6af7;
+      background: rgba(124, 106, 247, 0.1);
+      padding: 4rpx 14rpx;
+      border-radius: 20rpx;
+      font-weight: 600;
     }
   }
 }
 
-.picker-mask {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  z-index: 200;
-  display: flex;
-  align-items: flex-end;
+.loading-row {
+  padding: 40rpx 0;
+  text-align: center;
+
+  .loading-text {
+    font-size: 26rpx;
+    color: #94a3b8;
+  }
 }
 
-.picker-panel {
-  width: 100%;
-  background: #ffffff;
-  border-radius: 32rpx 32rpx 0 0;
-  padding: 32rpx 0 calc(20rpx + env(safe-area-inset-bottom));
-  max-height: 70vh;
+.empty-hint {
+  padding: 40rpx 0;
+  text-align: center;
+
+  .empty-text {
+    font-size: 26rpx;
+    color: #94a3b8;
+  }
+}
+
+// 草稿卡片
+.draft-card {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  background: #ffffff;
+  border-radius: 16rpx;
+  margin-bottom: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  overflow: hidden;
 
-  .picker-title {
-    font-size: 32rpx;
-    font-weight: 700;
-    color: #1e293b;
-    text-align: center;
-    display: block;
-    padding: 0 40rpx 24rpx;
-    border-bottom: 1rpx solid #f0f2f5;
-  }
-
-  .picker-scroll {
+  .draft-card-main {
     flex: 1;
-    padding: 16rpx 0;
-  }
-
-  .picker-story-item {
     display: flex;
     align-items: center;
-    gap: 20rpx;
-    padding: 20rpx 40rpx;
+    gap: 16rpx;
+    padding: 24rpx;
 
-    .picker-cover {
-      width: 100rpx;
-      height: 75rpx;
-      border-radius: 12rpx;
+    .draft-icon {
+      font-size: 40rpx;
       flex-shrink: 0;
     }
 
-    .picker-info {
+    .draft-info {
       flex: 1;
+      min-width: 0;
 
-      .picker-title-text {
+      .draft-title {
         font-size: 28rpx;
         font-weight: 600;
         color: #1e293b;
         display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
-      .picker-meta {
+      .draft-meta {
         font-size: 24rpx;
-        color: #94a3b8;
-        margin-top: 6rpx;
+        color: #64748b;
         display: block;
+        margin-top: 6rpx;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
+
+      .draft-time {
+        font-size: 22rpx;
+        color: #94a3b8;
+        display: block;
+        margin-top: 4rpx;
+      }
+    }
+
+    .card-arrow {
+      font-size: 36rpx;
+      color: #cbd5e1;
+      flex-shrink: 0;
     }
   }
 
-  .picker-empty {
-    text-align: center;
-    padding: 60rpx 40rpx;
-    font-size: 26rpx;
-    color: #94a3b8;
+  .draft-delete-btn {
+    padding: 24rpx 20rpx;
+    border-left: 1rpx solid #f0f2f5;
+    display: flex;
+    align-items: center;
+
+    .delete-icon { font-size: 36rpx; }
+  }
+}
+
+// 故事卡片
+.story-card {
+  background: #ffffff;
+  border-radius: 16rpx;
+  margin-bottom: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+
+  .story-card-header {
+    display: flex;
+    align-items: center;
+    gap: 20rpx;
+    padding: 20rpx 24rpx;
+
+    .story-cover {
+      width: 80rpx;
+      height: 60rpx;
+      border-radius: 8rpx;
+      flex-shrink: 0;
+    }
+
+    .story-info {
+      flex: 1;
+      min-width: 0;
+
+      .story-title {
+        font-size: 28rpx;
+        font-weight: 600;
+        color: #1e293b;
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .story-meta {
+        font-size: 22rpx;
+        color: #94a3b8;
+        display: block;
+        margin-top: 6rpx;
+      }
+    }
+
+    .card-arrow {
+      font-size: 36rpx;
+      color: #cbd5e1;
+      flex-shrink: 0;
+    }
   }
 
-  .btn-create-story {
-    margin: 16rpx 40rpx 0;
-    background: #7c6af7;
-    color: #ffffff;
-    border-radius: 16rpx;
-    font-size: 28rpx;
-    font-weight: 600;
-    border: none;
-    height: 88rpx;
+  .story-card-actions {
+    display: flex;
+    border-top: 1rpx solid #f0f2f5;
+
+    .story-action-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8rpx;
+      padding: 20rpx;
+
+      .action-icon { font-size: 28rpx; }
+
+      .action-label {
+        font-size: 24rpx;
+        color: #475569;
+        font-weight: 500;
+      }
+    }
+
+    .story-action-divider {
+      width: 1rpx;
+      background: #f0f2f5;
+    }
   }
 }
 </style>
+

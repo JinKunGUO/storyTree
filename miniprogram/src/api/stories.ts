@@ -148,6 +148,12 @@ export function leaveCollaboration(storyId: number) {
   return http.delete<{ message: string }>(`/api/stories/${storyId}/collaborator`)
 }
 
+// 获取我创建的故事列表（含协作故事）
+// 后端路由：GET /api/stories/my
+export function getMyStories() {
+  return http.get<{ stories: Array<Story & { isAuthor: boolean; isCollaborator: boolean }> }>('/api/stories/my')
+}
+
 // 获取故事的协作者列表
 export function getCollaborators(storyId: number) {
   return http.get<{ collaborators: Array<{ id: number; username: string; avatar?: string }> }>(
