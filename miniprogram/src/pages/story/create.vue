@@ -217,7 +217,7 @@ async function handleCreate() {
 
     const story = res.story
     // 创建成功后直接进入写作编辑器写第一章
-    uni.redirectTo({
+    uni.navigateTo({
       url: `/pages/write/editor?storyId=${story.id}&storyTitle=${encodeURIComponent(story.title)}`,
     })
   } catch (err: any) {

@@ -346,7 +346,7 @@ function onCanvasReady(_e: any) {
 function queryCanvas() {
   const wxScope = (_internalInstance as any)?.ctx?.$scope
   if (!wxScope) {
-    console.error('微信原生组件实例($scope)不可用')
+    console.error('[TreeChart][queryCanvas] wxScope 不可用')
     chartLoading.value = false
     return
   }
@@ -357,14 +357,10 @@ function queryCanvas() {
     .exec((res: any) => {
       const canvasRes = res[0]
       if (!canvasRes || !canvasRes.node) {
-        console.error('canvas 节点获取失败')
+        console.error('[TreeChart][queryCanvas] canvas 节点获取失败, res:', JSON.stringify(res))
         chartLoading.value = false
         return
       }
-      // 注意：canvas 刚被 v-if 创建时，@ready 可能在 CSS 尺寸生效前触发，
-      // 导致 fields({ size: true }) 返回 width/height 为 0。
-      // 这里不传 size，直接让 setupChart 使用已知的 canvasWidth/canvasHeight 值，
-      // 这两个值在 setup 阶段已用 getSystemInfoSync 初始化，onMounted 里已做精确修正。
       setupChart(canvasRes.node)
     })
 }
@@ -456,15 +452,13 @@ function treeDepth(node: Node | null | undefined, d = 0): number {
 function calcCanvasHeight(rootNode: Node): number {
   // 优先使用父组件传入的 maxHeight，其次用 onMounted 查询到的 _maxCanvasHeight
   const maxH = (props.maxHeight && props.maxHeight > 0) ? props.maxHeight : _maxCanvasHeight
-  // canvas 高度就等于面板可用高度，让 canvas 精确填满面板，不超出也不留白
   return Math.max(maxH, 300)
 }
 
 // 计算初始 zoom，让整棵树在 canvas 范围内完整显示（fit to container）
 // ECharts tree 系列的 zoom 是相对于"默认布局"的缩放比
-// 默认布局下，树会撑满整个 canvas（受 top/left/bottom/right 留白影响）
-// 因此 zoom=1 时树已经适配了 canvas 尺寸，不需要额外缩放
-// 但当节点非常多时，节点间距会变得极小（重叠），需要缩小 zoom 让节点间距合理
+// 当节点数量极多时，强行 fit 会导致节点间距过小（挤成一团），
+// 此时改为保证最小节点间距，让用户通过拖拽查看完整树
 function calcInitialZoom(rootNode: Node): number {
   const isHorizontal = layout.value === 'LR'
   const leaves = leafCount(rootNode)
@@ -492,8 +486,17 @@ function calcInitialZoom(rootNode: Node): number {
   const zoomByH = idealH > maxH ? maxH / idealH : 1
   const zoomByW = idealW > W ? W / idealW : 1
 
-  // 取两个方向的最小值（保证两个方向都能 fit），并限制在合理范围
-  return Math.min(Math.max(Math.min(zoomByH, zoomByW), 0.15), 1)
+  // 取两个方向的最小值（保证两个方向都能 fit）
+  const fitZoom = Math.min(zoomByH, zoomByW)
+
+  // 最小节点间距保护：zoom 过小时节点会重叠，不可辨识
+  // 0.3 是经验值：此时节点标签仍然可读，用户可通过拖拽查看全貌
+  const MIN_READABLE_ZOOM = 0.3
+
+  // 如果 fit zoom 小于最小可读 zoom，使用最小可读 zoom（让用户拖拽查看）
+  // 如果 fit zoom 足够大，则使用 fit zoom（让树完整显示在容器内）
+  const result = Math.min(Math.max(fitZoom, MIN_READABLE_ZOOM), 1)
+  return result
 }
 
 function renderChart() {
@@ -636,7 +639,6 @@ let _lastPinchDist = 0
 
 function onTouchStart(e: any) {
   if (!chartInstance || e.touches.length === 0) return
-  console.log('[TreeChart] touchStart touches:', e.touches.length)
   const handler = chartInstance.getZr().handler
   if (e.touches.length === 1) {
     const touch = e.touches[0]
@@ -653,13 +655,11 @@ function onTouchStart(e: any) {
     const dx = t1.x - t0.x
     const dy = t1.y - t0.y
     _lastPinchDist = Math.sqrt(dx * dx + dy * dy)
-    console.log('[TreeChart] pinch start dist:', _lastPinchDist)
   }
 }
 
 function onTouchMove(e: any) {
   if (!chartInstance || e.touches.length === 0) return
-  console.log('[TreeChart] touchMove touches:', e.touches.length, '_lastPinchDist:', _lastPinchDist)
   const handler = chartInstance.getZr().handler
   if (e.touches.length === 1) {
     // 单指：派发 mousemove 触发拖拽
@@ -673,7 +673,6 @@ function onTouchMove(e: any) {
     const dx = t1.x - t0.x
     const dy = t1.y - t0.y
     const dist = Math.sqrt(dx * dx + dy * dy)
-    console.log('[TreeChart] pinch dist:', dist, 'last:', _lastPinchDist, 'zoom:', currentZoom)
     if (_lastPinchDist > 0) {
       const scale = dist / _lastPinchDist
       // 限制每次缩放幅度，避免过于灵敏
@@ -717,6 +716,10 @@ function zoomOut() {
 }
 
 function resetZoom() {
+  if (!chartInstance || !props.rootNode) return
+  // 先发 restore action 重置所有 roam 状态（zoom + pan 偏移）
+  chartInstance.dispatchAction({ type: 'restore' })
+  // 再重新计算并应用自适应 zoom
   currentZoom = 0  // 置0触发 renderChart 里重新计算自适应 zoom
   renderChart()
 }
@@ -856,40 +859,58 @@ watch(
 )
 
 // ─── 生命周期 ─────────────────────────────────────────────────────────────────
-onMounted(() => {
-  // 延迟 150ms 再初始化：组件挂载时父页面（story）的封面图、简介等内容
-  // 布局可能尚未稳定，boundingClientRect 会返回错误的宽度导致 canvas 位置偏移。
-  // 等待布局完成后再查询，确保获取到正确的容器尺寸。
-  // 同时，canvas 的 @ready 事件会在此之前触发，通过 _mountInitDone 标志位阻止提前初始化。
-  setTimeout(() => {
-    const wxScope = (_internalInstance as any)?.ctx?.$scope
-    if (wxScope) {
-      // 同时查询 canvas-container 宽度和 tree-chart-wrap 高度
-      wx.createSelectorQuery().in(wxScope)
-        .select('.canvas-container')
-        .boundingClientRect()
-        .select('.tree-chart-wrap')
-        .boundingClientRect()
-        .exec((res: any) => {
-          const containerRect = res[0]
-          const wrapRect = res[1]
-          if (containerRect && containerRect.width > 0) {
-            canvasWidth.value = containerRect.width
-          }
-          // 用父容器实际高度作为 canvas 高度上限，确保 canvas 不超出面板边界
-          // 减去工具栏高度（约 60px）和底部统计行（约 40px）
-          if (wrapRect && wrapRect.height > 0) {
-            _maxCanvasHeight = Math.max(wrapRect.height - 60, 400)
-          }
-          // 宽度修正完成，允许 @ready 触发的 queryCanvas 正常执行
-          _mountInitDone = true
-          initChart()
-        })
-    } else {
+
+// 查询容器尺寸并初始化图表
+// retryOnZeroHeight=true 时，若查到容器宽度为 0（布局未稳定），500ms 后重试一次
+function _doMountInit(retryOnZeroHeight = true) {
+  const wxScope = (_internalInstance as any)?.ctx?.$scope
+  if (!wxScope) {
+    console.warn('[TreeChart] wxScope 不可用，跳过 boundingClientRect 查询，直接 initChart')
+    _mountInitDone = true
+    initChart()
+    return
+  }
+
+  wx.createSelectorQuery().in(wxScope)
+    .select('.canvas-container')
+    .boundingClientRect()
+    .exec((res: any) => {
+      const containerRect = res[0]
+      const gotWidth = containerRect && containerRect.width > 0
+
+      if (gotWidth) {
+        canvasWidth.value = containerRect.width
+      } else if (retryOnZeroHeight) {
+        // 布局未稳定，500ms 后重试（不再继续重试，避免死循环）
+        console.warn('[TreeChart] 容器宽度为0，500ms后重试')
+        setTimeout(() => _doMountInit(false), 500)
+        return
+      } else {
+        console.warn('[TreeChart] 重试后容器宽度仍为0，使用默认宽度:', canvasWidth.value)
+      }
+
+      // 优先使用 props.maxHeight（父组件传入的可用高度，最可靠）
+      if (props.maxHeight && props.maxHeight > 0) {
+        _maxCanvasHeight = props.maxHeight
+      } else {
+        // 没有传 maxHeight：用屏幕高度的 50% 作为保守 fallback
+        // 避免 canvas 物理尺寸过大导致溢出父容器
+        const sys = uni.getSystemInfoSync()
+        _maxCanvasHeight = Math.round(sys.windowHeight * 0.5)
+      }
+
+      // 宽度修正完成，允许 @ready 触发的 queryCanvas 正常执行
       _mountInitDone = true
       initChart()
-    }
-  }, 150)
+    })
+}
+
+onMounted(() => {
+  // 延迟 300ms 再初始化：
+  // 1. 组件挂载时父页面布局可能尚未稳定（图片、文字还在渲染）
+  // 2. canvas 的 @ready 事件会在此之前触发，通过 _mountInitDone 标志位阻止提前初始化
+  // 延迟从 150ms 增加到 300ms，减少布局未稳定时查询到错误尺寸的概率
+  setTimeout(() => _doMountInit(true), 300)
 })
 
 onUnmounted(() => {
@@ -898,6 +919,17 @@ onUnmounted(() => {
     chartInstance = null
   }
   _canvasNode = null
+})
+
+// ─── 对外暴露：父页面滚动后调用 refresh() 刷新 ECharts 坐标系 ──────────────
+// 微信原生 canvas 的事件坐标映射是在初始化时基于视口位置计算的。
+// 页面发生滚动后，canvas 的视口位置变化，但 ECharts 内部缓存的坐标系没有更新，
+// 导致图表内容渲染位置偏移。调用 resize() 可以强制 ECharts 重新计算坐标系。
+defineExpose({
+  refresh() {
+    if (!chartInstance || !_canvasNode) return
+    chartInstance.resize({ width: canvasWidth.value, height: canvasHeight.value })
+  }
 })
 </script>
 
@@ -1186,4 +1218,3 @@ onUnmounted(() => {
   to { transform: rotate(360deg); }
 }
 </style>
-

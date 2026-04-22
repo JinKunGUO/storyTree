@@ -26,6 +26,11 @@ export interface Node {
     avatar?: string
     level: number
   }
+  story?: {
+    id: number
+    title: string
+    author_id?: number
+  }
   _count?: {
     comments: number
     other_nodes: number

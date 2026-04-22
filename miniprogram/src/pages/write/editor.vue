@@ -9,7 +9,7 @@
         <text class="toolbar-title">{{ toolbarTitle }}</text>
       </view>
       <view class="toolbar-right">
-        <text class="sync-status" :class="syncStatusClass">{{ syncStatusText }}</text>
+        <text v-if="wordCount > 0 || form.title.length > 0" class="sync-status" :class="syncStatusClass">{{ syncStatusText }}</text>
         <button class="publish-btn" :disabled="publishing" @tap="handlePublish">
           {{ publishing ? '发布中...' : '发布' }}
         </button>
@@ -134,11 +134,11 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
-import { onLoad, onHide } from '@dcloudio/uni-app'
+import { onLoad, onHide, onUnload } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
 import { createNode, updateNode, getNode, createDraftNode, updateDraftNode, publishNode } from '@/api/nodes'
-import { getImageUrl } from '@/utils/request'
 import { getAiV2Quota } from '@/api/ai'
+import { http } from '@/utils/request'
 import AiPanel from '@/components/ai-panel/index.vue'
 import type { Node } from '@/api/nodes'
 
@@ -277,6 +277,14 @@ onHide(() => {
   }
 })
 
+onUnload(() => {
+  // 页面销毁（navigateBack）时也强制同步一次
+  if (hasPendingSync.value && !isEditing.value) {
+    syncToServer()
+  }
+  stopSyncTimer()
+})
+
 onUnmounted(() => {
   stopSyncTimer()
 })
@@ -327,7 +335,12 @@ async function loadDraftFromServer(id: number) {
     form.image = res.node.image || ''
     storyId.value = res.node.story_id
     parentId.value = res.node.parent_id || null
+    // 恢复故事标题（用于顶部名称栏显示）
+    if (res.node.story?.title) {
+      storyTitle.value = res.node.story.title
+    }
     if (parentId.value) loadParentNode(parentId.value)
+    syncStatus.value = 'synced'
     startSyncTimer()
     if (userStore.isLoggedIn) loadAiQuota()
   } catch {
@@ -501,11 +514,11 @@ async function chooseImage() {
     success: async (res) => {
       const tempPath = res.tempFilePaths[0]
       try {
-        const uploadRes = await import('@/utils/request').then(m => m.http.upload({
+        const uploadRes = await http.upload({
           url: '/api/upload/image',
           filePath: tempPath,
           name: 'image',
-        }))
+        })
         form.image = uploadRes.url
         onFormInput()
       } catch {

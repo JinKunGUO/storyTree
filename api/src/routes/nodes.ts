@@ -105,11 +105,13 @@ router.post('/', authenticateToken, async (req, res) => {
         }
       });
 
-      // 更新故事的root_node_id
-      await prisma.stories.update({
-        where: { id: parseInt(storyId) },
-        data: { root_node_id: node.id }
-      });
+      // 更新故事的root_node_id（仅在发布状态时才设置）
+      if (shouldPublish) {
+        await prisma.stories.update({
+          where: { id: parseInt(storyId) },
+          data: { root_node_id: node.id }
+        });
+      }
 
     // 如果是发布状态且审核通过，通知粉丝
     if (shouldPublish && !reviewCheck.needReview) {
@@ -440,6 +442,14 @@ router.post('/:id/publish', authenticateToken, async (req, res) => {
         }
       }
     });
+
+    // 如果是第一章（无父节点），需要更新故事的 root_node_id
+    if (!node.parent_id) {
+      await prisma.stories.update({
+        where: { id: node.story_id },
+        data: { root_node_id: node.id }
+      });
+    }
 
     // 如果审核通过，通知粉丝
     if (!reviewCheck.needReview) {

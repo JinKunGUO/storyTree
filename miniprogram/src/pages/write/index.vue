@@ -1,7 +1,7 @@
 <template>
   <view class="write-center-page">
     <!-- 顶部标题栏 -->
-    <view class="page-header">
+    <view class="page-header" :style="{ paddingTop: (statusBarHeight + 16) + 'px' }">
       <text class="page-title">写作中心</text>
     </view>
 
@@ -117,7 +117,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShow, onLoad } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
 import { getMyDrafts, deleteDraftNode } from '@/api/nodes'
 import { getMyStories } from '@/api/stories'
@@ -127,10 +127,20 @@ import type { Story } from '@/api/stories'
 
 const userStore = useUserStore()
 
+const statusBarHeight = ref(20)
 const drafts = ref<DraftNode[]>([])
 const myStories = ref<Array<Story & { isAuthor: boolean; isCollaborator: boolean }>>([])
 const draftsLoading = ref(false)
 const storiesLoading = ref(false)
+
+onLoad(() => {
+  try {
+    const info = uni.getSystemInfoSync()
+    statusBarHeight.value = info.statusBarHeight || 20
+  } catch {
+    statusBarHeight.value = 20
+  }
+})
 
 onShow(async () => {
   if (!userStore.isLoggedIn) return
@@ -197,28 +207,15 @@ function goStory(id: number) {
 }
 
 async function continueStory(story: Story) {
-  // 获取故事最新章节，作为续写的父节点
-  // 如果故事没有章节，则写第一章
   if (!story.root_node_id) {
-    // 还没有章节，写第一章
+    // 还没有章节，直接写第一章
     uni.navigateTo({
       url: `/pages/write/editor?storyId=${story.id}&storyTitle=${encodeURIComponent(story.title)}`,
     })
     return
   }
-
-  // 有章节，让用户选择在哪个节点续写（跳转到故事树页面）
-  uni.showModal({
-    title: '续写方式',
-    content: '请在故事树中选择要续写的章节',
-    confirmText: '去选择',
-    cancelText: '取消',
-    success: (res) => {
-      if (res.confirm) {
-        uni.navigateTo({ url: `/pages/story/index?id=${story.id}` })
-      }
-    },
-  })
+  // 有章节，直接跳转到故事树让用户选择续写节点
+  uni.navigateTo({ url: `/pages/story/index?id=${story.id}` })
 }
 
 function manageStory(id: number) {
@@ -251,7 +248,7 @@ function getWordCount(content: string): number {
 }
 
 .page-header {
-  padding: 60rpx 32rpx 32rpx;
+  padding: 0 32rpx 32rpx;
   background: #1a1a2e;
 
   .page-title {

@@ -1,4 +1,7 @@
 <template>
+  <!-- page-meta 必须是页面内第一个节点，不能被 wx:if 包裹，用 block 作为根容器 -->
+  <block>
+  <page-meta :page-style="showTreeModal ? 'overflow: hidden;' : ''" />
   <view class="story-page">
     <!-- AI 任务完成横幅 -->
     <view
@@ -114,31 +117,48 @@
           </button>
         </view>
 
-        <!-- 故事分支树 -->
-        <view class="section-card">
-          <view v-if="nodesLoading" class="nodes-loading">
-            <text>加载故事树...</text>
+        <!-- 故事分支树入口 Banner（核心特色区域） -->
+        <view class="tree-banner" @tap="openTreeModal">
+          <!-- 流光边框装饰层 -->
+          <view class="tree-banner-glow" />
+          <!-- SVG 抽象树形背景暗纹 -->
+          <view class="tree-banner-bg">
+            <!-- 用 view 模拟节点和连线 -->
+            <view class="bg-node bg-node-root" />
+            <view class="bg-line bg-line-l" />
+            <view class="bg-line bg-line-r" />
+            <view class="bg-node bg-node-l1" />
+            <view class="bg-node bg-node-r1" />
+            <view class="bg-line bg-line-ll" />
+            <view class="bg-line bg-line-lr" />
+            <view class="bg-line bg-line-rl" />
+            <view class="bg-node bg-node-ll" />
+            <view class="bg-node bg-node-lr" />
+            <view class="bg-node bg-node-rl" />
           </view>
-          <tree-chart
-            v-else
-            :root-node="treeRoot"
-            :is-author-or-collab="story.isAuthor || story.isCollaborator"
-            :is-logged-in="userStore.isLoggedIn"
-            :highlight-node-id="highlightNodeId"
-            :current-user-id="userStore.userInfo?.id ?? null"
-            :story-author-id="story.author_id"
-            :hide-canvas="showAiCreatePanel || showWordCountInput"
-            @node-tap="goChapter"
-            @write-branch="handleWriteBranch"
-            @ai-create="handleAiCreate"
-            @publish-draft="handlePublishDraft"
-            @delete-node="handleDeleteNode"
-          />
-
-          <!-- 未登录提示 -->
-          <view v-if="!userStore.isLoggedIn" class="tree-login-tip">
-            <text class="tip-text">登录后可从任意节点续写故事</text>
-            <text class="tip-link" @tap="goLogin">去登录 →</text>
+          <!-- 主内容 -->
+          <view class="tree-banner-content">
+            <view class="tree-banner-left">
+              <text class="tree-banner-title">故事分支树</text>
+              <text class="tree-banner-desc">
+                {{ story._count?.nodes || 0 }} 个节点 · 多条叙事路径并行
+              </text>
+              <view v-if="!userStore.isLoggedIn" class="tree-banner-hint">
+                <text class="hint-dot" />
+                <text class="hint-text">登录后可从任意节点续写</text>
+              </view>
+            </view>
+            <view class="tree-banner-right">
+              <!-- 呼吸光晕按钮 -->
+              <view class="tree-enter-btn">
+                <view class="tree-enter-ripple" />
+                <view class="tree-enter-ripple tree-enter-ripple-2" />
+                <view class="tree-enter-core">
+                  <text class="tree-enter-icon">🌳</text>
+                </view>
+              </view>
+              <text class="tree-enter-label">探索</text>
+            </view>
           </view>
         </view>
 
@@ -218,6 +238,45 @@
       <text class="error-icon">😢</text>
       <text class="error-text">故事不存在或已被删除</text>
       <button class="btn-back" @tap="goBack">返回</button>
+    </view>
+
+    <!-- 全屏树状图弹窗 -->
+    <!-- 使用 fixed 定位覆盖整个视口，canvas 不参与页面滚动，彻底解决微信原生 canvas 坐标系问题 -->
+    <!-- @touchmove.stop.prevent：阻止弹窗内 touch 事件冒泡到页面层，防止页面被意外滚动 -->
+    <view v-if="showTreeModal" class="tree-modal-mask tree-modal-enter" @touchmove.stop.prevent="onModalTouchMove">
+      <!-- 顶部标题栏 -->
+      <view class="tree-modal-header" :style="{ paddingTop: (statusBarHeight + 12) + 'px' }">
+        <view class="tree-modal-header-left">
+          <text class="tree-modal-title">{{ story?.title || '故事分支树' }}</text>
+          <text class="tree-modal-subtitle">{{ story?._count?.nodes || 0 }} 个节点 · 点击节点查看详情</text>
+        </view>
+        <view class="tree-modal-close" @tap="closeTreeModal">
+          <text class="close-icon">×</text>
+        </view>
+      </view>
+      <!-- 树状图主体 -->
+      <view class="tree-modal-body">
+        <view v-if="nodesLoading" class="nodes-loading">
+          <text>加载故事树...</text>
+        </view>
+        <tree-chart
+          v-else
+          ref="treeChartRef"
+          :root-node="treeRoot"
+          :is-author-or-collab="story?.isAuthor || story?.isCollaborator"
+          :is-logged-in="userStore.isLoggedIn"
+          :highlight-node-id="highlightNodeId"
+          :current-user-id="userStore.userInfo?.id ?? null"
+          :story-author-id="story?.author_id"
+          :hide-canvas="showAiCreatePanel || showWordCountInput"
+          :max-height="treeModalHeight"
+          @node-tap="goChapter"
+          @write-branch="handleWriteBranch"
+          @ai-create="handleAiCreate"
+          @publish-draft="handlePublishDraft"
+          @delete-node="handleDeleteNode"
+        />
+      </view>
     </view>
 
     <!-- AI 创作章节弹窗 -->
@@ -380,6 +439,7 @@
       </view>
     </view>
   </view>
+  </block>
 </template>
 
 <script setup lang="ts">
@@ -407,6 +467,30 @@ const treeRoot = ref<Node | null>(null)   // 带 children 的树形根节点
 const isFollowed = ref(false)
 const applyLoading = ref(false)
 const leaveLoading = ref(false)
+
+// 树状图全屏弹窗
+const showTreeModal = ref(false)
+const treeChartRef = ref<InstanceType<typeof TreeChart> | null>(null)
+const { windowHeight, statusBarHeight: _sbh } = uni.getSystemInfoSync()
+const statusBarHeight = _sbh || 20
+// 弹窗内树状图可用高度 = 屏幕高度 - 顶部标题栏高度（状态栏 + 44px 标题栏）
+const treeModalHeight = windowHeight - statusBarHeight - 44
+
+function openTreeModal() {
+  showTreeModal.value = true
+}
+
+function closeTreeModal() {
+  showTreeModal.value = false
+}
+
+// 弹窗外层 view 的 touchmove 拦截器
+// 微信小程序中 canvas 是原生组件，touch 事件不会冒泡到普通 view 层，
+// 配合 page-meta overflow:hidden 双重保险防止页面被意外滚动
+function onModalTouchMove(e: any) {
+  if (typeof e.stopPropagation === 'function') e.stopPropagation()
+  if (typeof e.preventDefault === 'function') e.preventDefault()
+}
 
 // AI 创作章节弹窗
 const showAiCreatePanel = ref(false)
@@ -744,13 +828,9 @@ function handleWriteBranch(parentNodeId: number) {
     return ''
   }
   const parentTitle = findNodeTitle(treeRoot.value, parentNodeId)
-  uni.setStorageSync('st_write_params', JSON.stringify({
-    storyId: story.value?.id,
-    parentId: parentNodeId,
-    parentTitle,
-    mode: 'write',
-  }))
-  uni.switchTab({ url: '/pages/write/index' })
+  uni.navigateTo({
+    url: `/pages/write/editor?storyId=${story.value?.id}&parentId=${parentNodeId}&parentTitle=${encodeURIComponent(parentTitle)}`,
+  })
 }
 
 // 从指定节点发起 AI 创作（打开独立弹窗）
@@ -1175,6 +1255,12 @@ function formatTime(date: string) {
   color: #94a3b8;
 }
 
+// 树状图容器：必须设置 overflow hidden 防止原生 canvas 溢出边界
+.tree-section {
+  overflow: hidden;
+  padding: 28rpx 16rpx;  // 左右减小 padding，给树状图更多横向空间
+}
+
 .tree-login-tip {
   display: flex;
   align-items: center;
@@ -1429,6 +1515,314 @@ function formatTime(date: string) {
 .bottom-placeholder {
   height: 60rpx;
 }
+
+/* ——— 故事分支树 Banner（核心特色入口） ——— */
+.tree-banner {
+  position: relative;
+  margin: 20rpx 24rpx 0;
+  border-radius: 20rpx;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1.5rpx solid #ede9fe;
+  box-shadow: 0 2rpx 16rpx rgba(124, 106, 247, 0.08);
+  &:active {
+    opacity: 0.88;
+    transform: scale(0.985);
+    transition: transform 0.12s ease, opacity 0.12s ease;
+  }
+}
+
+/* 流光边框：顶部细线流光 */
+.tree-banner-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3rpx;
+  border-radius: 20rpx 20rpx 0 0;
+  background: linear-gradient(
+    90deg,
+    #7c6af7 0%,
+    #a78bfa 25%,
+    #c4b5fd 50%,
+    #a78bfa 75%,
+    #7c6af7 100%
+  );
+  background-size: 200% 100%;
+  animation: glowShift 2.5s linear infinite;
+  z-index: 2;
+}
+
+@keyframes glowShift {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 200% 0%; }
+}
+
+/* 背景装饰：右侧淡紫渐变晕 */
+.tree-banner-bg {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 80% at 90% 50%, rgba(167, 139, 250, 0.1) 0%, transparent 70%);
+  z-index: 0;
+}
+
+/* 背景节点（保留 HTML 结构，视觉上隐藏，用淡色点缀） */
+.bg-node {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(124, 106, 247, 0.07);
+  border: none;
+}
+.bg-node-root { width: 28rpx; height: 28rpx; right: 200rpx; top: 20rpx; }
+.bg-node-l1   { width: 18rpx; height: 18rpx; right: 270rpx; top: 56rpx; }
+.bg-node-r1   { width: 18rpx; height: 18rpx; right: 140rpx; top: 56rpx; }
+.bg-node-ll   { width: 12rpx; height: 12rpx; right: 308rpx; top: 90rpx; }
+.bg-node-lr   { width: 12rpx; height: 12rpx; right: 234rpx; top: 90rpx; }
+.bg-node-rl   { width: 12rpx; height: 12rpx; right: 162rpx; top: 90rpx; }
+
+/* 背景连线（保留 HTML 结构，视觉上隐藏） */
+.bg-line {
+  position: absolute;
+  background: transparent;
+  transform-origin: top center;
+}
+.bg-line-l  { width: 0; height: 0; }
+.bg-line-r  { width: 0; height: 0; }
+.bg-line-ll { width: 0; height: 0; }
+.bg-line-lr { width: 0; height: 0; }
+.bg-line-rl { width: 0; height: 0; }
+
+/* 主内容层 */
+.tree-banner-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 28rpx 28rpx 32rpx;
+  background: transparent;
+}
+
+.tree-banner-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+/* "核心特色" 小标签 */
+.tree-banner-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4rpx 14rpx;
+  background: rgba(124, 106, 247, 0.1);
+  border-radius: 20rpx;
+  font-size: 20rpx;
+  color: #7c6af7;
+  font-weight: 600;
+  letter-spacing: 0.5rpx;
+  width: fit-content;
+  margin-bottom: 2rpx;
+}
+
+.tree-banner-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: 0.5rpx;
+}
+
+.tree-banner-desc {
+  font-size: 24rpx;
+  color: #64748b;
+  font-weight: 400;
+}
+
+.tree-banner-hint {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 2rpx;
+
+  .hint-dot {
+    width: 8rpx;
+    height: 8rpx;
+    border-radius: 50%;
+    background: #7c6af7;
+    animation: dotPulse 2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  .hint-text {
+    font-size: 22rpx;
+    color: #7c6af7;
+  }
+}
+
+@keyframes dotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.6); }
+}
+
+/* 右侧按钮区域 */
+.tree-banner-right {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+  flex-shrink: 0;
+  margin-left: 20rpx;
+}
+
+.tree-enter-btn {
+  position: relative;
+  width: 100rpx;
+  height: 100rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 涟漪扩散圈 */
+.tree-enter-ripple {
+  position: absolute;
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  border: 2rpx solid rgba(124, 106, 247, 0.5);
+  animation: rippleExpand 2.4s ease-out infinite;
+}
+
+.tree-enter-ripple-2 {
+  animation-delay: 1.2s;
+}
+
+@keyframes rippleExpand {
+  0%   { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+
+/* 核心圆形按钮 */
+.tree-enter-core {
+  position: relative;
+  z-index: 1;
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c6af7 0%, #a78bfa 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 16rpx rgba(124, 106, 247, 0.35);
+  animation: breathe 2.8s ease-in-out infinite;
+
+  .tree-enter-icon {
+    font-size: 32rpx;
+  }
+}
+
+@keyframes breathe {
+  0%, 100% { box-shadow: 0 4rpx 16rpx rgba(124, 106, 247, 0.35); }
+  50%       { box-shadow: 0 6rpx 24rpx rgba(124, 106, 247, 0.6); }
+}
+
+/* 「探索」标签 */
+.tree-enter-label {
+  font-size: 22rpx;
+  color: #7c6af7;
+  font-weight: 600;
+  letter-spacing: 2rpx;
+}
+
+/* ——— 全屏树状图弹窗 ——— */
+/* position: fixed 使弹窗覆盖整个视口，canvas 不参与页面滚动 */
+/* 这是解决微信原生 canvas 坐标系随页面滚动偏移问题的根本方案 */
+.tree-modal-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 弹窗入场动画：从底部向上滑入 */
+.tree-modal-enter {
+  animation: modalSlideUp 0.36s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
+}
+
+@keyframes modalSlideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.tree-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 32rpx;
+  padding-right: 24rpx;
+  padding-bottom: 16px;
+  background: #1a1a2e;
+  flex-shrink: 0;
+  border-bottom: 1rpx solid rgba(124, 106, 247, 0.2);
+}
+
+.tree-modal-header-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  overflow: hidden;
+}
+
+.tree-modal-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #ffffff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-modal-subtitle {
+  font-size: 22rpx;
+  color: rgba(167, 139, 250, 0.75);
+  font-weight: 400;
+}
+
+.tree-modal-close {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1rpx solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 16rpx;
+
+  .close-icon {
+    font-size: 36rpx;
+    color: #ffffff;
+    line-height: 1;
+  }
+}
+
+.tree-modal-body {
+  flex: 1;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+
 
 /* ——— AI 创作章节弹窗 ——— */
 .ai-create-mask {
