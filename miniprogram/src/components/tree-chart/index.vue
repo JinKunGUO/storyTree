@@ -199,18 +199,31 @@ const hasData = ref(false)
 
 // 微信小程序原生组件（canvas）的 CSS 尺寸必须在首次渲染前就是有效的 px 值
 // 如果初始值为 0，原生组件会以 0px 宽高完成首次定位，后续 CSS 变化无法修正位置
-// 因此在 setup 同步阶段立即读取屏幕宽高作为初始值
+// 优先使用父组件传入的 maxHeight 作为初始高度（最准确），
+// 没有传入时才用屏幕高度的 55% 作为保守 fallback
+// 注意：初始值同样要减去组件内部工具栏(44px)和底部统计(32px)，与 calcCanvasHeight 一致
+const _INIT_TOOLBAR = 44
+const _INIT_FOOTER  = 32
 const _initSys = uni.getSystemInfoSync()
 const canvasWidth = ref(_initSys.windowWidth)
-const canvasHeight = ref(Math.min(Math.max(_initSys.windowHeight * 0.55, 400), 600))
+const canvasHeight = ref(
+  (props.maxHeight && props.maxHeight > 0)
+    ? Math.max(props.maxHeight - _INIT_TOOLBAR - _INIT_FOOTER, 200)
+    : Math.min(Math.max(_initSys.windowHeight * 0.55 - _INIT_TOOLBAR - _INIT_FOOTER, 200), 550)
+)
 const totalNodes = ref(0)
 
 let chartInstance: any = null
-let currentZoom = 1
+// 初始值为 0：renderChart 里 currentZoom <= 0 时会调用 calcInitialZoom 计算自适应 zoom，
+// 确保首次渲染和重置视图走完全相同的代码路径，两者结果一致
+let currentZoom = 0
 let _canvasNode: any = null  // 保存 canvas 节点引用，供 resize 时更新物理像素尺寸
 // canvas 高度上限（由父容器 .tree-chart-wrap 的实际高度决定，onMounted 时查询）
-// 默认用 windowHeight * 0.7，onMounted 修正后会更新
-let _maxCanvasHeight = _initSys.windowHeight * 0.7
+// 优先使用 props.maxHeight（父组件传入，最准确），否则用屏幕高度的 55% 作为 fallback
+// 同样需要减去组件内部工具栏和底部统计高度
+let _maxCanvasHeight = (props.maxHeight && props.maxHeight > 0)
+  ? Math.max(props.maxHeight - _INIT_TOOLBAR - _INIT_FOOTER, 200)
+  : Math.round(_initSys.windowHeight * 0.55) - _INIT_TOOLBAR - _INIT_FOOTER
 // onMounted 完成 boundingClientRect 宽度修正后置为 true
 // @ready 触发时若此标志未就绪，说明 onMounted 还没到，忽略（onMounted 会主动调用 initChart）
 let _mountInitDone = false
@@ -447,56 +460,88 @@ function treeDepth(node: Node | null | undefined, d = 0): number {
   return Math.max(...node.children.map(c => treeDepth(c, d + 1)))
 }
 
+// tree-chart-wrap 内部固定占用的高度（工具栏 + 底部统计），canvas 不能超过剩余空间
+// 这两个值与 .tree-toolbar（padding-bottom:16rpx + 按钮约28px≈44px）
+// 和 .tree-footer（line-height约36px）的实际渲染高度对应
+const INTERNAL_TOOLBAR_H = 44  // .tree-toolbar 高度（px）
+const INTERNAL_FOOTER_H  = 32  // .tree-footer 高度（px）
+
 // 根据树的结构动态计算 canvas 高度，确保每个节点都有足够的物理空间
-// canvas 高度固定为面板可用高度（maxHeight），通过 zoom 让所有节点在可见范围内显示
-function calcCanvasHeight(rootNode: Node): number {
+// canvas 高度 = 父组件传入的可用高度 - 组件内部工具栏 - 底部统计
+// 微信原生 canvas 不受 CSS overflow 约束，必须从源头限制物理尺寸
+function calcCanvasHeight(_rootNode: Node): number {
   // 优先使用父组件传入的 maxHeight，其次用 onMounted 查询到的 _maxCanvasHeight
   const maxH = (props.maxHeight && props.maxHeight > 0) ? props.maxHeight : _maxCanvasHeight
-  return Math.max(maxH, 300)
+  // 减去组件内部工具栏和底部统计占用的高度，留给 canvas 的净高度
+  const canvasH = maxH - INTERNAL_TOOLBAR_H - INTERNAL_FOOTER_H
+  return Math.max(canvasH, 200)
 }
 
-// 计算初始 zoom，让整棵树在 canvas 范围内完整显示（fit to container）
-// ECharts tree 系列的 zoom 是相对于"默认布局"的缩放比
-// 当节点数量极多时，强行 fit 会导致节点间距过小（挤成一团），
-// 此时改为保证最小节点间距，让用户通过拖拽查看完整树
+// 计算初始 zoom（初始化和重置视图时使用）
+//
+// 核心设计原则：
+// 1. 【节点可读优先】每个节点必须有足够的物理间距，确保用户能点击和阅读标签
+// 2. 【节点少时铺满】节点数量少时，自动放大让树铺满整个容器（不留大量空白）
+// 3. 【节点多时可拖拽】节点数量多时，不追求一屏显示所有节点，
+//    保持合理间距让用户通过拖拽/缩放查看完整树
+// 4. 【纵/横向一致】纵向和横向使用相同的节点间距标准，视觉感受一致
+//
+// ECharts tree 系列的 zoom 是相对于"默认布局"的缩放比。
+// 默认布局下，ECharts 会把树铺满整个 canvas 区域（top/left/bottom/right 留白内），
+// zoom=1 时已经是"铺满"状态，zoom>1 会让树缩小（节点间距增大），zoom<1 会放大。
+//
+// 注意：ECharts tree 的 zoom 语义与普通图表相反——
+// zoom 越大，树在 canvas 中越小（因为"视口"变大了），节点间距越大。
+// zoom=2 时，树占 canvas 的 1/2，每个节点占据的物理空间是 zoom=1 时的 2 倍。
 function calcInitialZoom(rootNode: Node): number {
-  const isHorizontal = layout.value === 'LR'
   const leaves = leafCount(rootNode)
   const depth  = treeDepth(rootNode)
-  const maxH   = (props.maxHeight && props.maxHeight > 0) ? props.maxHeight : _maxCanvasHeight
+  // 使用 canvas 的实际高度（已减去工具栏和底部统计），而非 props.maxHeight（弹窗总高度）
+  // calcCanvasHeight 返回的就是 canvas 净高度，与 canvasHeight.value 一致
+  const canvasH = calcCanvasHeight(rootNode)
   const W      = canvasWidth.value || uni.getSystemInfoSync().windowWidth
 
-  // 估算"理想情况下"树需要的高度（每个叶子/深度需要的空间）
-  let idealH: number
-  if (isHorizontal) {
-    idealH = leaves * 52 + 80
+  // 最小节点物理间距（px）——纵/横向统一使用相同标准，保证视觉一致性
+  // 44px：iOS 最小可点击目标尺寸
+  // 60px：含节点标签（约 11px × 6字 = 66px）的最小宽度
+  const MIN_H = 44  // 高度方向最小间距（px）
+  const MIN_W = 60  // 宽度方向最小间距（px）
+
+  // ECharts 默认布局（zoom=1）下的可用区域（减去 top/left/bottom/right 留白）：
+  // 纵向(TB)：top=8%,bottom=10%,left=5%,right=5%  → 可用高=82%×maxH，可用宽=90%×W
+  // 横向(LR)：top=3%,bottom=3%,left=18%,right=22% → 可用高=94%×maxH，可用宽=60%×W
+  //
+  // zoom=1 时，每个叶子在高度方向占 availH/leaves px（纵向），
+  //            每个深度层在高度方向占 availH/depth px（横向）。
+  // 我们希望这个间距 ≥ MIN_H（或 MIN_W），由此反推需要的 zoom。
+  //
+  // 推导：zoom = MIN_H × leaves / availH（纵向高度方向）
+  // 当 zoom > 1 时，树缩小，每个节点占据更多物理空间；zoom < 1 时，树放大，节点更密。
+
+  let zoomForH: number
+  let zoomForW: number
+
+  if (layout.value === 'LR') {
+    // 横向(LR)：叶子数决定高度方向密度，深度决定宽度方向密度
+    const availH = canvasH * 0.94
+    const availW = W * 0.60
+    zoomForH = (leaves > 1) ? (MIN_H * leaves) / availH : 1
+    zoomForW = (depth > 1)  ? (MIN_W * depth)  / availW : 1
   } else {
-    idealH = depth * 110 + 80
+    // 纵向(TB)：深度决定高度方向密度，叶子数决定宽度方向密度
+    const availH = canvasH * 0.82
+    const availW = W * 0.90
+    zoomForH = (depth > 1)  ? (MIN_H * depth)  / availH : 1
+    zoomForW = (leaves > 1) ? (MIN_W * leaves)  / availW : 1
   }
 
-  // 估算"理想情况下"树需要的宽度
-  let idealW: number
-  if (isHorizontal) {
-    idealW = depth * 120 + 80
-  } else {
-    idealW = leaves * 60 + 40
-  }
+  // 取两个方向的最大值（两个方向都要满足最小间距）
+  const minZoom = Math.max(zoomForH, zoomForW)
 
-  // 计算高度和宽度方向各需要多少缩放才能 fit
-  const zoomByH = idealH > maxH ? maxH / idealH : 1
-  const zoomByW = idealW > W ? W / idealW : 1
-
-  // 取两个方向的最小值（保证两个方向都能 fit）
-  const fitZoom = Math.min(zoomByH, zoomByW)
-
-  // 最小节点间距保护：zoom 过小时节点会重叠，不可辨识
-  // 0.3 是经验值：此时节点标签仍然可读，用户可通过拖拽查看全貌
-  const MIN_READABLE_ZOOM = 0.3
-
-  // 如果 fit zoom 小于最小可读 zoom，使用最小可读 zoom（让用户拖拽查看）
-  // 如果 fit zoom 足够大，则使用 fit zoom（让树完整显示在容器内）
-  const result = Math.min(Math.max(fitZoom, MIN_READABLE_ZOOM), 1)
-  return result
+  // 最终 zoom 限制在 [1.0, 3.0]：
+  // - 下限 1.0：zoom=1 时树铺满容器，节点少时不需要再缩小
+  // - 上限 3.0：节点极多时也保持一定可读性，避免树缩得太小
+  return Math.max(1.0, Math.min(minZoom, 3.0))
 }
 
 function renderChart() {
@@ -519,21 +564,38 @@ function renderChart() {
 
   // currentZoom <= 0 表示需要重新计算自适应 zoom（初始化或重置时）
   // 否则保留用户手动缩放的值
-  if (currentZoom <= 0) {
+  const isReset = currentZoom <= 0
+  if (isReset) {
     currentZoom = calcInitialZoom(props.rootNode)
   }
 
-  const option = {
+  // 重置时不设置 center，完全依赖 top/left/bottom/right 留白来定位根节点。
+  // ECharts tree 的布局规则：根节点始终位于绘图区域的"起始端"：
+  //   纵向(TB)：根节点在 top 留白处，叶子在 bottom 留白处
+  //   横向(LR)：根节点在 left 留白处，叶子在 right 留白处
+  // 因此只需要把 top/left 设小（让根节点贴近视口边缘），
+  // bottom/right 设大（给子节点留足够空间），根节点就自然在顶部/左侧中心。
+  // 非重置时：setOption notMerge=false，ECharts 会保留上次的 roam pan 偏移，
+  // 视图位置不会改变。
+  //
+  // 注意：center 属性会覆盖 roam 的 pan 偏移，导致每次 setOption 都跳回指定位置，
+  // 所以不能在非重置时使用 center。重置时也不用 center，用留白控制即可。
+
+  const option: any = {
     series: [
       {
         type: 'tree',
         data: [data],
-        // 留白：横向左侧留给非叶子标签，右侧留给叶子标签
-        // 纵向：顶部留给根节点标签，底部留给叶子标签
-        top:    isHorizontal ? '3%'  : '8%',
-        left:   isHorizontal ? '18%' : '5%',
-        bottom: isHorizontal ? '3%'  : '10%',
-        right:  isHorizontal ? '22%' : '5%',
+        // 布局留白：使用绝对像素值（px）而非百分比。
+        // 百分比留白 + zoom > 1 时，ECharts 以 canvas 中心为基点缩放，
+        // 导致根节点被"推向"中心，不再贴顶/贴左。
+        // 用绝对 px 值后，根节点的坐标在 ECharts 内部布局空间里是固定的，
+        // zoom 只影响显示比例，不影响根节点的逻辑坐标，
+        // 因此根节点始终出现在视口顶部（纵向）或左侧（横向）。
+        top:    isHorizontal ? '5%'   : '20px',
+        left:   isHorizontal ? '20%'  : '5%',
+        bottom: isHorizontal ? '5%'   : '15%',
+        right:  isHorizontal ? '25%'  : '5%',
         orient: layout.value,
         layout: 'orthogonal',
         initialTreeDepth: -1,
@@ -636,12 +698,19 @@ function wrapTouch(event: any) {
 
 // 双指缩放：记录上一次两指间距，用于计算缩放比例
 let _lastPinchDist = 0
+// 单指点击判断：记录 touchstart 的坐标，touchend 时比较位移
+// 位移 < TAP_THRESHOLD 才认为是点击（而非拖拽），避免拖拽时误触节点
+let _tapStartX = 0
+let _tapStartY = 0
+const TAP_THRESHOLD = 8  // px，超过此位移认为是拖拽
 
 function onTouchStart(e: any) {
   if (!chartInstance || e.touches.length === 0) return
   const handler = chartInstance.getZr().handler
   if (e.touches.length === 1) {
     const touch = e.touches[0]
+    _tapStartX = touch.x
+    _tapStartY = touch.y
     handler.dispatch('mousedown', makeZrEvent(touch.x, touch.y))
     handler.dispatch('mousemove', makeZrEvent(touch.x, touch.y))
     handler.processGesture(wrapTouch(e), 'start')
@@ -690,12 +759,27 @@ function onTouchEnd(e: any) {
   _lastPinchDist = 0
   const touch = e.changedTouches?.[0] || { x: 0, y: 0 }
   const handler = chartInstance.getZr().handler
+
   handler.dispatch('mouseup', makeZrEvent(touch.x, touch.y))
-  // 双指缩放结束时不触发 click，避免误触节点
-  if (!wasPinch) {
-    handler.dispatch('click', makeZrEvent(touch.x, touch.y))
-  }
   handler.processGesture(wrapTouch(e), 'end')
+
+  // 双指缩放结束时不触发 click，避免误触节点
+  if (wasPinch) return
+
+  // 判断是否为点击（而非拖拽）：位移 < TAP_THRESHOLD 才认为是点击
+  const dx = touch.x - _tapStartX
+  const dy = touch.y - _tapStartY
+  const dist = Math.sqrt(dx * dx + dy * dy)
+  if (dist > TAP_THRESHOLD) return
+
+  // 延迟一帧再触发 click，确保 ZRender 完成 mouseup 的拖拽状态清理（isDragging=false）
+  // 否则 ZRender 内部会将 click 判断为拖拽结束而忽略 hitTest
+  const tapX = touch.x
+  const tapY = touch.y
+  setTimeout(() => {
+    if (!chartInstance) return
+    chartInstance.getZr().handler.dispatch('click', makeZrEvent(tapX, tapY))
+  }, 16)
 }
 
 // ─── 工具栏操作 ───────────────────────────────────────────────────────────────
@@ -717,10 +801,10 @@ function zoomOut() {
 
 function resetZoom() {
   if (!chartInstance || !props.rootNode) return
-  // 先发 restore action 重置所有 roam 状态（zoom + pan 偏移）
-  chartInstance.dispatchAction({ type: 'restore' })
-  // 再重新计算并应用自适应 zoom
-  currentZoom = 0  // 置0触发 renderChart 里重新计算自适应 zoom
+  // 置0触发 renderChart 里重新计算自适应 zoom
+  currentZoom = 0
+  // renderChart 会用 notMerge:true 完整重设 option（包含 zoom 和 center），
+  // 相当于完全重置视图，不需要单独调用 restore
   renderChart()
 }
 
@@ -776,11 +860,14 @@ function onDelete() {
 
 // ─── 监听弹窗状态变化：canvas 重新出现时需重新初始化图表 ─────────────────────
 // 微信原生 canvas 组件被 v-if 卸载后，DOM 节点被销毁，重新显示时必须重新 query + init
+// 注意：重建时【不重置 currentZoom】，保留用户上次的缩放比例，
+// 这样关闭 sheet 后视图缩放程度与点击前一致（pan 偏移因实例销毁无法恢复，但缩放可以保留）
 function reinitCanvasIfNeeded() {
   if (!props.rootNode) return
   chartInstance?.dispose()
   chartInstance = null
   _canvasNode = null
+  // currentZoom 保持不变，不置 0，重建后 renderChart 会用上次的 zoom 值
   nextTick(() => {
     queryCanvas()
   })
@@ -891,12 +978,12 @@ function _doMountInit(retryOnZeroHeight = true) {
 
       // 优先使用 props.maxHeight（父组件传入的可用高度，最可靠）
       if (props.maxHeight && props.maxHeight > 0) {
-        _maxCanvasHeight = props.maxHeight
+        _maxCanvasHeight = Math.max(props.maxHeight - INTERNAL_TOOLBAR_H - INTERNAL_FOOTER_H, 200)
       } else {
         // 没有传 maxHeight：用屏幕高度的 50% 作为保守 fallback
         // 避免 canvas 物理尺寸过大导致溢出父容器
         const sys = uni.getSystemInfoSync()
-        _maxCanvasHeight = Math.round(sys.windowHeight * 0.5)
+        _maxCanvasHeight = Math.max(Math.round(sys.windowHeight * 0.5) - INTERNAL_TOOLBAR_H - INTERNAL_FOOTER_H, 200)
       }
 
       // 宽度修正完成，允许 @ready 触发的 queryCanvas 正常执行

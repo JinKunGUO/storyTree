@@ -1027,7 +1027,7 @@ router.post('/:id/branches', authenticateToken, async (req, res) => {
   }
 });
 
-// Rate a node
+// Rate a node（score=0 表示取消评分）
 router.post('/:id/rate', authenticateToken, async (req, res) => {
   const userId = getUserId(req);
   if (!userId) {
@@ -1037,34 +1037,47 @@ router.post('/:id/rate', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { score } = req.body;
 
-  if (score < 1 || score > 5) {
-    return res.status(400).json({ error: 'Score must be 1-5' });
+  // score=0 表示取消评分，1-5 为正常评分
+  if (score !== 0 && (score < 1 || score > 5)) {
+    return res.status(400).json({ error: 'Score must be 0-5 (0 to cancel)' });
   }
 
   try {
-    // Upsert rating
-    await prisma.ratings.upsert({
-      where: {
-        node_id_user_id: {
+    if (score === 0) {
+      // 取消评分：删除已有评分记录（不存在时静默忽略）
+      await prisma.ratings.deleteMany({
+        where: {
           node_id: parseInt(id),
-          user_id: userId
+          user_id: userId,
         }
-      },
-      create: {
-        node_id: parseInt(id),
-        user_id: userId,
-        score
-      },
-      update: {
-        score
-      }
-    });
+      });
+    } else {
+      // 新增或更新评分
+      await prisma.ratings.upsert({
+        where: {
+          node_id_user_id: {
+            node_id: parseInt(id),
+            user_id: userId
+          }
+        },
+        create: {
+          node_id: parseInt(id),
+          user_id: userId,
+          score
+        },
+        update: {
+          score
+        }
+      });
+    }
 
-    // Recalculate average
+    // 重新计算平均分
     const ratings = await prisma.ratings.findMany({
       where: { node_id: parseInt(id) }
     });
-    const avg = ratings.reduce((sum, r) => sum + r.score, 0) / ratings.length;
+    const avg = ratings.length > 0
+      ? ratings.reduce((sum, r) => sum + r.score, 0) / ratings.length
+      : 0;
 
     await prisma.nodes.update({
       where: { id: parseInt(id) },

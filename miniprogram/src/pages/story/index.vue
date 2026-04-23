@@ -474,6 +474,9 @@ const treeChartRef = ref<InstanceType<typeof TreeChart> | null>(null)
 const { windowHeight, statusBarHeight: _sbh } = uni.getSystemInfoSync()
 const statusBarHeight = _sbh || 20
 // 弹窗内树状图可用高度 = 屏幕高度 - 顶部标题栏高度（状态栏 + 44px 标题栏）
+// 注意：不在这里减去 tree-chart 内部的工具栏/底部统计高度，
+// tree-chart 组件的 calcCanvasHeight 内部会自行减去（INTERNAL_TOOLBAR_H + INTERNAL_FOOTER_H）。
+// 如果在这里也减，会造成"双重减法"，canvas 高度被过度压缩，导致上方白色遮挡和下方溢出。
 const treeModalHeight = windowHeight - statusBarHeight - 44
 
 function openTreeModal() {

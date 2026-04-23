@@ -150,7 +150,7 @@
             <text class="rec-dot collab" />
             <text class="rec-title">🤝 开放协作</text>
           </view>
-          <text class="rec-sub">招募共创者</text>
+          <text class="rec-sub rec-more" @tap="goDiscover">更多</text>
         </view>
         <view v-if="loadingRecommend" class="skeleton-list-h">
           <view v-for="i in 3" :key="i" class="skeleton-row">

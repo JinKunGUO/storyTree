@@ -285,6 +285,24 @@ router.post('/makeup', authenticateToken, async (req: any, res) => {
       return res.status(400).json({ error: '补签机会不足' });
     }
 
+    // 每月补签次数限制：最多3次
+    const now2 = new Date();
+    const monthStart = new Date(now2.getFullYear(), now2.getMonth(), 1);
+    const monthEnd = new Date(now2.getFullYear(), now2.getMonth() + 1, 0, 23, 59, 59);
+    const monthMakeupCount = await prisma.checkin_records.count({
+      where: {
+        user_id: userId,
+        is_makeup: true,
+        checkin_date: {
+          gte: monthStart,
+          lte: monthEnd,
+        }
+      }
+    });
+    if (monthMakeupCount >= 3) {
+      return res.status(400).json({ error: '本月补签次数已达上限（每月最多3次）' });
+    }
+
     // 检查是否已经签到过
     const existingCheckin = await prisma.checkin_records.findUnique({
       where: {

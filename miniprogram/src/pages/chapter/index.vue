@@ -1,4 +1,8 @@
 <template>
+  <!-- page-meta 必须是页面第一个节点，用 block 包裹整个 template -->
+  <block>
+  <!-- page-meta：分支图弹窗打开时锁定页面滚动，防止原生 canvas touch 事件穿透触发页面滚动 -->
+  <page-meta :page-style="showBranchChart ? 'overflow: hidden;' : ''" />
   <view
     class="chapter-page"
     :style="{ background: bgColors[settings.theme], '--status-bar-height': statusBarHeight + 'px' }"
@@ -88,9 +92,12 @@
               ★
             </text>
           </view>
-          <text class="rating-avg" :style="{ color: subTextColors[settings.theme] }">
-            {{ node.rating_avg.toFixed(1) }} ({{ node.rating_count }} 人评分)
-          </text>
+          <view class="rating-meta-row">
+            <text class="rating-avg" :style="{ color: subTextColors[settings.theme] }">
+              {{ node.rating_avg.toFixed(1) }} ({{ node.rating_count }} 人评分)
+            </text>
+            <text v-if="userRating > 0" class="rating-cancel" @tap="cancelRating">取消评分</text>
+          </view>
         </view>
 
         <!-- 分支选择 -->
@@ -340,17 +347,20 @@
     </view>
 
     <!-- AI 创作面板 -->
+    <!-- initial-tab="continue"：章节阅读页打开 AI 面板时默认切到「AI 续写」tab，与网页端一致 -->
     <ai-panel
       :visible="showAiPanel"
       :node-id="node?.id"
       :story-id="node?.story_id"
       :content="node?.content || ''"
+      initial-tab="continue"
       @close="showAiPanel = false"
       @apply="handleAiApply"
     />
 
     <!-- 全屏分支图面板（canvas 原生组件必须在 scroll-view 外渲染，否则定位异常） -->
-    <view v-if="showBranchChart" class="branch-chart-mask">
+    <!-- @touchmove.stop.prevent：阻止弹窗内 touch 事件冒泡到页面层，防止页面被意外滚动 -->
+    <view v-if="showBranchChart" class="branch-chart-mask" @touchmove.stop.prevent="onBranchChartTouchMove">
       <!-- 遮罩背景区域：点击关闭 -->
       <view class="branch-chart-mask-bg" @tap="showBranchChart = false" />
       <!-- 面板主体：阻止事件冒泡到遮罩 -->
@@ -377,6 +387,7 @@
       </view>
     </view>
   </view>
+  </block>
 </template>
 
 <script setup lang="ts">
@@ -543,6 +554,11 @@ async function rateChapter(score: number) {
     uni.navigateTo({ url: '/pages/auth/login/index' })
     return
   }
+  // 点击已选中的星级时，取消评分
+  if (userRating.value === score) {
+    await cancelRating()
+    return
+  }
   try {
     await rateNode(node.value!.id, score)
     userRating.value = score
@@ -550,6 +566,26 @@ async function rateChapter(score: number) {
   } catch (err: any) {
     uni.showToast({ title: err.message || '评分失败', icon: 'none' })
   }
+}
+
+async function cancelRating() {
+  if (!userStore.isLoggedIn || !node.value) return
+  try {
+    // 传 score=0 通知后端删除评分
+    await rateNode(node.value.id, 0)
+    userRating.value = 0
+    uni.showToast({ title: '已取消评分', icon: 'none' })
+  } catch (err: any) {
+    uni.showToast({ title: err.message || '取消失败', icon: 'none' })
+  }
+}
+
+// 分支图弹窗的 touchmove 拦截器
+// 微信小程序中 canvas 是原生组件，touch 事件不会冒泡到普通 view 层，
+// 配合 page-meta overflow:hidden 双重保险防止页面被意外滚动
+function onBranchChartTouchMove(e: any) {
+  if (typeof e.stopPropagation === 'function') e.stopPropagation()
+  if (typeof e.preventDefault === 'function') e.preventDefault()
 }
 
 async function toggleBookmark() {
@@ -963,6 +999,18 @@ function flattenReplies(
 
   .rating-avg {
     font-size: 24rpx;
+  }
+
+  .rating-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 20rpx;
+  }
+
+  .rating-cancel {
+    font-size: 22rpx;
+    color: #94a3b8;
+    text-decoration: underline;
   }
 }
 

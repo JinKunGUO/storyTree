@@ -107,6 +107,13 @@
           <!-- 右侧箭头 -->
           <text class="rank-arrow">›</text>
         </view>
+
+        <!-- 榜单排行依据说明 -->
+        <view class="rank-basis-tip">
+          <text class="rank-basis-text">
+            {{ currentSort === 'popular' ? '热门榜：综合追更数、章节数及阅读量排序' : currentSort === 'trending' ? '趋势榜：近期活跃度与增长速度排序' : '最新榜：按最新发布时间排序' }}
+          </text>
+        </view>
       </view>
 
       <!-- 空状态 -->
@@ -405,6 +412,18 @@ function goStory(id: number) {
 .loading-more, .no-more {
   text-align: center; padding: 32rpx;
   font-size: 24rpx; color: #94a3b8;
+}
+
+// ===== 榜单排行依据说明 =====
+.rank-basis-tip {
+  padding: 20rpx 24rpx 8rpx;
+  text-align: center;
+
+  .rank-basis-text {
+    font-size: 20rpx;
+    color: #94a3b8;
+    line-height: 1.6;
+  }
 }
 
 .bottom-placeholder { height: 60rpx; }

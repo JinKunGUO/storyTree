@@ -36,7 +36,12 @@
       <view class="calendar-card">
         <view class="calendar-header-row">
           <text class="calendar-title">本月签到记录</text>
-          <text v-if="status.makeupChances > 0" class="makeup-hint">点击漏签日期可补签（剩余 {{ status.makeupChances }} 次）</text>
+          <view class="makeup-info">
+            <text v-if="status.makeupChances > 0" class="makeup-hint">
+              点击漏签日期可补签（本月已用 {{ monthMakeupUsed }}/3 次）
+            </text>
+            <text v-else class="makeup-hint exhausted">补签机会不足</text>
+          </view>
         </view>
         <view class="calendar-grid">
           <view
@@ -111,6 +116,11 @@ const monthRecords = ref<CheckinRecord[]>([])
 // 今日可获得积分（来自 status.nextReward，已签到则展示上次奖励）
 const todayPoints = computed(() => status.nextReward)
 
+// 本月已使用的补签次数（从历史记录中统计）
+const monthMakeupUsed = computed(() =>
+  monthRecords.value.filter(r => r.is_makeup).length
+)
+
 const calendarDays = computed(() => {
   const now = new Date()
   const year = now.getFullYear()
@@ -128,7 +138,7 @@ const calendarDays = computed(() => {
 
   // 计算最近7天内漏签且可补签的日期集合
   const missedSet = new Set<string>()
-  if (status.makeupChances > 0) {
+  if (status.makeupChances > 0 && monthMakeupUsed.value < 3) {
     for (let i = 1; i <= 7; i++) {
       const d = new Date(now)
       d.setDate(d.getDate() - i)
@@ -219,6 +229,11 @@ async function doCheckin() {
 
 async function doMakeup(date: string) {
   if (makeupLoading.value) return
+  // 前端月度限制预检：超过3次时直接提示，避免无效请求
+  if (monthMakeupUsed.value >= 3) {
+    uni.showToast({ title: '本月补签次数已达上限（每月3次）', icon: 'none' })
+    return
+  }
   makeupLoading.value = date
   try {
     const res = await makeupCheckin(date)
@@ -376,6 +391,10 @@ async function doMakeup(date: string) {
   .makeup-hint {
     font-size: 22rpx;
     color: #f59e0b;
+
+    &.exhausted {
+      color: #94a3b8;
+    }
   }
 
   .calendar-grid {
