@@ -90,17 +90,21 @@
         </view>
         <view class="section">
           <text class="section-label">待润色内容</text>
-          <view class="content-preview" :class="{ empty: !props.content || props.content.trim().length < 10 }">
-            <text class="content-preview-text">{{ contentPreview }}</text>
-          </view>
+          <textarea
+            class="polish-textarea"
+            :class="{ empty: !polishContent || polishContent.trim().length < 10 }"
+            v-model="polishContent"
+            placeholder="请输入或粘贴要润色的内容..."
+            :maxlength="5000"
+          />
           <!-- 内容不足时的提示 -->
-          <view v-if="!props.content || !props.content.trim()" class="polish-hint warn">
+          <view v-if="!polishContent || !polishContent.trim()" class="polish-hint warn">
             <text class="polish-hint-text">✏️ 请先在编辑器中写一些内容，再使用 AI 润色</text>
           </view>
-          <view v-else-if="props.content.trim().length < 10" class="polish-hint warn">
-            <text class="polish-hint-text">✏️ 内容至少需要 10 个字才能润色（当前 {{ props.content.trim().length }} 字）</text>
+          <view v-else-if="polishContent.trim().length < 10" class="polish-hint warn">
+            <text class="polish-hint-text">✏️ 内容至少需要 10 个字才能润色（当前 {{ polishContent.trim().length }} 字）</text>
           </view>
-
+          <text v-else class="char-count">{{ polishContent.trim().length }} / 5000 字</text>
         </view>
       </view>
 
@@ -256,6 +260,7 @@ watch(
       result.value = ''
       error.value = ''
       customPrompt.value = ''
+      polishContent.value = props.content || ''
       loadQuota()
     }
   }
@@ -290,6 +295,9 @@ const contentPreview = computed(() => {
   return c.length > 100 ? c.slice(0, 100) + '...' : (c || '（编辑器内容为空）')
 })
 
+// 润色内容：可编辑，初始值来自 props.content，用户可自行修改
+const polishContent = ref('')
+
 // ——— 状态 ———
 const generating = ref(false)
 const result = ref('')
@@ -302,8 +310,8 @@ const canGenerate = computed(() => {
   if (activeTab.value === 'continue') {
     return !!(props.storyId && props.nodeId)
   }
-  // 润色只需要有内容
-  return !!(props.content && props.content.trim().length >= 10)
+  // 润色只需要有内容（用可编辑的 polishContent）
+  return !!(polishContent.value && polishContent.value.trim().length >= 10)
 })
 
 const generateBtnText = computed(() => {
@@ -336,7 +344,7 @@ async function generate() {
         error.value = 'AI 未返回续写内容，请重试'
       }
     } else if (activeTab.value === 'polish') {
-      const content = props.content?.trim() || ''
+      const content = polishContent.value.trim()
       if (content.length < 10) {
         error.value = '请先写一些内容（至少10字）再进行润色'
         return
@@ -595,22 +603,30 @@ function applyResult() {
       }
     }
 
-    // 内容预览
-    .content-preview {
+    // 润色内容可编辑文本框
+    .polish-textarea {
+      width: 100%;
+      height: 200rpx;
       padding: 16rpx;
       background: #f8fafc;
       border-radius: 12rpx;
       border: 1rpx solid #e2e8f0;
-      .content-preview-text {
-        font-size: 26rpx;
-        color: #64748b;
-        line-height: 1.7;
-      }
+      font-size: 26rpx;
+      color: #1e293b;
+      line-height: 1.7;
+      box-sizing: border-box;
       &.empty {
         border-color: #fca5a5;
         background: #fff5f5;
-        .content-preview-text { color: #94a3b8; }
       }
+    }
+
+    .char-count {
+      display: block;
+      text-align: right;
+      font-size: 22rpx;
+      color: #94a3b8;
+      margin-top: 8rpx;
     }
 
     // 润色可用性提示
