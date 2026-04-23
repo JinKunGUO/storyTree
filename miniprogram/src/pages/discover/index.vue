@@ -132,6 +132,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { getStories } from '@/api/stories'
 import { getImageUrl } from '@/utils/request'
 import type { Story } from '@/api/stories'
@@ -166,6 +167,25 @@ onMounted(() => {
     statusBarHeight.value = info.statusBarHeight || 20
   } catch { /* ignore */ }
   loadStories()
+})
+
+onShow(() => {
+  // 读取首页"更多"按钮传入的 sort 参数
+  const initSort = uni.getStorageSync('discoverInitSort') as string
+  if (initSort) {
+    uni.removeStorageSync('discoverInitSort')
+    // collab（开放协作）在发现页没有独立榜单，映射到热门榜
+    const sortMap: Record<string, typeof currentSort.value> = {
+      popular: 'popular',
+      collab: 'popular',
+      latest: 'latest',
+    }
+    const target = sortMap[initSort] || 'popular'
+    if (currentSort.value !== target) {
+      currentSort.value = target
+      loadStories()
+    }
+  }
 })
 
 async function loadStories(reset = true) {

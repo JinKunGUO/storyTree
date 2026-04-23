@@ -108,7 +108,7 @@
             <text class="rec-dot" />
             <text class="rec-title">🔥 热门故事</text>
           </view>
-          <text class="rec-more" @tap="goDiscover">更多</text>
+          <text class="rec-more" @tap="goDiscover('popular')">更多</text>
         </view>
         <view v-if="loadingRecommend" class="skeleton-grid-2">
           <view v-for="i in 4" :key="i" class="skeleton-card-v">
@@ -150,7 +150,7 @@
             <text class="rec-dot collab" />
             <text class="rec-title">🤝 开放协作</text>
           </view>
-          <text class="rec-sub rec-more" @tap="goDiscover">更多</text>
+          <text class="rec-sub rec-more" @tap="goDiscover('collab')">更多</text>
         </view>
         <view v-if="loadingRecommend" class="skeleton-list-h">
           <view v-for="i in 3" :key="i" class="skeleton-row">
@@ -198,7 +198,7 @@
             <text class="rec-dot new" />
             <text class="rec-title">🆕 最新发布</text>
           </view>
-          <text class="rec-more" @tap="goDiscover">更多</text>
+          <text class="rec-more" @tap="goDiscover('latest')">更多</text>
         </view>
         <view v-if="loadingRecommend" class="skeleton-list-h">
           <view v-for="i in 4" :key="i" class="skeleton-row">
@@ -577,7 +577,9 @@ function goLogin() {
   uni.navigateTo({ url: '/pages/auth/login/index' })
 }
 
-function goDiscover() {
+function goDiscover(sort: 'popular' | 'collab' | 'latest' = 'popular') {
+  // switchTab 不支持传参，通过 storage 中转
+  uni.setStorageSync('discoverInitSort', sort)
   uni.switchTab({ url: '/pages/discover/index' })
 }
 
