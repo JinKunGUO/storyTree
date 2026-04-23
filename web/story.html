@@ -3618,6 +3618,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
         let selectedAiWordCount = 1500; // 默认1500字
         let currentAiChapterTaskId = null;
         let aiChapterOptions = [];
+        let aiChapterModalOpen = false; // 弹窗是否处于打开状态（用于判断轮询结果如何展示）
 
         // 初始化AI创作章节模态框
         document.addEventListener('DOMContentLoaded', function() {
@@ -3836,6 +3837,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
             // ===============================================
             
             // 显示模态框
+            aiChapterModalOpen = true;
             modal.classList.add('active');
         }
 
@@ -3843,6 +3845,84 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
         function closeAiChapterModal() {
             const modal = document.getElementById('aiChapterModal');
             modal.classList.remove('active');
+            aiChapterModalOpen = false;
+
+            // 如果立即生成任务仍在轮询中，显示持久提示条告知用户
+            if (currentAiChapterTaskId && document.getElementById('aiChapterLoading').style.display !== 'none') {
+                showAiGeneratingBanner();
+            }
+        }
+
+        // 显示顶部提示条：AI 正在后台生成章节
+        function showAiGeneratingBanner() {
+            if (document.getElementById('aiGeneratingBanner')) return; // 已存在则不重复创建
+            const banner = document.createElement('div');
+            banner.id = 'aiGeneratingBanner';
+            banner.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 9999;
+                background: linear-gradient(135deg, var(--st-primary-500) 0%, var(--st-primary-700) 100%);
+                color: white;
+                text-align: center;
+                padding: 12px 20px;
+                font-size: 15px;
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+            `;
+            banner.innerHTML = `
+                <i class="fas fa-spinner fa-spin"></i>
+                AI 正在后台生成章节，完成后页面将自动刷新...
+                <button onclick="reopenAiChapterProgress();" style="
+                    margin-left: 15px;
+                    padding: 5px 14px;
+                    background: rgba(255,255,255,0.25);
+                    border: 1px solid rgba(255,255,255,0.5);
+                    border-radius: 6px;
+                    color: white;
+                    font-size: 13px;
+                    font-weight: 600;
+                    cursor: pointer;
+                ">查看进度</button>
+            `;
+            document.body.prepend(banner);
+        }
+
+        // 隐藏顶部提示条
+        function hideAiGeneratingBanner() {
+            const banner = document.getElementById('aiGeneratingBanner');
+            if (banner) banner.remove();
+        }
+
+        // 从提示条重新打开弹窗：仅显示加载进度，隐藏配置 UI（避免歧义）
+        function reopenAiChapterProgress() {
+            // 隐藏所有配置区域
+            const surpriseSelector = document.getElementById('aiSurpriseTimeSelector');
+            const styleSelector = document.getElementById('aiAiStyleSelector');
+            const wordCountSelector = document.getElementById('aiWordCountSelector');
+            const actionBtns = document.querySelector('#startAiChapterGenerationDraft')?.parentElement;
+            if (surpriseSelector) surpriseSelector.style.display = 'none';
+            if (styleSelector) styleSelector.style.display = 'none';
+            if (wordCountSelector) wordCountSelector.style.display = 'none';
+            if (actionBtns) actionBtns.style.display = 'none';
+
+            // 确保只显示加载状态
+            const loading = document.getElementById('aiChapterLoading');
+            const options = document.getElementById('aiChapterOptions');
+            const error = document.getElementById('aiChapterError');
+            if (loading) loading.style.display = 'block';
+            if (options) options.style.display = 'none';
+            if (error) error.style.display = 'none';
+
+            // 打开弹窗
+            document.getElementById('aiChapterModal').classList.add('active');
+            aiChapterModalOpen = true;
         }
 
 // 开始 AI 章节生成
@@ -3856,6 +3936,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
             // 隐藏选择器，显示加载状态
             document.getElementById('aiSurpriseTimeSelector').style.display = 'none';
             document.getElementById('aiAiStyleSelector').style.display = 'none';
+            document.getElementById('aiWordCountSelector').style.display = 'none';
             document.querySelector('#startAiChapterGenerationDraft').parentElement.style.display = 'none';
             document.getElementById('aiChapterLoading').style.display = 'block';
             document.getElementById('aiChapterOptions').style.display = 'none';
@@ -3927,6 +4008,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                                             // 恢复 UI 状态
                                             document.getElementById('aiSurpriseTimeSelector').style.display = 'block';
                                             document.getElementById('aiAiStyleSelector').style.display = 'block';
+                                            document.getElementById('aiWordCountSelector').style.display = 'block';
                                             document.querySelector('#startAiChapterGenerationDraft').parentElement.style.display = 'flex';
                                             document.getElementById('aiChapterLoading').style.display = 'none';
                                             return;
@@ -3936,6 +4018,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                                         // 恢复 UI 状态
                                         document.getElementById('aiSurpriseTimeSelector').style.display = 'block';
                                         document.getElementById('aiAiStyleSelector').style.display = 'block';
+                                        document.getElementById('aiWordCountSelector').style.display = 'block';
                                         document.querySelector('#startAiChapterGenerationDraft').parentElement.style.display = 'flex';
                                         document.getElementById('aiChapterLoading').style.display = 'none';
                                         return;
@@ -4088,9 +4171,14 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                     console.log(`轮询第${attempts}次, 任务状态:`, data.status);
 
                     if (data.status === 'completed') {
-                        // 任务完成，显示结果
+                        // 任务完成：无论弹窗是否打开，统一关闭弹窗并刷新页面
                         console.log('任务完成，结果:', data.result);
-                        displayAiChapterResult(data.result);
+                        hideAiGeneratingBanner();
+                        closeAiChapterModal();
+                        showSuccess('AI 章节生成完成！即将刷新页面...');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
                     } else if (data.status === 'failed') {
                         throw new Error(data.errorMessage || '生成失败');
                     } else if (attempts < maxAttempts) {
@@ -4101,10 +4189,17 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                     }
                 } catch (error) {
                     console.error('轮询错误:', error);
-                    document.getElementById('aiChapterLoading').style.display = 'none';
-                    document.getElementById('aiChapterError').style.display = 'block';
-                    document.getElementById('aiChapterErrorMessage').textContent = error.message;
-                    document.getElementById('regenerateAiChapter').style.display = 'inline-block';
+                    if (aiChapterModalOpen) {
+                        // 弹窗仍打开：在弹窗内显示错误
+                        document.getElementById('aiChapterLoading').style.display = 'none';
+                        document.getElementById('aiChapterError').style.display = 'block';
+                        document.getElementById('aiChapterErrorMessage').textContent = error.message;
+                        document.getElementById('regenerateAiChapter').style.display = 'inline-block';
+                    } else {
+                        // 弹窗已关闭：隐藏提示条，用 toast 通知
+                        hideAiGeneratingBanner();
+                        showError('AI 章节生成失败：' + error.message);
+                    }
                 }
             };
 
@@ -4365,6 +4460,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
             // 重置界面到选择器状态
             document.getElementById('aiSurpriseTimeSelector').style.display = 'block';
             document.getElementById('aiAiStyleSelector').style.display = 'block';
+            document.getElementById('aiWordCountSelector').style.display = 'block';
             document.querySelector('#startAiChapterGenerationDraft').parentElement.style.display = 'flex';
             document.getElementById('aiChapterLoading').style.display = 'none';
             document.getElementById('aiChapterOptions').style.display = 'none';
