@@ -325,15 +325,20 @@ router.put('/:id', authenticateToken, async (req, res) => {
   try {
     // 检查节点是否存在
     const node = await prisma.nodes.findUnique({
-      where: { id: parseInt(id) }
+      where: { id: parseInt(id) },
+      include: {
+        story: {
+          select: { id: true, author_id: true }
+        }
+      }
     });
 
     if (!node) {
       return res.status(404).json({ error: 'Node not found' });
     }
 
-    // 检查是否是作者
-    if (node.author_id !== userId) {
+    // 检查权限：必须是章节作者 或 故事主创（与 DELETE 接口保持一致）
+    if (node.author_id !== userId && node.story.author_id !== userId) {
       return res.status(403).json({ error: 'Not authorized to edit this node' });
     }
 

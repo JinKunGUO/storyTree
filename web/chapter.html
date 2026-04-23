@@ -2250,8 +2250,9 @@
                 });
 
                 let canCreateBranch = false;
+                let roleData = null;
                 if (roleResponse.ok) {
-                    const roleData = await roleResponse.json();
+                    roleData = await roleResponse.json();
                     console.log('用户角色:', roleData);
                     
                     // 只有作者和有效协作者才能创建分支
@@ -2295,9 +2296,11 @@
                     };
                 }
 
-                // 比对用户ID，只有作者可以编辑
-                if (userData.user && userData.user.id === chapter.author_id) {
-                    console.log('✅ 是作者，显示编辑按钮');
+                // 比对用户ID，章节作者或故事主创可以编辑
+                const isChapterAuthor = userData.user && userData.user.id === chapter.author_id;
+                const isStoryCreator = roleData && roleData.is_author; // 故事主创
+                if (isChapterAuthor || isStoryCreator) {
+                    console.log('✅ 有编辑权限（章节作者或故事主创），显示编辑按钮');
                     document.getElementById('editChapterBtn').style.display = 'block';
                     
                     // 如果是草稿状态，显示发布按钮

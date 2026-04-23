@@ -275,6 +275,15 @@
         <text>📤</text>
         <text class="tool-label">分享</text>
       </view>
+      <!-- 编辑按钮：仅章节作者本人可见 -->
+      <view
+        v-if="isChapterAuthor"
+        class="tool-btn"
+        @tap="editChapter"
+      >
+        <text>✏️</text>
+        <text class="tool-label">编辑</text>
+      </view>
     </view>
 
     <!-- 阅读设置弹窗 -->
@@ -447,6 +456,17 @@ const contentStyle = computed(() => ({
 // 以当前节点为根的完整多层分支树（包含所有子孙节点）
 // 初始由 children 构成第一层，加载故事完整树后替换为多层
 const branchTreeRoot = ref<import('@/api/nodes').Node | null>(null)
+
+// 是否有权编辑当前章节：章节作者本人 OR 故事主创
+const isChapterAuthor = computed(() => {
+  if (!node.value || !userStore.userInfo) return false
+  const uid = userStore.userInfo.id
+  // 章节作者
+  if (node.value.author.id === uid) return true
+  // 故事主创（后端 GET /api/nodes/:id 已在 story 中返回 author_id）
+  if (node.value.story?.author_id === uid) return true
+  return false
+})
 
 const lineHeightOptions = [
   { label: '紧凑', value: '1.6' },
@@ -724,6 +744,14 @@ function onBranchNodeTap(id: number) {
 function writeBranch() {
   uni.navigateTo({
     url: `/pages/write/editor?storyId=${node.value?.story_id}&parentId=${node.value?.id}&parentTitle=${encodeURIComponent(node.value?.title || '')}`,
+  })
+}
+
+// 编辑当前章节（仅章节作者可用）
+function editChapter() {
+  if (!node.value) return
+  uni.navigateTo({
+    url: `/pages/write/editor?nodeId=${node.value.id}&storyId=${node.value.story_id}`,
   })
 }
 
