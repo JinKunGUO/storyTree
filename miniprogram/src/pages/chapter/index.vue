@@ -138,7 +138,7 @@
           <text class="no-branch-text">这是故事的末端，等待续写</text>
         </view>
 
-        <!-- 续写 / AI 创作入口（始终展示，登录后可操作） -->
+        <!-- 续写 / AI 创作入口（始终展示，有权限后可操作） -->
         <view class="write-actions-section">
           <view class="write-actions-title">
             <text class="write-actions-label">从此节点创作</text>
@@ -146,22 +146,23 @@
           <view class="write-actions-row">
             <view
               class="write-action-btn"
-              :class="{ disabled: !userStore.isLoggedIn }"
-              @tap="userStore.isLoggedIn ? writeBranch() : goLogin()"
+              :class="{ disabled: !canWrite }"
+              @tap="tapWriteBranch"
             >
               <text class="write-action-icon">✍️</text>
               <text class="write-action-text">续写章节</text>
             </view>
             <view
               class="write-action-btn ai-action-btn"
-              :class="{ disabled: !userStore.isLoggedIn }"
-              @tap="userStore.isLoggedIn ? openAiPanel() : goLogin()"
+              :class="{ disabled: !canWrite }"
+              @tap="tapOpenAiPanel"
             >
               <text class="write-action-icon">🤖</text>
               <text class="write-action-text">AI 创作</text>
             </view>
           </view>
           <text v-if="!userStore.isLoggedIn" class="write-login-tip" @tap="goLogin">登录后可续写故事 →</text>
+          <text v-else-if="!canWrite" class="write-login-tip">暂无续写权限，可向作者申请协作</text>
         </view>
 
         <!-- 评论区 -->
@@ -438,6 +439,8 @@ const hasMoreComments = ref(false)
 const commentsPage = ref(1)
 const isBookmarked = ref(false)
 const userRating = ref(0)
+// 当前用户是否有续写权限（由后端根据主创/协作者身份计算后返回）
+const canWrite = ref(false)
 
 const settings = reactive({
   fontSize: appStore.readerSettings.fontSize * 2, // rpx
@@ -539,6 +542,7 @@ async function loadNode(id: number) {
     hasMoreComments.value = commentsRes.total > 10
     isBookmarked.value = nodeRes.node.isBookmarked ?? false
     userRating.value = nodeRes.node.userRating ?? 0
+    canWrite.value = nodeRes.canWrite ?? false
 
     // 异步加载完整故事节点树，构建多层分支图（不阻塞首屏渲染）
     if (nodeRes.node.story_id && children.value.length > 0) {
@@ -769,6 +773,33 @@ function handleAiApply(content: string) {
 
 function goLogin() {
   uni.navigateTo({ url: '/pages/auth/login/index' })
+}
+
+// 点击无权限的续写按钮时，给出对应的提示
+function onWriteDisabledTap() {
+  if (!userStore.isLoggedIn) {
+    uni.showModal({
+      title: '请先登录',
+      content: '登录后才能续写故事',
+      confirmText: '去登录',
+      success: (res) => {
+        if (res.confirm) goLogin()
+      },
+    })
+  } else {
+    uni.showToast({ title: '暂无续写权限，可向作者申请协作', icon: 'none', duration: 2000 })
+  }
+}
+
+// 包装函数：避免模板内联三元表达式导致编译器无法正确识别 onWriteDisabledTap
+function tapWriteBranch() {
+  if (canWrite.value) writeBranch()
+  else onWriteDisabledTap()
+}
+
+function tapOpenAiPanel() {
+  if (canWrite.value) openAiPanel()
+  else onWriteDisabledTap()
 }
 
 function shareChapter() {

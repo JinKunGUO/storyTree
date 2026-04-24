@@ -75,7 +75,7 @@ export function buildSubTree(nodes: Node[], rootId: number): Node | null {
 
 // 获取单个节点
 export function getNode(id: number) {
-  return http.get<{ node: Node }>(`/api/nodes/${id}`)
+  return http.get<{ node: Node; canWrite: boolean }>(`/api/nodes/${id}`)
 }
 
 // 获取节点的子节点（分支）

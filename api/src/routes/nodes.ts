@@ -760,14 +760,33 @@ router.get('/:id', optionalAuth, async (req, res) => {
 
     // Get branches with rating info（只返回已发布的分支，作者/协作者可见草稿分支）
     let branchFilter: any = { parent_id: parseInt(id) };
+    // 计算当前用户的续写权限（canWrite）
+    // 规则：故事主创始终可以；协作者在 allow_branch=true 时可以；其他人不可以
+    let canWrite = false;
+    let collaboratorRecord: any = null;
     if (userId) {
       const isStoryAuthor = node.story.author_id === userId;
       const isNodeAuthor = node.author_id === userId;
-      if (!isStoryAuthor && !isNodeAuthor) {
-        const collaborator = await prisma.story_collaborators.findFirst({
+      if (isStoryAuthor) {
+        // 主创始终可以续写，也可以看草稿分支
+        canWrite = true;
+      } else {
+        collaboratorRecord = await prisma.story_collaborators.findFirst({
           where: { story_id: node.story_id, user_id: userId, removed_at: null }
         });
-        if (!collaborator) {
+        if (collaboratorRecord) {
+          // 协作者：需要查 allow_branch 设置
+          const storySettings = await prisma.stories.findUnique({
+            where: { id: node.story_id },
+            select: { allow_branch: true }
+          });
+          canWrite = storySettings?.allow_branch ?? true;
+        } else {
+          // 非协作者：无续写权限，且只能看已发布分支
+          branchFilter.is_published = true;
+        }
+        // 节点作者（非主创）也不能看草稿分支（除非是协作者）
+        if (!collaboratorRecord && !isNodeAuthor) {
           branchFilter.is_published = true;
         }
       }
@@ -814,7 +833,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
       if (rating) userRating = rating.score;
     }
 
-    res.json({ node, branches, parent, userRating });
+    res.json({ node, branches, parent, userRating, canWrite });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch node' });
