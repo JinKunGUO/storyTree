@@ -29,6 +29,10 @@ import invitationRoutes from './routes/invitations';
 import checkinRoutes from './routes/checkin';
 import withdrawalRoutes from './routes/withdrawals';
 import pointsFeaturesRoutes from './routes/points-features';
+import adminUsersRoutes from './routes/admin-users';
+import adminContentRoutes from './routes/admin-content';
+import adminPointsRoutes from './routes/admin-points';
+import adminDashboardRoutes from './routes/admin-dashboard';
 import { closeQueues } from './utils/queue';
 
 // 根据 NODE_ENV 加载对应的 .env 文件，fallback 到 .env
@@ -73,6 +77,10 @@ app.use('/api/points', pointsRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/membership', membershipRoutes);
 app.use('/api/admin/membership', adminMembershipRoutes);
+app.use('/api/admin/users', adminUsersRoutes);
+app.use('/api/admin/content', adminContentRoutes);
+app.use('/api/admin/points', adminPointsRoutes);
+app.use('/api/admin/dashboard', adminDashboardRoutes);
 app.use('/api/system', systemRoutes);
 app.use('/api/collaboration-requests', collaborationRequestRoutes);
 app.use('/api/badges', badgesRoutes);

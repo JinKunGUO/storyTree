@@ -1,48 +1,16 @@
 import { Router } from 'express';
 import { prisma } from '../index';
 import { createNotification } from './notifications';
-import { verifyJWT } from '../utils/auth';
+import { authenticateToken, requireAdmin } from '../utils/middleware';
 
 const router = Router();
 
-const getUserId = (req: any): number | null => {
-  const userId = req.headers['x-user-id'];
-  return userId ? parseInt(userId as string) : null;
-};
+// 所有路由都需要管理员权限
+router.use(authenticateToken, requireAdmin);
 
-// 管理员验证中间件
-const requireAdmin = async (req: any, res: any, next: any) => {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  
-  if (!token) {
-    return res.status(401).json({ error: '未提供认证令牌' });
-  }
-
-  try {
-    const decoded = verifyJWT(token);
-    if (!decoded) {
-      return res.status(401).json({ error: '无效的认证令牌' });
-    }
-
-    const user = await prisma.users.findUnique({
-      where: { id: decoded.userId },
-      select: { id: true, isAdmin: true }
-    });
-
-    if (!user || !user.isAdmin) {
-      return res.status(403).json({ error: '需要管理员权限' });
-    }
-
-    req.user = user;
-    next();
-  } catch (error) {
-    return res.status(401).json({ error: '认证失败' });
-  }
-};
-
-// 获取审核队列 - 需要管理员权限
-router.get('/review-queue', requireAdmin, async (req, res) => {
-  const userId = getUserId(req);
+// 获取审核队列
+router.get('/review-queue', async (req, res) => {
+  const userId = req.userId;
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
@@ -93,9 +61,9 @@ router.get('/review-queue', requireAdmin, async (req, res) => {
   }
 });
 
-// 审核操作 - 需要管理员权限
-router.post('/review', requireAdmin, async (req, res) => {
-  const userId = getUserId(req);
+// 审核操作
+router.post('/review', async (req, res) => {
+  const userId = req.userId;
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
@@ -167,9 +135,9 @@ router.post('/review', requireAdmin, async (req, res) => {
   }
 });
 
-// 获取节点的举报详情 - 需要管理员权限
-router.get('/reports/:nodeId', requireAdmin, async (req, res) => {
-  const userId = getUserId(req);
+// 获取节点的举报详情
+router.get('/reports/:nodeId', async (req, res) => {
+  const userId = req.userId;
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }

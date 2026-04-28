@@ -1,51 +1,8 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
-import jwt from 'jsonwebtoken';
+import { prisma } from '../index';
+import { authenticateToken, requireAdmin } from '../utils/middleware';
 
 const router = Router();
-const prisma = new PrismaClient();
-
-// 验证JWT中间件
-async function authenticateToken(req: any, res: any, next: any) {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  
-  if (!token) {
-    return res.status(401).json({ error: '未提供认证令牌' });
-  }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-this') as { userId: number };
-    req.userId = decoded.userId;
-    next();
-  } catch (error) {
-    return res.status(401).json({ error: '无效的认证令牌' });
-  }
-}
-
-// 验证管理员中间件
-async function authenticateAdmin(req: any, res: any, next: any) {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  
-  if (!token) {
-    return res.status(401).json({ error: '未提供认证令牌' });
-  }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-this') as { userId: number };
-    const user = await prisma.users.findUnique({
-      where: { id: decoded.userId }
-    });
-
-    if (!user || !user.isAdmin) {
-      return res.status(403).json({ error: '需要管理员权限' });
-    }
-
-    req.userId = decoded.userId;
-    next();
-  } catch (error) {
-    return res.status(401).json({ error: '无效的认证令牌' });
-  }
-}
 
 // 提交提现申请
 router.post('/request', authenticateToken, async (req: any, res: any) => {
@@ -325,7 +282,7 @@ router.get('/earnings-stats', authenticateToken, async (req: any, res: any) => {
 // ========== 管理员接口 ==========
 
 // 获取所有提现申请（管理员）
-router.get('/admin/requests', authenticateAdmin, async (req: any, res: any) => {
+router.get('/admin/requests', authenticateToken, requireAdmin, async (req: any, res: any) => {
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 20;
   const status = req.query.status as string;
@@ -386,7 +343,7 @@ router.get('/admin/requests', authenticateAdmin, async (req: any, res: any) => {
 });
 
 // 审核提现申请（管理员）
-router.post('/admin/:requestId/review', authenticateAdmin, async (req: any, res: any) => {
+router.post('/admin/:requestId/review', authenticateToken, requireAdmin, async (req: any, res: any) => {
   const { requestId } = req.params;
   const { status, adminNote } = req.body;
   const adminId = req.userId;
@@ -466,7 +423,7 @@ router.post('/admin/:requestId/review', authenticateAdmin, async (req: any, res:
 });
 
 // 获取提现统计（管理员）
-router.get('/admin/stats', authenticateAdmin, async (req: any, res: any) => {
+router.get('/admin/stats', authenticateToken, requireAdmin, async (req: any, res: any) => {
   try {
     // 总提现金额
     const totalWithdrawn = await prisma.withdrawal_requests.aggregate({

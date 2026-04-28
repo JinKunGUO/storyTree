@@ -1,43 +1,16 @@
 import { Router } from 'express';
-import jwt from 'jsonwebtoken';
 import { prisma } from '../index';
+import { authenticateToken, requireAdmin } from '../utils/middleware';
 
 const router = Router();
 
-// 验证管理员权限
-const requireAdmin = async (req: any, res: any, next: any) => {
-  try {
-    const userId = req.user?.id;
-    if (!userId) {
-      const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: '未登录' });
-      }
-      const token = authHeader.substring(7);
-      const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
-      const decoded: any = jwt.verify(token, JWT_SECRET);
-      req.user = { id: decoded.userId };
-    }
-
-    const user = await prisma.users.findUnique({
-      where: { id: req.user.id },
-      select: { isAdmin: true }
-    });
-
-    if (!user?.isAdmin) {
-      return res.status(403).json({ error: '需要管理员权限' });
-    }
-
-    next();
-  } catch (error) {
-    return res.status(401).json({ error: '认证失败' });
-  }
-};
+// 所有路由都需要管理员权限
+router.use(authenticateToken, requireAdmin);
 
 /**
  * 获取会员统计数据
  */
-router.get('/stats', requireAdmin, async (req, res) => {
+router.get('/stats', async (req, res) => {
   try {
     const now = new Date();
 
@@ -165,7 +138,7 @@ router.get('/stats', requireAdmin, async (req, res) => {
 /**
  * 获取会员列表（分页）
  */
-router.get('/members', requireAdmin, async (req, res) => {
+router.get('/members', async (req, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
@@ -228,7 +201,7 @@ router.get('/members', requireAdmin, async (req, res) => {
 /**
  * 获取订单列表（分页）
  */
-router.get('/orders', requireAdmin, async (req, res) => {
+router.get('/orders', async (req, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
@@ -286,7 +259,7 @@ router.get('/orders', requireAdmin, async (req, res) => {
 /**
  * 手动调整会员状态（管理员特殊操作）
  */
-router.post('/members/:userId/adjust', requireAdmin, async (req, res) => {
+router.post('/members/:userId/adjust', async (req, res) => {
   try {
     const userId = parseInt(req.params.userId);
     const { tier, expiresAt, reason } = req.body;
