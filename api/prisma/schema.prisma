@@ -203,10 +203,12 @@ model stories {
 model users {
   id                         Int                       @id @default(autoincrement())
   username                   String                    @unique
-  email                      String                    @unique
-  password                   String
+  email                      String?                   @unique
+  password                   String?
   avatar                     String?
   bio                        String?
+  wx_nickname                String?                   @map("wx_nickname")
+  wx_avatar                  String?                   @map("wx_avatar")
   level                      Int                       @default(1)
   points                     Int                       @default(0)
   word_count                 Int                       @default(0)

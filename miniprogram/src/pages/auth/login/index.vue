@@ -154,7 +154,16 @@ async function handleLogin() {
       uni.switchTab({ url: '/pages/index/index' })
     }
   } catch (err: any) {
-    uni.showToast({ title: err.message || '登录失败', icon: 'none' })
+    if (err.code === 'EMAIL_NOT_VERIFIED') {
+      uni.showModal({
+        title: '邮箱未验证',
+        content: '请查收验证邮件并完成验证后再登录。',
+        confirmText: '知道了',
+        showCancel: false,
+      })
+    } else {
+      uni.showToast({ title: err.message || '登录失败', icon: 'none' })
+    }
   } finally {
     loading.value = false
   }
@@ -173,13 +182,35 @@ async function handleWxLogin() {
 
     const res = await wxLogin({ code })
     userStore.login(res.token, res.user as any)
-    uni.showToast({ title: '登录成功', icon: 'success' })
 
-    const pages = getCurrentPages()
-    if (pages.length > 1) {
-      uni.navigateBack()
+    if (res.isNewUser) {
+      // 新用户：提示可在个人中心修改昵称
+      uni.showModal({
+        title: '欢迎加入 StoryTree！',
+        content: '登录成功！你的用户名已自动生成，可前往个人中心修改。',
+        confirmText: '去设置',
+        cancelText: '稍后',
+        success: (result) => {
+          if (result.confirm) {
+            uni.switchTab({ url: '/pages/profile/index' })
+          } else {
+            const pages = getCurrentPages()
+            if (pages.length > 1) {
+              uni.navigateBack()
+            } else {
+              uni.switchTab({ url: '/pages/index/index' })
+            }
+          }
+        }
+      })
     } else {
-      uni.switchTab({ url: '/pages/index/index' })
+      uni.showToast({ title: '登录成功', icon: 'success' })
+      const pages = getCurrentPages()
+      if (pages.length > 1) {
+        uni.navigateBack()
+      } else {
+        uni.switchTab({ url: '/pages/index/index' })
+      }
     }
   } catch (err: any) {
     uni.showToast({ title: err.message || '微信登录失败', icon: 'none' })

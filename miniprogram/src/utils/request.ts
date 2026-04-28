@@ -108,12 +108,16 @@ function request<T = unknown>(options: RequestOptions): Promise<T> {
         }
 
         // 其他错误：后端通常用 error 字段（如 { error: '...' }），兼容 message 字段
-        const respData = res.data as ApiResponse & { error?: string }
+        const respData = res.data as ApiResponse & { error?: string; code?: string }
         const errMsg = respData?.error || respData?.message || `请求失败 (${statusCode})`
-        if (showError) {
+        if (showError && statusCode !== 403) {
+          // 403 由调用方自行处理提示（如邮箱未验证），不弹全局 toast
           uni.showToast({ title: errMsg, icon: 'none', duration: 2000 })
         }
-        reject(new Error(errMsg))
+        // 将后端 code 字段挂到 Error 对象上，便于上层判断
+        const err = new Error(errMsg) as Error & { code?: string }
+        err.code = respData?.code
+        reject(err)
       },
       fail: (err) => {
         if (showLoading) uni.hideLoading()

@@ -11,8 +11,8 @@ export interface LoginParams {
 
 export interface RegisterParams {
   username: string
-  email: string
-  password: string
+  email?: string
+  password?: string
   invitationCode?: string
 }
 
@@ -27,10 +27,11 @@ export interface WxLoginParams {
 export interface AuthResponse {
   message: string
   token: string
+  isNewUser?: boolean
   user: {
     id: number
     username: string
-    email: string
+    email: string | null
     avatar?: string
     bio?: string
     level: number

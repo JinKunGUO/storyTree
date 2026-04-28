@@ -310,6 +310,11 @@ function handleLogin() {
                 const redirectUrl = new URLSearchParams(window.location.search).get('redirect') || '/';
                 console.log('准备跳转到:', redirectUrl);
                 window.location.href = redirectUrl;
+            } else if (response.status === 403 && data.code === 'EMAIL_NOT_VERIFIED') {
+                // 邮箱未验证：触发自定义事件，由 login.html 中的脚本处理提示横幅
+                document.dispatchEvent(new CustomEvent('login:email-unverified', {
+                    detail: { email: data.email }
+                }));
             } else {
                 // 显示错误信息
                 if (data.error.includes('邮箱') || data.error.includes('密码')) {

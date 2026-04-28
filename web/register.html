@@ -451,6 +451,34 @@
         .form-footer a { color: var(--text-muted); text-decoration: none; }
         .form-footer a:hover { color: var(--primary); }
 
+        /* 微信注册按钮 */
+        .wx-login-btn {
+            width: 100%;
+            height: 50px;
+            background: #07C160;
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
+            box-shadow: 0 4px 16px rgba(7,193,96,.3);
+            text-decoration: none;
+            letter-spacing: .01em;
+        }
+        .wx-login-btn:hover {
+            background: #06AD56;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(7,193,96,.4);
+        }
+        .wx-login-btn:active { transform: translateY(0); }
+        .wx-login-btn svg { flex-shrink: 0; }
+
         /* ===== 响应式 ===== */
         @media (max-width: 900px) {
             .register-page {
@@ -664,6 +692,17 @@
 
                 <div class="divider">或</div>
 
+                <!-- 微信扫码注册/登录 -->
+                <a href="#" class="wx-login-btn" id="wxRegisterBtn">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M8.5 10.5a1 1 0 100-2 1 1 0 000 2zm5 0a1 1 0 100-2 1 1 0 000 2z"/>
+                        <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zM6.5 9.5C6.5 7.567 9.015 6 12 6s5.5 1.567 5.5 3.5c0 1.933-2.515 3.5-5.5 3.5-.618 0-1.21-.07-1.757-.198L8 14l.5-1.5C7.03 11.85 6.5 10.73 6.5 9.5zm6.5 3.5c2.209 0 4-1.343 4-3s-1.791-3-4-3-4 1.343-4 3c0 .848.462 1.614 1.21 2.17L9.5 13.5l1.75-.875c.236.04.48.062.726.073L12 13z"/>
+                    </svg>
+                    微信扫码注册
+                </a>
+
+                <div class="divider">已有账号</div>
+
                 <p class="login-hint">已有账号？<a href="/login">立即登录</a></p>
 
                 <div class="form-footer">
@@ -680,6 +719,48 @@
     <script src="js/loading.js"></script>
     <script src="js/toast.js"></script>
     <script src="js/modal.js"></script>
+    <script>
+        // 微信扫码注册跳转（与登录页逻辑一致，回调后自动登录/注册）
+        (function () {
+            const wxBtn = document.getElementById('wxRegisterBtn');
+            if (!wxBtn) return;
+
+            fetch('/api/auth/wx-web-config')
+                .then(r => r.json())
+                .then(function (cfg) {
+                    if (!cfg.enabled) {
+                        wxBtn.style.display = 'none';
+                        // 同时隐藏相邻的分割线（按钮上方那个"或"）
+                        const prevDivider = wxBtn.previousElementSibling;
+                        if (prevDivider && prevDivider.classList.contains('divider')) {
+                            prevDivider.style.display = 'none';
+                        }
+                        // 隐藏按钮下方"已有账号"分割线
+                        const nextDivider = wxBtn.nextElementSibling;
+                        if (nextDivider && nextDivider.classList.contains('divider')) {
+                            nextDivider.style.display = 'none';
+                        }
+                        return;
+                    }
+                    wxBtn._appId = cfg.wxWebAppId;
+                })
+                .catch(function () {
+                    wxBtn.style.display = 'none';
+                });
+
+            wxBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                const appId = wxBtn._appId;
+                if (!appId) return;
+                const redirectUri = encodeURIComponent(window.location.origin + '/wx-callback.html');
+                const state = Math.random().toString(36).slice(2);
+                sessionStorage.setItem('wx_state', state);
+                sessionStorage.setItem('wx_redirect', '/');
+                const wxUrl = `https://open.weixin.qq.com/connect/qrconnect?appid=${appId}&redirect_uri=${redirectUri}&response_type=code&scope=snsapi_login&state=${state}#wechat_redirect`;
+                window.location.href = wxUrl;
+            });
+        })();
+    </script>
 </body>
 </html>
 

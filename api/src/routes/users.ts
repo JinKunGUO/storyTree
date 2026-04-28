@@ -300,6 +300,11 @@ router.put('/password', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: '用户不存在' });
     }
 
+    // 微信用户没有密码，不支持此接口
+    if (!user.password) {
+      return res.status(400).json({ error: '你的账号通过微信登录，尚未设置密码。请通过忘记密码流程设置密码。' });
+    }
+
     // 验证当前密码
     const isCurrentPasswordValid = await verifyPassword(currentPassword, user.password);
     if (!isCurrentPasswordValid) {
