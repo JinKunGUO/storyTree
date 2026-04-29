@@ -1828,6 +1828,10 @@ profileHeader.innerHTML = `
                         </div>
                     </div>
                     
+                    <div style="text-align: right; font-size: 12px; margin-top: -5px; padding: 0 5px;">
+                        <span id="monthMakeupHint" style="color: #ff9800;">加载中...</span>
+                    </div>
+                    
                     <div class="compact-checkin-message" id="compactCheckinMessage"></div>
                     
                     <!-- 月份选择器 -->
@@ -2038,6 +2042,7 @@ profileHeader.innerHTML = `
                                 <ul style="margin: 0; padding-left: 20px; font-size: 14px;">
                                     <li>可补签最近 7 天内的日期（不含今天）</li>
                                     <li>每个日期只能补签一次</li>
+                                    <li style="color: #ff9800;"><strong>每月最多补签 3 次</strong>（自然月重置）</li>
                                     <li>补签可恢复连续天数，可能触发里程碑奖励</li>
                                     <li style="color: #f44336; margin-top: 8px;"><strong>智能计算：</strong>系统会自动从今天倒推检查，确保连续天数正确</li>
                                 </ul>
@@ -4887,6 +4892,19 @@ if (codes.length === 0) {
         let checkinRecords = [];
         let checkinStatus = null;
 
+        // 计算当前查看月份的已用补签次数
+        function getMonthMakeupUsed() {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth() + 1;
+            // 只统计当前自然月的补签次数（与后端逻辑一致）
+            return checkinRecords.filter(r => {
+                if (!r.is_makeup) return false;
+                const d = new Date(r.checkin_date);
+                return d.getFullYear() === currentYear && d.getMonth() + 1 === currentMonth;
+            }).length;
+        }
+
         // 加载签到状态
         async function loadCheckinStatus() {
             try {
@@ -5000,6 +5018,22 @@ if (codes.length === 0) {
                 document.getElementById('totalCheckinPoints').textContent = data.stats.totalPoints || 0;
                 document.getElementById('makeupCount').textContent = data.stats.makeupCount || 0;
                 
+                // 更新本月补签已用次数展示
+                const monthUsed = getMonthMakeupUsed();
+                const monthMakeupHint = document.getElementById('monthMakeupHint');
+                if (monthMakeupHint) {
+                    if (checkinStatus?.makeupChances > 0 && monthUsed < 3) {
+                        monthMakeupHint.textContent = `本月已用 ${monthUsed}/3 次`;
+                        monthMakeupHint.style.color = '#ff9800';
+                    } else if (monthUsed >= 3) {
+                        monthMakeupHint.textContent = '本月补签次数已达上限';
+                        monthMakeupHint.style.color = '#94a3b8';
+                    } else {
+                        monthMakeupHint.textContent = '补签机会不足';
+                        monthMakeupHint.style.color = '#94a3b8';
+                    }
+                }
+                
                 // 渲染日历
                 renderCalendar(year, month);
             } catch (error) {
@@ -5103,12 +5137,12 @@ if (codes.length === 0) {
                         dayElement.title = `已签到 +${record.points_earned}积分`;
                     }
                 } else {
-                    // 可补签的日期（最近 7 天内，且有补签机会）
+                    // 可补签的日期（最近 7 天内，且有补签机会，且本月补签未超 3 次）
                     const dayDate = new Date(year, month - 1, day);
                     const diffTime = today - dayDate;
                     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
                     
-                    if (diffDays > 0 && diffDays <= 7 && checkinStatus?.makeupChances > 0) {
+                    if (diffDays > 0 && diffDays <= 7 && checkinStatus?.makeupChances > 0 && getMonthMakeupUsed() < 3) {
                         dayElement.classList.add('can-makeup');
                         dayElement.title = '点击补签';
                         dayElement.onclick = () => showMakeupDialog(dateStr);
@@ -5145,6 +5179,19 @@ if (codes.length === 0) {
 
         // 显示补签对话框
         function showMakeupDialog(date) {
+            // 前端预检：检查月度补签次数
+            const monthUsed = getMonthMakeupUsed();
+            if (monthUsed >= 3) {
+                showMessage('本月补签次数已达上限（每月最多3次）', 'error');
+                return;
+            }
+            
+            // 检查补签机会余额
+            if (!checkinStatus || checkinStatus.makeupChances <= 0) {
+                showMessage('补签机会不足', 'error');
+                return;
+            }
+            
             const overlay = document.createElement('div');
             overlay.style.cssText = `
                 position: fixed;
@@ -5182,6 +5229,9 @@ if (codes.length === 0) {
                     <p style="color: #999; font-size: 14px; margin-bottom: 25px;">
                         <i class="fas fa-info-circle"></i>
                         消耗1次补签机会，当前剩余 <strong style="color: #ff9800;">${checkinStatus?.makeupChances || 0}</strong> 次
+                        <br>
+                        <i class="fas fa-calendar-alt" style="margin-top: 8px; display: inline-block;"></i>
+                        本月已用补签 <strong style="color: #ff9800;">${getMonthMakeupUsed()}/3</strong> 次
                     </p>
                     
                     <div style="display: flex; gap: 15px;">
