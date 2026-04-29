@@ -21,7 +21,10 @@ async function recalculateUserStats() {
     select: {
       id: true,
       username: true,
-      email: true
+      email: true,
+      isAdmin: true,
+      points: true,
+      makeup_chances: true
     }
   });
 
@@ -73,17 +76,28 @@ async function recalculateUserStats() {
     console.log(`  - 解锁徽章: ${unlockedBadges.join(', ') || '无'}`);
 
     // 更新用户数据
-    await prisma.users.update({
-      where: { id: user.id },
-      data: {
-        word_count: totalWordCount,
-        points: totalPoints,
-        makeup_chances: makeupChances,
-        badges: unlockedBadges.length > 0 ? JSON.stringify(unlockedBadges) : null
-      }
-    });
-
-    console.log(`  ✅ 更新完成\n`);
+    if (user.isAdmin) {
+      // 管理员用户：只更新字数和徽章，不覆盖积分和补签机会
+      await prisma.users.update({
+        where: { id: user.id },
+        data: {
+          word_count: totalWordCount,
+          badges: unlockedBadges.length > 0 ? JSON.stringify(unlockedBadges) : null
+        }
+      });
+      console.log(`  ⚠️  管理员用户，仅更新字数和徽章，保留原积分(${user.points})和补签机会(${user.makeup_chances})\n`);
+    } else {
+      await prisma.users.update({
+        where: { id: user.id },
+        data: {
+          word_count: totalWordCount,
+          points: totalPoints,
+          makeup_chances: makeupChances,
+          badges: unlockedBadges.length > 0 ? JSON.stringify(unlockedBadges) : null
+        }
+      });
+      console.log(`  ✅ 更新完成\n`);
+    }
   }
 
   console.log('所有用户统计数据重新计算完成！');

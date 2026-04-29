@@ -5118,7 +5118,9 @@ function getTreeOption(treeData, layout) {
                         // 检查这条链的展开状态
                         const chainKey = `chain-${node.id}-${chainNodes[chainNodes.length - 1].id}`;
                         const expandedCount = expandedChains.get(chainKey) || 0;
-                        const isFullyExpanded = expandedCount >= chainNodes.length - 2;
+                        // 双向展开：前缀 (1+expandedCount) + 后缀 (1+expandedCount) + lastNode
+                        // 完全展开条件：2*(1+expandedCount) >= chainNodes.length - 1
+                        const isFullyExpanded = (2 * (1 + expandedCount)) >= chainNodes.length - 1;
                         
                         // 如果链太长且未完全展开，需要简化
                         if (chainLength > maxChainLength && !isFullyExpanded) {
@@ -5126,17 +5128,37 @@ function getTreeOption(treeData, layout) {
                             const firstNode = chainNodes[0];
                             const lastNode = chainNodes[chainNodes.length - 1];
                             
-                            // 计算要显示的节点
-                            // 前面显示 expandedCount 个，或者默认显示前面1个
-                            const prefixCount = Math.max(1, expandedCount);
-                            const suffixCount = Math.min(3, chainNodes.length - prefixCount - 1);
+                            // 计算要显示的节点（双向展开策略）
+                            // expandedCount 表示单侧额外展开的数量
+                            // 初始：前缀 1 个，后缀 1 个（+ lastNode）
+                            // 每次点击：前缀和后缀各多展开 3 个
+                            const basePrefixCount = 1;  // 初始前缀显示数
+                            const baseSuffixCount = 1;  // 初始后缀显示数（不含 lastNode）
+                            
+                            // 可用的中间节点总数（不含 lastNode）
+                            const availableMiddle = chainNodes.length - 1; // chainNodes[0..length-2] 是可分配的
+                            
+                            // 计算前缀和后缀的目标数量
+                            let targetPrefix = basePrefixCount + expandedCount;
+                            let targetSuffix = baseSuffixCount + expandedCount;
+                            
+                            // 确保前缀 + 后缀不超过可用节点数
+                            if (targetPrefix + targetSuffix > availableMiddle) {
+                                // 超出时均匀分配
+                                const total = availableMiddle;
+                                targetPrefix = Math.min(targetPrefix, total);
+                                targetSuffix = Math.min(targetSuffix, total - targetPrefix);
+                            }
+                            
+                            const prefixCount = targetPrefix;
+                            const suffixCount = Math.max(0, targetSuffix);
                             
                             // 获取前缀节点（从前往后）
                             const prefixNodes = chainNodes.slice(0, prefixCount);
-                            // 获取后缀节点（从后往前）
-                            const suffixNodes = chainNodes.slice(-suffixCount - 1, -1);
-                            // 中间仍然隐藏的节点
-                            const remainingHiddenCount = chainNodes.length - prefixCount - suffixCount - 2;
+                            // 获取后缀节点（从后往前，不含 lastNode）
+                            const suffixNodes = suffixCount > 0 ? chainNodes.slice(chainNodes.length - 1 - suffixCount, chainNodes.length - 1) : [];
+                            // 中间仍然隐藏的节点数
+                            const remainingHiddenCount = Math.max(0, availableMiddle - prefixCount - suffixCount);
                             
                             // 构建新的子节点结构
                             const newChildren = [];
@@ -5250,8 +5272,38 @@ function getTreeOption(treeData, layout) {
                             
                             processedNode.children = newChildren;
                         } else {
-                            // 链不长或已完全展开，正常处理
-                            processedNode.children = node.children.map(c => processTreeDataForDisplay(c, depth + 1, maxChainLength, expandedChains, layout));
+                            // 链不长或已完全展开，直接展开整条链的所有节点
+                            // 关键：不能简单递归处理子节点，否则子节点会重新检测到子链并再次折叠
+                            // 必须将整条链的所有节点串联起来，只在链尾节点上递归处理其子节点
+                            const lastNode = chainNodes[chainNodes.length - 1];
+                            const newChildren = [];
+                            
+                            chainNodes.forEach((chainNode, index) => {
+                                const isLast = index === chainNodes.length - 1;
+                                // 链中间节点：children 设为空，由下面手动串联
+                                // 链尾节点：保留原始 children 并递归处理
+                                const nodeToProcess = isLast
+                                    ? chainNode  // 链尾保留原始 children
+                                    : { ...chainNode, children: [] };  // 中间节点清空 children
+                                    
+                                const processedChainNode = processTreeDataForDisplay(
+                                    nodeToProcess,
+                                    depth + 1 + index, maxChainLength, expandedChains, layout
+                                );
+                                
+                                if (index === 0) {
+                                    newChildren.push(processedChainNode);
+                                } else {
+                                    // 找到前一个节点的末端，串联上去
+                                    let last = newChildren[newChildren.length - 1];
+                                    while (last.children && last.children.length > 0) {
+                                        last = last.children[last.children.length - 1];
+                                    }
+                                    last.children = [processedChainNode];
+                                }
+                            });
+                            
+                            processedNode.children = newChildren;
                         }
                     } else {
                         // 只有一个子节点但孙节点为空或有多个，正常处理
@@ -5435,7 +5487,7 @@ function getTreeOption(treeData, layout) {
         }
         
         // 展开省略号节点，显示被折叠的中间章节
-        // 每次展开前后各3个节点
+        // 每次点击从两侧各展开3个节点
         function expandEllipsisNode(ellipsisNodeData) {
             if (!ellipsisNodeData.chainKey) {
                 console.log('没有可展开的链标识');
@@ -5447,19 +5499,18 @@ function getTreeOption(treeData, layout) {
                 window.expandedEllipsisChains = new Map();
             }
             
-            // 获取当前已展开的数量，默认为0
+            // 获取当前单侧额外展开数量，默认为0
             const currentExpandedCount = window.expandedEllipsisChains.get(ellipsisNodeData.chainKey) || 0;
             
-            // 每次增加3个前缀节点
+            // 每次两侧各多展开3个
             const newExpandedCount = currentExpandedCount + 3;
             
             // 记录新的展开数量
             window.expandedEllipsisChains.set(ellipsisNodeData.chainKey, newExpandedCount);
             
             console.log('展开链:', ellipsisNodeData.chainKey);
-            console.log('之前展开数量:', currentExpandedCount);
-            console.log('新的展开数量:', newExpandedCount);
-            console.log('已展开的链:', window.expandedEllipsisChains);
+            console.log('双侧各额外展开: 前后各+3，expandedCount:', currentExpandedCount, '->', newExpandedCount,
+                        '(前缀显示', 1 + newExpandedCount, '个, 后缀显示', 1 + newExpandedCount, '个)');
             
             // 局部更新图表（使用 setOption 而不是重新初始化）
             if (treeChart) {
@@ -5470,13 +5521,12 @@ function getTreeOption(treeData, layout) {
                 });
             }
             
-            // 显示提示
-            // totalNodes = 链中总节点数（不含首尾两个锚点）
-            // 已显示：newExpandedCount（前缀）+ ellipsisNodeData.suffixCount（后缀）
-            // 剩余隐藏 = totalNodes - newExpandedCount - suffixCount - 2（首尾锚点）
+            // 计算剩余隐藏数
             const totalNodes = ellipsisNodeData.totalNodes || 0;
-            const suffixCount = ellipsisNodeData.suffixCount || 0;
-            const remaining = Math.max(0, totalNodes - newExpandedCount - suffixCount - 2);
+            const availableMiddle = totalNodes - 1; // 不含 lastNode
+            const shownPrefix = 1 + newExpandedCount; // basePrefixCount + expandedCount
+            const shownSuffix = 1 + newExpandedCount; // baseSuffixCount + expandedCount
+            const remaining = Math.max(0, availableMiddle - Math.min(shownPrefix, availableMiddle) - Math.max(0, Math.min(shownSuffix, availableMiddle - Math.min(shownPrefix, availableMiddle))));
             if (remaining > 0) {
                 showSuccess(`已展开，还剩 ${remaining} 个章节未显示`);
             } else {
@@ -5488,7 +5538,7 @@ function getTreeOption(treeData, layout) {
         async function showNodeDetail(nodeData, clickX, clickY) {
             // 如果是省略号节点，展开被折叠的中间章节
             if (nodeData.isEllipsis) {
-                console.log('点击省略号节点，展开被折叠的章节:', nodeData.collapsedNodes);
+                console.log('点击省略号节点，展开被折叠的章节，链标识:', nodeData.chainKey, '当前隐藏:', nodeData.value, '章');
                 expandEllipsisNode(nodeData);
                 return;
             }
