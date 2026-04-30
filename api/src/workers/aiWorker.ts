@@ -10,6 +10,117 @@ import { deductPoints, AI_COST } from '../utils/points';
 const USE_QWEN = !!process.env.QWEN_API_KEY;
 const QWEN_MODEL = process.env.QWEN_MODEL || 'qwen-plus';
 
+// ==================== API 限流保护 ====================
+/**
+ * 令牌桶限流器（防止触发 AI API 供应商的 QPS/RPM 限制）
+ */
+class TokenBucketLimiter {
+  private tokens: number;
+  private lastRefillTime: number;
+  private readonly capacity: number;
+  private readonly refillRate: number; // 每秒补充的令牌数
+  private readonly minInterval: number; // 最小请求间隔（毫秒）
+
+  constructor(maxConcurrent: number = 5, refillPerSecond: number = 5) {
+    this.capacity = maxConcurrent;
+    this.tokens = maxConcurrent;
+    this.refillRate = refillPerSecond;
+    this.minInterval = 1000 / refillPerSecond; // 例如 5 QPS = 200ms 间隔
+    this.lastRefillTime = Date.now();
+  }
+
+  private refill() {
+    const now = Date.now();
+    const timePassed = (now - this.lastRefillTime) / 1000;
+    const tokensToAdd = timePassed * this.refillRate;
+    this.tokens = Math.min(this.capacity, this.tokens + tokensToAdd);
+    this.lastRefillTime = now;
+  }
+
+  async acquire(): Promise<void> {
+    this.refill();
+    
+    while (this.tokens < 1) {
+      // 等待下一个令牌
+      const waitTime = (1 - this.tokens) / this.refillRate * 1000;
+      await new Promise(resolve => setTimeout(resolve, Math.max(waitTime, this.minInterval)));
+      this.refill();
+    }
+    
+    this.tokens -= 1;
+  }
+}
+
+// 千问 API 限流器：最大 5 QPS（每秒5个请求）
+const qwenLimiter = new TokenBucketLimiter(5, 5);
+
+// ==================== 熔断器 ====================
+/**
+ * 熔断器（防止 AI API 故障时雪崩）
+ */
+class CircuitBreaker {
+  private failureCount: number = 0;
+  private lastFailureTime: number = 0;
+  private state: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED';
+  private readonly failureThreshold: number;
+  private readonly resetTimeout: number; // 熔断后多久尝试恢复（毫秒）
+
+  constructor(failureThreshold: number = 3, resetTimeout: number = 60000) {
+    this.failureThreshold = failureThreshold;
+    this.resetTimeout = resetTimeout;
+  }
+
+  async execute<T>(fn: () => Promise<T>): Promise<T> {
+    // 检查熔断器状态
+    if (this.state === 'OPEN') {
+      const now = Date.now();
+      if (now - this.lastFailureTime >= this.resetTimeout) {
+        console.log('🔄 熔断器进入半开状态，尝试恢复...');
+        this.state = 'HALF_OPEN';
+      } else {
+        const remainingSeconds = Math.ceil((this.resetTimeout - (now - this.lastFailureTime)) / 1000);
+        throw new Error(`AI 服务暂时不可用，熔断器已开启，${remainingSeconds}秒后自动恢复`);
+      }
+    }
+
+    try {
+      const result = await fn();
+      
+      // 成功后重置计数
+      if (this.state === 'HALF_OPEN') {
+        console.log('✅ 熔断器恢复正常，关闭熔断');
+        this.state = 'CLOSED';
+      }
+      this.failureCount = 0;
+      
+      return result;
+    } catch (error) {
+      this.failureCount++;
+      this.lastFailureTime = Date.now();
+      
+      console.error(`❌ AI API 调用失败 (${this.failureCount}/${this.failureThreshold}):`, error);
+      
+      if (this.failureCount >= this.failureThreshold) {
+        this.state = 'OPEN';
+        console.error(`🚨 熔断器开启！连续失败 ${this.failureCount} 次，暂停 ${this.resetTimeout / 1000} 秒`);
+      }
+      
+      throw error;
+    }
+  }
+
+  getState() {
+    return {
+      state: this.state,
+      failureCount: this.failureCount,
+      lastFailureTime: this.lastFailureTime
+    };
+  }
+}
+
+// 千问 API 熔断器：连续 3 次失败后熔断 60 秒
+const qwenCircuitBreaker = new CircuitBreaker(3, 60000);
+
 // 初始化AI客户端
 const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
@@ -65,97 +176,139 @@ interface QwenImageAPIResponse {
 }
 
 /**
- * 调用千问API
+ * 调用千问API（带限流、熔断和超时保护）
  */
 async function callQwenAPI(prompt: string, maxTokens: number = 2000, temperature: number = 0.8): Promise<{ text: string; usage: { input: number; output: number } }> {
-  const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.QWEN_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: QWEN_MODEL,
-      input: {
-        messages: [
-          { role: 'user', content: prompt }
-        ]
-      },
-      parameters: {
-        max_tokens: maxTokens,
-        temperature: temperature,
-        top_p: 0.9
-      }
-    })
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`千问API调用失败: ${response.status} ${errorText}`);
-  }
-
-  const data = await response.json() as QwenAPIResponse;
+  // 1. 限流：等待令牌
+  await qwenLimiter.acquire();
   
-  if (data.code) {
-    throw new Error(`千问API错误: ${data.code} - ${data.message}`);
-  }
+  // 2. 熔断器包裹实际调用
+  return qwenCircuitBreaker.execute(async () => {
+    // 3. 超时控制：30秒超时
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    
+    try {
+      const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.QWEN_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: QWEN_MODEL,
+          input: {
+            messages: [
+              { role: 'user', content: prompt }
+            ]
+          },
+          parameters: {
+            max_tokens: maxTokens,
+            temperature: temperature,
+            top_p: 0.9
+          }
+        }),
+        signal: controller.signal
+      });
 
-  return {
-    text: data.output?.text || '',
-    usage: {
-      input: data.usage?.input_tokens || 0,
-      output: data.usage?.output_tokens || 0
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`千问API调用失败: ${response.status} ${errorText}`);
+      }
+
+      const data = await response.json() as QwenAPIResponse;
+      
+      if (data.code) {
+        throw new Error(`千问API错误: ${data.code} - ${data.message}`);
+      }
+
+      return {
+        text: data.output?.text || '',
+        usage: {
+          input: data.usage?.input_tokens || 0,
+          output: data.usage?.output_tokens || 0
+        }
+      };
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        throw new Error('千问API调用超时（30秒），请稍后重试');
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
     }
-  };
+  });
 }
 
 /**
- * 调用千问图像生成API（通义万相）
+ * 调用千问图像生成API（通义万相）（带限流、熔断和超时保护）
  */
 async function callQwenImageAPI(prompt: string): Promise<{ imageUrl: string }> {
   const imageModel = process.env.QWEN_IMAGE_MODEL || 'wanx-v1';
   
   console.log(`🎨 调用千问图像生成API，模型: ${imageModel}`);
   
-  // 第一步：提交图像生成任务
-  const submitResponse = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.QWEN_API_KEY}`,
-      'Content-Type': 'application/json',
-      'X-DashScope-Async': 'enable' // 异步模式
-    },
-    body: JSON.stringify({
-      model: imageModel,
-      input: {
-        prompt: prompt
-      },
-      parameters: {
-        size: '1024*1024',
-        n: 1
-      }
-    })
-  });
-
-  if (!submitResponse.ok) {
-    const errorText = await submitResponse.text();
-    throw new Error(`千问图像API调用失败: ${submitResponse.status} ${errorText}`);
-  }
-
-  const submitData = await submitResponse.json() as QwenImageAPIResponse;
+  // 限流：等待令牌
+  await qwenLimiter.acquire();
   
-  if (submitData.output?.code) {
-    throw new Error(`千问图像API错误: ${submitData.output.code} - ${submitData.output.message}`);
-  }
+  // 熔断器包裹提交请求
+  const taskId = await qwenCircuitBreaker.execute(async () => {
+    // 超时控制：提交请求 15 秒超时
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    
+    try {
+      // 第一步：提交图像生成任务
+      const submitResponse = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.QWEN_API_KEY}`,
+          'Content-Type': 'application/json',
+          'X-DashScope-Async': 'enable' // 异步模式
+        },
+        body: JSON.stringify({
+          model: imageModel,
+          input: {
+            prompt: prompt
+          },
+          parameters: {
+            size: '1024*1024',
+            n: 1
+          }
+        }),
+        signal: controller.signal
+      });
 
-  const taskId = submitData.output?.task_id;
-  if (!taskId) {
-    throw new Error('未能获取任务ID');
-  }
+      if (!submitResponse.ok) {
+        const errorText = await submitResponse.text();
+        throw new Error(`千问图像API调用失败: ${submitResponse.status} ${errorText}`);
+      }
+
+      const submitData = await submitResponse.json() as QwenImageAPIResponse;
+      
+      if (submitData.output?.code) {
+        throw new Error(`千问图像API错误: ${submitData.output.code} - ${submitData.output.message}`);
+      }
+
+      const id = submitData.output?.task_id;
+      if (!id) {
+        throw new Error('未能获取任务ID');
+      }
+      
+      return id;
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        throw new Error('千问图像API提交超时（15秒），请稍后重试');
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  });
 
   console.log(`⏳ 图像生成任务已提交，任务ID: ${taskId}，开始轮询...`);
 
-  // 第二步：轮询任务状态
+  // 第二步：轮询任务状态（轮询不走熔断器，因为只是查询状态）
   let attempts = 0;
   const maxAttempts = 60; // 最多轮询60次（2分钟）
   
@@ -194,7 +347,7 @@ async function callQwenImageAPI(prompt: string): Promise<{ imageUrl: string }> {
     // 继续轮询（状态为PENDING或RUNNING）
   }
 
-  throw new Error('图像生成超时，请稍后重试');
+  throw new Error('图像生成超时（2分钟），请稍后重试');
 }
 
 /**
@@ -239,7 +392,7 @@ interface IllustrationJobData {
 /**
  * 处理AI续写任务
  */
-aiContinuationQueue.process(async (job: Job<ContinuationJobData>) => {
+aiContinuationQueue.process(3, async (job: Job<ContinuationJobData>) => {
   const { taskId, userId, storyId, nodeId, context, storyTitle, storyDescription, style, count, mode, wordCount = 1500 } = job.data;
 
   console.log(`🚀 开始处理AI续写任务: ${taskId}, 使用${USE_QWEN ? '千问' : 'Claude'}API`);
@@ -726,7 +879,7 @@ async function autoAcceptAiChapter(task: any, firstOption: any, publishImmediate
 /**
  * 处理AI润色任务
  */
-aiPolishQueue.process(async (job: Job<PolishJobData>) => {
+aiPolishQueue.process(3, async (job: Job<PolishJobData>) => {
   const { taskId, userId, content, style } = job.data;
 
   console.log(`🚀 开始处理AI润色任务: ${taskId}, 使用${USE_QWEN ? '千问' : 'Claude'}API`);
@@ -871,7 +1024,7 @@ ${content}
 /**
  * 处理AI插图任务
  */
-aiIllustrationQueue.process(async (job: Job<IllustrationJobData>) => {
+aiIllustrationQueue.process(2, async (job: Job<IllustrationJobData>) => {
   const { taskId, userId, storyId, nodeId, chapterTitle, chapterContent } = job.data;
 
   console.log(`🚀 开始处理AI插图任务: ${taskId}, 使用千问通义万相API`);
@@ -1406,4 +1559,3 @@ setInterval(checkScheduledTasks, SCHEDULER_INTERVAL);
 checkScheduledTasks().then(() => {
   console.log('✅ 定时任务调度器已启动，每60秒检查一次');
 });
-

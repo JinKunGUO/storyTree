@@ -330,19 +330,54 @@ async function generate() {
 
   try {
     if (activeTab.value === 'continue') {
-      // 使用旧版同步接口生成续写（write页面是草稿阶段，适合快速预览）
-      const res = await http.post<{ options: Array<{ content: string }> }>('/api/ai/generate', {
-        nodeId: props.nodeId,
+      // 使用 v2 异步队列模式提交续写任务
+      const submitRes = await http.post<{ taskId: number; status: string; message: string }>('/api/ai/v2/continuation/submit', {
         storyId: props.storyId,
+        nodeId: props.nodeId,
+        context: props.content || '',
         style: selectedStyle.value !== 'default' ? selectedStyle.value : undefined,
         count: 1,
+        mode: 'segment',
       }, { showError: false })
-      const options = res.options || []
-      if (options.length > 0) {
-        result.value = options[0].content || ''
-      } else {
-        error.value = 'AI 未返回续写内容，请重试'
+
+      const taskId = submitRes.taskId
+      if (!taskId) {
+        error.value = 'AI 任务提交失败，请重试'
+        return
       }
+
+      // 轮询任务状态（每2秒一次，最多60次=2分钟）
+      const maxAttempts = 60
+      let attempts = 0
+      while (attempts < maxAttempts) {
+        attempts++
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        const taskRes = await http.get<{
+          status: string
+          result?: { options?: Array<{ content: string; title?: string; style?: string }> }
+          errorMessage?: string
+          queuePosition?: number | null
+        }>(`/api/ai/v2/tasks/${taskId}`, undefined, { showError: false })
+
+        if (taskRes.status === 'completed') {
+          const options = taskRes.result?.options || []
+          if (options.length > 0) {
+            result.value = options[0].content || ''
+          } else {
+            error.value = 'AI 未返回续写内容，请重试'
+          }
+          break
+        } else if (taskRes.status === 'failed') {
+          error.value = taskRes.errorMessage || 'AI 续写失败，请重试'
+          break
+        }
+        // pending/processing 继续轮询
+      }
+      if (attempts >= maxAttempts && !result.value && !error.value) {
+        error.value = '生成超时，请稍后在任务列表中查看'
+      }
+      // 续写完成后刷新配额
+      loadQuota()
     } else if (activeTab.value === 'polish') {
       const content = polishContent.value.trim()
       if (content.length < 10) {

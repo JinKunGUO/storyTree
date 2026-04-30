@@ -6,6 +6,55 @@ import { canUseAiFeature, getUserMonthlyQuota, getUserLevel, hasEnoughPoints, AI
 
 const router = Router();
 
+// 用户并发限制：按任务类型分别限制，不同类型互不影响
+const MAX_USER_ACTIVE_TASKS_PER_TYPE: Record<string, number> = {
+  continuation: 2,  // 续写最多同时2个
+  polish: 2,        // 润色最多同时2个
+  illustration: 1   // 插图最多同时1个（图片生成资源消耗大）
+};
+
+/**
+ * 检查用户某类型任务是否超过并发限制（按类型分别限制）
+ * @returns null 表示允许提交，否则返回错误信息
+ */
+async function checkUserTaskLimit(userId: number, taskType: string): Promise<string | null> {
+  const maxActive = MAX_USER_ACTIVE_TASKS_PER_TYPE[taskType] ?? 2;
+  const activeTasks = await prisma.ai_tasks.count({
+    where: {
+      user_id: userId,
+      task_type: taskType,
+      status: { in: ['pending', 'processing'] }
+    }
+  });
+  if (activeTasks >= maxActive) {
+    const typeNames: Record<string, string> = {
+      continuation: '续写',
+      polish: '润色',
+      illustration: '插图'
+    };
+    const typeName = typeNames[taskType] || taskType;
+    return `您当前有 ${activeTasks} 个${typeName}任务正在处理中，请等待完成后再提交（${typeName}最多同时 ${maxActive} 个）`;
+  }
+  return null;
+}
+
+/**
+ * 检查是否有重复的任务（任务去重）
+ * @returns 已存在的任务ID，或 null
+ */
+async function checkDuplicateTask(userId: number, taskType: string, nodeId?: number, storyId?: number): Promise<number | null> {
+  const where: any = {
+    user_id: userId,
+    task_type: taskType,
+    status: { in: ['pending', 'processing'] }
+  };
+  if (nodeId) where.node_id = nodeId;
+  if (storyId) where.story_id = storyId;
+
+  const existing = await prisma.ai_tasks.findFirst({ where });
+  return existing?.id || null;
+}
+
 // JWT认证函数
 const getUserId = (req: any): number | null => {
   try {
@@ -42,6 +91,26 @@ router.post('/continuation/submit', async (req, res) => {
     const permission = await canUseAiFeature(userId, 'continuation');
     if (!permission.allowed) {
       return res.status(403).json({ error: permission.reason });
+    }
+
+    // 用户并发限制：防止单用户霸占队列
+    const limitError = await checkUserTaskLimit(userId, 'continuation');
+    if (limitError) {
+      return res.status(429).json({ error: limitError });
+    }
+
+    // 任务去重：防止重复提交
+    const duplicateTaskId = await checkDuplicateTask(
+      userId, 'continuation',
+      nodeId ? parseInt(nodeId) : undefined,
+      parseInt(storyId)
+    );
+    if (duplicateTaskId) {
+      return res.json({
+        taskId: duplicateTaskId,
+        status: 'duplicate',
+        message: '已有相同的续写任务正在处理中，请等待完成'
+      });
     }
 
     // 获取用户信息
@@ -234,7 +303,8 @@ router.post('/continuation/submit', async (req, res) => {
 });
 
 /**
- * 提交AI润色任务（同步快速处理）
+ * 提交AI润色任务（快速同步尝试 + 异步降级）
+ * 先尝试5秒内同步返回结果，超时则返回taskId让前端轮询
  */
 router.post('/polish', async (req, res) => {
   const userId = getUserId(req);
@@ -255,6 +325,12 @@ router.post('/polish', async (req, res) => {
       return res.status(403).json({ error: permission.reason });
     }
 
+    // 用户并发限制：防止单用户霸占队列
+    const limitError = await checkUserTaskLimit(userId, 'polish');
+    if (limitError) {
+      return res.status(429).json({ error: limitError });
+    }
+
     // 创建任务（保存是否需要使用积分）
     const task = await prisma.ai_tasks.create({
       data: {
@@ -271,7 +347,7 @@ router.post('/polish', async (req, res) => {
       }
     });
 
-    // 添加到队列（同步等待）
+    // 添加到队列
     const job = await aiPolishQueue.add(
       {
         taskId: task.id,
@@ -284,25 +360,58 @@ router.post('/polish', async (req, res) => {
       }
     );
 
-    // 等待任务完成（最多30秒）
-    const result = await job.finished();
-
-    // 获取结果
-    const completedTask = await prisma.ai_tasks.findUnique({
-      where: { id: task.id }
-    });
-
-    if (completedTask?.result_data) {
-      const resultData = JSON.parse(completedTask.result_data);
-      res.json({
+    // 检查队列状态：如果并发位已满，直接异步返回，不做无意义的等待
+    const activeCount = await aiPolishQueue.getActiveCount();
+    if (activeCount >= 3) {
+      // 队列已满，直接返回 taskId 让前端轮询
+      console.log(`⏰ 润色队列已满(${activeCount}/3)，任务 ${task.id} 直接进入异步模式`);
+      return res.json({
         taskId: task.id,
-        original: resultData.original,
-        polished: resultData.polished,
-        style: resultData.style
+        status: 'processing',
+        message: '润色任务正在排队中，请通过 /tasks/:taskId 轮询结果'
       });
-    } else {
-      res.status(500).json({ error: '润色失败' });
     }
+
+    // 队列有空位，尝试快速同步返回（最多等5秒）
+    try {
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('TIMEOUT')), 5000)
+      );
+      await Promise.race([job.finished(), timeoutPromise]);
+
+      // 5秒内完成，直接返回结果（向后兼容旧前端）
+      const completedTask = await prisma.ai_tasks.findUnique({
+        where: { id: task.id }
+      });
+
+      if (completedTask?.result_data) {
+        const resultData = JSON.parse(completedTask.result_data);
+        return res.json({
+          taskId: task.id,
+          original: resultData.original,
+          polished: resultData.polished,
+          style: resultData.style
+        });
+      }
+    } catch (e: any) {
+      if (e.message === 'TIMEOUT') {
+        // 5秒超时，返回taskId让前端轮询
+        console.log(`⏰ 润色任务 ${task.id} 5秒内未完成，降级为异步模式`);
+        return res.json({
+          taskId: task.id,
+          status: 'processing',
+          message: '润色任务正在处理中，请通过 /tasks/:taskId 轮询结果'
+        });
+      }
+      throw e; // 其他错误继续抛出
+    }
+
+    // 兜底：5秒内任务完成但没有结果数据
+    return res.json({
+      taskId: task.id,
+      status: 'processing',
+      message: '润色任务正在处理中，请通过 /tasks/:taskId 轮询结果'
+    });
   } catch (error) {
     console.error('AI润色失败:', error);
     res.status(500).json({ error: '润色失败' });
@@ -329,6 +438,26 @@ router.post('/illustration/submit', async (req, res) => {
     const permission = await canUseAiFeature(userId, 'illustration');
     if (!permission.allowed) {
       return res.status(403).json({ error: permission.reason });
+    }
+
+    // 用户并发限制：防止单用户霸占队列
+    const limitError = await checkUserTaskLimit(userId, 'illustration');
+    if (limitError) {
+      return res.status(429).json({ error: limitError });
+    }
+
+    // 任务去重：防止重复提交相同章节的插图
+    const duplicateTaskId = await checkDuplicateTask(
+      userId, 'illustration',
+      parseInt(nodeId),
+      parseInt(storyId)
+    );
+    if (duplicateTaskId) {
+      return res.json({
+        taskId: duplicateTaskId,
+        status: 'duplicate',
+        message: '已有相同的插图任务正在处理中，请等待完成'
+      });
     }
 
     // 创建任务（保存是否需要使用积分）
@@ -371,7 +500,7 @@ router.post('/illustration/submit', async (req, res) => {
 });
 
 /**
- * 查询任务状态
+ * 查询任务状态（含队列位置信息）
  */
 router.get('/tasks/:taskId', async (req, res) => {
   const userId = getUserId(req);
@@ -399,6 +528,39 @@ router.get('/tasks/:taskId', async (req, res) => {
       result = JSON.parse(task.result_data);
     }
 
+    // 如果任务还在等待中，计算队列位置
+    let queuePosition: number | null = null;
+    let estimatedWaitSeconds: number | null = null;
+    if (task.status === 'pending' || task.status === 'processing') {
+      try {
+        // 根据任务类型选择对应队列
+        const queue = task.task_type === 'continuation' ? aiContinuationQueue
+          : task.task_type === 'polish' ? aiPolishQueue
+          : task.task_type === 'illustration' ? aiIllustrationQueue
+          : null;
+
+        if (queue && task.status === 'pending') {
+          const waitingJobs = await queue.getWaiting();
+          const position = waitingJobs.findIndex((j: any) => {
+            try { return j.data?.taskId === task.id; } catch { return false; }
+          });
+          queuePosition = position >= 0 ? position + 1 : null;
+          // 估算等待时间：每个任务平均约 15 秒（续写更长，润色更短）
+          const avgTimePerTask = task.task_type === 'continuation' ? 30
+            : task.task_type === 'illustration' ? 60
+            : 10;
+          if (queuePosition !== null) {
+            estimatedWaitSeconds = queuePosition * avgTimePerTask;
+          }
+        } else if (task.status === 'processing') {
+          queuePosition = 0; // 正在处理中
+        }
+      } catch (e) {
+        // 队列查询失败不影响主流程
+        console.warn('查询队列位置失败:', e);
+      }
+    }
+
     res.json({
       taskId: task.id,
       taskType: task.task_type,
@@ -408,7 +570,10 @@ router.get('/tasks/:taskId', async (req, res) => {
       startedAt: task.started_at,
       completedAt: task.completed_at,
       result,
-      errorMessage: task.error_message
+      errorMessage: task.error_message,
+      // 队列进度信息
+      queuePosition,
+      estimatedWaitSeconds
     });
   } catch (error) {
     console.error('查询任务失败:', error);

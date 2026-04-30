@@ -2626,9 +2626,9 @@
             });
         }
 
-        // 显示AI续写建议
+        // 显示AI续写建议（使用v2异步队列模式）
         async function showAiSuggestions() {
-            console.log('用户点击AI续写建议');
+            console.log('用户点击AI续写建议（v2异步模式）');
 
             // 检查编辑器是否已初始化
             if (!quill) {
@@ -2652,33 +2652,18 @@
             document.getElementById('regenerateBtn').style.display = 'none';
 
             try {
-                // 详细的token检查
-                const localToken = localStorage.getItem('token');
-                const sessionToken = sessionStorage.getItem('token');
-                const token = localToken || sessionToken;
-                
-                console.log('=== Token调试信息 ===');
-                console.log('localStorage token:', localToken ? '存在 (长度: ' + localToken.length + ')' : '不存在');
-                console.log('sessionStorage token:', sessionToken ? '存在 (长度: ' + sessionToken.length + ')' : '不存在');
-                console.log('最终使用的token:', token ? '存在' : '不存在');
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
                 
                 if (!token) {
-                    console.error('❌ 未找到token，请先登录');
                     throw new Error('Not authenticated');
                 }
 
-                console.log('开始调用AI API...');
+                console.log('调用AI v2续写API（小段落模式）...');
                 console.log('故事ID:', storyId);
                 console.log('当前内容长度:', currentContent.length);
 
-                // 调用AI API
-                // 注意：当前API需要nodeId，但写作页面可能还没有创建节点
-                // 这里我们需要先创建一个临时节点，或者修改API支持传入内容
-                
-                // 方案：使用story的描述作为上下文（简化实现）
-                // 更好的方案是先创建草稿节点
-                
-                const response = await fetch('/api/ai/generate', {
+                // 使用 v2 异步队列模式提交续写任务
+                const response = await fetch('/api/ai/v2/continuation/submit', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -2686,8 +2671,10 @@
                     },
                     body: JSON.stringify({
                         storyId: parseInt(storyId),
+                        nodeId: window.lastNodeId || null,
                         context: currentContent,
-                        count: 3
+                        count: 3,
+                        mode: 'segment'  // 小段落模式
                     })
                 });
 
@@ -2699,13 +2686,20 @@
                 }
 
                 const data = await response.json();
-                console.log('AI API返回数据:', data);
+                console.log('AI v2返回数据:', data);
 
-                if (data.options && data.options.length > 0) {
-                    displayAiOptions(data.options);
-                } else {
-                    throw new Error('AI未返回续写选项');
+                // 如果是重复任务，直接轮询已有任务
+                const taskId = data.taskId;
+                currentAiTaskId = taskId;
+
+                // 更新加载文案
+                const loadingText = document.getElementById('aiLoadingText');
+                if (loadingText) {
+                    loadingText.textContent = 'AI正在思考中，请稍候...';
                 }
+
+                // 异步轮询任务状态
+                await pollTaskStatus(taskId);
 
             } catch (error) {
                 console.error('AI续写错误:', error);
@@ -2718,14 +2712,15 @@
                 // 友好的错误提示
                 if (error.message === 'Not authenticated' || error.message.includes('401')) {
                     errorMessage = '请先登录后再使用AI续写功能';
-                    // 3秒后跳转到登录页
                     setTimeout(() => {
                         showConfirm('需要登录才能使用AI续写功能，是否前往登录页？', () => {
                             window.location.href = '/login?redirect=' + encodeURIComponent(window.location.href);
                         }, { title: '需要登录', confirmText: '前往登录', onCancel: closeAiModalFunc });
                     }, 1000);
-                } else if (error.message.includes('nodeId')) {
-                    errorMessage = '请先保存草稿后再使用AI续写功能';
+                } else if (error.message.includes('任务正在处理')) {
+                    errorMessage = '您有任务正在处理中，请等待完成后再提交';
+                } else if (error.message.includes('积分') || error.message.includes('配额')) {
+                    errorMessage = '积分或配额不足';
                 } else if (error.message.includes('网络')) {
                     errorMessage = '网络连接失败，请检查网络';
                 }

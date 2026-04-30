@@ -3,6 +3,23 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../index';
 import OpenAI from 'openai';
 
+/**
+ * @deprecated v1 AI路由（同步模式）—— 所有前端调用已迁移到 ai-v2.ts
+ * 
+ * 迁移记录（2026-04-30）：
+ * - web/write.html: /api/ai/generate → /api/ai/v2/continuation/submit (mode=segment)
+ * - miniprogram/src/components/ai-panel/index.vue: /api/ai/generate → /api/ai/v2/continuation/submit
+ * - miniprogram/src/api/ai.ts: v1 函数已标记 @deprecated
+ * 
+ * 此文件保留作为兜底，防止遗漏的旧版客户端调用。
+ * 后续可在确认无流量后安全移除。
+ * 
+ * 同步路由的问题：
+ * 1. 阻塞 Express 线程，影响其他 HTTP 请求
+ * 2. 无并发控制、无限流
+ * 3. 无任务去重和用户公平调度
+ */
+
 const router = Router();
 
 // JWT认证函数 - 从Authorization header中提取并验证token

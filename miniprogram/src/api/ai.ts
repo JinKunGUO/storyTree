@@ -1,9 +1,19 @@
 /**
  * AI 相关 API
- * 后端实际路由（/api/ai）：
- *   POST /generate   — 生成续写选项（支持 nodeId 或 storyId + context）
- *   POST /accept     — 采纳 AI 续写分支（创建节点）
- *   GET  /usage-stats — 获取 AI 使用统计
+ * 
+ * v2 路由（/api/ai/v2）— 主力路由（异步队列模式）：
+ *   POST /continuation/submit — 提交续写任务（支持 segment/chapter/full 模式）
+ *   POST /continuation/accept — 采纳 AI 续写结果
+ *   POST /polish             — AI 润色（快速同步尝试 + 异步降级）
+ *   POST /illustration/submit — 提交插图任务
+ *   GET  /tasks/:taskId       — 查询任务状态
+ *   GET  /tasks               — 获取任务列表
+ *   GET  /quota               — 获取配额信息
+ * 
+ * v1 路由（/api/ai）— 已废弃，请勿新增调用：
+ *   POST /generate   — 生成续写选项（同步阻塞，将被移除）
+ *   POST /accept     — 采纳 AI 续写分支（将被移除）
+ *   GET  /usage-stats — 获取 AI 使用统计（将被移除）
  */
 
 import http from '@/utils/request'
@@ -29,10 +39,8 @@ export interface AiOption {
 }
 
 // 生成 AI 续写选项
-// 后端路由：POST /api/ai/generate
-// 支持两种模式：
-//   - 基于已保存节点：{ nodeId, style?, count? }
-//   - 基于故事+上下文：{ storyId, context?, style?, count? }
+// @deprecated 请使用 submitV2ContinueTask() 代替（v2 异步队列模式）
+// 后端路由：POST /api/ai/generate（v1 同步模式，将被废弃）
 export function createContinueTask(data: {
   story_id?: number
   node_id?: number
@@ -54,7 +62,8 @@ export function createContinueTask(data: {
 }
 
 // 采纳 AI 续写分支（创建节点）
-// 后端路由：POST /api/ai/accept
+// @deprecated 请使用 v2 路由 POST /api/ai/v2/continuation/accept
+// 后端路由：POST /api/ai/accept（v1 同步模式，将被废弃）
 export function acceptAiOption(data: {
   parentNodeId: number
   title: string
