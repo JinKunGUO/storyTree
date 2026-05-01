@@ -185,10 +185,10 @@
         <div id="successState" style="display: none;">
             <i class="fas fa-check-circle verify-icon success"></i>
             <h1 class="verify-title">验证成功！</h1>
-            <p class="verify-message">您的邮箱已成功验证，现在可以使用所有功能了</p>
+            <p class="verify-message">您的邮箱已成功验证，已自动登录。<br><span id="countdownText">3 秒后自动跳转到首页...</span></p>
             <div class="verify-actions">
                 <a href="/index.html" class="btn btn-primary">
-                    <i class="fas fa-home"></i> 返回首页
+                    <i class="fas fa-home"></i> 立即进入首页
                 </a>
                 <a href="/profile.html" class="btn btn-secondary">
                     <i class="fas fa-user"></i> 个人中心
@@ -248,7 +248,20 @@
                 const data = await response.json();
 
                 if (response.ok) {
+                    // 保存 token 和用户信息到 localStorage
+                    if (data.token) {
+                        localStorage.setItem('token', data.token);
+                    }
+                    if (data.user) {
+                        localStorage.setItem('user', JSON.stringify(data.user));
+                    }
+                    
                     showSuccess();
+                    
+                    // 3秒后自动跳转到首页（已登录状态）
+                    setTimeout(() => {
+                        window.location.href = '/index.html';
+                    }, 3000);
                 } else {
                     showError(data.error || '验证失败');
                 }
@@ -263,6 +276,19 @@
             document.getElementById('loadingState').style.display = 'none';
             document.getElementById('errorState').style.display = 'none';
             document.getElementById('successState').style.display = 'block';
+            
+            // 倒计时效果
+            let countdown = 3;
+            const countdownEl = document.getElementById('countdownText');
+            const timer = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    countdownEl.textContent = `${countdown} 秒后自动跳转到首页...`;
+                } else {
+                    countdownEl.textContent = '正在跳转...';
+                    clearInterval(timer);
+                }
+            }, 1000);
         }
 
         // 显示错误状态

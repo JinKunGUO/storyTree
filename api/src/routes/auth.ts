@@ -254,6 +254,8 @@ router.post('/login', async (req, res) => {
         avatar: true,
         bio: true,
         emailVerified: true,
+        emailVerificationToken: true,
+        emailVerificationExpires: true,
         points: true,
         word_count: true,
         consecutive_days: true,
@@ -278,20 +280,33 @@ router.post('/login', async (req, res) => {
 
     // 检查邮箱是否已验证
     if (!user.emailVerified) {
-      // 自动重新发送验证邮件（异步，不阻塞响应）
-      const verificationToken = generateToken();
-      const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
-      prisma.users.update({
-        where: { id: user.id },
-        data: {
-          emailVerificationToken: verificationToken,
-          emailVerificationExpires: verificationExpires,
-        }
-      }).then(() => {
-        sendVerificationEmail(user.email!, verificationToken).catch(err => {
-          console.error('重发验证邮件失败:', err);
+      // 检查是否已有未过期的验证 token，有则复用，避免覆盖导致用户手中的旧链接失效
+      const hasValidToken = user.emailVerificationToken && 
+        user.emailVerificationExpires && 
+        new Date(user.emailVerificationExpires) > new Date();
+
+      let tokenToSend: string;
+
+      if (hasValidToken) {
+        // 复用已有的未过期 token，直接重发邮件
+        tokenToSend = user.emailVerificationToken!;
+      } else {
+        // token 不存在或已过期，生成新的
+        tokenToSend = generateToken();
+        const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24小时
+        await prisma.users.update({
+          where: { id: user.id },
+          data: {
+            emailVerificationToken: tokenToSend,
+            emailVerificationExpires: verificationExpires,
+          }
         });
-      }).catch(err => console.error('更新验证token失败:', err));
+      }
+
+      // 异步发送验证邮件，不阻塞响应
+      sendVerificationEmail(user.email!, tokenToSend).catch(err => {
+        console.error('重发验证邮件失败:', err);
+      });
 
       return res.status(403).json({
         error: '邮箱尚未验证，请查收验证邮件后再登录',
@@ -474,6 +489,20 @@ router.post('/verify-email', async (req, res) => {
         emailVerificationExpires: {
           gt: new Date()
         }
+      },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        avatar: true,
+        bio: true,
+        emailVerified: true,
+        isAdmin: true,
+        points: true,
+        level: true,
+        membership_tier: true,
+        membership_expires_at: true,
+        createdAt: true,
       }
     });
 
@@ -481,22 +510,43 @@ router.post('/verify-email', async (req, res) => {
       return res.status(400).json({ error: '验证链接无效或已过期' });
     }
 
-    // 如果已经验证过，直接返回成功
-    if (user.emailVerified) {
-      return res.json({ message: '邮箱已验证' });
+    // 如果已经验证过，也生成 token 让用户直接登录
+    if (!user.emailVerified) {
+      // 更新用户邮箱验证状态
+      await prisma.users.update({
+        where: { id: user.id },
+        data: {
+          emailVerified: true,
+          emailVerificationToken: null,
+          emailVerificationExpires: null,
+        }
+      });
     }
 
-    // 更新用户邮箱验证状态
+    // 生成 JWT token，让用户验证邮箱后直接以已登录状态进入
+    const jwtToken = generateJWT(user.id, user.username, user.isAdmin, 'web');
     await prisma.users.update({
       where: { id: user.id },
-      data: {
-        emailVerified: true,
-        emailVerificationToken: null,
-        emailVerificationExpires: null,
-      }
+      data: { active_token: jwtToken }
     });
 
-    res.json({ message: '邮箱验证成功' });
+    res.json({
+      message: '邮箱验证成功',
+      token: jwtToken,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        avatar: user.avatar,
+        bio: user.bio,
+        emailVerified: true,
+        points: user.points,
+        level: user.level,
+        membership_tier: user.membership_tier,
+        membership_expires_at: user.membership_expires_at,
+        createdAt: user.createdAt,
+      }
+    });
   } catch (error) {
     console.error('邮箱验证错误:', error);
     res.status(500).json({ error: '邮箱验证失败，请稍后重试' });
