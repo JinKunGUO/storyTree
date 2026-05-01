@@ -5,6 +5,144 @@
 
 ---
 
+## 〇、核心概念科普：轮询 vs 并发 vs WebSocket
+
+> 如果你对这三个概念不太熟悉，这一节用生活中的比喻帮你彻底搞懂。
+
+### 它们解决的是什么问题？
+
+这三个概念解决的是**完全不同层面**的问题，不要混为一谈：
+
+| 概念 | 解决什么问题 | 生活比喻 |
+|------|------------|---------|
+| **并发优化** | 后端同时能处理多少个 AI 任务、怎么排队 | 餐厅厨房有几个厨师、怎么安排做菜顺序 |
+| **轮询（Polling）** | 前端怎么知道后端的任务完成了 | 你点了菜之后，怎么知道菜做好了 |
+| **WebSocket** | 一种替代轮询的通信技术 | 服务员主动把菜端上来，而不是你反复去问 |
+
+### 1. 并发优化 —— "厨房管理"
+
+**并发**是指后端同时处理多个任务的能力。
+
+想象一个餐厅厨房：
+- **没有并发**：只有 1 个厨师，10 个人点菜，必须一个一个做，第 10 个人要等很久
+- **有并发**：有 3 个厨师同时做菜，10 个人点菜，3 个同时处理，7 个排队
+- **公平调度**：不能让一个人点了 5 道菜就把所有厨师占满，别人一道菜都吃不上
+- **限流保护**：厨房最多同时做 8 道菜，再多就让客人排队等
+- **熔断机制**：如果食材供应商（AI API）出了问题，连续 3 道菜做失败了，就暂停做菜 60 秒，避免浪费食材
+
+本项目中，并发优化的代码在 `api/src/workers/aiWorker.ts`（Bull 队列、限流器、熔断器）。
+
+### 2. 轮询（Polling）—— "你不停跑去厨房问"
+
+**轮询**是前端获取后端结果的一种方式：前端每隔几秒发一次 HTTP 请求，问后端"任务好了没？"
+
+```
+你：菜好了吗？    服务员：还没。
+（等 3 秒）
+你：菜好了吗？    服务员：还没。
+（等 3 秒）
+你：菜好了吗？    服务员：还没。
+（等 3 秒）
+你：菜好了吗？    服务员：好了！给你。
+```
+
+**优点**：实现简单，前后端都不需要特殊技术。
+**缺点**：
+- **浪费资源**：90% 的请求得到的回答是"还没好"，白白消耗服务器资源
+- **有延迟**：任务在两次轮询之间完成，你要等到下一次轮询才知道（平均延迟 = 轮询间隔 / 2）
+- **不可扩展**：8 个用户同时等结果 = 每秒 2.67 次无效请求，100 个用户就是 33 次/秒
+
+**轮询分两种**：
+- **短轮询（Short Polling）**：固定间隔请求，不管有没有结果都立即返回。**本项目之前用的就是这种**。
+- **长轮询（Long Polling）**：服务器收到请求后不立即返回，而是"挂住"连接，等有结果了再返回。减少了无效请求，但实现更复杂。
+
+### 3. WebSocket —— "服务员主动端菜上来"
+
+**WebSocket** 是一种全双工通信协议。和 HTTP 的"一问一答"不同，WebSocket 建立连接后，**服务器可以主动给客户端发消息**。
+
+```
+你：（坐在座位上等）
+服务员：（菜做好了，主动端过来）您的菜好了！
+```
+
+**工作原理**：
+1. 客户端发一个 HTTP 请求说"我要升级为 WebSocket"
+2. 服务器同意，连接"升级"为 WebSocket
+3. 之后双方可以随时互发消息，不需要每次都建立新连接
+
+```
+HTTP（短轮询）：                    WebSocket：
+客户端 → 服务器（请求1）            客户端 ←→ 服务器（一条长连接）
+服务器 → 客户端（响应1）            
+客户端 → 服务器（请求2）            服务器随时可以主动推消息给客户端
+服务器 → 客户端（响应2）            客户端也可以随时发消息给服务器
+客户端 → 服务器（请求3）
+...每次都是新的请求-响应             只有一条连接，双向通信
+```
+
+**优点**：
+- **零延迟**：任务完成的瞬间就能通知前端
+- **省资源**：不需要反复建立 HTTP 连接，一条连接可以传输无数消息
+- **可扩展**：100 个用户 = 100 条连接，几乎不消耗 CPU
+
+**缺点**：
+- **实现复杂**：需要处理连接管理、断线重连、心跳保活
+- **不 100% 可靠**：某些网络环境（企业防火墙、旧代理服务器）可能不支持 WebSocket
+- **需要降级方案**：WebSocket 连不上时，必须回退到轮询
+
+### 4. 三者的关系
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                     用户点击"AI续写"                          │
+│                          │                                    │
+│                          ▼                                    │
+│  ┌─────────────────────────────────────────────┐             │
+│  │           后端：并发优化                       │             │
+│  │  任务进入 Bull 队列 → 公平调度 → Worker 处理  │             │
+│  │  （限流 5QPS + 熔断保护 + 并发度 3）          │             │
+│  └──────────────────────┬──────────────────────┘             │
+│                          │ 任务完成了，怎么通知前端？          │
+│                          ▼                                    │
+│  ┌─────────────────────────────────────────────┐             │
+│  │           通知方式的选择                       │             │
+│  │                                               │             │
+│  │  方式A：短轮询（旧方案）                       │             │
+│  │    前端每 3 秒问一次"好了没"                   │             │
+│  │    延迟 ~1.5 秒，浪费请求                      │             │
+│  │                                               │             │
+│  │  方式B：WebSocket（新方案）                    │             │
+│  │    后端完成后主动推送给前端                     │             │
+│  │    延迟 ~0 秒，零额外请求                      │             │
+│  │                                               │             │
+│  │  降级：WebSocket 断开时自动回退到方式A          │             │
+│  └─────────────────────────────────────────────┘             │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**总结**：
+- **并发优化**管的是"后厨"——任务怎么排队、怎么限流、怎么防雪崩
+- **轮询/WebSocket**管的是"前厅"——任务完成后怎么通知用户
+- 两者是互补关系，不是替代关系。即使用了 WebSocket，后端的并发控制、限流、熔断仍然必不可少
+
+### 5. 本项目的演进路径
+
+```
+阶段1（最初）：同步调用，无并发
+  前端 → 后端 → AI API → 返回结果（30秒等待，一次只能处理一个）
+
+阶段2（并发优化）：异步队列 + 短轮询
+  前端 → 提交任务 → 每3秒问一次"好了没" → 拿到结果
+  后端 → Bull队列 → 同时处理8个任务 → 限流+熔断保护
+
+阶段3（当前）：异步队列 + WebSocket 实时推送
+  前端 → 提交任务 → WebSocket 等待推送 → 0延迟拿到结果
+  后端 → Bull队列 → 同时处理8个任务 → 完成后主动推送
+  降级 → WebSocket 断开时自动回退短轮询
+```
+
+---
+
 ## 一、当前架构
 
 ```
@@ -318,61 +456,335 @@ async function callQwenAPI(prompt, maxTokens, temperature) {
 
 ### ~~6.5 WebSocket 实时推送（替代短轮询）~~ ✅ 已完成
 
-**已于 2026-05-01 实施**。
+**已于 2026-05-01 实施**。全部 15 个文件改动均已完成。
 
 **问题**：前端使用短轮询（Short Polling）获取 AI 任务状态，每 2-3 秒发一次 HTTP 请求。8 个用户同时提交 AI 任务时，产生 2.67 QPS 的无效轮询请求，浪费服务器资源且增加延迟。
 
 **方案**：使用原生 WebSocket（`ws` 库）替代短轮询，AI 任务完成/失败时由后端主动推送给前端。
 
-**改动文件**：
+#### 6.5.1 技术选型
+
+选 `ws` 而非 `socket.io` 的理由：
+- 小程序原生支持 WebSocket（`uni.connectSocket`），但**不支持** socket.io 的私有协议
+- `ws` 更轻量（无额外依赖），1核2G 服务器资源有限
+- Nginx 已配置 WebSocket 升级头（`Upgrade`、`Connection`），无需额外改动
+
+#### 6.5.2 改动文件清单（15 个文件）
+
+**后端（4 个文件）**：
 
 | 文件 | 改动说明 |
 |------|---------|
-| `api/package.json` | 新增 `ws` + `@types/ws` 依赖 |
-| `api/src/utils/websocket.ts` | **新建** — WebSocket 服务（连接管理、JWT 鉴权、心跳、按用户推送） |
-| `api/src/index.ts` | `app.listen()` → `http.createServer(app)` + 挂载 WebSocket |
+| `api/package.json` | 新增 `ws@^8.20.0` + `@types/ws@^8.18.1` 依赖 |
+| `api/src/utils/websocket.ts` | **新建**（381 行）— WebSocket 服务：连接管理、JWT 鉴权、心跳、推送 API |
+| `api/src/index.ts` | `app.listen()` → `http.createServer(app)` + `wsServer.init(server)` 挂载 WebSocket |
 | `api/src/workers/aiWorker.ts` | 续写/润色/插图任务完成/失败时调用 `wsServer.sendTaskStatus()` |
-| `api/src/routes/payment.ts` | 支付回调成功/取消时调用 `wsServer.sendToUser()` |
-| `web/js/ws-client.js` | **新建** — Web 端统一 WebSocket 客户端（自动重连 + 降级轮询） |
-| `web/write.html` | `pollTaskStatus()` → WebSocket 监听 + 降级轮询 |
-| `web/story.html` | `pollAiChapterTaskStatus()` → WebSocket 监听 + 降级轮询 |
-| `web/payment.html` | `startPaymentPolling()` → WebSocket 监听 + 降级轮询 |
-| `web/ai-tasks.html` | 30秒定时刷新 → WebSocket 实时更新 |
-| `web/story-tree.html` | 30秒自动刷新 → WebSocket 实时更新 |
-| `web/js/system-load-widget.js` | 30秒轮询 → WebSocket 推送 + 60秒降级轮询 |
-| `miniprogram/src/utils/ws-client.ts` | **新建** — 小程序 WebSocket 客户端（`uni.connectSocket`） |
+
+**Web 前端（7 个文件）**：
+
+| 文件 | 改动说明 |
+|------|---------|
+| `web/js/ws-client.js` | **新建**（404 行）— 统一 WebSocket 客户端：自动重连、降级轮询、事件分发 |
+| `web/write.html` | `pollTaskStatus()` → `StoryTreeWS.watchTask()` + 降级轮询 |
+| `web/story.html` | `pollAiChapterTaskStatus()` → `StoryTreeWS.watchTask()` + 降级轮询 |
+| `web/payment.html` | `startPaymentPolling()` → `StoryTreeWS.on('payment:status')` + 降级轮询 |
+| `web/ai-tasks.html` | 30 秒定时刷新 → `StoryTreeWS.on('task:status')` 实时更新 |
+| `web/story-tree.html` | 30 秒自动刷新 → `StoryTreeWS.on('tree:update')` + `task:status` 实时更新 |
+| `web/js/system-load-widget.js` | 30 秒轮询 → `StoryTreeWS.on('system:load')` + 60 秒降级轮询 |
+
+**小程序端（3 个文件）**：
+
+| 文件 | 改动说明 |
+|------|---------|
+| `miniprogram/src/utils/ws-client.ts` | **新建**（322 行）— 小程序 WebSocket 客户端（`uni.connectSocket`） |
 | `miniprogram/src/components/ai-panel/index.vue` | `while` 循环轮询 → `waitForTaskResult()` WebSocket + 降级 |
-| `miniprogram/src/pages/story/index.vue` | `startPollTask()` → WebSocket 监听 + 降级轮询 |
+| `miniprogram/src/pages/story/index.vue` | `startPollTask()` → `mpWsClient.watchTask()` + 降级轮询 |
 
-**架构**：
+**其他（1 个文件）**：
+
+| 文件 | 改动说明 |
+|------|---------|
+| `api/src/routes/payment.ts` | 支付回调成功/取消时调用 `wsServer.sendToUser()` 推送 `payment:status` |
+
+#### 6.5.3 整体架构
 
 ```
-前端（Web / 小程序）
-  │
-  │ WebSocket 长连接 ws://域名/api/ws?token=xxx
-  │
-后端（Express + ws）
-  │
-  ├─ 连接管理: Map<userId, Set<WebSocket>>
-  ├─ JWT 鉴权: 连接时验证 token
-  ├─ 心跳检测: 30秒 ping/pong，超时断开
-  │
-  └─ 推送事件:
-       ├─ task:status    — AI 任务完成/失败（由 aiWorker 触发）
-       ├─ payment:status — 支付成功/取消（由 payment 回调触发）
-       ├─ tree:update    — 故事树更新
-       └─ system:load    — 系统负载
+┌─────────────────────────────────────────────────────────────────┐
+│  前端（Web / 小程序）                                            │
+│                                                                   │
+│  连接: ws://域名/api/ws?token=xxx                                │
+│                                                                   │
+│  接收事件:                                                        │
+│    - task:status    (AI任务状态变更：completed/failed)             │
+│    - payment:status (支付状态变更：success/cancelled)             │
+│    - tree:update    (故事树新章节发布)                             │
+│    - system:load    (系统负载信息，每30秒推送)                     │
+│                                                                   │
+│  降级: WebSocket 断开时自动回退到短轮询                            │
+└───────────────────────────┬───────────────────────────────────────┘
+                            │ WebSocket 长连接
+┌───────────────────────────▼───────────────────────────────────────┐
+│  后端 Express + ws                                                 │
+│                                                                     │
+│  WebSocketServer 挂载在 /api/ws                                    │
+│  连接管理: Map<userId, Set<WebSocket>>（支持同一用户多设备连接）    │
+│  鉴权方式: URL 参数 ?token=xxx 或 Authorization 头                 │
+│  心跳检测: 每30秒 ping/pong，超时断开                              │
+│                                                                     │
+│  推送时机:                                                          │
+│    - AI Worker 完成/失败任务 → wsServer.sendTaskStatus()            │
+│    - 支付回调 → wsServer.sendToUser('payment:status', ...)         │
+│    - 新章节发布 → wsServer.sendTreeUpdate()                        │
+│    - 定时器(30s) → wsServer.broadcast('system:load', ...)          │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-**降级策略**：WebSocket 不是 100% 可靠，所有场景均保留降级轮询兜底：
-- WebSocket 连接时：轮询间隔放宽到 5-10 秒（仅作兜底）
-- WebSocket 断开时：自动回退到原始 2-3 秒短轮询
-- WebSocket 重连成功：自动切回实时推送
+#### 6.5.4 消息协议
 
-**效果**：
-- AI 任务完成延迟：3 秒（轮询间隔）→ 0 秒（实时推送）
-- 轮询 QPS：2.67 QPS/8用户 → 0 QPS（WebSocket 连接时）
-- 每个连接内存占用约 50KB，100 连接 ≈ 5MB
+所有 WebSocket 消息均为 JSON 格式，统一结构：
+
+```json
+{
+  "event": "事件名称",
+  "data": { /* 事件数据 */ }
+}
+```
+
+**各事件的 data 结构**：
+
+```typescript
+// task:status — AI 任务完成/失败
+{
+  "event": "task:status",
+  "data": {
+    "taskId": 123,
+    "status": "completed" | "failed",
+    "result": { /* 任务结果，如 options 列表 */ },
+    "error": "错误信息（仅 failed 时）"
+  }
+}
+
+// payment:status — 支付状态变更
+{
+  "event": "payment:status",
+  "data": {
+    "orderId": "order_xxx",
+    "status": "success" | "cancelled",
+    "membershipType": "monthly" | "yearly"
+  }
+}
+
+// tree:update — 故事树更新
+{
+  "event": "tree:update",
+  "data": {
+    "storyId": 456,
+    "nodeId": 789,
+    "action": "published"
+  }
+}
+
+// system:load — 系统负载（每 30 秒广播）
+{
+  "event": "system:load",
+  "data": {
+    "continuation": { "active": 2, "waiting": 1, "max": 3 },
+    "polish": { "active": 0, "waiting": 0, "max": 3 },
+    "illustration": { "active": 1, "waiting": 0, "max": 2 }
+  }
+}
+```
+
+#### 6.5.5 后端核心实现
+
+**文件**：`api/src/utils/websocket.ts`（381 行）
+
+```typescript
+// 核心类：WebSocketService（单例模式）
+class WebSocketService {
+  private wss: WebSocketServer | null = null;
+  private connections: Map<number, Set<AuthenticatedWebSocket>> = new Map();
+  
+  // 初始化：挂载到 HTTP Server
+  init(server: HttpServer) {
+    this.wss = new WebSocketServer({ server, path: '/api/ws' });
+    this.wss.on('connection', (ws, req) => this.handleConnection(ws, req));
+    this.startHeartbeat();      // 30秒心跳检测
+    this.startSystemLoadBroadcast(); // 30秒系统负载广播
+  }
+  
+  // 连接鉴权：JWT token 验证
+  async authenticate(req): Promise<number | null> {
+    // 支持两种方式：URL 参数 ?token=xxx 或 Authorization 头
+    const token = url.searchParams.get('token') || req.headers.authorization;
+    const decoded = jwt.verify(token, JWT_SECRET);
+    return decoded.userId;
+  }
+  
+  // 按用户推送
+  sendToUser(userId: number, event: string, data: any) {
+    const userConns = this.connections.get(userId);
+    if (!userConns) return;
+    const message = JSON.stringify({ event, data });
+    for (const ws of userConns) {
+      if (ws.readyState === WebSocket.OPEN) ws.send(message);
+    }
+  }
+  
+  // 便捷方法：推送 AI 任务状态
+  sendTaskStatus(userId, taskId, status, result?) { ... }
+  sendPaymentStatus(userId, orderId, status, data?) { ... }
+  sendTreeUpdate(storyId, nodeId, action) { ... }
+  
+  // 全局广播（如 system:load）
+  broadcast(event: string, data: any) { ... }
+}
+
+export const wsServer = new WebSocketService(); // 单例导出
+```
+
+**挂载方式**（`api/src/index.ts`）：
+
+```typescript
+import { createServer } from 'http';
+import { wsServer } from './utils/websocket';
+
+const server = createServer(app);  // 替代原来的 app.listen()
+wsServer.init(server);             // WebSocket 挂载到同一端口
+server.listen(PORT);
+
+// 优雅关闭
+process.on('SIGTERM', () => { wsServer.close(); server.close(); });
+```
+
+**AI Worker 推送**（`api/src/workers/aiWorker.ts`）：
+
+```typescript
+import { wsServer } from '../utils/websocket';
+
+// 续写任务完成时（第 693 行）
+wsServer.sendTaskStatus(userId, taskId, 'completed', { options });
+
+// 续写任务失败时（第 710 行）
+wsServer.sendTaskStatus(userId, taskId, 'failed', { error: errorMessage });
+
+// 润色完成（第 1097 行）、插图完成（第 1208 行）同理
+```
+
+#### 6.5.6 Web 前端客户端
+
+**文件**：`web/js/ws-client.js`（404 行）
+
+核心功能：
+- **自动连接**：页面加载时调用 `StoryTreeWS.connect()`，自动获取 token 建立连接
+- **自动重连**：断线后指数退避重连（1s → 2s → 4s → ... → 30s），最多 20 次
+- **心跳保活**：每 25 秒发送 ping，服务端 30 秒未收到则断开
+- **事件系统**：`on(event, callback)` / `off()` / `once()` 订阅/取消/一次性监听
+- **任务监听**：`watchTask(taskId, callback)` 便捷方法，自动过滤 taskId
+- **降级轮询**：WebSocket 断开时自动启动 HTTP 短轮询，重连后自动停止
+- **页面可见性**：页面不可见时暂停心跳，可见时恢复
+
+```javascript
+// 各页面使用方式（以 write.html 为例）
+StoryTreeWS.connect();
+
+// 提交 AI 任务后
+const unwatch = StoryTreeWS.watchTask(taskId, (data) => {
+  if (data.status === 'completed') {
+    unwatch();
+    // 处理结果...
+  } else if (data.status === 'failed') {
+    unwatch();
+    showError(data.error);
+  }
+});
+
+// 同时启动降级轮询兜底
+const pollInterval = StoryTreeWS.isConnected() ? 10000 : 3000;
+```
+
+**各页面集成方式**：
+
+| 页面 | WebSocket 事件 | 降级轮询间隔 |
+|------|---------------|-------------|
+| `write.html` | `watchTask(taskId)` | 连接时 10s，断开时 3s |
+| `story.html` | `watchTask(taskId)` | 连接时 10s，断开时 3s |
+| `payment.html` | `on('payment:status')` | 连接时 10s，断开时 3s |
+| `ai-tasks.html` | `on('task:status')` | 连接时 60s，断开时 15s |
+| `story-tree.html` | `on('tree:update')` + `on('task:status')` | 连接时 60s，断开时 15s |
+| `system-load-widget.js` | `on('system:load')` | 连接时不轮询，断开时 60s |
+
+#### 6.5.7 小程序端客户端
+
+**文件**：`miniprogram/src/utils/ws-client.ts`（322 行）
+
+与 Web 端功能一致，但使用小程序原生 API：
+
+```typescript
+// 使用 uni.connectSocket 替代浏览器原生 WebSocket
+socketTask = uni.connectSocket({
+  url: wsUrl,  // wss://域名/api/ws?token=xxx
+  header: { 'Authorization': `Bearer ${token}` }
+});
+
+// 事件监听
+socketTask.onMessage((res) => { ... });
+socketTask.onClose(() => { scheduleReconnect(); });
+```
+
+**小程序特殊处理**：
+- 最大重连次数 10 次（小程序后台限制更严格）
+- 心跳间隔 30 秒（与服务端一致）
+- 导出 `mpWsClient` 单例，各页面/组件共享同一连接
+
+**各组件集成方式**：
+
+| 组件/页面 | WebSocket 事件 | 降级轮询间隔 |
+|----------|---------------|-------------|
+| `ai-panel/index.vue`（续写/润色/插图） | `mpWsClient.watchTask(taskId)` | 连接时 5s，断开时 2s |
+| `story/index.vue`（整章续写） | `mpWsClient.watchTask(taskId)` | 连接时 10s，断开时 5s |
+
+#### 6.5.8 降级策略详解
+
+WebSocket 不是 100% 可靠（网络切换、企业防火墙、旧代理服务器），所有场景均保留降级轮询兜底：
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│                      连接状态机                                  │
+│                                                                  │
+│  ┌──────────┐   连接成功   ┌──────────┐   断线    ┌──────────┐ │
+│  │ 初始化    │ ──────────→ │ 已连接    │ ───────→ │ 断线重连  │ │
+│  │(尝试连接) │             │(实时推送) │          │(降级轮询) │ │
+│  └──────────┘             └──────────┘          └──────────┘  │
+│       │                        ↑                     │          │
+│       │                        │    重连成功          │          │
+│       │                        └─────────────────────┘          │
+│       │                                                          │
+│       │   连接失败              ┌──────────┐                    │
+│       └────────────────────→   │ 纯轮询    │                    │
+│                                 │(无WS连接) │                    │
+│                                 └──────────┘                    │
+└────────────────────────────────────────────────────────────────┘
+```
+
+**三种状态下的行为**：
+
+| 状态 | WebSocket | 轮询间隔 | 说明 |
+|------|:---------:|---------|------|
+| **已连接** | ✅ 实时推送 | 5-10 秒（仅兜底） | 正常情况，轮询几乎不会触发 |
+| **断线重连** | ❌ 重连中 | 2-5 秒（主力获取结果） | 指数退避重连，同时靠轮询获取结果 |
+| **纯轮询** | ❌ 未连接 | 2-3 秒（原始模式） | WebSocket 完全不可用时的兜底 |
+
+#### 6.5.9 效果对比
+
+| 指标 | 改动前（短轮询） | 改动后（WebSocket + 降级） |
+|------|:----------------:|:------------------------:|
+| AI 任务完成通知延迟 | ~1.5 秒（轮询间隔/2） | **~0 秒**（实时推送） |
+| 8 用户等待时的轮询 QPS | 2.67 QPS | **0 QPS**（WebSocket 连接时） |
+| 100 用户等待时的轮询 QPS | 33.3 QPS | **0 QPS**（WebSocket 连接时） |
+| 每用户连接内存占用 | 0（无状态） | ~50KB（WebSocket 连接） |
+| 100 用户总内存占用 | 0 | ~5MB |
+| 网络不稳定时 | 轮询正常工作 | 自动降级到轮询，体验不变 |
 
 ---
 

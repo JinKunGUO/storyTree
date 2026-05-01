@@ -429,7 +429,7 @@
           v-model="customWordCountInput"
           class="wc-input"
           type="number"
-          placeholder="请输入字数（100-10000）"
+          placeholder="请输入字数（200-5000）"
           maxlength="5"
         />
         <view class="wc-input-actions">
@@ -571,8 +571,8 @@ function selectWordCount(val: number) {
 
 function confirmCustomWordCount() {
   const n = parseInt(customWordCountInput.value)
-  if (isNaN(n) || n < 100 || n > 10000) {
-    uni.showToast({ title: '请输入100-10000之间的字数', icon: 'none' })
+  if (isNaN(n) || n < 200 || n > 5000) {
+    uni.showToast({ title: '请输入200-5000之间的字数', icon: 'none' })
     return
   }
   aiForm.customWordCount = n
@@ -641,12 +641,16 @@ async function submitAiCreate(publishImmediately: boolean) {
 
 /** 监听 AI 任务状态（WebSocket 优先，降级轮询兜底）
  * WebSocket 连接时：通过 task:status 事件实时获取结果，同时以 10 秒间隔轮询兜底
- * WebSocket 断开时：以 3 秒间隔轮询
+ * WebSocket 断开时：以 5 秒间隔轮询
+ * 
+ * 超时计算：极端情况（5000字×3篇）后端需要约 270 秒
+ * - WebSocket 连接时：60 次 × 10 秒 = 600 秒（10 分钟）
+ * - WebSocket 断开时：60 次 × 5 秒 = 300 秒（5 分钟）
  */
 function startPollTask(taskId: number, publishImmediately: boolean) {
   stopPollTask()
   let attempts = 0
-  const maxAttempts = 40  // 最多轮询 40 次
+  const maxAttempts = 60  // 最多轮询 60 次（WebSocket 连接时 10 分钟，断开时 5 分钟）
 
   // 1. WebSocket 监听
   const unwatch = mpWsClient.watchTask(taskId, async (data: any) => {
@@ -673,13 +677,14 @@ function startPollTask(taskId: number, publishImmediately: boolean) {
     }
   })
 
-  // 2. 降级轮询兜底
-  const pollInterval = mpWsClient.isConnected() ? 10000 : 3000
+  // 2. 降级轮询兜底（WebSocket 断开时间隔改为 5 秒，避免超时）
+  const pollInterval = mpWsClient.isConnected() ? 10000 : 5000
   aiPollTimer = setInterval(async () => {
     attempts++
     if (attempts > maxAttempts) {
       unwatch()
       stopPollTask()
+      uni.showToast({ title: 'AI 生成超时，请稍后在通知中查看结果', icon: 'none', duration: 3000 })
       return
     }
 

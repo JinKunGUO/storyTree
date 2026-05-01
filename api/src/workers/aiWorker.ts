@@ -96,6 +96,15 @@ class CircuitBreaker {
       
       return result;
     } catch (error) {
+      // 超时错误不计入熔断（长文本生成超时是正常现象，不代表 API 故障）
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      const isTimeout = errorMsg.includes('超时') || errorMsg.includes('AbortError');
+      
+      if (isTimeout) {
+        console.warn(`⏱️ AI API 调用超时（不计入熔断）:`, errorMsg);
+        throw error;
+      }
+      
       this.failureCount++;
       this.lastFailureTime = Date.now();
       
@@ -144,6 +153,7 @@ const openai = new OpenAI({
 interface QwenAPIResponse {
   output?: {
     text?: string;
+    finish_reason?: string; // 流式模式完成标志：'stop'、'length' 等
   };
   usage?: {
     input_tokens?: number;
@@ -177,24 +187,31 @@ interface QwenImageAPIResponse {
 }
 
 /**
- * 调用千问API（带限流、熔断和超时保护）
+ * 调用千问API（SSE 流式输出 + 增量模式，彻底解决超时问题）
+ * 
+ * 改进：
+ * - 使用 stream: true + incremental_output: true 开启流式输出
+ * - 服务器边生成边推送，HTTP 连接不会因为等待而超时
+ * - 适用于长文本生成（8000 token 也不会超时）
  */
-async function callQwenAPI(prompt: string, maxTokens: number = 2000, temperature: number = 0.8): Promise<{ text: string; usage: { input: number; output: number } }> {
+async function callQwenAPI(prompt: string, maxTokens: number = 2000, temperature: number = 0.8, timeoutMs: number = 30000): Promise<{ text: string; usage: { input: number; output: number } }> {
   // 1. 限流：等待令牌
   await qwenLimiter.acquire();
   
   // 2. 熔断器包裹实际调用
   return qwenCircuitBreaker.execute(async () => {
-    // 3. 超时控制：30秒超时
+    // 3. 超时控制：流式模式下超时时间可以更长（因为服务器持续推送数据）
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     
     try {
       const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${process.env.QWEN_API_KEY}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',       // SSE 流式响应
+          'X-DashScope-SSE': 'enable'          // DashScope 原生接口开启 SSE 的方式
         },
         body: JSON.stringify({
           model: QWEN_MODEL,
@@ -206,7 +223,8 @@ async function callQwenAPI(prompt: string, maxTokens: number = 2000, temperature
           parameters: {
             max_tokens: maxTokens,
             temperature: temperature,
-            top_p: 0.9
+            top_p: 0.9,
+            incremental_output: true   // 增量模式（只返回新增部分，减少传输量）
           }
         }),
         signal: controller.signal
@@ -217,22 +235,82 @@ async function callQwenAPI(prompt: string, maxTokens: number = 2000, temperature
         throw new Error(`千问API调用失败: ${response.status} ${errorText}`);
       }
 
-      const data = await response.json() as QwenAPIResponse;
-      
-      if (data.code) {
-        throw new Error(`千问API错误: ${data.code} - ${data.message}`);
+      // 解析 SSE 流
+      let fullText = '';
+      let inputTokens = 0;
+      let outputTokens = 0;
+      let lastActivityTime = Date.now();
+      // 流式活跃超时：如果 60 秒内没有收到新数据，认为连接已中断
+      const STREAM_IDLE_TIMEOUT = 60000;
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder('utf-8');
+
+      if (!reader) {
+        throw new Error('无法读取响应流');
+      }
+
+      while (true) {
+        // 使用 Promise.race 实现流式活跃超时
+        const readPromise = reader.read();
+        const idleTimeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            reject(new Error(`千问流式输出中断：${STREAM_IDLE_TIMEOUT / 1000}秒内未收到新数据（已接收${fullText.length}字）`));
+          }, STREAM_IDLE_TIMEOUT);
+        });
+
+        const { done, value } = await Promise.race([readPromise, idleTimeoutPromise]);
+        if (done) break;
+
+        lastActivityTime = Date.now();
+        const chunk = decoder.decode(value, { stream: true });
+        
+        // SSE 格式：data: {...}\n\n
+        const lines = chunk.split('\n').filter(line => line.trim().startsWith('data:'));
+        
+        for (const line of lines) {
+          const jsonStr = line.replace(/^data:\s*/, '').trim();
+          if (!jsonStr || jsonStr === '[DONE]') continue;
+
+          try {
+            const data = JSON.parse(jsonStr) as QwenAPIResponse;
+            
+            // 检查错误
+            if (data.code) {
+              throw new Error(`千问API错误: ${data.code} - ${data.message}`);
+            }
+
+            // 累加增量文本
+            const incrementalText = data.output?.text || '';
+            fullText += incrementalText;
+
+            // 最后一条消息包含 usage 和 finish_reason
+            if (data.usage) {
+              inputTokens = data.usage.input_tokens || 0;
+              outputTokens = data.usage.output_tokens || 0;
+            }
+
+            // 检查是否完成
+            if (data.output?.finish_reason) {
+              console.log(`✅ 千问流式生成完成，finish_reason: ${data.output.finish_reason}`);
+              break;
+            }
+          } catch (parseError) {
+            console.warn('解析 SSE 数据失败:', jsonStr, parseError);
+          }
+        }
       }
 
       return {
-        text: data.output?.text || '',
+        text: fullText,
         usage: {
-          input: data.usage?.input_tokens || 0,
-          output: data.usage?.output_tokens || 0
+          input: inputTokens,
+          output: outputTokens
         }
       };
     } catch (error: any) {
       if (error.name === 'AbortError') {
-        throw new Error('千问API调用超时（30秒），请稍后重试');
+        throw new Error(`千问API调用超时（${timeoutMs / 1000}秒），请稍后重试`);
       }
       throw error;
     } finally {
@@ -487,14 +565,19 @@ XXX` : ''}`;
 
     // 根据期望字数和生成数量动态计算max_tokens
     // 公式：(期望字数 × 生成数量 × 1.5倍token系数 + 500预留) 
+    // 极端情况：5000字 × 3个 × 1.5 + 500 = 23000，需要限制上限
     const estimatedTokens = Math.ceil(wordCount * count * 1.5 + 500);
-    const maxTokens = Math.min(Math.max(estimatedTokens, 2000), 8000); // 限制在2000-8000之间
+    const maxTokens = Math.min(Math.max(estimatedTokens, 2000), 16000); // 限制在2000-16000之间
     console.log(`📊 期望字数: ${wordCount}字 × ${count}个 = ${wordCount * count}字`);
     console.log(`🔢 计算max_tokens: ${maxTokens} (估算: ${estimatedTokens})`);
 
     if (USE_QWEN) {
-      // 使用千问API
-      const qwenResponse = await callQwenAPI(prompt, maxTokens, 0.8);
+      // 使用千问API（SSE 流式输出）
+      // 流式模式下超时主要是兜底保护，正常情况不会触发
+      // 计算公式：基础 60 秒 + 每 1000 token 约 15 秒
+      const apiTimeout = Math.max(60000, Math.ceil(maxTokens / 1000) * 15000 + 30000);
+      console.log(`⏱️ API超时设置: ${apiTimeout / 1000}秒 (流式模式兜底，maxTokens: ${maxTokens})`);
+      const qwenResponse = await callQwenAPI(prompt, maxTokens, 0.8, apiTimeout);
       aiResponse = qwenResponse.text;
       tokensUsed = {
         input: qwenResponse.usage.input,

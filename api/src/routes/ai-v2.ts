@@ -80,10 +80,18 @@ router.post('/continuation/submit', async (req, res) => {
     return res.status(401).json({ error: '未登录' });
   }
 
-  const { storyId, nodeId, context, style, count = 3, mode = 'segment', surpriseTime, publishImmediately = true, wordCount = 1500 } = req.body;
+  const { storyId, nodeId, context, style, count = 3, mode = 'segment', surpriseTime, publishImmediately = true, wordCount: rawWordCount = 1500 } = req.body;
 
   if (!storyId) {
     return res.status(400).json({ error: 'storyId是必需的' });
+  }
+
+  // 字数校验：限制在 200-5000 字之间，防止极端值导致超时或资源浪费
+  const MAX_WORD_COUNT = 5000;
+  const MIN_WORD_COUNT = 200;
+  const wordCount = Math.min(Math.max(Number(rawWordCount) || 1500, MIN_WORD_COUNT), MAX_WORD_COUNT);
+  if (Number(rawWordCount) > MAX_WORD_COUNT) {
+    console.warn(`⚠️ 用户 ${userId} 请求字数 ${rawWordCount} 超过上限，已限制为 ${MAX_WORD_COUNT}`);
   }
 
   try {

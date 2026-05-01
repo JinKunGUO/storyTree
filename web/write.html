@@ -924,8 +924,8 @@
                     <div id="customWordCountInput" style="display: none; margin-top: 15px; padding: 15px; background: #f9f9f9; border-radius: 10px;">
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <input type="number" id="customWordCountValue" 
-                                   min="200" max="10000" step="100" value="1500"
-                                   placeholder="输入字数（200-10000）"
+                                   min="200" max="5000" step="100" value="1500"
+                                   placeholder="输入字数（200-5000）"
                                    style="
                                        flex: 1;
                                        padding: 10px;
@@ -947,7 +947,7 @@
                             </button>
                         </div>
                         <div style="font-size: 12px; color: #999; margin-top: 8px;">
-                            <i class="fas fa-info-circle"></i> 建议范围：200-10000字，实际生成字数可能略有偏差
+                            <i class="fas fa-info-circle"></i> 建议范围：200-5000字，实际生成字数可能略有偏差
                         </div>
                     </div>
                 </div>
@@ -2300,8 +2300,8 @@
                 const customValue = parseInt(document.getElementById('customWordCountValue').value);
                 
                 // 验证输入
-                if (!customValue || customValue < 200 || customValue > 10000) {
-                    showError('请输入200-10000之间的字数');
+                if (!customValue || customValue < 200 || customValue > 5000) {
+                    showError('请输入200-5000之间的字数');
                     return;
                 }
                 
