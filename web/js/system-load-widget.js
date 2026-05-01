@@ -1,6 +1,6 @@
 /**
  * 系统负载显示组件
- * 在AI任务提交页面显示当前系统负载和推荐时间
+ * 优先通过 WebSocket 接收 system:load 推送，降级使用定时 HTTP 轮询
  */
 
 class SystemLoadWidget {
@@ -8,6 +8,7 @@ class SystemLoadWidget {
         this.container = document.getElementById(containerId);
         this.loadData = null;
         this.updateInterval = null;
+        this.wsListenerBound = false;
     }
 
     /**
@@ -17,10 +18,27 @@ class SystemLoadWidget {
         await this.fetchLoadData();
         this.render();
         
-        // 每30秒更新一次
-        this.updateInterval = setInterval(() => {
-            this.fetchLoadData();
-        }, 30000);
+        // 优先使用 WebSocket 推送
+        if (typeof StoryTreeWS !== 'undefined') {
+            this._wsHandler = (data) => {
+                this.loadData = data;
+                this.render();
+            };
+            StoryTreeWS.on('system:load', this._wsHandler);
+            this.wsListenerBound = true;
+            
+            // 降级轮询：WebSocket 连接时 60 秒，断开时 30 秒
+            this.updateInterval = setInterval(() => {
+                if (!StoryTreeWS.isConnected()) {
+                    this.fetchLoadData();
+                }
+            }, 60000);
+        } else {
+            // 没有 WebSocket 客户端，使用传统 30 秒轮询
+            this.updateInterval = setInterval(() => {
+                this.fetchLoadData();
+            }, 30000);
+        }
     }
 
     /**
@@ -124,6 +142,9 @@ class SystemLoadWidget {
     destroy() {
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
+        }
+        if (this.wsListenerBound && typeof StoryTreeWS !== 'undefined') {
+            StoryTreeWS.off('system:load', this._wsHandler);
         }
     }
 }

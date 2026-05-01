@@ -456,6 +456,7 @@ import { publishNode, deleteNode } from '@/api/nodes'
 import type { Story } from '@/api/stories'
 import type { Node } from '@/api/nodes'
 import type { AiWritingStyle, AiSurpriseTime } from '@/api/ai'
+import { mpWsClient } from '@/utils/ws-client'
 
 const userStore = useUserStore()
 
@@ -638,18 +639,46 @@ async function submitAiCreate(publishImmediately: boolean) {
   }
 }
 
-/** 轮询 AI 任务状态，完成后刷新章节树并显示顶部横幅
- * 参照网页端 ai-tasks.html 的轮询思路：
- * 用 setInterval 定时全量查询任务状态，不依赖递归 setTimeout
+/** 监听 AI 任务状态（WebSocket 优先，降级轮询兜底）
+ * WebSocket 连接时：通过 task:status 事件实时获取结果，同时以 10 秒间隔轮询兜底
+ * WebSocket 断开时：以 3 秒间隔轮询
  */
 function startPollTask(taskId: number, publishImmediately: boolean) {
   stopPollTask()
   let attempts = 0
-  const maxAttempts = 40  // 最多轮询 40 次（3s × 40 = 2分钟）
+  const maxAttempts = 40  // 最多轮询 40 次
 
+  // 1. WebSocket 监听
+  const unwatch = mpWsClient.watchTask(taskId, async (data: any) => {
+    if (data.status === 'completed') {
+      unwatch()
+      stopPollTask()
+      // 刷新章节树
+      if (story.value) {
+        const newNodeId = data.result?.acceptedNodeId ?? null
+        await refreshTree(story.value.id)
+        if (newNodeId) {
+          highlightNodeId.value = newNodeId
+          setTimeout(() => { highlightNodeId.value = null }, 4000)
+        }
+      }
+      const action = publishImmediately ? '已自动发布' : '已保存为草稿'
+      aiTaskBanner.message = `AI 续写章节${action}，下拉可刷新`
+      aiTaskBanner.show = true
+      setTimeout(() => { aiTaskBanner.show = false }, 8000)
+    } else if (data.status === 'failed') {
+      unwatch()
+      stopPollTask()
+      uni.showToast({ title: `AI 创作失败：${data.error || '未知错误'}`, icon: 'none', duration: 3000 })
+    }
+  })
+
+  // 2. 降级轮询兜底
+  const pollInterval = mpWsClient.isConnected() ? 10000 : 3000
   aiPollTimer = setInterval(async () => {
     attempts++
     if (attempts > maxAttempts) {
+      unwatch()
       stopPollTask()
       return
     }
@@ -658,18 +687,16 @@ function startPollTask(taskId: number, publishImmediately: boolean) {
       const res = await getAiTaskStatus(taskId)
 
       if (res.status === 'completed') {
+        unwatch()
         stopPollTask()
-        // 刷新章节树
         if (story.value) {
           const newNodeId = res.result?.acceptedNodeId ?? null
           await refreshTree(story.value.id)
-          // 高亮新节点
           if (newNodeId) {
             highlightNodeId.value = newNodeId
             setTimeout(() => { highlightNodeId.value = null }, 4000)
           }
         }
-        // 显示顶部横幅
         const action = publishImmediately ? '已自动发布' : '已保存为草稿'
         aiTaskBanner.message = `AI 续写章节${action}，下拉可刷新`
         aiTaskBanner.show = true
@@ -678,14 +705,14 @@ function startPollTask(taskId: number, publishImmediately: boolean) {
       }
 
       if (res.status === 'failed') {
+        unwatch()
         stopPollTask()
         uni.showToast({ title: `AI 创作失败：${res.errorMessage || '未知错误'}`, icon: 'none', duration: 3000 })
       }
-      // pending / processing：继续等下一个 interval
     } catch {
-      // 网络错误不中断轮询，等下一个 interval 重试
+      // 网络错误不中断轮询
     }
-  }, 3000)
+  }, pollInterval)
 }
 
 function stopPollTask() {
@@ -702,6 +729,9 @@ onMounted(() => {
   if (storyId) {
     loadStory(storyId)
   }
+  
+  // 初始化 WebSocket 连接
+  mpWsClient.connect()
 })
 
 // 从 write 页面发布新章节后返回时，刷新章节树（不触发全屏 loading）

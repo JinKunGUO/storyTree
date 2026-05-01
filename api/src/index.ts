@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { createServer } from 'http';
 export { prisma } from './db';
 import { prisma } from './db';
 import * as fs from 'fs';
@@ -34,6 +35,7 @@ import adminContentRoutes from './routes/admin-content';
 import adminPointsRoutes from './routes/admin-points';
 import adminDashboardRoutes from './routes/admin-dashboard';
 import { closeQueues } from './utils/queue';
+import { wsServer } from './utils/websocket';
 
 // 根据 NODE_ENV 加载对应的 .env 文件，fallback 到 .env
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
@@ -150,14 +152,22 @@ app.get('*', (req, res) => {
 
 const PORT = process.env.PORT || 3001;
 
-app.listen(PORT, () => {
+// 创建 HTTP Server（用于同时挂载 Express 和 WebSocket）
+const server = createServer(app);
+
+// 挂载 WebSocket 服务
+wsServer.init(server);
+
+server.listen(PORT, () => {
   console.log(`🚀 StoryTree API running on port ${PORT}`);
+  console.log(`🔌 WebSocket available at ws://localhost:${PORT}/api/ws`);
   console.log(`📦 Version: http://localhost:${PORT}/api/version`);
 });
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('🛑 收到SIGTERM信号，开始优雅关闭...');
+  await wsServer.close();
   await closeQueues();
   await prisma.$disconnect();
   process.exit(0);
@@ -165,6 +175,7 @@ process.on('SIGTERM', async () => {
 
 process.on('SIGINT', async () => {
   console.log('🛑 收到SIGINT信号，开始优雅关闭...');
+  await wsServer.close();
   await closeQueues();
   await prisma.$disconnect();
   process.exit(0);

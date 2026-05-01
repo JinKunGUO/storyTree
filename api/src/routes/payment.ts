@@ -4,6 +4,7 @@ import { prisma } from '../index';
 import { addPoints } from '../utils/points';
 import crypto from 'crypto';
 import { upgradeMembership } from '../utils/membership';
+import { wsServer } from '../utils/websocket';
 
 const router = Router();
 
@@ -420,11 +421,26 @@ router.post('/callback/mock', async (req, res) => {
         }
       }
 
+      // WebSocket 实时推送支付成功
+      wsServer.sendToUser(order.user_id, 'payment:status', {
+        orderId,
+        status: 'paid',
+        type: order.type,
+        amount: order.amount,
+        points: order.points
+      });
+
       res.json({ success: true, message: '支付成功' });
     } else {
       await prisma.orders.update({
         where: { id: orderId },
         data: { status: 'cancelled' }
+      });
+
+      // WebSocket 实时推送支付取消
+      wsServer.sendToUser(order.user_id, 'payment:status', {
+        orderId,
+        status: 'cancelled'
       });
 
       res.json({ success: false, message: '支付取消' });
@@ -650,6 +666,15 @@ router.post('/wxpay/callback', async (req, res) => {
     } else if (order.type === 'points' && order.points) {
       await addPoints(order.user_id, order.points, 'purchase', '充值积分', parseInt(outTradeNo.split('_')[1] || '0'));
     }
+
+    // WebSocket 实时推送支付成功
+    wsServer.sendToUser(order.user_id, 'payment:status', {
+      orderId: outTradeNo,
+      status: 'paid',
+      type: order.type,
+      amount: order.amount,
+      points: order.points
+    });
 
     res.status(200).send('<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>');
   } catch (error) {

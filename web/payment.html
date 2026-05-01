@@ -582,11 +582,35 @@
             stopPaymentPolling();
         }
 
-        // 轮询支付状态
+        // 监听支付状态（WebSocket 优先，降级轮询兜底）
+        let paymentPollInterval = null;
+
         function startPaymentPolling() {
-            const pollInterval = setInterval(async () => {
+            if (!currentOrder) return;
+            
+            console.log('开始监听支付状态:', currentOrder.orderId, 'WebSocket:', StoryTreeWS.isConnected() ? '已连接' : '未连接');
+
+            // 1. WebSocket 监听
+            const handlePaymentUpdate = (data) => {
+                if (data.orderId !== currentOrder.orderId) return;
+                console.log('收到支付状态推送:', data);
+                
+                if (data.status === 'paid') {
+                    StoryTreeWS.off('payment:status', handlePaymentUpdate);
+                    stopPaymentPolling();
+                    showPaymentResult('success', '支付成功', '订单已支付成功，权益已到账');
+                } else if (data.status === 'cancelled' || data.status === 'expired') {
+                    StoryTreeWS.off('payment:status', handlePaymentUpdate);
+                    stopPaymentPolling();
+                    showPaymentResult('failed', '支付失败', '订单已取消或过期');
+                }
+            };
+            StoryTreeWS.on('payment:status', handlePaymentUpdate);
+
+            // 2. 降级轮询兜底（WebSocket 可能断开）
+            paymentPollInterval = setInterval(async () => {
                 if (!currentOrder) {
-                    clearInterval(pollInterval);
+                    stopPaymentPolling();
                     return;
                 }
 
@@ -594,21 +618,26 @@
                     const order = await apiRequest(`/payment/orders/${currentOrder.orderId}`);
                     
                     if (order.status === 'paid') {
-                        clearInterval(pollInterval);
+                        StoryTreeWS.off('payment:status', handlePaymentUpdate);
+                        stopPaymentPolling();
                         showPaymentResult('success', '支付成功', '订单已支付成功，权益已到账');
                     } else if (order.status === 'cancelled' || order.status === 'expired') {
-                        clearInterval(pollInterval);
+                        StoryTreeWS.off('payment:status', handlePaymentUpdate);
+                        stopPaymentPolling();
                         showPaymentResult('failed', '支付失败', '订单已取消或过期');
                     }
                 } catch (error) {
                     console.error('查询支付状态失败:', error);
                 }
-            }, 3000); // 每 3 秒查询一次
+            }, StoryTreeWS.isConnected() ? 10000 : 3000); // WebSocket 连接时放宽轮询间隔到 10 秒
         }
 
         // 停止轮询
         function stopPaymentPolling() {
-            // 轮询会在页面切换时自动停止
+            if (paymentPollInterval) {
+                clearInterval(paymentPollInterval);
+                paymentPollInterval = null;
+            }
         }
 
         // 查询支付状态
@@ -702,5 +731,10 @@
     </script>
     <script src="js/toast.js"></script>
     <script src="js/modal.js"></script>
+    <script src="js/ws-client.js"></script>
+    <script>
+        // 初始化 WebSocket 连接
+        StoryTreeWS.connect();
+    </script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 # AI 并发处理优化方案
 
-> 更新时间：2026-04-30  
-> 状态：层次1-3均已完成（含v1路由迁移、API限流、超时熔断），仅 Worker 独立进程待实施
+> 更新时间：2026-05-01  
+> 状态：层次1-3均已完成（含v1路由迁移、API限流、超时熔断），WebSocket 实时推送已完成，仅 Worker 独立进程待实施
 
 ---
 
@@ -316,7 +316,67 @@ async function callQwenAPI(prompt, maxTokens, temperature) {
 
 ---
 
-### 6.5 跨用户公平调度（FIFO 优先级）
+### ~~6.5 WebSocket 实时推送（替代短轮询）~~ ✅ 已完成
+
+**已于 2026-05-01 实施**。
+
+**问题**：前端使用短轮询（Short Polling）获取 AI 任务状态，每 2-3 秒发一次 HTTP 请求。8 个用户同时提交 AI 任务时，产生 2.67 QPS 的无效轮询请求，浪费服务器资源且增加延迟。
+
+**方案**：使用原生 WebSocket（`ws` 库）替代短轮询，AI 任务完成/失败时由后端主动推送给前端。
+
+**改动文件**：
+
+| 文件 | 改动说明 |
+|------|---------|
+| `api/package.json` | 新增 `ws` + `@types/ws` 依赖 |
+| `api/src/utils/websocket.ts` | **新建** — WebSocket 服务（连接管理、JWT 鉴权、心跳、按用户推送） |
+| `api/src/index.ts` | `app.listen()` → `http.createServer(app)` + 挂载 WebSocket |
+| `api/src/workers/aiWorker.ts` | 续写/润色/插图任务完成/失败时调用 `wsServer.sendTaskStatus()` |
+| `api/src/routes/payment.ts` | 支付回调成功/取消时调用 `wsServer.sendToUser()` |
+| `web/js/ws-client.js` | **新建** — Web 端统一 WebSocket 客户端（自动重连 + 降级轮询） |
+| `web/write.html` | `pollTaskStatus()` → WebSocket 监听 + 降级轮询 |
+| `web/story.html` | `pollAiChapterTaskStatus()` → WebSocket 监听 + 降级轮询 |
+| `web/payment.html` | `startPaymentPolling()` → WebSocket 监听 + 降级轮询 |
+| `web/ai-tasks.html` | 30秒定时刷新 → WebSocket 实时更新 |
+| `web/story-tree.html` | 30秒自动刷新 → WebSocket 实时更新 |
+| `web/js/system-load-widget.js` | 30秒轮询 → WebSocket 推送 + 60秒降级轮询 |
+| `miniprogram/src/utils/ws-client.ts` | **新建** — 小程序 WebSocket 客户端（`uni.connectSocket`） |
+| `miniprogram/src/components/ai-panel/index.vue` | `while` 循环轮询 → `waitForTaskResult()` WebSocket + 降级 |
+| `miniprogram/src/pages/story/index.vue` | `startPollTask()` → WebSocket 监听 + 降级轮询 |
+
+**架构**：
+
+```
+前端（Web / 小程序）
+  │
+  │ WebSocket 长连接 ws://域名/api/ws?token=xxx
+  │
+后端（Express + ws）
+  │
+  ├─ 连接管理: Map<userId, Set<WebSocket>>
+  ├─ JWT 鉴权: 连接时验证 token
+  ├─ 心跳检测: 30秒 ping/pong，超时断开
+  │
+  └─ 推送事件:
+       ├─ task:status    — AI 任务完成/失败（由 aiWorker 触发）
+       ├─ payment:status — 支付成功/取消（由 payment 回调触发）
+       ├─ tree:update    — 故事树更新
+       └─ system:load    — 系统负载
+```
+
+**降级策略**：WebSocket 不是 100% 可靠，所有场景均保留降级轮询兜底：
+- WebSocket 连接时：轮询间隔放宽到 5-10 秒（仅作兜底）
+- WebSocket 断开时：自动回退到原始 2-3 秒短轮询
+- WebSocket 重连成功：自动切回实时推送
+
+**效果**：
+- AI 任务完成延迟：3 秒（轮询间隔）→ 0 秒（实时推送）
+- 轮询 QPS：2.67 QPS/8用户 → 0 QPS（WebSocket 连接时）
+- 每个连接内存占用约 50KB，100 连接 ≈ 5MB
+
+---
+
+### 6.6 跨用户公平调度（FIFO 优先级）
 
 **问题**：当前 Bull 队列是 FIFO，如果一个用户连续提交了2个任务占满了自己的限额，其他用户的任务自然排在后面。但如果多个用户各提交1个任务，先提交的先处理，不存在不公平。
 
@@ -349,6 +409,7 @@ const priority = hasActiveTasks > 0 ? 5 : 10; // 首次提交优先级更高
 | ⬜ Worker 独立进程 | 额外进程开销 | +100-200MB | 中 |
 | ✅ API 限流保护 | 极低 | 极低 | 低（已完成） |
 | ✅ 超时熔断 | 极低 | 极低 | 低（已完成） |
+| ✅ WebSocket 实时推送 | 极低 | +5MB/100连接 | 中（已完成） |
 
 ---
 
@@ -360,4 +421,5 @@ const priority = hasActiveTasks > 0 ? 5 : 10; // 首次提交优先级更高
 4. ~~v1 路由迁移~~ ✅
 5. ~~API 限流保护~~ ✅
 6. ~~超时熔断~~ ✅
-7. **Worker 独立进程**（用户量增长后再做）
+7. ~~WebSocket 实时推送（替代短轮询）~~ ✅
+8. **Worker 独立进程**（用户量增长后再做）

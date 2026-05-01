@@ -5,6 +5,7 @@ import { prisma } from '../db';
 import { aiContinuationQueue, aiPolishQueue, aiIllustrationQueue } from '../utils/queue';
 import { notifyAiContinuationReady, notifyAiPolishReady, notifyAiIllustrationReady } from '../utils/notification';
 import { deductPoints, AI_COST } from '../utils/points';
+import { wsServer } from '../utils/websocket';
 
 // 检测使用哪个AI服务
 const USE_QWEN = !!process.env.QWEN_API_KEY;
@@ -604,6 +605,10 @@ XXX` : ''}`;
     }
 
     console.log(`✅ AI续写任务完成: ${taskId}`);
+    
+    // WebSocket 实时推送任务完成
+    wsServer.sendTaskStatus(userId, taskId, 'completed', { options });
+    
     return { success: true, options };
 
   } catch (error) {
@@ -617,6 +622,9 @@ XXX` : ''}`;
         completed_at: new Date()
       }
     });
+
+    // WebSocket 实时推送任务失败
+    wsServer.sendTaskStatus(userId, taskId, 'failed', null, error instanceof Error ? error.message : 'Unknown error');
 
     throw error;
   }
@@ -1002,6 +1010,9 @@ ${content}
 
     await notifyAiPolishReady(userId, taskId);
 
+    // WebSocket 实时推送润色完成
+    wsServer.sendTaskStatus(userId, taskId, 'completed', { original: content, polished: polishedText, style });
+
     console.log(`✅ AI润色任务完成: ${taskId}`);
     return { success: true, polishedText };
 
@@ -1016,6 +1027,9 @@ ${content}
         completed_at: new Date()
       }
     });
+
+    // WebSocket 实时推送润色失败
+    wsServer.sendTaskStatus(userId, taskId, 'failed', null, error instanceof Error ? error.message : 'Unknown error');
 
     throw error;
   }
@@ -1107,6 +1121,9 @@ aiIllustrationQueue.process(2, async (job: Job<IllustrationJobData>) => {
 
     await notifyAiIllustrationReady(userId, taskId, chapterTitle);
 
+    // WebSocket 实时推送插图完成
+    wsServer.sendTaskStatus(userId, taskId, 'completed', { imageUrl, prompt: imagePrompt });
+
     console.log(`✅ AI插图任务完成: ${taskId}, 耗时: ${responseTime}ms`);
     return { success: true, imageUrl };
 
@@ -1121,6 +1138,9 @@ aiIllustrationQueue.process(2, async (job: Job<IllustrationJobData>) => {
         completed_at: new Date()
       }
     });
+
+    // WebSocket 实时推送插图失败
+    wsServer.sendTaskStatus(userId, taskId, 'failed', null, error instanceof Error ? error.message : 'Unknown error');
 
     throw error;
   }

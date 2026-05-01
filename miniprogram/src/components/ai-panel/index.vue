@@ -171,9 +171,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { getAiV2Quota, createV2PolishTask, submitIllustrationTask } from '@/api/ai'
 import http from '@/utils/request'
+import { mpWsClient } from '@/utils/ws-client'
 
 const props = defineProps<{
   visible: boolean
@@ -346,34 +347,18 @@ async function generate() {
         return
       }
 
-      // 轮询任务状态（每2秒一次，最多60次=2分钟）
-      const maxAttempts = 60
-      let attempts = 0
-      while (attempts < maxAttempts) {
-        attempts++
-        await new Promise(resolve => setTimeout(resolve, 2000))
-        const taskRes = await http.get<{
-          status: string
-          result?: { options?: Array<{ content: string; title?: string; style?: string }> }
-          errorMessage?: string
-          queuePosition?: number | null
-        }>(`/api/ai/v2/tasks/${taskId}`, undefined, { showError: false })
-
-        if (taskRes.status === 'completed') {
-          const options = taskRes.result?.options || []
-          if (options.length > 0) {
-            result.value = options[0].content || ''
-          } else {
-            error.value = 'AI 未返回续写内容，请重试'
-          }
-          break
-        } else if (taskRes.status === 'failed') {
-          error.value = taskRes.errorMessage || 'AI 续写失败，请重试'
-          break
+      // WebSocket 优先监听任务状态，降级轮询兜底
+      const taskResult = await waitForTaskResult(taskId)
+      if (taskResult.status === 'completed') {
+        const options = taskResult.result?.options || []
+        if (options.length > 0) {
+          result.value = options[0].content || ''
+        } else {
+          error.value = 'AI 未返回续写内容，请重试'
         }
-        // pending/processing 继续轮询
-      }
-      if (attempts >= maxAttempts && !result.value && !error.value) {
+      } else if (taskResult.status === 'failed') {
+        error.value = taskResult.errorMessage || 'AI 续写失败，请重试'
+      } else {
         error.value = '生成超时，请稍后在任务列表中查看'
       }
       // 续写完成后刷新配额
@@ -430,6 +415,92 @@ function applyResult() {
   emit('apply', result.value)
   emit('close')
 }
+
+// ——— WebSocket 优先 + 降级轮询 等待任务结果 ———
+let activeUnwatch: (() => void) | null = null
+
+interface TaskResult {
+  status: 'completed' | 'failed' | 'timeout'
+  result?: { options?: Array<{ content: string; title?: string; style?: string }> }
+  errorMessage?: string
+}
+
+function waitForTaskResult(taskId: number): Promise<TaskResult> {
+  return new Promise((resolve) => {
+    let resolved = false
+    let pollTimer: ReturnType<typeof setInterval> | null = null
+    let timeoutTimer: ReturnType<typeof setTimeout> | null = null
+
+    const cleanup = () => {
+      resolved = true
+      if (activeUnwatch) {
+        activeUnwatch()
+        activeUnwatch = null
+      }
+      if (pollTimer) {
+        clearInterval(pollTimer)
+        pollTimer = null
+      }
+      if (timeoutTimer) {
+        clearTimeout(timeoutTimer)
+        timeoutTimer = null
+      }
+    }
+
+    // 1. WebSocket 监听
+    const unwatch = mpWsClient.watchTask(taskId, (data: any) => {
+      if (resolved) return
+      if (data.status === 'completed' || data.status === 'failed') {
+        cleanup()
+        resolve({
+          status: data.status,
+          result: data.result,
+          errorMessage: data.error,
+        })
+      }
+    })
+    activeUnwatch = unwatch
+
+    // 2. 降级轮询兜底（无论 WebSocket 是否连接都启动，双保险）
+    const pollInterval = mpWsClient.isConnected() ? 5000 : 2000
+    pollTimer = setInterval(async () => {
+      if (resolved) return
+      try {
+        const taskRes = await http.get<{
+          status: string
+          result?: { options?: Array<{ content: string; title?: string; style?: string }> }
+          errorMessage?: string
+        }>(`/api/ai/v2/tasks/${taskId}`, undefined, { showError: false })
+
+        if (resolved) return
+        if (taskRes.status === 'completed') {
+          cleanup()
+          resolve({ status: 'completed', result: taskRes.result })
+        } else if (taskRes.status === 'failed') {
+          cleanup()
+          resolve({ status: 'failed', errorMessage: taskRes.errorMessage })
+        }
+      } catch {
+        // 网络错误不中断，等下一个 interval
+      }
+    }, pollInterval)
+
+    // 3. 总超时：2 分钟
+    timeoutTimer = setTimeout(() => {
+      if (resolved) return
+      cleanup()
+      resolve({ status: 'timeout' })
+    }, 120000)
+  })
+}
+
+// 组件销毁时清理 WebSocket 监听
+onUnmounted(() => {
+  if (activeUnwatch) {
+    activeUnwatch()
+    activeUnwatch = null
+  }
+})
 </script>
 
 <style lang="scss" scoped>

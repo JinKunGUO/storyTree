@@ -2016,9 +2016,13 @@
 
     <script src="auth.js"></script>
     <script src="share.js"></script>
+    <script src="js/ws-client.js"></script>
     <script>
         // 页面初始化
         document.addEventListener('DOMContentLoaded', function() {
+            // 初始化 WebSocket 连接
+            StoryTreeWS.connect();
+            
             loadStoryDetail();
 
             // 分享按钮
@@ -4145,71 +4149,76 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
             }
         }
 
-        // 轮询AI章节任务状态
+        // 监听AI章节任务状态（WebSocket 优先，降级轮询兜底）
         async function pollAiChapterTaskStatus(taskId) {
-            console.log('开始轮询AI章节任务状态:', taskId);
+            console.log('开始监听AI章节任务状态:', taskId, 'WebSocket:', StoryTreeWS.isConnected() ? '已连接' : '未连接');
             
-            const maxAttempts = 100; // 最多轮询100次（每3秒一次，共5分钟）
-            let attempts = 0;
+            const handleTaskUpdate = (data) => {
+                if (data.taskId !== taskId) return;
+                console.log('收到AI章节任务状态更新:', data.status);
 
-            const checkStatus = async () => {
-                attempts++;
-                
-                try {
-                    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-                    const response = await fetch(`/api/ai/v2/tasks/${taskId}`, {
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('查询任务失败');
-                    }
-
-                    const data = await response.json();
-                    console.log(`轮询第${attempts}次, 任务状态:`, data.status);
-
-                    if (data.status === 'completed') {
-                        // 任务完成：无论弹窗是否打开，统一关闭弹窗并刷新页面
-                        console.log('任务完成，结果:', data.result);
-                        hideAiGeneratingBanner();
-                        closeAiChapterModal();
-                        showSuccess('AI 章节生成完成！即将刷新页面...');
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1500);
-                    } else if (data.status === 'failed') {
-                        throw new Error(data.errorMessage || '生成失败');
-                    } else if (attempts < maxAttempts) {
-                        // 继续轮询（每3秒一次）
-                        setTimeout(checkStatus, 3000);
-                    } else {
-                        throw new Error('生成超时，请稍后查看任务列表');
-                    }
-                } catch (error) {
-                    console.error('轮询错误:', error);
+                if (data.status === 'completed') {
+                    // 任务完成：关闭弹窗并刷新页面
+                    StoryTreeWS.off('task:status', handleTaskUpdate);
+                    StoryTreeWS.unwatchTask(taskId);
+                    
+                    console.log('任务完成，结果:', data.result);
+                    hideAiGeneratingBanner();
+                    closeAiChapterModal();
+                    showSuccess('AI 章节生成完成！即将刷新页面...');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else if (data.status === 'failed') {
+                    // 任务失败
+                    StoryTreeWS.off('task:status', handleTaskUpdate);
+                    StoryTreeWS.unwatchTask(taskId);
+                    
                     if (aiChapterModalOpen) {
-                        // 弹窗仍打开：在弹窗内显示错误
                         document.getElementById('aiChapterLoading').style.display = 'none';
                         document.getElementById('aiChapterError').style.display = 'block';
-                        document.getElementById('aiChapterErrorMessage').textContent = error.message;
+                        document.getElementById('aiChapterErrorMessage').textContent = data.errorMessage || '生成失败';
                         document.getElementById('regenerateAiChapter').style.display = 'inline-block';
                     } else {
-                        // 弹窗已关闭：隐藏提示条，用 toast 通知
                         hideAiGeneratingBanner();
-                        showError('AI 章节生成失败：' + error.message);
+                        showError('AI 章节生成失败：' + (data.errorMessage || '未知错误'));
                     }
                 }
             };
-
-            checkStatus();
+            
+            // 通过 WebSocket 监听
+            StoryTreeWS.on('task:status', handleTaskUpdate);
+            
+            // 同时注册降级轮询任务
+            StoryTreeWS.watchTask(taskId, handleTaskUpdate);
         }
 
-        // 后台轮询（用于定时任务）
+        // 后台监听定时任务（WebSocket 优先，降级轮询兜底）
         function startBackgroundPolling(taskId, scheduledTime) {
-            console.log('📅 开始后台轮询任务:', taskId);
+            console.log('📅 开始后台监听定时任务:', taskId);
             console.log('⏰ 预计执行时间:', scheduledTime ? scheduledTime.toLocaleString('zh-CN') : '未知');
+            
+            const handleTaskUpdate = (data) => {
+                if (data.taskId !== taskId) return;
+                console.log('📬 收到定时任务状态更新:', data.status);
+
+                if (data.status === 'completed') {
+                    StoryTreeWS.off('task:status', handleTaskUpdate);
+                    StoryTreeWS.unwatchTask(taskId);
+                    
+                    console.log('✅ 定时任务完成，刷新页面');
+                    showSuccess('AI章节创作完成！正在刷新页面...');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else if (data.status === 'failed') {
+                    StoryTreeWS.off('task:status', handleTaskUpdate);
+                    StoryTreeWS.unwatchTask(taskId);
+                    
+                    console.error('❌ 定时任务失败:', data.errorMessage);
+                    showError('AI章节创作失败：' + (data.errorMessage || '未知错误'));
+                }
+            };
             
             // 计算距离执行时间还有多久
             const now = new Date();
@@ -4218,63 +4227,14 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
             if (scheduledTime && scheduledTime > now) {
                 delayUntilStart = scheduledTime - now;
                 const minutes = Math.floor(delayUntilStart / 60000);
-                console.log(`⏳ 距离执行还有 ${minutes} 分钟，到时间后才开始轮询`);
+                console.log(`⏳ 距离执行还有 ${minutes} 分钟，到时间后才开始监听`);
             }
             
-            // 在定时任务执行时间之前，不进行轮询
+            // 在定时任务执行时间到达后，注册 WebSocket 监听 + 降级轮询
             setTimeout(() => {
-                console.log('🔔 到达预定时间，开始轮询任务状态');
-                
-                const maxAttempts = 60; // 最多轮询60次（10分钟，每10秒一次）
-                let attempts = 0;
-
-                const checkStatus = async () => {
-                    attempts++;
-                    
-                    try {
-                        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-                        if (!token) {
-                            console.log('用户已登出，停止轮询');
-                            return;
-                        }
-
-                        const response = await fetch(`/api/ai/v2/tasks/${taskId}`, {
-                            headers: {
-                                'Authorization': `Bearer ${token}`
-                            }
-                        });
-
-                        if (!response.ok) {
-                            console.warn('查询任务失败，停止轮询');
-                            return;
-                        }
-
-                        const data = await response.json();
-                        console.log(`🔍 后台轮询第${attempts}次, 任务状态:`, data.status);
-
-                        if (data.status === 'completed') {
-                            // 任务完成，刷新页面
-                            console.log('✅ 定时任务完成，刷新页面');
-                            showSuccess('AI章节创作完成！正在刷新页面...');
-                            setTimeout(() => {
-                                window.location.reload();
-                            }, 1500);
-                        } else if (data.status === 'failed') {
-                            console.error('❌ 任务失败:', data.errorMessage);
-                            showError('AI章节创作失败：' + (data.errorMessage || '未知错误'));
-                        } else if (attempts < maxAttempts) {
-                            // 继续轮询（每10秒一次）
-                            setTimeout(checkStatus, 10000);
-                        } else {
-                            console.log('⏱️ 轮询超时（10分钟），停止轮询');
-                        }
-                    } catch (error) {
-                        console.error('后台轮询错误:', error);
-                        // 出错时不显示错误信息，静默停止轮询
-                    }
-                };
-
-                checkStatus();
+                console.log('🔔 到达预定时间，开始监听任务状态');
+                StoryTreeWS.on('task:status', handleTaskUpdate);
+                StoryTreeWS.watchTask(taskId, handleTaskUpdate);
             }, delayUntilStart);
         }
 

@@ -522,6 +522,7 @@
     </div>
 
     <script src="auth.js"></script>
+    <script src="js/ws-client.js"></script>
     <script>
         let treeChart = null;
         let statsChart = null;
@@ -551,7 +552,24 @@
             checkAuthStatus();
             loadStoryTree();
             
-            // 启动自动刷新机制
+            // 初始化 WebSocket 连接
+            StoryTreeWS.connect();
+            
+            // WebSocket 实时监听故事树更新（新章节发布等）
+            StoryTreeWS.on('tree:update', (data) => {
+                console.log('收到故事树更新推送:', data);
+                loadStoryTree();
+            });
+            
+            // 同时监听 AI 任务完成（AI 创作的新章节完成时刷新树）
+            StoryTreeWS.on('task:status', (data) => {
+                if (data.status === 'completed') {
+                    console.log('AI任务完成，刷新故事树');
+                    loadStoryTree();
+                }
+            });
+            
+            // 启动自动刷新机制（降级兜底）
             startAutoRefresh();
 
             // 汉堡菜单
@@ -686,7 +704,7 @@
             }
         }
 
-        // 自动刷新机制 - 每30秒检查一次新章节
+        // 自动刷新机制（降级兜底：WebSocket 连接时 60 秒，断开时 15 秒）
         let autoRefreshInterval = null;
         
         function startAutoRefresh() {
@@ -695,13 +713,13 @@
                 clearInterval(autoRefreshInterval);
             }
             
-            // 每30秒刷新一次
+            const interval = StoryTreeWS.isConnected() ? 60000 : 15000;
             autoRefreshInterval = setInterval(() => {
                 console.log('🔄 自动检查新章节...');
                 loadStoryTree();
-            }, 30000); // 30秒
+            }, interval);
             
-            console.log('✅ 自动刷新已启动，每30秒检查一次新章节');
+            console.log(`✅ 自动刷新已启动，每${interval / 1000}秒检查一次新章节`);
         }
         
         // 页面可见性变化时控制自动刷新

@@ -1204,6 +1204,7 @@
     </div>
 
     <script src="auth.js"></script>
+    <script src="js/ws-client.js"></script>
     <script>
         let quill;
         let storyId;
@@ -1218,6 +1219,9 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('页面加载完成');
             checkAuthStatus();
+            
+            // 初始化 WebSocket 连接
+            StoryTreeWS.connect();
             
             // 等待Quill.js加载完成
             if (typeof Quill === 'undefined') {
@@ -2531,52 +2535,39 @@
             }
         }
 
-        // 轮询任务状态
+        // 监听AI任务状态（WebSocket 优先，降级轮询兜底）
         async function pollTaskStatus(taskId) {
-            console.log('开始轮询任务状态:', taskId);
+            console.log('开始监听任务状态:', taskId, 'WebSocket:', StoryTreeWS.isConnected() ? '已连接' : '未连接');
             
-            const maxAttempts = 100; // 最多轮询100次（每3秒一次，共5分钟）
-            let attempts = 0;
-
-            const checkStatus = async () => {
-                attempts++;
+            // 注册任务回调（WebSocket 收到推送或降级轮询完成时触发）
+            const handleTaskUpdate = (data) => {
+                console.log('收到任务状态更新:', data);
+                if (data.taskId !== taskId) return;
                 
-                try {
-                    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-                    const response = await fetch(`/api/ai/v2/tasks/${taskId}`, {
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('查询任务失败');
-                    }
-
-                    const data = await response.json();
-                    console.log(`轮询第${attempts}次, 任务状态:`, data.status);
-
-                    if (data.status === 'completed') {
-                        // 任务完成，显示结果
-                        console.log('任务完成，结果:', data.result);
-                        displayAiTaskResult(data.result);
-                    } else if (data.status === 'failed') {
-                        throw new Error(data.errorMessage || '生成失败');
-                    } else if (attempts < maxAttempts) {
-                        // 继续轮询（每3秒一次）
-                        setTimeout(checkStatus, 3000);
-                    } else {
-                        throw new Error('生成超时，请稍后查看任务列表');
-                    }
-                } catch (error) {
-                    console.error('轮询错误:', error);
+                if (data.status === 'completed') {
+                    // 任务完成，显示结果
+                    console.log('任务完成，结果:', data.result);
+                    displayAiTaskResult(data.result);
+                    // 清理监听
+                    StoryTreeWS.off('task:status', handleTaskUpdate);
+                    StoryTreeWS.unwatchTask(taskId);
+                } else if (data.status === 'failed') {
+                    // 任务失败
+                    console.error('任务失败:', data.errorMessage);
                     document.getElementById('aiLoading').style.display = 'none';
                     document.getElementById('aiError').style.display = 'block';
-                    document.getElementById('aiErrorMessage').textContent = error.message;
+                    document.getElementById('aiErrorMessage').textContent = data.errorMessage || '生成失败';
+                    // 清理监听
+                    StoryTreeWS.off('task:status', handleTaskUpdate);
+                    StoryTreeWS.unwatchTask(taskId);
                 }
             };
-
-            checkStatus();
+            
+            // 通过 WebSocket 监听
+            StoryTreeWS.on('task:status', handleTaskUpdate);
+            
+            // 同时注册降级轮询任务（WebSocket 断开时自动启动轮询）
+            StoryTreeWS.watchTask(taskId, handleTaskUpdate);
         }
 
         // 显示AI任务结果（写作页面：仅小段落模式）
@@ -3354,72 +3345,50 @@
             return imageCount;
         }
 
-        // 轮询任务状态
+        // 监听插图任务状态（WebSocket 优先，降级轮询兜底）
         let illustrationPollingInterval = null;
         
-        async function pollIllustrationTask(taskId) {
-            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        function watchIllustrationTask(taskId) {
+            console.log('开始监听插图任务:', taskId);
             
-            try {
-                const response = await fetch(`/api/ai/v2/tasks/${taskId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
+            const handleTaskUpdate = (data) => {
+                if (data.taskId !== taskId) return;
+                console.log('收到插图任务状态更新:', data.status);
 
-                if (!response.ok) {
-                    throw new Error('查询任务状态失败');
-                }
-
-                const task = await response.json();
-                console.log('任务状态:', task.status);
-
-                if (task.status === 'completed') {
-                    // 任务完成，停止轮询
-                    if (illustrationPollingInterval) {
-                        clearInterval(illustrationPollingInterval);
-                        illustrationPollingInterval = null;
-                    }
+                if (data.status === 'completed') {
+                    // 任务完成
+                    StoryTreeWS.off('task:status', handleTaskUpdate);
+                    StoryTreeWS.unwatchTask(taskId);
 
                     // 获取图片URL
-                    const imageUrl = task.result?.imageUrl;
+                    const imageUrl = data.result?.imageUrl;
 
                     if (imageUrl) {
                         console.log('✅ 插图生成完成:', imageUrl);
-                        
-                        // 自动插入到编辑器
                         insertIllustrationToEditor(imageUrl);
-                        
-                        // 关闭模态框
                         closeIllustrationModalFunc();
-                        
-                        // 显示成功提示
                         showSuccess('🎨 精美插图已生成并插入编辑器！');
                     } else {
-                        throw new Error('未找到生成的图片');
+                        document.getElementById('illustrationLoading').style.display = 'none';
+                        document.getElementById('illustrationError').style.display = 'block';
+                        document.getElementById('illustrationErrorMessage').textContent = '未找到生成的图片';
                     }
-                } else if (task.status === 'failed') {
-                    // 任务失败，停止轮询
-                    if (illustrationPollingInterval) {
-                        clearInterval(illustrationPollingInterval);
-                        illustrationPollingInterval = null;
-                    }
-
-                    throw new Error(task.errorMessage || '插图生成失败');
+                } else if (data.status === 'failed') {
+                    // 任务失败
+                    StoryTreeWS.off('task:status', handleTaskUpdate);
+                    StoryTreeWS.unwatchTask(taskId);
+                    
+                    document.getElementById('illustrationLoading').style.display = 'none';
+                    document.getElementById('illustrationError').style.display = 'block';
+                    document.getElementById('illustrationErrorMessage').textContent = data.errorMessage || '插图生成失败';
                 }
-                // 如果是 processing 或 pending，继续轮询
-            } catch (error) {
-                console.error('轮询任务状态失败:', error);
-                if (illustrationPollingInterval) {
-                    clearInterval(illustrationPollingInterval);
-                    illustrationPollingInterval = null;
-                }
-                
-                // 显示错误
-                document.getElementById('illustrationLoading').style.display = 'none';
-                document.getElementById('illustrationError').style.display = 'block';
-                document.getElementById('illustrationErrorMessage').textContent = error.message || '查询任务状态失败';
-            }
+            };
+            
+            // 通过 WebSocket 监听
+            StoryTreeWS.on('task:status', handleTaskUpdate);
+            
+            // 同时注册降级轮询任务
+            StoryTreeWS.watchTask(taskId, handleTaskUpdate);
         }
 
         // 插入插图到编辑器
@@ -3595,15 +3564,8 @@
                     </p>
                 `;
 
-                // 开始轮询任务状态（每 3 秒检查一次）
-                illustrationPollingInterval = setInterval(() => {
-                    pollIllustrationTask(data.taskId);
-                }, 3000);
-
-                // 立即检查一次
-                setTimeout(() => {
-                    pollIllustrationTask(data.taskId);
-                }, 2000);
+                // 使用 WebSocket 监听任务状态（自动降级轮询）
+                watchIllustrationTask(data.taskId);
 
             } catch (error) {
                 console.error('AI 插图生成错误:', error);
