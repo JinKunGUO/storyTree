@@ -90,33 +90,32 @@ async function importStory(storyData: StoryData, authorId: number): Promise<{ st
         visibility: 'public',
         allow_branch: true,
         allow_comment: true,
+        auto_approve_collaborators: true,  // 自动批准协作申请（允许任何人协作）
+        require_collaborator_review: false, // 协作者内容无需审核
         updated_at: new Date()
       }
     });
 
-    // 2. 逐章创建节点（链式结构：每章是上一章的唯一子节点）
-    //    结构示意: 第1章 -> 第2章 -> 第3章 -> ...（串型，无分支）
+    // 2. 逐章创建节点（平级结构：所有章节都是 root 的直接子节点）
+    //    结构示意: root -> [第1章, 第2章, 第3章, ...]（平级，无嵌套）
     let prevNodeId: number | null = null;
     let rootNodeId: number | null = null;
-    let prevPath: string = '';
     let totalWords = 0;
 
     for (let i = 0; i < storyData.chapters.length; i++) {
       const chapter = storyData.chapters[i];
-      // path 计算：链式嵌套 "1" -> "1.1" -> "1.1.1" -> ...
-      let nodePath: string;
-      if (i === 0) {
-        nodePath = '1';
-      } else {
-        nodePath = `${prevPath}.1`;
-      }
+      // path 计算：平级结构 "1", "2", "3", ...（避免深度嵌套）
+      const nodePath = `${i + 1}`;
+      
+      // 章节标题为空时自动生成
+      const chapterTitle = chapter.title?.trim() || `第 ${i + 1} 章`;
 
       const createdNode: { id: number } = await tx.nodes.create({
         data: {
           story_id: story.id,
           parent_id: prevNodeId, // 每章挂在上一章下面，形成链式结构
           author_id: authorId,
-          title: chapter.title,
+          title: chapterTitle,
           content: chapter.content,
           path: nodePath,
           is_published: true,
@@ -131,7 +130,6 @@ async function importStory(storyData: StoryData, authorId: number): Promise<{ st
         rootNodeId = createdNode.id;
       }
       prevNodeId = createdNode.id;
-      prevPath = nodePath;
     }
 
     // 3. 更新故事的 root_node_id

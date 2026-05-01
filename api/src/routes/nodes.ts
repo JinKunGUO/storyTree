@@ -750,6 +750,16 @@ router.get('/:id', optionalAuth, async (req, res) => {
       }
     }
 
+    // 被驳回/下架节点权限校验：只有节点作者、故事作者、管理员可以访问
+    const isAdmin = !!(req as any).isAdmin;
+    if ((node.review_status === 'REJECTED' || node.review_status === 'HIDDEN') && !isAdmin) {
+      const isNodeAuthor = userId && node.author_id === userId;
+      const isStoryAuthor = userId && node.story.author_id === userId;
+      if (!isNodeAuthor && !isStoryAuthor) {
+        return res.status(404).json({ error: 'Node not found' });
+      }
+    }
+
     // Increment read count (only for published nodes)
     if (node.is_published) {
       await prisma.nodes.update({
@@ -795,7 +805,10 @@ router.get('/:id', optionalAuth, async (req, res) => {
     }
 
     const branches = await prisma.nodes.findMany({
-      where: branchFilter,
+      where: {
+        ...branchFilter,
+        review_status: { notIn: ['REJECTED', 'HIDDEN'] }
+      },
       include: {
         author: {
           select: { id: true, username: true }
@@ -893,7 +906,8 @@ router.get('/:id/siblings', async (req, res) => {
     const siblings = await prisma.nodes.findMany({
       where: {
         parent_id: node.parent_id,
-        id: { not: parseInt(id) }
+        id: { not: parseInt(id) },
+        review_status: { notIn: ['REJECTED', 'HIDDEN'] }
       },
       include: {
         author: {

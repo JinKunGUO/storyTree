@@ -301,7 +301,7 @@ router.post('/login', async (req, res) => {
     }
 
     // 生成新 token 并写入 active_token（同时使其他端旧 token 失效）
-    const token = generateJWT(user.id, user.username, false, 'web');
+    const token = generateJWT(user.id, user.username, user.isAdmin, 'web');
     await prisma.users.update({ where: { id: user.id }, data: { active_token: token } });
 
     res.json({

@@ -381,11 +381,24 @@ router.get('/:id', optionalAuth, async (req, res) => {
 
     // Get all nodes for this story
     // 草稿节点（is_published=false）只对作者和协作者可见
+    // 被驳回/下架的节点（REJECTED/HIDDEN）对普通用户不可见
+    const isAdmin = !!(req as any).isAdmin;
+    const nodeWhereFilter: any = {
+      story_id: parseInt(id),
+      ...(canSeeDrafts ? {} : { is_published: true })
+    };
+    // 非管理员、非作者：过滤掉被驳回和下架的节点
+    if (!isAdmin && !isAuthor) {
+      nodeWhereFilter.OR = [
+        { review_status: 'APPROVED' },
+        { review_status: 'PENDING' },
+        // 允许节点作者看到自己被驳回的内容（以便修改后重新提交）
+        ...(userId ? [{ author_id: userId, review_status: { in: ['REJECTED', 'HIDDEN'] } }] : [])
+      ];
+    }
+
     const nodes = await prisma.nodes.findMany({
-      where: {
-        story_id: parseInt(id),
-        ...(canSeeDrafts ? {} : { is_published: true })
-      },
+      where: nodeWhereFilter,
       include: {
         author: {
           select: { id: true, username: true, level: true }
@@ -628,11 +641,22 @@ router.get('/:id/tree', optionalAuth, async (req, res) => {
 
     // Get all nodes with their relationships
     // 草稿节点（is_published=false）只对作者和协作者可见
+    // 被驳回/下架的节点（REJECTED/HIDDEN）对普通用户不可见
+    const isAdminForTree = !!(req as any).isAdmin;
+    const treeNodeFilter: any = {
+      story_id: parseInt(id),
+      ...(canSeeDraftsInTree ? {} : { is_published: true })
+    };
+    if (!isAdminForTree && !isAuthor) {
+      treeNodeFilter.OR = [
+        { review_status: 'APPROVED' },
+        { review_status: 'PENDING' },
+        ...(userId ? [{ author_id: userId, review_status: { in: ['REJECTED', 'HIDDEN'] } }] : [])
+      ];
+    }
+
     const nodes = await prisma.nodes.findMany({
-      where: {
-        story_id: parseInt(id),
-        ...(canSeeDraftsInTree ? {} : { is_published: true })
-      },
+      where: treeNodeFilter,
       include: {
         author: {
           select: { 

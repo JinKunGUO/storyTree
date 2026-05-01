@@ -73,6 +73,13 @@ Content-Type: application/json
 
 > 该页面会自动校验当前登录用户是否为管理员，非管理员无法访问。
 
+### 2.4 管理员忘记密码怎么办
+数据库中存储的是 bcrypt 哈希值，无法反向解密。
+可以重新运行创建管理员脚本来重置密码。
+该脚本使用 upsert（第 46 行），如果用户名 jinhui 已存在会直接更新密码，不会重复创建。
+```
+cd api && npx ts-node scripts/create-admin.ts jinhui 1025103012@qq.com 你的新密码
+```
 ---
 
 ## 三、管理功能总览
@@ -211,3 +218,158 @@ curl http://localhost:3001/api/admin/dashboard/overview \
   -H "Authorization: Bearer <your-token>"
 ```
 
+---
+
+## 六、Bug 修复记录
+
+### 6.1 【2026-05-01 修复】admin.html 登录鉴权改造
+
+**问题**：`admin.html` 使用不存在的 `/auth/dev-login` 接口登录，导致进入页面后直接跳转到 `index.html`，无法访问管理后台。
+
+**修复内容**：
+
+| 修改项 | 修改前 | 修改后 |
+|--------|--------|--------|
+| 登录方式 | `prompt()` 弹窗 + `/auth/dev-login`（不存在） | 复用 JWT Token，从 localStorage 读取已登录 token |
+| 身份验证 | 无验证 | 调用 `GET /auth/me` → 检查 `isAdmin === true` |
+| 未登录处理 | 跳转 index.html | 跳转 `login.html?redirect=admin.html`（登录后自动回来） |
+| API 鉴权 | `X-User-Id` 请求头（不安全） | `Authorization: Bearer <token>`（JWT 鉴权） |
+
+**涉及文件**：`web/admin.html`
+
+### 6.2 【2026-05-01 修复】JWT Token 中 isAdmin 始终为 false
+
+**问题**：`api/src/routes/auth.ts` 第 305 行，Web 端登录时调用 `generateJWT(user.id, user.username, false, 'web')`，第三个参数 `isAdmin` 被**硬编码为 `false`**。无论用户在数据库中是否为管理员，JWT token 中的 `isAdmin` 永远是 `false`，导致所有管理接口返回 `403 Forbidden: Admin access required`。
+
+**修复**：
+
+```diff
+- const token = generateJWT(user.id, user.username, false, 'web');
++ const token = generateJWT(user.id, user.username, user.isAdmin, 'web');
+```
+
+**涉及文件**：`api/src/routes/auth.ts:305`
+
+**影响范围**：此 bug 导致所有管理员通过 Web 端登录后，以下接口全部返回 403：
+- `GET /api/admin/review-queue`（内容审核队列）
+- `GET /api/admin/membership/stats`（会员统计）
+- `GET /api/admin/membership/members`（会员列表）
+- `GET /api/admin/dashboard/*`（仪表盘数据）
+- `POST /api/admin/review`（审核操作）
+- 以及所有 `/api/admin/*` 路径的接口
+
+### 6.3 【2026-05-01 修复】提现列表 API 路径错误（404）
+
+**问题**：`admin.html` 中 `loadWithdrawalQueue()` 函数调用 `GET /withdrawals/admin/all`，但后端路由定义的路径是 `GET /withdrawals/admin/requests`，导致 404 Not Found。
+
+**修复**：
+
+```diff
+- const data = await apiRequest('GET', '/withdrawals/admin/all');
++ const data = await apiRequest('GET', '/withdrawals/admin/requests');
+```
+
+**涉及文件**：`web/admin.html:489`
+
+---
+
+## 七、管理员操作指南（Step by Step）
+
+### 7.1 首次部署 — 创建管理员账号
+
+```bash
+# 进入 api 目录
+cd api
+
+# 方式一：使用默认配置（用户名 jinhui，密码 123456）
+npx ts-node scripts/create-admin.ts
+
+# 方式二：自定义（推荐生产环境使用强密码）
+npx ts-node scripts/create-admin.ts myAdmin admin@mysite.com StrongP@ss2026!
+```
+
+脚本会输出：
+```
+管理员创建成功:
+  用户名: myAdmin
+  邮箱: admin@mysite.com
+  ID: 1
+  积分: 999999999
+  等级: 99
+```
+
+### 7.2 登录管理后台
+
+**步骤**：
+
+1. **打开登录页**：访问 `http://你的域名/login.html`
+2. **输入管理员邮箱和密码**：使用创建管理员时设置的邮箱和密码登录
+3. **登录成功后**：JWT Token 自动存储到 `localStorage`
+4. **访问管理后台**：打开 `http://你的域名/admin.html`
+5. **自动验证**：页面会自动读取 Token → 调用 `/auth/me` 验证身份 → 检查 `isAdmin` → 显示管理界面
+
+**如果直接访问 admin.html 未登录**：
+- 页面会自动跳转到 `login.html?redirect=admin.html`
+- 登录成功后自动跳回管理后台
+
+**如果登录的不是管理员账号**：
+- 页面会提示"当前账号没有管理员权限，请使用管理员账号登录"
+- 然后跳转到首页
+
+### 7.3 管理后台功能区域
+
+管理后台分为三个选项卡：
+
+| 选项卡 | 功能 |
+|--------|------|
+| **内容审核** | 查看待审核内容队列、通过/驳回/下架节点、查看举报详情 |
+| **提现审核** | 查看提现申请列表、通过/拒绝提现、查看用户收益详情 |
+| **会员管理** | 会员统计概览、会员列表搜索与筛选、查看会员详情 |
+
+### 7.4 内容审核操作
+
+1. 进入管理后台，默认显示"内容审核"选项卡
+2. 顶部统计卡片显示：待审核内容数、待审核提现数、已通过提现数、提现总额
+3. 审核队列中每个条目显示：标题、作者、创建时间、举报次数、内容预览
+4. 操作按钮：
+   - **✅ 通过** → 节点状态设为 `APPROVED`，自动通知作者
+   - **❌ 驳回** → 节点状态设为 `REJECTED`，自动通知作者
+   - **🚫 下架** → 节点状态设为 `HIDDEN`，自动通知作者
+   - **查看举报** → 弹窗显示所有举报记录（举报人、原因、说明、时间）
+
+### 7.5 提现审核操作
+
+1. 切换到"提现审核"选项卡
+2. 列表显示所有提现申请：金额、申请用户、提现方式、提现账号、申请时间、状态
+3. 对待审核（pending）的申请可以：
+   - **✅ 通过** → 弹窗确认后批准
+   - **❌ 拒绝** → 先展开备注输入框，填写拒绝原因后确认（拒绝必须填写原因，金额退回用户余额）
+   - **📊 查看用户收益** → 弹窗显示用户收益余额、总收益、已提现、待审核、解锁次数等
+
+### 7.6 会员管理操作
+
+1. 切换到"会员管理"选项卡
+2. 顶部统计：总会员数、今日新增、本月新增、即将到期、活跃会员、自动续费数、本月收入
+3. 支持按会员等级筛选（全部/体验/月度/季度/年度/企业）
+4. 支持按用户名搜索
+5. 列表显示：用户名、邮箱、加入时间、会员等级、到期时间、自动续费状态
+
+### 7.7 忘记密码
+
+数据库中密码使用 bcrypt 哈希存储，无法反向解密。重置方法：
+
+```bash
+cd api && npx ts-node scripts/create-admin.ts jinhui 1025103012@qq.com 新密码
+```
+
+脚本使用 `upsert`，用户名已存在时直接更新密码，不会创建重复账号。
+
+### 7.8 常见问题排查
+
+| 现象 | 原因 | 解决方法 |
+|------|------|----------|
+| 访问 admin.html 跳转到 login.html | 未登录或 Token 过期 | 重新登录 |
+| 访问 admin.html 跳转到 index.html | 当前登录账号不是管理员 | 用管理员账号登录 |
+| 管理接口返回 403 Forbidden | JWT Token 中 isAdmin 为 false | **需要重新登录**（修复前生成的旧 Token 中 isAdmin 为 false，重新登录会生成新的正确 Token） |
+| 提现列表加载失败 404 | 旧版前端缓存 | 清除浏览器缓存后刷新（已修复 API 路径） |
+| 登录后 admin.html 仍显示权限不足 | 数据库中 `isAdmin` 字段为 false | 运行 `create-admin.ts` 脚本或手动 SQL 更新 |

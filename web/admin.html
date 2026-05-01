@@ -251,64 +251,88 @@
 
   <script>
     const API_BASE = '/api';
-    let adminId = null;
+    let adminToken = null;
 
-    // API 调用
+    // 获取存储的 token
+    function getToken() {
+      return adminToken || localStorage.getItem('token') || sessionStorage.getItem('token');
+    }
+
+    // API 调用（统一使用 JWT Token 鉴权）
     async function apiRequest(method, path, body) {
+      const token = getToken();
       const options = {
         method,
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         }
       };
-      if (adminId) {
-        options.headers['X-User-Id'] = adminId;
-      }
       if (body) {
         options.body = JSON.stringify(body);
       }
       const res = await fetch(`${API_BASE}${path}`, options);
       if (!res.ok) {
+        if (res.status === 401) {
+          // Token 失效，跳转登录
+          localStorage.removeItem('token');
+          sessionStorage.removeItem('token');
+          location.href = 'login.html?redirect=admin.html';
+          return;
+        }
         const err = await res.json();
         throw new Error(err.error || '请求失败');
       }
       return res.json();
     }
 
-    // 初始化
+    // 初始化：验证 JWT Token 中的管理员身份
     async function init() {
-      // 简单的管理员登录
-      const username = prompt('请输入管理员用户名：');
-      if (!username) {
-        window.toast ? toast.error('需要登录才能访问管理后台') : console.error('需要登录才能访问管理后台');
-        location.href = 'index.html';
+      const token = getToken();
+      if (!token) {
+        location.href = 'login.html?redirect=admin.html';
         return;
       }
 
       try {
-        // 开发环境登录
-        const res = await apiRequest('POST', '/auth/dev-login', { 
-          username, 
-          email: `${username}@admin.com` 
+        // 调用 /auth/me 验证身份
+        const res = await fetch(`${API_BASE}/auth/me`, {
+          headers: { 'Authorization': `Bearer ${token}` }
         });
-        adminId = res.user.id;
-        document.getElementById('adminName').textContent = res.user.username;
+
+        if (!res.ok) {
+          // Token 无效或过期
+          localStorage.removeItem('token');
+          sessionStorage.removeItem('token');
+          location.href = 'login.html?redirect=admin.html';
+          return;
+        }
+
+        const data = await res.json();
+        const user = data.user;
+
+        if (!user.isAdmin) {
+          alert('当前账号没有管理员权限，请使用管理员账号登录');
+          location.href = 'index.html';
+          return;
+        }
+
+        adminToken = token;
+        document.getElementById('adminName').textContent = user.username;
 
         // 加载数据
         loadStats();
         loadReviewQueue();
         loadWithdrawalQueue();
       } catch (e) {
-        window.toast ? toast.error('登录失败: ' + e.message) : console.error('登录失败: ' + e.message);
-        location.href = 'index.html';
+        console.error('验证管理员身份失败:', e);
+        location.href = 'login.html?redirect=admin.html';
       }
     }
 
     // 加载统计数据
     async function loadStats() {
       try {
-        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-        
         // 加载内容审核统计
         const reviewRes = await apiRequest('GET', '/admin/review-queue');
         const reviewStats = reviewRes.stats;
@@ -316,14 +340,8 @@
         // 加载提现统计
         let withdrawalStats = { pending: 0, approved: 0, rejected: 0, totalAmount: 0 };
         try {
-          const withdrawalRes = await fetch(`${API_BASE}/withdrawals/admin/stats`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          if (withdrawalRes.ok) {
-            withdrawalStats = await withdrawalRes.json();
-          }
+          const wsRes = await apiRequest('GET', '/withdrawals/admin/stats');
+          if (wsRes) withdrawalStats = wsRes;
         } catch (e) {
           console.error('Failed to load withdrawal stats:', e);
         }
@@ -331,7 +349,7 @@
         document.getElementById('stats').innerHTML = `
           <div class="stat-card">
             <div class="label">待审核内容</div>
-            <div class="value">${reviewStats.pending}</div>
+            <div class="value">${reviewStats.pendingCount}</div>
           </div>
           <div class="stat-card">
             <div class="label">待审核提现</div>
@@ -359,29 +377,39 @@
       try {
         const res = await apiRequest('GET', '/admin/review-queue');
         
-        if (res.queue.length === 0) {
+        // 合并待审核节点和被举报节点（去重）
+        const pendingNodes = res.pending || [];
+        const reportedNodes = res.reported || [];
+        const seenIds = new Set(pendingNodes.map(n => n.id));
+        const allItems = [...pendingNodes];
+        reportedNodes.forEach(n => {
+          if (!seenIds.has(n.id)) allItems.push(n);
+        });
+
+        if (allItems.length === 0) {
           queueDiv.innerHTML = '<div class="empty">暂无待审核内容</div>';
           return;
         }
 
-        queueDiv.innerHTML = res.queue.map(item => `
+        queueDiv.innerHTML = allItems.map(item => `
           <div class="review-item">
             <div class="header">
               <div>
                 <h3>${item.title}</h3>
                 <div class="meta">
                   作者：${item.author.username} | 
-                  创建时间：${new Date(item.createdAt).toLocaleString('zh-CN')}
+                  故事：${item.story ? item.story.title : '-'} |
+                  创建时间：${new Date(item.created_at).toLocaleString('zh-CN')}
                 </div>
-                ${item.reportCount > 0 ? `<div class="reports">⚠️ 被举报 ${item.reportCount} 次</div>` : ''}
+                ${item.report_count > 0 ? `<div class="reports">⚠️ 被举报 ${item.report_count} 次</div>` : ''}
               </div>
             </div>
-            <div class="content">${item.content}</div>
+            <div class="content">${item.content ? item.content.substring(0, 200) + (item.content.length > 200 ? '...' : '') : '（无内容）'}</div>
             <div class="actions">
-              <button class="btn btn-success" onclick="handleReview(${item.id}, 'APPROVED')">✅ 通过</button>
-              <button class="btn btn-danger" onclick="handleReview(${item.id}, 'REJECTED')">❌ 驳回</button>
-              <button class="btn btn-warning" onclick="handleReview(${item.id}, 'HIDDEN')">🚫 下架</button>
-              ${item.reportCount > 0 ? `<button class="btn" style="background: var(--st-gray-400, #9CA3AF); color: white;" onclick="viewReports(${item.id})">查看举报</button>` : ''}
+              <button class="btn btn-success" onclick="handleReview(${item.id}, 'approve')">✅ 通过</button>
+              <button class="btn btn-danger" onclick="handleReview(${item.id}, 'reject')">❌ 驳回</button>
+              <button class="btn btn-warning" onclick="handleReview(${item.id}, 'hide')">🚫 下架</button>
+              ${item.report_count > 0 ? `<button class="btn" style="background: var(--st-gray-400, #9CA3AF); color: white;" onclick="viewReports(${item.id})">查看举报</button>` : ''}
             </div>
           </div>
         `).join('');
@@ -391,13 +419,13 @@
     }
 
     // 审核操作
-    async function handleReview(nodeId, status) {
+    async function handleReview(nodeId, action) {
       const note = prompt(`请输入审核备注（可选）：`);
       
       try {
         await apiRequest('POST', '/admin/review', {
           nodeId,
-          status,
+          action,
           note
         });
         window.toast ? toast.success('审核成功') : console.log('审核成功');
@@ -468,19 +496,7 @@
       queueDiv.innerHTML = '<div class="loading"></div>';
 
       try {
-        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-        
-        const response = await fetch(`${API_BASE}/withdrawals/admin/all`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error('加载提现队列失败');
-        }
-
-        const data = await response.json();
+        const data = await apiRequest('GET', '/withdrawals/admin/requests');
         const requests = data.requests || [];
         
         if (requests.length === 0) {
@@ -575,29 +591,13 @@
     async function approveWithdrawal(requestId) {
       const doApprove = async () => {
         try {
-          const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-          
-          const response = await fetch(`${API_BASE}/withdrawals/admin/${requestId}/review`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              approved: true,
-              note: document.getElementById(`note${requestId}`)?.value || ''
-            })
+          const data = await apiRequest('POST', `/withdrawals/admin/${requestId}/review`, {
+            approved: true,
+            note: document.getElementById(`note${requestId}`)?.value || ''
           });
-
-          const data = await response.json();
-          
-          if (response.ok) {
-            window.toast ? toast.success(data.message) : alert('✅ ' + data.message);
-            loadWithdrawalQueue();
-            loadStats();
-          } else {
-            window.toast ? toast.error(data.error || '审核失败') : alert('❌ ' + (data.error || '审核失败'));
-          }
+          window.toast ? toast.success(data.message) : alert('✅ ' + data.message);
+          loadWithdrawalQueue();
+          loadStats();
         } catch (e) {
           window.toast ? toast.error('操作失败: ' + e.message) : alert('操作失败: ' + e.message);
         }
@@ -621,29 +621,13 @@
 
       const doReject = async () => {
         try {
-          const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-          
-          const response = await fetch(`${API_BASE}/withdrawals/admin/${requestId}/review`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              approved: false,
-              note: note
-            })
+          const data = await apiRequest('POST', `/withdrawals/admin/${requestId}/review`, {
+            approved: false,
+            note: note
           });
-
-          const data = await response.json();
-          
-          if (response.ok) {
-            window.toast ? toast.success(data.message) : alert('✅ ' + data.message);
-            loadWithdrawalQueue();
-            loadStats();
-          } else {
-            window.toast ? toast.error(data.error || '审核失败') : alert('❌ ' + (data.error || '审核失败'));
-          }
+          window.toast ? toast.success(data.message) : alert('✅ ' + data.message);
+          loadWithdrawalQueue();
+          loadStats();
         } catch (e) {
           window.toast ? toast.error('操作失败: ' + e.message) : alert('操作失败: ' + e.message);
         }
@@ -659,15 +643,7 @@
     // 查看用户收益详情
     async function viewUserEarnings(userId) {
       try {
-        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-        
-        const response = await fetch(`${API_BASE}/withdrawals/admin/user-earnings/${userId}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (!response.ok) throw new Error('加载用户收益失败');
-
-        const data = await response.json();
+        const data = await apiRequest('GET', `/withdrawals/admin/user-earnings/${userId}`);
         
         let infoHtml = `<div style="line-height:2;">
           <div><strong>用户：</strong>${data.user.username}</div>
@@ -712,19 +688,7 @@
     // 加载会员统计
     async function loadMembershipStats() {
       try {
-        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-        
-        const response = await fetch(`${API_BASE}/admin/membership/stats`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error('加载会员统计失败');
-        }
-
-        const stats = await response.json();
+        const stats = await apiRequest('GET', '/admin/membership/stats');
         
         const membershipStatsDiv = document.getElementById('membershipStats');
         membershipStatsDiv.innerHTML = `
@@ -768,25 +732,14 @@
       membersDiv.innerHTML = '<div class="loading"></div>';
 
       try {
-        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
         const tier = document.getElementById('tierFilter').value;
         const search = document.getElementById('searchInput').value;
         
-        let url = `${API_BASE}/admin/membership/members?page=1&limit=20`;
+        let url = '/admin/membership/members?page=1&limit=20';
         if (tier !== 'all') url += `&tier=${tier}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
 
-        const response = await fetch(url, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error('加载会员列表失败');
-        }
-
-        const data = await response.json();
+        const data = await apiRequest('GET', url);
         const members = data.members || [];
         
         if (members.length === 0) {
