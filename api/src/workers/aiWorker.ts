@@ -512,8 +512,8 @@ aiContinuationQueue.process(3, async (job: Job<ContinuationJobData>) => {
     // 根据模式和期望字数调整prompt
     const isChapterMode = mode === 'chapter';
     const wordCountHint = isChapterMode 
-      ? `每个续写约${wordCount}字（可适当增减，但应接近此字数）`
-      : `每个续写约${wordCount}字（可适当增减，但应接近此字数）`;
+      ? `每个续写必须达到${wordCount}字（允许±10%浮动，即${Math.floor(wordCount * 0.9)}-${Math.ceil(wordCount * 1.1)}字）`
+      : `每个续写必须达到${wordCount}字（允许±10%浮动，即${Math.floor(wordCount * 0.9)}-${Math.ceil(wordCount * 1.1)}字）`;
 
     // 构建prompt
     const prompt = `你是一位专业的小说创作助手。请基于以下故事前文，续写${count}个不同风格的后续${isChapterMode ? '章节' : '段落'}。
@@ -532,13 +532,18 @@ ${styleInstructions}
 
 【字数要求】
 ${wordCountHint}
+⚠️ 重要：必须严格满足字数要求，不要过早结束。如果字数不足，请继续扩展情节。
+
+【格式要求】
+- 内容分段书写，每个自然段之间用空行分隔
+- 每段开头不要缩进，直接书写
+- 段落长度适中（100-300字/段）
 
 【输出规范】
 - 标题简洁有力（10字以内）
 - 内容与前文自然衔接
 - 保持故事连贯性和人物一致性
 - 语言优美流畅，富有画面感
-- 严格控制字数在期望范围内（${wordCount}字左右）
 - 只输出续写内容，不要解释和评论
 
 【输出格式】
@@ -564,10 +569,10 @@ XXX` : ''}`;
     let modelName: string;
 
     // 根据期望字数和生成数量动态计算max_tokens
-    // 公式：(期望字数 × 生成数量 × 1.5倍token系数 + 500预留) 
-    // 极端情况：5000字 × 3个 × 1.5 + 500 = 23000，需要限制上限
-    const estimatedTokens = Math.ceil(wordCount * count * 1.5 + 500);
-    const maxTokens = Math.min(Math.max(estimatedTokens, 2000), 16000); // 限制在2000-16000之间
+    // 中文：1字 ≈ 2 tokens（考虑标点和格式）
+    // 公式：(期望字数 × 生成数量 × 2倍token系数 + 1000预留) 
+    const estimatedTokens = Math.ceil(wordCount * count * 2 + 1000);
+    const maxTokens = Math.min(Math.max(estimatedTokens, 3000), 16000); // 限制在3000-16000之间
     console.log(`📊 期望字数: ${wordCount}字 × ${count}个 = ${wordCount * count}字`);
     console.log(`🔢 计算max_tokens: ${maxTokens} (估算: ${estimatedTokens})`);
 
@@ -1388,7 +1393,56 @@ function parseAiResponse(response: string): Array<{ title: string; content: stri
   }
 
   console.log(`✅ 成功解析 ${options.length} 个AI续写选项`);
-  return options;
+  
+  // 格式化内容：统一段落格式
+  return options.map(opt => ({
+    ...opt,
+    content: formatAiContent(opt.content)
+  }));
+}
+
+/**
+ * 格式化AI生成的内容，统一段落格式
+ * - 确保段落之间有统一的双换行
+ * - 去除多余的空行
+ * - 去除段首缩进（前端渲染时通过 CSS text-indent 控制）
+ */
+function formatAiContent(content: string): string {
+  if (!content) return content;
+  
+  // 1. 将连续多个换行符统一为双换行（段落分隔）
+  let formatted = content.replace(/\n{3,}/g, '\n\n');
+  
+  // 2. 去除每行开头的空格/全角空格缩进（保持一致性，由前端 CSS 控制缩进）
+  formatted = formatted.replace(/^[\u3000\s]+/gm, '');
+  
+  // 3. 如果整篇内容没有换行（AI 有时不分段），按句号/问号/感叹号后自动分段
+  const lines = formatted.split('\n').filter(l => l.trim());
+  if (lines.length <= 1 && formatted.length > 300) {
+    // 按标点符号分段：每 150-300 字在句号后插入换行
+    const chars = formatted.split('');
+    let result = '';
+    let charCount = 0;
+    for (let i = 0; i < chars.length; i++) {
+      result += chars[i];
+      charCount++;
+      // 在句号/问号/感叹号/省略号后，如果已积累 150+ 字，插入段落分隔
+      if (charCount >= 150 && /[。！？…]/.test(chars[i]) && i < chars.length - 1) {
+        // 检查下一个字符不是引号等结尾标点
+        const nextChar = chars[i + 1];
+        if (nextChar && !/[""'）》」】]/.test(nextChar)) {
+          result += '\n\n';
+          charCount = 0;
+        }
+      }
+    }
+    formatted = result;
+  }
+  
+  // 4. 确保首尾没有多余空行
+  formatted = formatted.trim();
+  
+  return formatted;
 }
 
 console.log('🤖 AI Worker已启动，等待任务...');

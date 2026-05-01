@@ -401,6 +401,78 @@
         .chapter-text { text-indent: 2em; white-space: pre-wrap; }
         .chapter-text p { margin-bottom: 1.5em; }
 
+        /* 章节评分 */
+        .chapter-rating {
+            background: white;
+            border-radius: var(--st-radius-xl);
+            padding: 30px 40px;
+            box-shadow: var(--st-shadow-md);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .rating-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--st-gray-700);
+            margin-bottom: 15px;
+        }
+
+        .rating-stars {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .rating-star {
+            font-size: 32px;
+            cursor: pointer;
+            color: var(--st-gray-200);
+            transition: all 0.15s ease;
+            background: none;
+            border: none;
+            padding: 4px;
+        }
+
+        .rating-star:hover,
+        .rating-star.hover {
+            color: #FBBF24;
+            transform: scale(1.15);
+        }
+
+        .rating-star.active {
+            color: #F59E0B;
+        }
+
+        .rating-info {
+            font-size: 14px;
+            color: var(--st-gray-400);
+        }
+
+        .rating-info .rating-avg {
+            font-weight: 700;
+            color: #F59E0B;
+            font-size: 16px;
+        }
+
+        .rating-cancel {
+            background: none;
+            border: none;
+            color: var(--st-gray-400);
+            font-size: 13px;
+            cursor: pointer;
+            margin-top: 8px;
+            padding: 4px 12px;
+            border-radius: var(--st-radius-full);
+            transition: all 0.2s;
+        }
+
+        .rating-cancel:hover {
+            color: var(--st-error-500);
+            background: rgba(239, 68, 68, 0.08);
+        }
+
         /* 章节导航 */
         .chapter-navigation {
             display: flex;
@@ -1557,6 +1629,22 @@
                 </div>
             </div>
 
+            <!-- 本章评分 -->
+            <div class="chapter-rating" id="chapterRating">
+                <div class="rating-title">为本章评分</div>
+                <div class="rating-stars" id="ratingStars">
+                    <button class="rating-star" data-score="1" title="1分"><i class="fas fa-star"></i></button>
+                    <button class="rating-star" data-score="2" title="2分"><i class="fas fa-star"></i></button>
+                    <button class="rating-star" data-score="3" title="3分"><i class="fas fa-star"></i></button>
+                    <button class="rating-star" data-score="4" title="4分"><i class="fas fa-star"></i></button>
+                    <button class="rating-star" data-score="5" title="5分"><i class="fas fa-star"></i></button>
+                </div>
+                <div class="rating-info" id="ratingInfo">
+                    平均评分 <span class="rating-avg" id="ratingAvg">0.0</span> · <span id="ratingCount">0</span> 人评分
+                </div>
+                <button class="rating-cancel" id="cancelRatingBtn" style="display: none;">取消我的评分</button>
+            </div>
+
             <!-- 章节导航 -->
             <div class="chapter-navigation">
                 <button class="chapter-nav-btn" id="prevChapterBtnBottom">
@@ -2031,6 +2119,8 @@
                 
                 renderChapter(currentChapter);
                 
+                // 初始化评分组件
+                initRating(currentChapter, data.userRating);
                 // 获取故事信息（包括allow_comment设置）
                 let storyInfo = null;
                 try {
@@ -2157,7 +2247,116 @@
                 checkIfAuthor(chapter);
             }
 
-// HTML 转义函数
+// ========== 评分功能 ==========
+        let currentUserRating = 0; // 当前用户的评分
+
+        function initRating(chapter, userRating) {
+            currentUserRating = userRating || 0;
+            
+            // 更新评分显示
+            updateRatingDisplay(chapter.rating_avg || 0, chapter.rating_count || 0);
+            
+            // 高亮用户已评的星星
+            const cancelBtn = document.getElementById('cancelRatingBtn');
+            if (currentUserRating > 0) {
+                highlightStars(currentUserRating);
+                if (cancelBtn) cancelBtn.style.display = 'inline-block';
+            } else {
+                highlightStars(0);
+                if (cancelBtn) cancelBtn.style.display = 'none';
+            }
+
+            // 星星点击事件（用 onclick 避免重复绑定）
+            const stars = document.querySelectorAll('.rating-star');
+            stars.forEach(star => {
+                star.onclick = () => {
+                    const score = parseInt(star.dataset.score);
+                    rateChapter(score);
+                };
+
+                // 悬停效果
+                star.onmouseenter = () => {
+                    const score = parseInt(star.dataset.score);
+                    stars.forEach(s => {
+                        const sScore = parseInt(s.dataset.score);
+                        s.classList.toggle('hover', sScore <= score);
+                    });
+                };
+
+                star.onmouseleave = () => {
+                    stars.forEach(s => s.classList.remove('hover'));
+                };
+            });
+
+            // 取消评分按钮（用 onclick 避免重复绑定）
+            if (cancelBtn) {
+                cancelBtn.onclick = () => {
+                    rateChapter(0);
+                };
+            }
+        }
+
+        function highlightStars(score) {
+            const stars = document.querySelectorAll('.rating-star');
+            stars.forEach(s => {
+                const sScore = parseInt(s.dataset.score);
+                s.classList.toggle('active', sScore <= score);
+            });
+        }
+
+        function updateRatingDisplay(avg, count) {
+            document.getElementById('ratingAvg').textContent = avg > 0 ? avg.toFixed(1) : '0.0';
+            document.getElementById('ratingCount').textContent = count;
+        }
+
+        async function rateChapter(score) {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) {
+                showError('请先登录后再评分');
+                return;
+            }
+
+            if (!currentChapter) return;
+
+            try {
+                const response = await fetch(`/api/nodes/${currentChapter.id}/rate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ score })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || '评分失败');
+                }
+
+                const data = await response.json();
+                
+                if (score === 0) {
+                    // 取消评分
+                    currentUserRating = 0;
+                    highlightStars(0);
+                    document.getElementById('cancelRatingBtn').style.display = 'none';
+                    showSuccess('已取消评分');
+                } else {
+                    // 评分成功
+                    currentUserRating = score;
+                    highlightStars(score);
+                    document.getElementById('cancelRatingBtn').style.display = 'inline-block';
+                    showSuccess(`评分成功：${score} 分`);
+                }
+
+                // 更新平均分显示
+                updateRatingDisplay(data.rating_avg, data.rating_count);
+
+            } catch (error) {
+                console.error('评分失败:', error);
+                showError(error.message || '评分失败，请稍后重试');
+            }
+        }
                     function escapeHtml(text) {
                         const div = document.createElement('div');
                         div.textContent = text;

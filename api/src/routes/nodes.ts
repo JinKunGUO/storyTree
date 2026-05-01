@@ -422,6 +422,21 @@ router.post('/:id/publish', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Node is already published' });
     }
 
+    // 自动去掉标题中的"草稿"相关文字
+    let cleanedTitle = node.title;
+    // 匹配并移除：草稿、草稿1、[草稿]、【草稿2】、(草稿1)、（草稿）等，以及前后的空格
+    // 草稿后面可能跟数字，如 草稿1、草稿2
+    cleanedTitle = cleanedTitle
+      .replace(/^\s*[\[【\(（]?\s*草稿\d*\s*[\]】\)）]?\s*/g, '')  // 开头的草稿标记
+      .replace(/\s*[\[【\(（]?\s*草稿\d*\s*[\]】\)）]?\s*$/g, '')  // 结尾的草稿标记
+      .replace(/\s*[\[【\(（]\s*草稿\d*\s*[\]】\)）]\s*/g, '')     // 中间位置的草稿标记（带括号）
+      .trim();
+    
+    // 如果清理后标题为空，保留原标题
+    if (!cleanedTitle) {
+      cleanedTitle = node.title;
+    }
+
     // 检查用户已发布节点数
     const userNodeCount = await prisma.nodes.count({
       where: { author_id: userId, is_published: true }
@@ -434,6 +449,7 @@ router.post('/:id/publish', authenticateToken, async (req, res) => {
     const updatedNode = await prisma.nodes.update({
       where: { id: parseInt(id) },
       data: {
+        title: cleanedTitle,
         is_published: true,
         review_status: reviewCheck.needReview ? 'PENDING' : 'APPROVED',
         updated_at: new Date()
@@ -485,7 +501,7 @@ router.post('/:id/publish', authenticateToken, async (req, res) => {
             user_id,
             type: 'STORY_UPDATE',
             title: '故事更新',
-            content: `《${node.story.title}》发布了新章节：${node.title}`,
+            content: `《${node.story.title}》发布了新章节：${cleanedTitle}`,
             link: `/chapter?id=${node.id}`
           }))
         });

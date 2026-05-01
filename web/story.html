@@ -988,7 +988,7 @@
             border: 2px solid #f0f0f0;
             border-radius: 15px;
             background: #fafafa;
-            overflow: hidden;
+            overflow: visible;
             position: relative;
         }
 
@@ -4896,7 +4896,11 @@ function getTreeOption(treeData, layout) {
                             </div>`;
                         }
                         if (data.isVirtualRoot || !data.id) return '';
+                        const draftBadge = data.isPublished === false 
+                            ? '<div style="display:inline-block;background:#FEF3C7;color:#D97706;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-bottom:6px;">草稿</div>' 
+                            : '';
                         return `<div style="min-width:150px;font-family:${FONT_FAMILY}">
+                            ${draftBadge}
                             <div style="font-weight:700;color:#111827;margin-bottom:8px;font-size:14px;border-bottom:1px solid #F3F4F6;padding-bottom:6px;">${data.name}</div>
                             <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="color:#9CA3AF;width:44px;">作者</span><span style="color:#374151;font-weight:500;">${data.author || '未知'}</span></div>
                             <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="color:#9CA3AF;width:44px;">阅读</span><span style="color:#374151;font-weight:500;">${data.readCount || 0}</span></div>
@@ -5050,10 +5054,34 @@ function getTreeOption(treeData, layout) {
                 };
             }
             
+            // 草稿节点样式：虚线边框 + 橙色 + 标签带"[草稿]"前缀
+            const isDraft = node.isPublished === false;
+            let draftItemStyle = {};
+            let draftName = node.name;
+            
+            if (isDraft && !node.isEllipsis && !node.isVirtualRoot) {
+                draftItemStyle = {
+                    color: '#FEF3C7',  // 浅橙色背景
+                    borderColor: '#F59E0B',  // 橙色边框
+                    borderWidth: 2,
+                    borderType: 'dashed',  // 虚线
+                    shadowBlur: 4,
+                    shadowColor: 'rgba(245, 158, 11, 0.3)'
+                };
+                // 标签颜色也改为橙色
+                if (finalLabel) {
+                    finalLabel = { ...finalLabel, color: '#D97706', fontWeight: '600' };
+                }
+                // 名称前加"[草稿]"标记
+                draftName = `[草稿] ${node.name}`;
+            }
+            
             const processedNode = {
                 ...node,
+                name: draftName,
                 _depth: depth,
-                ...(finalLabel ? { label: finalLabel } : {})
+                ...(finalLabel ? { label: finalLabel } : {}),
+                ...(isDraft && Object.keys(draftItemStyle).length > 0 ? { itemStyle: { ...(node.itemStyle || {}), ...draftItemStyle } } : {})
             };
             
             // 处理子节点
@@ -5592,7 +5620,13 @@ function getTreeOption(treeData, layout) {
             const container = document.getElementById('treeChart').parentElement; // tree-chart-container
             const containerRect = container.getBoundingClientRect();
             const panelWidth = 280;
-            const panelHeight = detailPanel.offsetHeight || 260; // 估算高度
+
+            // 先显示弹窗（不可见）以获取真实高度
+            detailPanel.style.visibility = 'hidden';
+            detailPanel.style.left = '0px';
+            detailPanel.style.top = '0px';
+            detailPanel.classList.add('active');
+            const panelHeight = detailPanel.offsetHeight || 260;
 
             let posX = (clickX !== undefined ? clickX : containerRect.width / 2) + 12;
             let posY = (clickY !== undefined ? clickY : containerRect.height / 2) - 60;
@@ -5601,7 +5635,14 @@ function getTreeOption(treeData, layout) {
             if (posX + panelWidth > containerRect.width - 8) {
                 posX = (clickX !== undefined ? clickX : containerRect.width / 2) - panelWidth - 12;
             }
-            // 防止超出下边界
+            // 防止超出下边界（同时考虑容器内和视口边界）
+            // 将容器内坐标转换为视口坐标来检查
+            const panelViewportBottom = containerRect.top + posY + panelHeight;
+            const viewportHeight = window.innerHeight;
+            if (panelViewportBottom > viewportHeight - 8) {
+                // 优先向上偏移，确保弹窗底部不超出视口
+                posY = posY - (panelViewportBottom - viewportHeight + 8);
+            }
             if (posY + panelHeight > containerRect.height - 8) {
                 posY = containerRect.height - panelHeight - 8;
             }
@@ -5612,8 +5653,7 @@ function getTreeOption(treeData, layout) {
 
             detailPanel.style.left = posX + 'px';
             detailPanel.style.top = posY + 'px';
-
-            detailPanel.classList.add('active');
+            detailPanel.style.visibility = 'visible';
         }
 
         // 初始化统计图表
