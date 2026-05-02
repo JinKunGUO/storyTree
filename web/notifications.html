@@ -445,21 +445,39 @@
                     console.log(`🔄 转换链接: ${link} → ${finalLink}`);
                 }
                 
-                // 4. /profile → /profile.html
+                // 4. /profile → /profile.html（精确匹配）
                 else if (link === '/profile') {
                     finalLink = '/profile.html';
                     console.log(`🔄 转换链接: ${link} → ${finalLink}`);
                 }
                 
-                // 5. /story?id= → /story.html?id=
+                // 5. /profile? → /profile.html?（带参数，如 tab=withdrawals）
+                else if (link.startsWith('/profile?')) {
+                    finalLink = link.replace('/profile?', '/profile.html?');
+                    console.log(`🔄 转换链接: ${link} → ${finalLink}`);
+                }
+                
+                // 6. /story?id= → /story.html?id=
                 else if (link.startsWith('/story?')) {
                     finalLink = link.replace('/story?', '/story.html?');
                     console.log(`🔄 转换链接: ${link} → ${finalLink}`);
                 }
                 
-                // 6. /story-settings?id= → /story-settings.html?id=
+                // 7. /story-settings?id= → /story-settings.html?id=
                 else if (link.startsWith('/story-settings?')) {
                     finalLink = link.replace('/story-settings?', '/story-settings.html?');
+                    console.log(`🔄 转换链接: ${link} → ${finalLink}`);
+                }
+                
+                // 8. /chapter?id= → /chapter.html?id=
+                else if (link.startsWith('/chapter?')) {
+                    finalLink = link.replace('/chapter?', '/chapter.html?');
+                    console.log(`🔄 转换链接: ${link} → ${finalLink}`);
+                }
+                
+                // 9. /ai-tasks?id= → /ai-tasks.html?id=
+                else if (link.startsWith('/ai-tasks?')) {
+                    finalLink = link.replace('/ai-tasks?', '/ai-tasks.html?');
                     console.log(`🔄 转换链接: ${link} → ${finalLink}`);
                 }
                 

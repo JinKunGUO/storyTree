@@ -2071,6 +2071,14 @@
         async function loadStoryDetail() {
             const urlParams = new URLSearchParams(window.location.search);
             const storyId = urlParams.get('id');
+            const nodeId = urlParams.get('node');
+
+            // 如果有 node 参数，说明要跳转到特定章节（如评论通知）
+            if (nodeId) {
+                const hash = window.location.hash || '';
+                window.location.href = `/chapter.html?id=${nodeId}${hash}`;
+                return;
+            }
 
             console.log('开始加载故事，ID:', storyId);
 

@@ -2163,6 +2163,24 @@
                 // 检查是否显示AI推荐按钮
                 checkShowRecommendButton();
 
+                // 处理 hash 锚点（如 #comment-123），自动滚动到对应评论
+                if (window.location.hash) {
+                    const hash = window.location.hash.substring(1); // 去掉 #
+                    setTimeout(() => {
+                        const targetElement = document.getElementById(hash);
+                        if (targetElement) {
+                            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            // 高亮目标评论（如果是评论的话）
+                            if (hash.startsWith('comment-')) {
+                                targetElement.style.backgroundColor = '#fff3cd';
+                                setTimeout(() => {
+                                    targetElement.style.backgroundColor = '';
+                                }, 2000);
+                            }
+                        }
+                    }, 500); // 延迟确保评论已加载
+                }
+
             } catch (error) {
                 console.error('加载章节错误:', error);
                 showError('加载失败，请稍后重试');

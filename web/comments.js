@@ -116,7 +116,7 @@ class CommentSystem {
             const canEditDelete = isOwner && !isDeleted && (allowCommentEnabled || isStoryAuthor);
             
             return `
-                <div class="comment-reply" data-comment-id="${comment.id}" data-root-id="${actualRootId}">
+                <div class="comment-reply" id="comment-${comment.id}" data-comment-id="${comment.id}" data-root-id="${actualRootId}">
                     <div class="comment-avatar">
                         <img src="${avatar}" alt="${comment.user.username}">
                     </div>
@@ -176,7 +176,7 @@ class CommentSystem {
         const canEditDelete = isOwner && !isDeleted && (allowCommentEnabled || isStoryAuthor);
         
         return `
-            <div class="comment-item" data-comment-id="${comment.id}" data-created-at="${new Date(comment.created_at).getTime()}">
+            <div class="comment-item" id="comment-${comment.id}" data-comment-id="${comment.id}" data-created-at="${new Date(comment.created_at).getTime()}">
                 <div class="comment-avatar">
                     <img src="${avatar}" alt="${comment.user.username}">
                 </div>

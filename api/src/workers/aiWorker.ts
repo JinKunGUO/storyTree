@@ -1528,7 +1528,7 @@ async function notifyTaskDelay(userId: number, taskId: number, delayMinutes: num
         type: 'ai_task_delay',
         title: '⏰ AI任务延迟提醒',
         content: `您的AI任务已延迟 ${delayMinutes} 分钟。由于当前系统负载较高，预计还需等待约 ${estimatedMinutes} 分钟。建议您稍后查看，或选择非高峰时段（凌晨0-6点）提交任务。`,
-        link: `/ai-tasks?taskId=${taskId}`,
+        link: `/ai-tasks?id=${taskId}`,
         is_read: false
       }
     });

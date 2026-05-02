@@ -178,12 +178,15 @@ function convertLinkToMiniUrl(link: string): string | null {
   // 去掉 hash 部分（如 #comment-12），小程序不支持 hash 定位
   const withoutHash = link.split('#')[0]
   // 解析路径和查询参数
-  const [path, query] = withoutHash.split('?')
+  const [rawPath, query] = withoutHash.split('?')
   const qs = query ? `?${query}` : ''
 
-  // 后端评论通知格式：/story.html?id=X&node=Y
+  // 去掉 .html 后缀，统一处理（如 /story.html → /story, /profile.html → /profile）
+  const path = rawPath.replace(/\.html$/, '')
+
+  // 后端评论通知格式：/story.html?id=X&node=Y 或 /story?id=X&node=Y
   // node 参数就是 node_id（章节 id），直接跳章节页
-  if (path === '/story.html') {
+  if (path === '/story') {
     // 小程序环境不支持 URLSearchParams，手动解析 query string
     const qsMap: Record<string, string> = {}
     if (query) {
@@ -203,16 +206,21 @@ function convertLinkToMiniUrl(link: string): string | null {
     return null
   }
 
+  // /ai-tasks.html 或 /ai-tasks：小程序没有 AI 任务页面，跳转到个人中心
+  if (path === '/ai-tasks') {
+    return '/pages/profile/index'
+  }
+
   const map: Record<string, string> = {
-    '/chapter':       '/pages/chapter/index',
-    '/story':         '/pages/story/index',
-    '/profile':       '/pages/profile/index',
-    '/checkin':       '/pages/checkin/index',
-    '/points':        '/pages/points/index',
-    '/membership':    '/pages/membership/index',
-    '/notifications': '/pages/notifications/index',
-    '/write':         '/pages/write/index',
-    '/create':        '/pages/create/index',
+    '/chapter':         '/pages/chapter/index',
+    '/story-settings':  '/pages/story/manage',
+    '/profile':         '/pages/profile/index',
+    '/checkin':         '/pages/checkin/index',
+    '/points':          '/pages/points/index',
+    '/membership':      '/pages/membership/index',
+    '/notifications':   '/pages/notifications/index',
+    '/write':           '/pages/write/index',
+    '/create':          '/pages/create/index',
   }
 
   const miniPath = map[path]

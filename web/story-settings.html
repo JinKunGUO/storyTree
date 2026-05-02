@@ -850,7 +850,16 @@
         // 页面加载时
         document.addEventListener('DOMContentLoaded', () => {
             checkAuthStatus();
-            loadSettings();
+            loadSettings().then(() => {
+                // 如果 URL 带有 tab=requests 参数，自动滚动到协作申请区域
+                const tab = urlParams.get('tab');
+                if (tab === 'requests') {
+                    const requestsSection = document.getElementById('collaborationRequestsList');
+                    if (requestsSection) {
+                        requestsSection.closest('.settings-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            });
             
             // 监听"允许协作者续写"开关的变化
             document.getElementById('allowBranch').addEventListener('change', updateAutoApproveState);
