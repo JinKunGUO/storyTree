@@ -213,6 +213,7 @@
       <button class="tab active" onclick="switchTab('content')">📝 内容审核</button>
       <button class="tab" onclick="switchTab('withdrawal')">💰 提现审核</button>
       <button class="tab" onclick="switchTab('membership')">👑 会员管理</button>
+      <button class="tab" onclick="switchTab('users')">👥 用户管理</button>
     </div>
 
     <!-- 内容审核 -->
@@ -246,6 +247,37 @@
         <button class="btn btn-success" onclick="loadMembers()">🔍 搜索</button>
       </div>
       <div id="membersList"></div>
+    </div>
+
+    <!-- 用户管理 -->
+    <div id="usersTab" class="tab-content">
+      <h2 style="margin-bottom: 20px;">👥 用户管理</h2>
+      
+      <!-- 搜索和筛选 -->
+      <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+        <input type="text" id="userSearchInput" placeholder="搜索用户名、邮箱或微信昵称" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd; flex: 1; min-width: 200px;">
+        <select id="userRoleFilter" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+          <option value="all">全部用户</option>
+          <option value="admin">管理员</option>
+          <option value="user">普通用户</option>
+        </select>
+        <select id="userSortBy" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+          <option value="created_at">注册时间</option>
+          <option value="points">积分</option>
+          <option value="level">等级</option>
+          <option value="word_count">字数</option>
+        </select>
+        <button class="btn btn-success" onclick="loadUsers()">🔍 搜索</button>
+      </div>
+      
+      <!-- 用户统计 -->
+      <div class="stats" id="userStats" style="margin-bottom: 20px;"></div>
+      
+      <!-- 用户列表 -->
+      <div id="usersList"></div>
+      
+      <!-- 分页 -->
+      <div id="usersPagination" style="margin-top: 20px; text-align: center;"></div>
     </div>
   </div>
 
@@ -487,6 +519,9 @@
         document.getElementById('membershipTab').classList.add('active');
         loadMembershipStats();
         loadMembers();
+      } else if (tab === 'users') {
+        document.getElementById('usersTab').classList.add('active');
+        loadUsers();
       }
     }
 
@@ -810,6 +845,326 @@
     // 查看会员详情
     function viewMemberDetail(memberId) {
       window.toast ? toast.info('会员详情功能开发中，会员 ID: ' + memberId) : alert('会员详情功能开发中...\n会员 ID: ' + memberId);
+    }
+
+    // ========== 用户管理功能 ==========
+
+    let currentUserPage = 1;
+    const usersPerPage = 15;
+
+    // 加载用户列表
+    async function loadUsers(page = 1) {
+      currentUserPage = page;
+      const usersDiv = document.getElementById('usersList');
+      usersDiv.innerHTML = '<div class="loading"></div>';
+
+      try {
+        const search = document.getElementById('userSearchInput').value;
+        const role = document.getElementById('userRoleFilter').value;
+        const sort = document.getElementById('userSortBy').value;
+
+        let url = `/admin/users?page=${page}&limit=${usersPerPage}&sort=${sort}&order=desc`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (role !== 'all') url += `&role=${role}`;
+
+        const data = await apiRequest('GET', url);
+        const users = data.users || [];
+        const pagination = data.pagination || {};
+
+        // 更新统计
+        document.getElementById('userStats').innerHTML = `
+          <div class="stat-card">
+            <div class="label">总用户数</div>
+            <div class="value">${pagination.total || 0}</div>
+          </div>
+        `;
+
+        if (users.length === 0) {
+          usersDiv.innerHTML = '<div class="empty">暂无用户数据</div>';
+          document.getElementById('usersPagination').innerHTML = '';
+          return;
+        }
+
+        usersDiv.innerHTML = users.map(user => {
+          const isBanned = user.bio && user.bio.startsWith('[BANNED');
+          const isDeleted = user.username && user.username.startsWith('[DELETED_');
+          
+          return `
+            <div class="review-item" style="${isBanned ? 'border-left: 4px solid var(--st-error-500);' : ''} ${isDeleted ? 'opacity: 0.6;' : ''}">
+              <div class="header">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <img src="${user.avatar || 'https://via.placeholder.com/40'}" 
+                       alt="avatar" 
+                       style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                  <div>
+                    <h3 style="display: flex; align-items: center; gap: 8px;">
+                      ${escapeHtml(user.username)}
+                      ${user.isAdmin ? '<span style="background: var(--st-primary-500); color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px;">管理员</span>' : ''}
+                      ${isBanned ? '<span style="background: var(--st-error-500); color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px;">已封禁</span>' : ''}
+                      ${isDeleted ? '<span style="background: var(--st-gray-500); color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px;">已删除</span>' : ''}
+                    </h3>
+                    <div class="meta">
+                      ID: ${user.id} | 
+                      邮箱: ${user.email || '未绑定'} | 
+                      ${user.wx_nickname ? '微信: ' + escapeHtml(user.wx_nickname) + ' | ' : ''}
+                      注册: ${new Date(user.createdAt).toLocaleDateString('zh-CN')}
+                    </div>
+                  </div>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-size: 13px; color: var(--st-text-secondary);">
+                    Lv.${user.level} | ${user.points} 积分 | ${user.word_count} 字
+                  </div>
+                  <div style="font-size: 12px; color: var(--st-text-tertiary); margin-top: 4px;">
+                    故事: ${user._count?.authored_stories || 0} | 
+                    章节: ${user._count?.authored_nodes || 0} | 
+                    评论: ${user._count?.comments || 0}
+                  </div>
+                </div>
+              </div>
+              
+              ${!isDeleted ? `
+                <div class="actions" style="margin-top: 12px;">
+                  <button class="btn" style="background: var(--st-primary-500); color: white;" onclick="viewUserDetail(${user.id})">
+                    📋 详情
+                  </button>
+                  ${!user.isAdmin ? `
+                    ${isBanned ? `
+                      <button class="btn btn-success" onclick="unbanUser(${user.id}, '${escapeHtml(user.username)}')">
+                        ✅ 解封
+                      </button>
+                    ` : `
+                      <button class="btn btn-warning" onclick="banUser(${user.id}, '${escapeHtml(user.username)}')">
+                        🚫 封禁
+                      </button>
+                    `}
+                    <button class="btn" style="background: var(--st-gray-500); color: white;" onclick="resetUserPassword(${user.id}, '${escapeHtml(user.username)}')">
+                      🔑 重置密码
+                    </button>
+                    <button class="btn btn-danger" onclick="deleteUser(${user.id}, '${escapeHtml(user.username)}')">
+                      🗑️ 删除
+                    </button>
+                  ` : ''}
+                </div>
+              ` : ''}
+            </div>
+          `;
+        }).join('');
+
+        // 渲染分页
+        renderUsersPagination(pagination);
+      } catch (e) {
+        usersDiv.innerHTML = `<p style="color: red;">加载失败: ${e.message}</p>`;
+      }
+    }
+
+    // 渲染用户分页
+    function renderUsersPagination(pagination) {
+      const { page, totalPages, total } = pagination;
+      if (totalPages <= 1) {
+        document.getElementById('usersPagination').innerHTML = '';
+        return;
+      }
+
+      let html = `<span style="margin-right: 15px; color: var(--st-text-secondary);">共 ${total} 条</span>`;
+      
+      if (page > 1) {
+        html += `<button class="btn" style="margin: 0 4px;" onclick="loadUsers(${page - 1})">上一页</button>`;
+      }
+      
+      for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) {
+          html += `<button class="btn" style="margin: 0 4px; ${i === page ? 'background: var(--st-primary-500); color: white;' : ''}" onclick="loadUsers(${i})">${i}</button>`;
+        } else if (i === page - 3 || i === page + 3) {
+          html += `<span style="margin: 0 4px;">...</span>`;
+        }
+      }
+      
+      if (page < totalPages) {
+        html += `<button class="btn" style="margin: 0 4px;" onclick="loadUsers(${page + 1})">下一页</button>`;
+      }
+
+      document.getElementById('usersPagination').innerHTML = html;
+    }
+
+    // 查看用户详情
+    async function viewUserDetail(userId) {
+      try {
+        const data = await apiRequest('GET', `/admin/users/${userId}`);
+        const user = data.user;
+        const transactions = data.recentTransactions || [];
+
+        let html = `
+          <div style="line-height: 1.8;">
+            <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+              <img src="${user.avatar || 'https://via.placeholder.com/80'}" 
+                   style="width: 80px; height: 80px; border-radius: 12px; object-fit: cover;">
+              <div>
+                <h3 style="margin: 0 0 8px;">${escapeHtml(user.username)}</h3>
+                <div style="color: var(--st-text-secondary); font-size: 14px;">
+                  ID: ${user.id}<br>
+                  邮箱: ${user.email || '未绑定'} ${user.emailVerified ? '✓' : '✗'}<br>
+                  ${user.wx_nickname ? '微信: ' + escapeHtml(user.wx_nickname) + '<br>' : ''}
+                  注册时间: ${new Date(user.createdAt).toLocaleString('zh-CN')}
+                </div>
+              </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
+              <div style="background: var(--st-bg-secondary); padding: 12px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: bold; color: var(--st-primary-500);">${user.level}</div>
+                <div style="font-size: 12px; color: var(--st-text-secondary);">等级</div>
+              </div>
+              <div style="background: var(--st-bg-secondary); padding: 12px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: bold; color: var(--st-warning-500);">${user.points}</div>
+                <div style="font-size: 12px; color: var(--st-text-secondary);">积分</div>
+              </div>
+              <div style="background: var(--st-bg-secondary); padding: 12px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: bold; color: var(--st-success-500);">${user.word_count}</div>
+                <div style="font-size: 12px; color: var(--st-text-secondary);">总字数</div>
+              </div>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+              <strong>会员信息：</strong>
+              ${user.membership_tier !== 'free' ? 
+                `${user.membership_tier} (到期: ${user.membership_expires_at ? new Date(user.membership_expires_at).toLocaleDateString('zh-CN') : '-'})` : 
+                '普通用户'}
+            </div>
+
+            <div style="margin-bottom: 15px;">
+              <strong>简介：</strong> ${user.bio || '暂无'}
+            </div>
+
+            ${transactions.length > 0 ? `
+              <div>
+                <strong>最近积分记录：</strong>
+                <div style="max-height: 150px; overflow-y: auto; margin-top: 8px;">
+                  ${transactions.map(t => `
+                    <div style="padding: 6px 0; border-bottom: 1px solid #eee; font-size: 13px;">
+                      <span style="color: ${t.amount > 0 ? 'var(--st-success-500)' : 'var(--st-error-500)'};">
+                        ${t.amount > 0 ? '+' : ''}${t.amount}
+                      </span>
+                      ${t.description} 
+                      <span style="color: var(--st-text-tertiary);">${new Date(t.created_at).toLocaleString('zh-CN')}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+
+        if (window.showModal) {
+          showModal({ title: '用户详情', content: html, showCancel: false, confirmText: '关闭' });
+        } else {
+          alert(`用户详情\n\n用户名: ${user.username}\nID: ${user.id}\n邮箱: ${user.email || '未绑定'}\n等级: ${user.level}\n积分: ${user.points}`);
+        }
+      } catch (e) {
+        window.toast ? toast.error('加载用户详情失败: ' + e.message) : alert('加载用户详情失败: ' + e.message);
+      }
+    }
+
+    // 封禁用户
+    async function banUser(userId, username) {
+      const reason = prompt(`请输入封禁 ${username} 的原因：`);
+      if (reason === null) return; // 用户取消
+
+      const doBan = async () => {
+        try {
+          const data = await apiRequest('POST', `/admin/users/${userId}/ban`, { reason: reason || '违反社区规范' });
+          window.toast ? toast.success(data.message) : alert('✅ ' + data.message);
+          loadUsers(currentUserPage);
+        } catch (e) {
+          window.toast ? toast.error('封禁失败: ' + e.message) : alert('封禁失败: ' + e.message);
+        }
+      };
+
+      if (window.showDangerConfirm) {
+        showDangerConfirm(`确定要封禁用户 "${username}" 吗？`, doBan, { title: '封禁用户', confirmText: '确认封禁' });
+      } else if (confirm(`确定要封禁用户 "${username}" 吗？`)) {
+        await doBan();
+      }
+    }
+
+    // 解封用户
+    async function unbanUser(userId, username) {
+      const doUnban = async () => {
+        try {
+          const data = await apiRequest('POST', `/admin/users/${userId}/unban`);
+          window.toast ? toast.success(data.message) : alert('✅ ' + data.message);
+          loadUsers(currentUserPage);
+        } catch (e) {
+          window.toast ? toast.error('解封失败: ' + e.message) : alert('解封失败: ' + e.message);
+        }
+      };
+
+      if (window.showConfirm) {
+        showConfirm(`确定要解封用户 "${username}" 吗？`, doUnban, { title: '解封用户', confirmText: '确认解封' });
+      } else if (confirm(`确定要解封用户 "${username}" 吗？`)) {
+        await doUnban();
+      }
+    }
+
+    // 重置用户密码
+    async function resetUserPassword(userId, username) {
+      const newPassword = prompt(`请输入 ${username} 的新密码（至少6位）：`);
+      if (!newPassword) return;
+
+      if (newPassword.length < 6) {
+        window.toast ? toast.warning('密码长度至少为6位') : alert('密码长度至少为6位');
+        return;
+      }
+
+      try {
+        const data = await apiRequest('POST', `/admin/users/${userId}/reset-password`, { newPassword });
+        window.toast ? toast.success(data.message) : alert('✅ ' + data.message);
+      } catch (e) {
+        window.toast ? toast.error('重置密码失败: ' + e.message) : alert('重置密码失败: ' + e.message);
+      }
+    }
+
+    // 删除用户
+    async function deleteUser(userId, username) {
+      const deleteType = confirm(`删除用户 "${username}"\n\n点击"确定"进行软删除（保留数据，可恢复）\n点击"取消"后可选择硬删除（彻底删除）`);
+      
+      if (deleteType) {
+        // 软删除
+        const doSoftDelete = async () => {
+          try {
+            const data = await apiRequest('DELETE', `/admin/users/${userId}`);
+            window.toast ? toast.success(data.message) : alert('✅ ' + data.message);
+            loadUsers(currentUserPage);
+          } catch (e) {
+            window.toast ? toast.error('删除失败: ' + e.message) : alert('删除失败: ' + e.message);
+          }
+        };
+
+        if (window.showDangerConfirm) {
+          showDangerConfirm(`确定要软删除用户 "${username}" 吗？\n\n用户数据将被保留，但账号将无法登录。`, doSoftDelete, { title: '软删除用户', confirmText: '确认删除' });
+        } else {
+          await doSoftDelete();
+        }
+      } else {
+        // 询问是否硬删除
+        const hardDelete = confirm(`是否要彻底删除用户 "${username}"？\n\n⚠️ 警告：硬删除将彻底删除用户及其所有关联数据，此操作不可恢复！`);
+        
+        if (hardDelete) {
+          const finalConfirm = prompt(`请输入用户名 "${username}" 以确认彻底删除：`);
+          if (finalConfirm !== username) {
+            window.toast ? toast.warning('用户名不匹配，取消删除') : alert('用户名不匹配，取消删除');
+            return;
+          }
+
+          try {
+            const data = await apiRequest('DELETE', `/admin/users/${userId}?hardDelete=true`);
+            window.toast ? toast.success(data.message) : alert('✅ ' + data.message);
+            loadUsers(currentUserPage);
+          } catch (e) {
+            window.toast ? toast.error('删除失败: ' + e.message) : alert('删除失败: ' + e.message);
+          }
+        }
+      }
     }
 
     // 启动

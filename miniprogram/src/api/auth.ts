@@ -26,8 +26,10 @@ export interface WxLoginParams {
 
 export interface AuthResponse {
   message: string
-  token: string
+  token?: string  // 邮箱注册时不返回 token
+  requireVerification?: boolean  // 是否需要邮箱验证
   isNewUser?: boolean
+  email?: string | null  // 注册时返回的邮箱
   user: {
     id: number
     username: string

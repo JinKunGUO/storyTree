@@ -1,6 +1,6 @@
 # StoryTree 用户登录系统文档
 
-> 最后更新：2026-04-28  
+> 最后更新：2026-05-03  
 > 涉及文件：`api/src/routes/auth.ts`、`api/src/routes/users.ts`、`api/src/utils/auth.ts`
 
 ---
@@ -424,4 +424,314 @@ id=1 的账号：email="alice@xx.com" + wx_openid="oXxxx"
 
 ### 问题 2：同一用户能否同时在网页端和小程序登录？
 结论：不能同时保持登录态。 当前实现是全端单一 active_token，任何新登录都会踢掉所有旧端。
+
+---
+
+## 十三、生产环境部署指南
+
+从开发模式切换到生产环境时，用户登录系统需要完成以下配置修改。
+
+### 13.1 必须修改的配置项
+
+以下配置项在生产环境中**必须修改**，否则会导致安全漏洞或功能不可用：
+
+| 配置项 | 开发环境值 | 生产环境要求 | 风险等级 |
+|--------|-----------|-------------|----------|
+| `JWT_SECRET` | `your-sandbox-jwt-secret-key-change-this` | 64 字节以上随机字符串 | 🔴 **高危** |
+| `FRONTEND_URL` | `http://localhost:3001` | 实际域名（如 `https://yourdomain.com`） | 🔴 **高危** |
+| `DISABLE_EMAIL` | `true` | 删除或设为 `false` | 🟡 **中危** |
+| `NODE_ENV` | `development` | `production` | 🟡 **中危** |
+
+#### 13.1.1 生成强 JWT 密钥
+
+```bash
+# 在服务器上执行，生成 64 字节随机密钥
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+```
+
+将生成的密钥填入 `.env`：
+
+```bash
+JWT_SECRET=生成的128位十六进制字符串
+```
+
+> ⚠️ **警告**：使用弱密钥会导致 JWT 被伪造，攻击者可以冒充任意用户登录。
+
+#### 13.1.2 配置正确的前端地址
+
+```bash
+# 生产环境必须使用 HTTPS
+FRONTEND_URL=https://yourdomain.com
+```
+
+此配置影响：
+- 邮箱验证链接的域名
+- 密码重置链接的域名
+- 微信登录回调地址
+
+#### 13.1.3 启用真实邮件发送
+
+```bash
+# 删除此行或设为 false
+# DISABLE_EMAIL=true
+DISABLE_EMAIL=false
+```
+
+开发模式下 `DISABLE_EMAIL=true` 会将邮件输出到控制台，生产环境必须禁用此选项以发送真实邮件。
+
+---
+
+### 13.2 邮件服务配置
+
+#### 13.2.1 SMTP 配置检查清单
+
+| 配置项 | 说明 | 示例值 |
+|--------|------|--------|
+| `SMTP_HOST` | SMTP 服务器地址 | `smtp.qq.com` / `smtp.163.com` / `smtp.gmail.com` |
+| `SMTP_PORT` | SMTP 端口 | `587`（TLS）或 `465`（SSL） |
+| `SMTP_USER` | 发件邮箱地址 | `noreply@yourdomain.com` |
+| `SMTP_PASS` | 邮箱授权码（非登录密码） | 从邮箱设置中获取 |
+| `SMTP_FROM` | 发件人显示地址 | 通常与 `SMTP_USER` 相同 |
+
+#### 13.2.2 常见邮箱 SMTP 配置
+
+**QQ 邮箱**：
+```bash
+SMTP_HOST=smtp.qq.com
+SMTP_PORT=587
+SMTP_USER=your-email@qq.com
+SMTP_PASS=授权码（非QQ密码，在邮箱设置中生成）
+```
+
+**163 邮箱**：
+```bash
+SMTP_HOST=smtp.163.com
+SMTP_PORT=465
+SMTP_USER=your-email@163.com
+SMTP_PASS=授权码
+```
+
+**企业邮箱（推荐生产环境使用）**：
+```bash
+SMTP_HOST=smtp.exmail.qq.com  # 腾讯企业邮箱
+SMTP_PORT=465
+SMTP_USER=noreply@yourdomain.com
+SMTP_PASS=邮箱密码或授权码
+```
+
+#### 13.2.3 测试邮件发送
+
+部署后建议手动测试邮件功能：
+
+```bash
+# 1. 注册一个测试账号
+curl -X POST https://yourdomain.com/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser","email":"your-real-email@example.com","password":"Test123456"}'
+
+# 2. 检查邮箱是否收到验证邮件
+
+# 3. 测试密码重置邮件
+curl -X POST https://yourdomain.com/api/auth/forgot-password \
+  -H "Content-Type: application/json" \
+  -d '{"email":"your-real-email@example.com"}'
+```
+
+---
+
+### 13.3 微信登录配置
+
+#### 13.3.1 微信小程序登录
+
+在微信公众平台（mp.weixin.qq.com）获取真实凭证：
+
+```bash
+# 替换占位符
+WX_APPID=wx真实的小程序AppID
+WX_APP_SECRET=对应的AppSecret
+```
+
+**配置步骤**：
+1. 登录微信公众平台 → 开发 → 开发管理 → 开发设置
+2. 复制 AppID 和 AppSecret
+3. 在"服务器域名"中添加你的后端 API 域名
+
+#### 13.3.2 微信网页扫码登录
+
+在微信开放平台（open.weixin.qq.com）申请网站应用：
+
+```bash
+WX_WEB_APPID=wx网站应用的AppID
+WX_WEB_APP_SECRET=对应的AppSecret
+```
+
+**配置步骤**：
+1. 登录微信开放平台 → 管理中心 → 网站应用 → 创建网站应用
+2. 完成网站信息填写和审核
+3. 在"开发配置"中设置授权回调域（如 `yourdomain.com`）
+4. 复制 AppID 和 AppSecret
+
+> ⚠️ **注意**：小程序和网站应用的 AppID/AppSecret 是不同的，不能混用。
+
+#### 13.3.3 unionid 打通配置
+
+如果需要小程序和网页端识别为同一用户，需要：
+
+1. 将小程序和网站应用绑定到同一个微信开放平台账号
+2. 在开放平台 → 管理中心 → 绑定公众号/小程序
+3. 绑定后，同一微信用户在两端登录会返回相同的 `unionid`
+
+---
+
+### 13.4 数据库配置
+
+#### 13.4.1 生产环境数据库
+
+开发环境使用 SQLite，生产环境建议迁移到 PostgreSQL 或 MySQL：
+
+```bash
+# PostgreSQL 示例
+DATABASE_URL="postgresql://user:password@localhost:5432/storytree?schema=public"
+
+# MySQL 示例
+DATABASE_URL="mysql://user:password@localhost:3306/storytree"
+```
+
+#### 13.4.2 数据库迁移
+
+```bash
+# 1. 修改 prisma/schema.prisma 中的 provider
+# datasource db {
+#   provider = "postgresql"  # 或 "mysql"
+#   url      = env("DATABASE_URL")
+# }
+
+# 2. 生成迁移
+npx prisma migrate deploy
+
+# 3. 生成客户端
+npx prisma generate
+```
+
+---
+
+### 13.5 生产环境 .env 模板
+
+```bash
+# ===================================
+# 生产环境配置模板
+# ===================================
+
+# 环境标识
+NODE_ENV=production
+
+# 数据库（建议使用 PostgreSQL）
+DATABASE_URL="postgresql://user:password@db-host:5432/storytree"
+
+# JWT 密钥（必须是强随机字符串）
+JWT_SECRET=用node生成的64字节随机密钥
+
+# 前端地址（必须是 HTTPS）
+FRONTEND_URL=https://yourdomain.com
+
+# API 基础地址
+API_URL=https://api.yourdomain.com
+API_BASE_URL=https://api.yourdomain.com
+
+# ===================================
+# 邮件配置
+# ===================================
+SMTP_HOST=smtp.exmail.qq.com
+SMTP_PORT=465
+SMTP_USER=noreply@yourdomain.com
+SMTP_PASS=邮箱授权码
+SMTP_FROM=noreply@yourdomain.com
+
+# 禁用开发模式（必须删除或设为 false）
+# DISABLE_EMAIL=true
+
+# ===================================
+# 微信小程序配置
+# ===================================
+WX_APPID=wx真实小程序AppID
+WX_APP_SECRET=真实AppSecret
+
+# ===================================
+# 微信网页扫码登录配置
+# ===================================
+WX_WEB_APPID=wx网站应用AppID
+WX_WEB_APP_SECRET=网站应用AppSecret
+
+# ===================================
+# 微信支付配置（如需要）
+# ===================================
+WX_PAY_MCH_ID=商户号
+WX_PAY_API_KEY=API密钥
+
+# ===================================
+# 支付宝配置（如需要）
+# ===================================
+# 生产环境使用正式网关
+ALIPAY_GATEWAY=https://openapi.alipay.com/gateway.do
+ALIPAY_APP_ID=正式应用AppID
+ALIPAY_PRIVATE_KEY=应用私钥
+ALIPAY_PUBLIC_KEY=支付宝公钥
+ALIPAY_CALLBACK_URL=https://api.yourdomain.com/api/payments/alipay/callback
+
+# ===================================
+# AI 配置
+# ===================================
+QWEN_API_KEY=你的通义千问API密钥
+QWEN_MODEL=qwen-plus
+```
+
+---
+
+### 13.6 部署检查清单
+
+部署前请逐项确认：
+
+#### 安全配置
+- [ ] `JWT_SECRET` 已更换为 64 字节以上随机密钥
+- [ ] `NODE_ENV` 设为 `production`
+- [ ] `DISABLE_EMAIL` 已删除或设为 `false`
+- [ ] 数据库密码使用强密码
+- [ ] API 使用 HTTPS
+
+#### 邮件功能
+- [ ] SMTP 配置填写正确
+- [ ] 测试邮件发送成功
+- [ ] `FRONTEND_URL` 指向正确的前端域名
+
+#### 微信登录
+- [ ] 小程序 AppID/AppSecret 已配置（如需要小程序登录）
+- [ ] 网站应用 AppID/AppSecret 已配置（如需要网页扫码登录）
+- [ ] 微信后台已配置服务器域名和回调域名
+- [ ] 小程序和网站应用已绑定到同一开放平台（如需要 unionid 打通）
+
+#### 数据库
+- [ ] 生产数据库已创建
+- [ ] 数据库迁移已执行
+- [ ] 数据库连接正常
+
+#### 功能测试
+- [ ] 邮箱注册 → 收到验证邮件 → 验证成功
+- [ ] 邮箱登录正常
+- [ ] 微信小程序登录正常（如已配置）
+- [ ] 微信网页扫码登录正常（如已配置）
+- [ ] 密码重置邮件发送成功
+- [ ] 管理员登录和管理功能正常
+
+---
+
+### 13.7 常见部署问题
+
+| 问题 | 可能原因 | 解决方案 |
+|------|----------|----------|
+| 邮件发送失败 | SMTP 配置错误或授权码过期 | 检查 SMTP 配置，重新生成授权码 |
+| 微信登录报错 | AppID/AppSecret 错误或域名未配置 | 检查微信后台配置 |
+| JWT 验证失败 | 密钥不一致（多实例部署） | 确保所有实例使用相同的 `JWT_SECRET` |
+| 验证链接无法访问 | `FRONTEND_URL` 配置错误 | 修改为正确的前端域名 |
+| 邮件被当作垃圾邮件 | 发件域名未配置 SPF/DKIM | 配置邮件域名的 DNS 记录 |
+| 微信 unionid 不一致 | 小程序和网站应用未绑定 | 在开放平台绑定到同一主体 |
 

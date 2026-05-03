@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
+import rateLimit from 'express-rate-limit';
 import { prisma } from '../index';
 import {
   hashPassword,
   verifyPassword,
   generateJWT,
   generateToken,
+  hashToken,
   sendVerificationEmail,
   sendPasswordResetEmail,
   isValidEmail,
@@ -15,8 +17,43 @@ import {
 
 const router = Router();
 
+// ============================================================
+// 登录频率限制
+// 防止暴力破解密码
+// ============================================================
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15分钟窗口
+  max: 5, // 每个IP最多5次登录尝试
+  message: { error: '登录尝试过于频繁，请15分钟后再试' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    // 使用 IP + 邮箱 作为限流 key，更精确地限制
+    const email = req.body?.email || '';
+    return `${req.ip}_${email}`;
+  },
+});
+
+// 注册频率限制
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1小时窗口
+  max: 5, // 每个IP最多5次注册尝试
+  message: { error: '注册尝试过于频繁，请1小时后再试' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// 密码重置频率限制
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1小时窗口
+  max: 3, // 每个IP最多3次密码重置请求
+  message: { error: '密码重置请求过于频繁，请1小时后再试' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // 用户注册
-router.post('/register', async (req, res) => {
+router.post('/register', registerLimiter, async (req, res) => {
   const { username, email, password, invitationCode } = req.body;
 
   // 验证必填字段：用户名必须提供；email/password 为可选（微信用户可不填）
@@ -218,17 +255,34 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    res.status(201).json({
-      message: inviteCodeData
-        ? `注册成功！你获得了 ${inviteCodeData.bonus_points} 积分奖励${email ? '，请查收验证邮件' : ''}`
-        : email ? '注册成功，请查收验证邮件' : '注册成功',
-      user: result,
-      token: await (async () => {
-        const t = generateJWT(result.id, result.username, false, 'web');
-        await prisma.users.update({ where: { id: result.id }, data: { active_token: t } });
-        return t;
-      })()
-    });
+    // 如果是邮箱注册，不返回 token，必须先验证邮箱
+    if (email) {
+      res.status(201).json({
+        message: inviteCodeData
+          ? `注册成功！你获得了 ${inviteCodeData.bonus_points} 积分奖励，请查收验证邮件后登录`
+          : '注册成功！请查收验证邮件，验证后即可登录',
+        requireVerification: true,
+        email: result.email,
+        user: {
+          id: result.id,
+          username: result.username,
+          email: result.email,
+        }
+      });
+    } else {
+      // 非邮箱注册（如纯用户名注册），直接返回 token
+      res.status(201).json({
+        message: inviteCodeData
+          ? `注册成功！你获得了 ${inviteCodeData.bonus_points} 积分奖励`
+          : '注册成功',
+        user: result,
+        token: await (async () => {
+          const t = generateJWT(result.id, result.username, false, 'web');
+          await prisma.users.update({ where: { id: result.id }, data: { active_token: t } });
+          return t;
+        })()
+      });
+    }
   } catch (error) {
     console.error('注册错误:', error);
     res.status(500).json({ error: '注册失败，请稍后重试' });
@@ -236,12 +290,16 @@ router.post('/register', async (req, res) => {
 });
 
 // 用户登录
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ error: '请填写邮箱和密码' });
   }
+
+  // 获取请求信息用于日志
+  const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  const userAgent = req.headers['user-agent'];
 
   try {
     const user = await prisma.users.findUnique({
@@ -270,16 +328,52 @@ router.post('/login', async (req, res) => {
     });
 
     if (!user) {
+      // 记录失败日志 - 用户不存在
+      await prisma.login_logs.create({
+        data: {
+          user_id: null, // 用户不存在时为 null
+          ip: String(ip),
+          user_agent: userAgent,
+          platform: 'web',
+          status: 'failed',
+          fail_reason: 'user_not_found',
+        }
+      }).catch(err => console.error('记录登录日志失败:', err));
+      
       return res.status(401).json({ error: '邮箱或密码错误' });
     }
 
     const isPasswordValid = await verifyPassword(password, user.password!);
     if (!isPasswordValid) {
+      // 记录失败日志 - 密码错误
+      await prisma.login_logs.create({
+        data: {
+          user_id: user.id,
+          ip: String(ip),
+          user_agent: userAgent,
+          platform: 'web',
+          status: 'failed',
+          fail_reason: 'wrong_password',
+        }
+      }).catch(err => console.error('记录登录日志失败:', err));
+      
       return res.status(401).json({ error: '邮箱或密码错误' });
     }
 
     // 检查邮箱是否已验证
     if (!user.emailVerified) {
+      // 记录失败日志 - 邮箱未验证
+      await prisma.login_logs.create({
+        data: {
+          user_id: user.id,
+          ip: String(ip),
+          user_agent: userAgent,
+          platform: 'web',
+          status: 'failed',
+          fail_reason: 'email_not_verified',
+        }
+      }).catch(err => console.error('记录登录日志失败:', err));
+      
       // 检查是否已有未过期的验证 token，有则复用，避免覆盖导致用户手中的旧链接失效
       const hasValidToken = user.emailVerificationToken && 
         user.emailVerificationExpires && 
@@ -318,6 +412,17 @@ router.post('/login', async (req, res) => {
     // 生成新 token 并写入 active_token（同时使其他端旧 token 失效）
     const token = generateJWT(user.id, user.username, user.isAdmin, 'web');
     await prisma.users.update({ where: { id: user.id }, data: { active_token: token } });
+
+    // 记录成功日志
+    await prisma.login_logs.create({
+      data: {
+        user_id: user.id,
+        ip: String(ip),
+        user_agent: userAgent,
+        platform: 'web',
+        status: 'success',
+      }
+    }).catch(err => console.error('记录登录日志失败:', err));
 
     res.json({
       message: '登录成功',
@@ -391,7 +496,7 @@ router.get('/me', async (req, res) => {
 });
 
 // 密码重置 - 发送重置邮件
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
   const { email } = req.body;
 
   if (!email) {
@@ -598,11 +703,11 @@ router.post('/resend-verification', async (req, res) => {
 // ============================================================
 // 微信小程序登录
 // POST /api/auth/wx-login
-// body: { code, invitationCode? }
+// body: { code, invitationCode?, nickname?, avatarUrl? }
 // 流程：code → 微信换取 openid → 查找/创建用户 → 返回 JWT
 // ============================================================
 router.post('/wx-login', async (req, res) => {
-  const { code, invitationCode } = req.body;
+  const { code, invitationCode, nickname, avatarUrl } = req.body;
 
   if (!code) {
     return res.status(400).json({ error: '缺少微信登录 code' });
@@ -652,9 +757,18 @@ router.post('/wx-login', async (req, res) => {
       // 3. 新用户：自动注册
       isNewUser = true;
 
-      // 生成唯一用户名（wx_ + openid 后8位）
-      const baseUsername = `wx_${openid.slice(-8)}`;
-      let username = baseUsername;
+      // 生成用户名：优先使用微信昵称，否则使用 wx_ + openid 后8位
+      let username: string;
+      if (nickname && nickname.trim()) {
+        // 清理昵称中的特殊字符，只保留字母、数字、中文、下划线
+        const cleanNickname = nickname.trim().replace(/[^\w\u4e00-\u9fa5]/g, '').slice(0, 20);
+        username = cleanNickname || `wx_${openid.slice(-8)}`;
+      } else {
+        username = `wx_${openid.slice(-8)}`;
+      }
+      
+      // 确保用户名唯一
+      const baseUsername = username;
       let suffix = 1;
       while (await prisma.users.findUnique({ where: { username } })) {
         username = `${baseUsername}_${suffix++}`;
@@ -682,6 +796,9 @@ router.post('/wx-login', async (req, res) => {
             password: null,   // 微信用户无密码
             wx_openid: openid,
             wx_unionid: unionid || null,
+            wx_nickname: nickname?.trim() || null,
+            wx_avatar: avatarUrl || null,
+            avatar: avatarUrl || null, // 同时设置用户头像
             emailVerified: true, // 微信登录视为已验证
             points: inviteCodeData ? inviteCodeData.bonus_points : 0,
             invited_by_code: invitationCode?.toUpperCase() || null,
@@ -821,6 +938,93 @@ router.post('/bind-wx', async (req, res) => {
 });
 
 // ============================================================
+// 绑定邮箱到已有账号（微信用户绑定邮箱）
+// POST /api/auth/bind-email
+// header: Authorization: Bearer <token>
+// body: { email, password }
+// ============================================================
+router.post('/bind-email', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) {
+    return res.status(401).json({ error: '未提供认证令牌' });
+  }
+
+  const { email, password } = req.body;
+  
+  if (!email || !password) {
+    return res.status(400).json({ error: '请填写邮箱和密码' });
+  }
+
+  // 验证邮箱格式
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ error: '请输入有效的邮箱地址' });
+  }
+
+  // 验证密码强度
+  const passwordValid = isValidPassword(password);
+  if (!passwordValid.valid) {
+    return res.status(400).json({ error: passwordValid.message });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-this') as { userId: number };
+
+    // 获取当前用户
+    const currentUser = await prisma.users.findUnique({
+      where: { id: decoded.userId },
+      select: { id: true, email: true, username: true }
+    });
+
+    if (!currentUser) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+
+    // 检查用户是否已绑定邮箱
+    if (currentUser.email) {
+      return res.status(400).json({ error: '你已绑定邮箱，如需修改请联系客服' });
+    }
+
+    // 检查邮箱是否已被其他账号使用
+    const existingUser = await prisma.users.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(409).json({ error: '该邮箱已被其他账号使用' });
+    }
+
+    // 加密密码
+    const hashedPassword = await hashPassword(password);
+
+    // 生成邮箱验证 token
+    const verificationToken = generateToken();
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24小时
+
+    // 更新用户信息
+    await prisma.users.update({
+      where: { id: decoded.userId },
+      data: {
+        email,
+        password: hashedPassword,
+        emailVerified: false,
+        emailVerificationToken: verificationToken,
+        emailVerificationExpires: verificationExpires,
+      }
+    });
+
+    // 发送验证邮件
+    sendVerificationEmail(email, verificationToken).catch(err => {
+      console.error('发送邮箱绑定验证邮件失败:', err);
+    });
+
+    res.json({ 
+      message: '邮箱绑定成功！验证邮件已发送，请查收并完成验证',
+      email
+    });
+  } catch (error) {
+    console.error('绑定邮箱错误:', error);
+    res.status(500).json({ error: '绑定失败，请稍后重试' });
+  }
+});
+
+// ============================================================
 // 微信网页端扫码登录（微信开放平台 OAuth2.0）
 // POST /api/auth/wx-web-login
 // body: { code }
@@ -905,8 +1109,18 @@ router.post('/wx-web-login', async (req, res) => {
       // 5. 新用户：自动注册
       isNewUser = true;
 
-      const baseUsername = `wx_${openid.slice(-8)}`;
-      let username = baseUsername;
+      // 生成用户名：优先使用微信昵称，否则使用 wx_ + openid 后8位
+      let username: string;
+      if (wxNickname && wxNickname.trim()) {
+        // 清理昵称中的特殊字符，只保留字母、数字、中文、下划线
+        const cleanNickname = wxNickname.trim().replace(/[^\w\u4e00-\u9fa5]/g, '').slice(0, 20);
+        username = cleanNickname || `wx_${openid.slice(-8)}`;
+      } else {
+        username = `wx_${openid.slice(-8)}`;
+      }
+      
+      // 确保用户名唯一
+      const baseUsername = username;
       let suffix = 1;
       while (await prisma.users.findUnique({ where: { username } })) {
         username = `${baseUsername}_${suffix++}`;
@@ -921,6 +1135,7 @@ router.post('/wx-web-login', async (req, res) => {
           wx_unionid: unionid || null,
           wx_nickname: wxNickname,
           wx_avatar: wxAvatar,
+          avatar: wxAvatar, // 同时设置用户头像
           emailVerified: true,
           updatedAt: new Date(),
         },
@@ -957,6 +1172,68 @@ router.post('/wx-web-login', async (req, res) => {
   } catch (error) {
     console.error('微信网页登录错误:', error);
     res.status(500).json({ error: '微信登录失败，请稍后重试' });
+  }
+});
+
+// ============================================================
+// 账号注销
+// DELETE /api/auth/account
+// header: Authorization: Bearer <token>
+// body: { password?, confirmText }
+// 注意：此操作不可逆，将删除用户所有数据
+// ============================================================
+router.delete('/account', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) {
+    return res.status(401).json({ error: '未提供认证令牌' });
+  }
+
+  const { password, confirmText } = req.body;
+
+  // 确认文本必须是"确认注销"
+  if (confirmText !== '确认注销') {
+    return res.status(400).json({ error: '请输入"确认注销"以确认操作' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-this') as { userId: number };
+
+    const user = await prisma.users.findUnique({
+      where: { id: decoded.userId },
+      select: { id: true, username: true, email: true, password: true, wx_openid: true }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+
+    // 如果用户有密码（邮箱注册用户），需要验证密码
+    if (user.password) {
+      if (!password) {
+        return res.status(400).json({ error: '请输入密码以确认身份' });
+      }
+      const isPasswordValid = await verifyPassword(password, user.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ error: '密码错误' });
+      }
+    }
+
+    // 使用事务删除用户相关数据
+    // 由于数据库有级联删除设置，删除用户会自动删除关联数据
+    await prisma.$transaction(async (tx) => {
+      // 记录注销日志（可选：保留注销记录用于审计）
+      console.log(`用户注销: id=${user.id}, username=${user.username}, email=${user.email}`);
+      
+      // 删除用户（级联删除会处理关联数据）
+      await tx.users.delete({
+        where: { id: user.id }
+      });
+    });
+
+    res.json({ message: '账号已成功注销，感谢你的使用' });
+  } catch (error) {
+    console.error('账号注销错误:', error);
+    res.status(500).json({ error: '注销失败，请稍后重试' });
   }
 });
 

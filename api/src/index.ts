@@ -41,6 +41,31 @@ import { wsServer } from './utils/websocket';
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
 dotenv.config({ path: envFile });
 
+// ============================================================
+// 安全检查：JWT_SECRET 不能使用默认值
+// ============================================================
+const DEFAULT_JWT_SECRETS = [
+  'your-secret-key-change-this',
+  'secret',
+  'jwt-secret',
+  'your-jwt-secret',
+];
+
+const jwtSecret = process.env.JWT_SECRET || '';
+if (!jwtSecret || DEFAULT_JWT_SECRETS.includes(jwtSecret)) {
+  console.error('❌ 安全错误：JWT_SECRET 未配置或使用了默认值！');
+  console.error('   请在 .env 文件中设置一个安全的随机密钥。');
+  console.error('   建议使用: openssl rand -base64 32');
+  
+  // 生产环境直接退出
+  if (process.env.NODE_ENV === 'production') {
+    console.error('   生产环境不允许使用默认 JWT_SECRET，服务启动失败。');
+    process.exit(1);
+  } else {
+    console.warn('⚠️  开发环境允许继续运行，但请尽快配置安全的 JWT_SECRET。');
+  }
+}
+
 // 启动 AI Worker
 import './workers/aiWorker';
 

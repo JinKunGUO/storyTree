@@ -268,6 +268,7 @@ model users {
   sent_tips                  tips[]                    @relation("tip_sender")
   user_subscriptions         user_subscriptions[]
   withdrawal_requests        withdrawal_requests[]
+  login_logs                 login_logs[]
 }
 
 model ai_usage_logs {
@@ -559,4 +560,22 @@ model tips {
   @@index([story_id])
   @@index([node_id])
   @@index([created_at])
+}
+
+// 登录日志表 - 记录用户登录历史
+model login_logs {
+  id         Int      @id @default(autoincrement())
+  user_id    Int?     // 可为空，用户不存在时为 null
+  ip         String?
+  user_agent String?
+  platform   String   // web/miniprogram
+  status     String   // success/failed
+  fail_reason String? // 失败原因：wrong_password/user_not_found/email_not_verified
+  created_at DateTime @default(now())
+  user       users?   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([created_at])
+  @@index([status])
+  @@index([ip])
 }

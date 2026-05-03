@@ -175,6 +175,32 @@ function handleRegister() {
             const data = await response.json();
             
             if (response.ok) {
+                console.log('注册响应:', data);
+                
+                // 检查是否需要邮箱验证
+                if (data.requireVerification) {
+                    // 邮箱注册需要先验证，显示提示并跳转到登录页
+                    console.log('需要邮箱验证，跳转到登录页');
+                    
+                    // 使用 modal 或 toast 提示用户
+                    if (window.modal && typeof window.modal.show === 'function') {
+                        window.modal.show({
+                            title: '注册成功',
+                            content: `验证邮件已发送至 ${data.email || email}，请查收邮件并点击链接完成验证后登录。`,
+                            confirmText: '去登录',
+                            showCancel: false,
+                            onConfirm: () => {
+                                window.location.href = '/login';
+                            }
+                        });
+                    } else {
+                        alert(`注册成功！验证邮件已发送至 ${data.email || email}，请查收邮件并点击链接完成验证后登录。`);
+                        window.location.href = '/login';
+                    }
+                    return;
+                }
+                
+                // 非邮箱注册或不需要验证，直接登录
                 console.log('注册成功，开始保存token');
                 console.log('Token:', data.token ? '存在 (长度: ' + data.token.length + ')' : '不存在');
                 console.log('User:', data.user ? data.user.username : '不存在');

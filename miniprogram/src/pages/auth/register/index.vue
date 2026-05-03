@@ -296,14 +296,35 @@ async function handleRegister() {
     }
 
     const res = await register(params)
-    userStore.login(res.token, res.user as any)
+    
+    // 调试日志：查看后端返回的数据
+    console.log('注册响应:', JSON.stringify(res, null, 2))
+    
     // 注册成功后清除缓存的邀请码
     uni.removeStorageSync('pendingInviteCode')
-    uni.showToast({ title: '注册成功！', icon: 'success' })
+    
+    // 检查是否需要邮箱验证
+    console.log('requireVerification:', res.requireVerification)
+    if (res.requireVerification) {
+      // 邮箱注册需要先验证，跳转到提示页面或显示弹窗
+      uni.showModal({
+        title: '注册成功',
+        content: '验证邮件已发送至 ' + res.email + '，请查收邮件并点击链接完成验证后登录。',
+        showCancel: false,
+        confirmText: '去登录',
+        success: () => {
+          uni.redirectTo({ url: '/pages/auth/login/index' })
+        }
+      })
+    } else {
+      // 非邮箱注册，直接登录
+      userStore.login(res.token, res.user as any)
+      uni.showToast({ title: '注册成功！', icon: 'success' })
 
-    setTimeout(() => {
-      uni.switchTab({ url: '/pages/index/index' })
-    }, 1500)
+      setTimeout(() => {
+        uni.switchTab({ url: '/pages/index/index' })
+      }, 1500)
+    }
   } catch (err: any) {
     uni.showToast({ title: err.message || '注册失败', icon: 'none' })
   } finally {

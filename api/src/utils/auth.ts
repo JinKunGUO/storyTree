@@ -15,7 +15,10 @@ const PLACEHOLDER_VALUES = [
 // 检查是否为开发模式（SMTP 未真实配置）
 const smtpUser = process.env.SMTP_USER || '';
 const smtpPass = process.env.SMTP_PASS || '';
+// 新增：DISABLE_EMAIL=true 时强制使用开发模式（邮件输出到控制台）
+const forceDevMode = process.env.DISABLE_EMAIL === 'true';
 const isDevelopmentMode =
+  forceDevMode ||
   !smtpUser ||
   !smtpPass ||
   PLACEHOLDER_VALUES.includes(smtpUser) ||
@@ -46,6 +49,11 @@ const JWT_EXPIRES_IN = '7d';
 // 生成随机token
 export function generateToken(): string {
   return crypto.randomBytes(32).toString('hex');
+}
+
+// 生成 token 的哈希值（用于安全存储）
+export function hashToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
 }
 
 // 加密密码
@@ -248,11 +256,20 @@ export function isValidEmail(email: string): boolean {
 
 // 验证密码强度
 export function isValidPassword(password: string): { valid: boolean; message?: string } {
-  if (password.length < 6) {
-    return { valid: false, message: '密码长度至少为6位' };
+  if (password.length < 8) {
+    return { valid: false, message: '密码长度至少为8位' };
   }
   if (password.length > 128) {
     return { valid: false, message: '密码长度不能超过128位' };
+  }
+  if (!/[A-Z]/.test(password)) {
+    return { valid: false, message: '密码需包含至少一个大写字母' };
+  }
+  if (!/[a-z]/.test(password)) {
+    return { valid: false, message: '密码需包含至少一个小写字母' };
+  }
+  if (!/[0-9]/.test(password)) {
+    return { valid: false, message: '密码需包含至少一个数字' };
   }
   return { valid: true };
 }
