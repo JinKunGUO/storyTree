@@ -1567,10 +1567,18 @@
             console.log('加载要编辑的章节, ID:', editNodeId);
             
             try {
-                const response = await fetch(`/api/nodes/${editNodeId}`);
+                // 获取 token 用于访问被驳回/隐藏的章节（作者本人可以访问）
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                const headers = {};
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+                
+                const response = await fetch(`/api/nodes/${editNodeId}`, { headers });
                 
                 if (!response.ok) {
-                    throw new Error('加载章节失败');
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || '加载章节失败');
                 }
                 
                 const data = await response.json();

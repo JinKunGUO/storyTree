@@ -125,7 +125,7 @@ router.post('/review', async (req, res) => {
       'review',
       '内容审核结果',
       `您的内容《${node.title}》审核${statusText}${note ? `：${note}` : ''}`,
-      `/node/${node.id}`
+      `/chapter?id=${node.id}`
     );
 
     res.json({ node });
