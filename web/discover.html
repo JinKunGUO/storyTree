@@ -803,21 +803,109 @@
         // ===== 数据 =====
         let allStories = [];
         let currentFilter = 'all';
+        
+        // ===== 分页状态 =====
+        let currentPage = 1;
+        let pageSize = 20; // 默认值，会根据屏幕动态计算
+        let isLoading = false;
+        let hasMore = true;
+        let totalStories = 0;
+        
+        // 根据屏幕分辨率计算每页加载数量（凑够整排）
+        function calculatePageSize() {
+            const grid = document.getElementById('storiesGrid');
+            if (!grid) return 20;
+            
+            // 获取网格容器宽度
+            const containerWidth = grid.clientWidth;
+            // 卡片最小宽度 300px + gap 24px
+            const cardMinWidth = 300;
+            const gap = 24;
+            
+            // 计算每行能放多少个卡片
+            let cardsPerRow = Math.floor((containerWidth + gap) / (cardMinWidth + gap));
+            cardsPerRow = Math.max(1, Math.min(cardsPerRow, 4)); // 限制在 1-4 之间
+            
+            // 每次加载 2-3 行的数量，确保是整排的倍数
+            const rows = 3;
+            return cardsPerRow * rows;
+        }
 
-        async function loadStories() {
+        async function loadStories(reset = true) {
+            if (isLoading) return;
+            if (!reset && !hasMore) return;
+            
+            isLoading = true;
+            
+            if (reset) {
+                currentPage = 1;
+                hasMore = true;
+                allStories = [];
+                // 首次加载时根据屏幕计算 pageSize
+                pageSize = calculatePageSize();
+            }
+            
             try {
-                const res = await fetch('/api/stories');
+                const res = await fetch(`/api/stories?page=${currentPage}&pageSize=${pageSize}`);
                 const data = await res.json();
+                
                 if (data.stories && data.stories.length > 0) {
-                    allStories = data.stories;
-                    if (allStories.length >= 3) displayHotStories(allStories);
+                    if (reset) {
+                        allStories = data.stories;
+                        // 保存总数（首次加载时获取）
+                        if (data.total !== undefined) {
+                            totalStories = data.total;
+                        }
+                    } else {
+                        allStories = [...allStories, ...data.stories];
+                    }
+                    
+                    // 判断是否还有更多数据（基于总数判断更准确）
+                    hasMore = allStories.length < totalStories;
+                    currentPage++;
+                    
+                    // 首次加载时显示热门故事
+                    if (reset && allStories.length >= 3) {
+                        displayHotStories(allStories);
+                    }
+                    
                     displayStories(allStories);
-                } else {
+                    updateLoadMoreButton();
+                } else if (reset) {
                     showEmptyState();
                 }
             } catch (e) {
                 console.error('加载故事失败:', e);
-                showErrorState();
+                if (reset) showErrorState();
+            } finally {
+                isLoading = false;
+            }
+        }
+        
+        // 加载更多按钮状态更新
+        function updateLoadMoreButton() {
+            let loadMoreContainer = document.getElementById('loadMoreContainer');
+            if (!loadMoreContainer) {
+                loadMoreContainer = document.createElement('div');
+                loadMoreContainer.id = 'loadMoreContainer';
+                loadMoreContainer.style.cssText = 'text-align: center; padding: 20px; grid-column: 1 / -1;';
+                document.getElementById('storiesGrid').appendChild(loadMoreContainer);
+            }
+            
+            if (hasMore) {
+                loadMoreContainer.innerHTML = `
+                    <button class="btn btn-secondary" onclick="loadStories(false)" id="loadMoreBtn">
+                        <i class="fas fa-plus"></i> 加载更多（已加载 ${allStories.length}/${totalStories}）
+                    </button>
+                `;
+            } else if (allStories.length > pageSize) {
+                loadMoreContainer.innerHTML = `
+                    <span style="color: var(--st-text-tertiary); font-size: 14px;">
+                        <i class="fas fa-check-circle"></i> 已加载全部 ${totalStories} 部故事
+                    </span>
+                `;
+            } else {
+                loadMoreContainer.innerHTML = '';
             }
         }
 
@@ -877,11 +965,15 @@
         function displayStories(stories) {
             const grid = document.getElementById('storiesGrid');
             const countEl = document.getElementById('storiesCount');
-            if (countEl) countEl.textContent = `（${stories.length}）`;
+            // 显示准确的总数（如果有）
+            if (countEl) {
+                const displayCount = totalStories > 0 ? totalStories : stories.length;
+                countEl.textContent = `（${displayCount}）`;
+            }
 
             if (!stories.length) { showEmptyState(); return; }
 
-            grid.innerHTML = stories.map((story, idx) => `
+            const storiesHtml = stories.map((story, idx) => `
                 <article class="story-card" onclick="window.location.href='/story?id=${story.id}'" tabindex="0" role="button" aria-label="阅读故事：${escapeHtml(story.title)}">
                     <div class="story-card-cover" style="background: ${coverGradients[idx % coverGradients.length]}">
                         <i class="fas fa-book-open" aria-hidden="true"></i>
@@ -905,6 +997,9 @@
                     </div>
                 </article>
             `).join('');
+            
+            // 追加模式：重新渲染整个列表（简单可靠）
+            grid.innerHTML = storiesHtml;
 
             grid.querySelectorAll('.story-card, .ranking-item, .featured-story-card').forEach(el => {
                 el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); } });

@@ -1,0 +1,581 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model bookmarks {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  story_id   Int
+  created_at DateTime @default(now())
+  user       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  story      stories  @relation(fields: [story_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, story_id])
+  @@index([user_id])
+  @@index([story_id])
+}
+
+model node_bookmarks {
+  id             Int      @id @default(autoincrement())
+  user_id        Int
+  node_id        Int
+  created_at     DateTime @default(now())
+  points_awarded Boolean  @default(false)
+  node           nodes    @relation(fields: [node_id], references: [id], onDelete: Cascade)
+  user           users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, node_id])
+  @@index([user_id])
+  @@index([node_id])
+}
+
+model comments {
+  id             Int             @id @default(autoincrement())
+  content        String
+  node_id        Int
+  user_id        Int
+  parent_id      Int?
+  is_deleted     Boolean         @default(false)
+  created_at     DateTime        @default(now())
+  updated_at     DateTime
+  pinned         Boolean         @default(false)
+  pinned_at      DateTime?
+  votes          comment_votes[]
+  node           nodes           @relation(fields: [node_id], references: [id], onDelete: Cascade)
+  user           users           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  comments       comments?       @relation("commentsTocomments", fields: [parent_id], references: [id])
+  other_comments comments[]      @relation("commentsTocomments")
+
+  @@index([created_at])
+  @@index([parent_id])
+  @@index([user_id])
+  @@index([node_id])
+  @@index([pinned])
+}
+
+model follows {
+  id           Int      @id @default(autoincrement())
+  follower_id  Int
+  following_id Int
+  created_at   DateTime @default(now())
+  following    users    @relation("follows_following_idTousers", fields: [following_id], references: [id], onDelete: Cascade)
+  follower     users    @relation("follows_follower_idTousers", fields: [follower_id], references: [id], onDelete: Cascade)
+
+  @@unique([follower_id, following_id])
+  @@index([following_id])
+  @@index([follower_id])
+}
+
+model nodes {
+  id              Int               @id @default(autoincrement())
+  story_id        Int
+  parent_id       Int?
+  author_id       Int
+  title           String
+  content         String
+  image           String?
+  path            String
+  ai_generated    Boolean           @default(false)
+  is_published    Boolean           @default(false)
+  rating_avg      Float             @default(0)
+  rating_count    Int               @default(0)
+  read_count      Int               @default(0)
+  review_status   String            @default("APPROVED")
+  report_count    Int               @default(0)
+  report_reasons  String?
+  reviewed_by     Int?
+  reviewed_at     DateTime?
+  review_note     String?
+  created_at      DateTime          @default(now())
+  updated_at      DateTime
+  comments        comments[]
+  delete_requests delete_requests[]
+  node_bookmarks  node_bookmarks[]
+  story           stories           @relation(fields: [story_id], references: [id], onDelete: Cascade)
+  author          users             @relation("NodeAuthor", fields: [author_id], references: [id])
+  nodes           nodes?            @relation("nodesTonodes", fields: [parent_id], references: [id])
+  other_nodes     nodes[]           @relation("nodesTonodes")
+  ratings         ratings[]
+  reports         reports[]
+  shares          shares[]
+
+  @@index([review_status])
+  @@index([path])
+  @@index([parent_id])
+  @@index([story_id])
+}
+
+model notifications {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  type       String
+  title      String
+  content    String
+  link       String?
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now())
+  user       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([is_read])
+  @@index([user_id])
+}
+
+model ratings {
+  id         Int      @id @default(autoincrement())
+  node_id    Int
+  user_id    Int
+  score      Int
+  created_at DateTime @default(now())
+  user       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  node       nodes    @relation(fields: [node_id], references: [id], onDelete: Cascade)
+
+  @@unique([node_id, user_id])
+}
+
+model reports {
+  id          Int       @id @default(autoincrement())
+  node_id     Int
+  reporter_id Int
+  reason      String
+  description String?
+  status      String    @default("pending")
+  created_at  DateTime  @default(now())
+  resolved_at DateTime?
+  resolved_by Int?
+  reporter    users     @relation(fields: [reporter_id], references: [id], onDelete: Cascade)
+  node        nodes     @relation(fields: [node_id], references: [id], onDelete: Cascade)
+
+  @@index([reporter_id])
+  @@index([node_id])
+}
+
+model shares {
+  id         Int      @id @default(autoincrement())
+  story_id   Int
+  node_id    Int?
+  user_id    Int?
+  platform   String
+  created_at DateTime @default(now())
+  user       users?   @relation(fields: [user_id], references: [id])
+  node       nodes?   @relation(fields: [node_id], references: [id], onDelete: Cascade)
+  story      stories  @relation(fields: [story_id], references: [id], onDelete: Cascade)
+
+  @@index([story_id])
+  @@index([node_id])
+  @@index([user_id])
+  @@index([platform])
+  @@index([created_at])
+}
+
+model stories {
+  id                          Int                      @id @default(autoincrement())
+  title                       String
+  description                 String?
+  cover_image                 String?
+  author_id                   Int
+  root_node_id                Int?
+  visibility                  String                   @default("public")
+  password                    String?
+  allow_branch                Boolean                  @default(true)
+  allow_comment               Boolean                  @default(true)
+  require_collaborator_review Boolean                  @default(false)
+  auto_approve_collaborators  Boolean                  @default(false)
+  tags                        String?
+  created_at                  DateTime                 @default(now())
+  updated_at                  DateTime
+  pinned                      Boolean                  @default(false)
+  pinned_until                DateTime?
+  pinned_at                   DateTime?
+  bookmarks                   bookmarks[]
+  collaboration_requests      collaboration_requests[]
+  nodes                       nodes[]
+  shares                      shares[]
+  author                      users                    @relation("StoryAuthor", fields: [author_id], references: [id])
+  collaborators               story_collaborators[]
+  followers                   story_followers[]
+}
+
+model users {
+  id                         Int                       @id @default(autoincrement())
+  username                   String                    @unique
+  email                      String?                   @unique
+  password                   String?
+  avatar                     String?
+  bio                        String?
+  wx_nickname                String?                   @map("wx_nickname")
+  wx_avatar                  String?                   @map("wx_avatar")
+  level                      Int                       @default(1)
+  points                     Int                       @default(0)
+  word_count                 Int                       @default(0)
+  badges                     String?
+  consecutive_days           Int                       @default(0)
+  last_checkin_date          DateTime?
+  makeup_chances             Int                       @default(0)
+  invited_by_code            String?
+  earnings_balance           Int                       @default(0)
+  membership_tier            String                    @default("free")
+  membership_started_at      DateTime?
+  membership_expires_at      DateTime?
+  membership_auto_renew      Boolean                   @default(false)
+  membership_payment_method  String?
+  has_used_trial             Boolean                   @default(false)
+  subscription_type          String?
+  subscription_expires       DateTime?
+  wx_openid                  String?                   @unique
+  wx_unionid                 String?                   @unique
+  active_token               String?                   // 当前有效 token，新登录时替换旧值，实现单端互踢
+  isAdmin                    Boolean                   @default(false) @map("is_admin")
+  emailVerified              Boolean                   @default(false) @map("email_verified")
+  emailVerificationToken     String?                   @map("email_verification_token")
+  emailVerificationExpires   DateTime?                 @map("email_verification_expires")
+  passwordResetToken         String?                   @map("password_reset_token")
+  passwordResetExpires       DateTime?                 @map("password_reset_expires")
+  createdAt                  DateTime                  @default(now()) @map("created_at")
+  updatedAt                  DateTime                  @map("updated_at")
+  ai_tasks                   ai_tasks[]
+  ai_usage_logs              ai_usage_logs[]
+  bookmarks                  bookmarks[]
+  checkin_records            checkin_records[]
+  collaboration_reviews      collaboration_requests[]  @relation("collaboration_request_reviewer")
+  collaboration_requests     collaboration_requests[]  @relation("collaboration_request_user")
+  comment_votes              comment_votes[]
+  comments                   comments[]
+  delete_requests_reviewed   delete_requests[]         @relation("delete_request_reviewer")
+  delete_requests_made       delete_requests[]         @relation("delete_request_requester")
+  following                  follows[]                 @relation("follows_following_idTousers")
+  followers                  follows[]                 @relation("follows_follower_idTousers")
+  created_invitation_codes   invitation_codes[]
+  invitation_records_invitee invitation_records[]      @relation("invitation_invitee")
+  invitation_records_inviter invitation_records[]      @relation("invitation_inviter")
+  membership_benefits_log    membership_benefits_log[]
+  node_bookmarks             node_bookmarks[]
+  authored_nodes             nodes[]                   @relation("NodeAuthor")
+  notifications              notifications[]
+  orders                     orders[]
+  point_transactions         point_transactions[]
+  ratings                    ratings[]
+  reports                    reports[]
+  shares                     shares[]
+  authored_stories           stories[]                 @relation("StoryAuthor")
+  collaborations             story_collaborators[]
+  story_follows              story_followers[]
+  received_tips              tips[]                    @relation("tip_receiver")
+  sent_tips                  tips[]                    @relation("tip_sender")
+  user_subscriptions         user_subscriptions[]
+  withdrawal_requests        withdrawal_requests[]
+  login_logs                 login_logs[]
+}
+
+model ai_usage_logs {
+  id                Int      @id @default(autoincrement())
+  user_id           Int
+  story_id          Int?
+  node_id           Int?
+  action_type       String
+  model_name        String
+  prompt_tokens     Int      @default(0)
+  completion_tokens Int      @default(0)
+  total_tokens      Int      @default(0)
+  cost_usd          Float    @default(0)
+  response_time_ms  Int      @default(0)
+  success           Boolean  @default(true)
+  error_message     String?
+  created_at        DateTime @default(now())
+  user              users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([created_at])
+  @@index([action_type])
+}
+
+model ai_tasks {
+  id            Int       @id @default(autoincrement())
+  user_id       Int
+  story_id      Int?
+  node_id       Int?
+  task_type     String
+  status        String    @default("pending")
+  priority      Int       @default(0)
+  input_data    String
+  result_data   String?
+  error_message String?
+  scheduled_at  DateTime?
+  started_at    DateTime?
+  completed_at  DateTime?
+  created_at    DateTime  @default(now())
+  user          users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([status])
+  @@index([task_type])
+  @@index([scheduled_at])
+}
+
+model point_transactions {
+  id           Int      @id @default(autoincrement())
+  user_id      Int
+  amount       Int
+  type         String
+  description  String
+  reference_id Int?
+  created_at   DateTime @default(now())
+  user         users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([created_at])
+  @@index([type])
+}
+
+model orders {
+  id              String              @id
+  user_id         Int
+  type            String
+  amount          Float
+  points          Int?
+  status          String              @default("pending")
+  payment_method  String?
+  paid_at         DateTime?
+  created_at      DateTime            @default(now())
+  discount_amount Float?
+  discount_code   String?
+  expires_at      DateTime?
+  original_amount Float?
+  tier            String?
+  transaction_id  String?
+  user            users               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  subscription    user_subscriptions?
+
+  @@index([user_id])
+  @@index([status])
+  @@index([created_at])
+  @@index([type])
+}
+
+model story_collaborators {
+  id         Int       @id @default(autoincrement())
+  story_id   Int
+  user_id    Int
+  invited_by Int
+  created_at DateTime  @default(now())
+  removed_at DateTime?
+  removed_by Int?
+  user       users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  story      stories   @relation(fields: [story_id], references: [id], onDelete: Cascade)
+
+  @@unique([story_id, user_id])
+  @@index([user_id])
+  @@index([story_id])
+}
+
+model delete_requests {
+  id           Int       @id @default(autoincrement())
+  node_id      Int
+  requester_id Int
+  reason       String?
+  status       String    @default("pending")
+  created_at   DateTime  @default(now())
+  reviewed_by  Int?
+  reviewed_at  DateTime?
+  reviewer     users?    @relation("delete_request_reviewer", fields: [reviewed_by], references: [id])
+  requester    users     @relation("delete_request_requester", fields: [requester_id], references: [id], onDelete: Cascade)
+  node         nodes     @relation(fields: [node_id], references: [id], onDelete: Cascade)
+
+  @@index([node_id])
+  @@index([requester_id])
+  @@index([status])
+}
+
+model story_followers {
+  id             Int      @id @default(autoincrement())
+  story_id       Int
+  user_id        Int
+  points_awarded Boolean  @default(false)
+  created_at     DateTime @default(now())
+  user           users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  story          stories  @relation(fields: [story_id], references: [id], onDelete: Cascade)
+
+  @@unique([story_id, user_id])
+  @@index([user_id])
+  @@index([story_id])
+}
+
+model collaboration_requests {
+  id          Int       @id @default(autoincrement())
+  story_id    Int
+  user_id     Int
+  message     String?
+  status      String    @default("pending")
+  created_at  DateTime  @default(now())
+  reviewed_by Int?
+  reviewed_at DateTime?
+  reviewer    users?    @relation("collaboration_request_reviewer", fields: [reviewed_by], references: [id])
+  user        users     @relation("collaboration_request_user", fields: [user_id], references: [id], onDelete: Cascade)
+  story       stories   @relation(fields: [story_id], references: [id], onDelete: Cascade)
+
+  @@unique([story_id, user_id])
+  @@index([story_id])
+  @@index([user_id])
+  @@index([status])
+}
+
+model comment_votes {
+  id         Int      @id @default(autoincrement())
+  comment_id Int
+  user_id    Int
+  vote_type  String
+  created_at DateTime @default(now())
+  user       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  comment    comments @relation(fields: [comment_id], references: [id], onDelete: Cascade)
+
+  @@unique([comment_id, user_id])
+  @@index([comment_id])
+  @@index([user_id])
+}
+
+model invitation_codes {
+  id            Int       @id @default(autoincrement())
+  code          String    @unique
+  created_by_id Int
+  type          String
+  bonus_points  Int
+  max_uses      Int
+  used_count    Int       @default(0)
+  expires_at    DateTime?
+  created_at    DateTime  @default(now())
+  is_active     Boolean   @default(true)
+  version       Int       @default(0)
+  created_by    users     @relation(fields: [created_by_id], references: [id], onDelete: Cascade)
+
+  @@index([code])
+  @@index([created_by_id])
+  @@index([is_active])
+}
+
+model invitation_records {
+  id                Int      @id @default(autoincrement())
+  inviter_id        Int
+  invitee_id        Int
+  invitation_code   String
+  bonus_points      Int
+  milestone_rewards String?
+  created_at        DateTime @default(now())
+  invitee           users    @relation("invitation_invitee", fields: [invitee_id], references: [id], onDelete: Cascade)
+  inviter           users    @relation("invitation_inviter", fields: [inviter_id], references: [id], onDelete: Cascade)
+
+  @@index([inviter_id])
+  @@index([invitee_id])
+  @@index([invitation_code])
+}
+
+model checkin_records {
+  id               Int      @id @default(autoincrement())
+  user_id          Int
+  checkin_date     DateTime @default(now())
+  consecutive_days Int
+  points_earned    Int
+  is_makeup        Boolean  @default(false)
+  user             users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, checkin_date])
+  @@index([user_id])
+  @@index([checkin_date])
+}
+
+model withdrawal_requests {
+  id              Int       @id @default(autoincrement())
+  user_id         Int
+  amount          Int
+  status          String    @default("pending")
+  payment_method  String
+  payment_account String
+  admin_note      String?
+  created_at      DateTime  @default(now())
+  processed_at    DateTime?
+  processed_by    Int?
+  user            users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([status])
+  @@index([created_at])
+}
+
+model user_subscriptions {
+  id             Int       @id @default(autoincrement())
+  user_id        Int
+  tier           String
+  status         String
+  started_at     DateTime
+  expires_at     DateTime
+  auto_renew     Boolean   @default(false)
+  payment_method String?
+  order_id       String?   @unique
+  original_price Float
+  paid_price     Float
+  discount_code  String?
+  created_at     DateTime  @default(now())
+  cancelled_at   DateTime?
+  cancel_reason  String?
+  order          orders?   @relation(fields: [order_id], references: [id])
+  user           users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([status])
+  @@index([expires_at])
+  @@index([tier])
+}
+
+model membership_benefits_log {
+  id              Int      @id @default(autoincrement())
+  user_id         Int
+  benefit_type    String
+  used_at         DateTime @default(now())
+  membership_tier String
+  user_level      Int
+  user            users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([benefit_type])
+  @@index([used_at])
+}
+
+model tips {
+  id          Int      @id @default(autoincrement())
+  sender_id   Int
+  receiver_id Int
+  story_id    Int?
+  node_id     Int?
+  amount      Int
+  message     String?
+  created_at  DateTime @default(now())
+  receiver    users    @relation("tip_receiver", fields: [receiver_id], references: [id], onDelete: Cascade)
+  sender      users    @relation("tip_sender", fields: [sender_id], references: [id], onDelete: Cascade)
+
+  @@index([sender_id])
+  @@index([receiver_id])
+  @@index([story_id])
+  @@index([node_id])
+  @@index([created_at])
+}
+
+// 登录日志表 - 记录用户登录历史
+model login_logs {
+  id         Int      @id @default(autoincrement())
+  user_id    Int?     // 可为空，用户不存在时为 null
+  ip         String?
+  user_agent String?
+  platform   String   // web/miniprogram
+  status     String   // success/failed
+  fail_reason String? // 失败原因：wrong_password/user_not_found/email_not_verified
+  created_at DateTime @default(now())
+  user       users?   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([created_at])
+  @@index([status])
+  @@index([ip])
+}

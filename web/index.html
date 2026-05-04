@@ -702,21 +702,24 @@
         async function loadStories() {
             const storiesGrid = document.getElementById('storiesGrid');
             try {
-                const response = await fetch('/api/stories');
-                const data = await response.json();
+                // 并行请求：故事列表 + 统计数据
+                const [storiesRes, statsRes] = await Promise.all([
+                    fetch('/api/stories'),
+                    fetch('/api/stories/stats')
+                ]);
+                const data = await storiesRes.json();
+                const stats = await statsRes.json();
+
+                // 更新英雄区统计数据（使用准确的统计 API 数据）
+                animateCounter('statStories', stats.stories || 0);
+                animateCounter('statAuthors', stats.authors || 0);
+                animateCounter('statChapters', stats.chapters || 0);
 
                 if (data.stories && data.stories.length > 0) {
-                    // 按章节数排序，取前6个
+                    // 按章节数排序，取前8个（分两排显示）
                     const hotStories = [...data.stories]
                         .sort((a, b) => (b._count?.nodes || 0) - (a._count?.nodes || 0))
-                        .slice(0, 6);
-
-                    // 更新英雄区统计数据
-                    const authorSet = new Set(hotStories.map(s => s.author?.id).filter(Boolean));
-                    const totalChapters = data.stories.reduce((sum, s) => sum + (s._count?.nodes || 0), 0);
-                    animateCounter('statStories', data.stories.length);
-                    animateCounter('statAuthors', authorSet.size || data.stories.length);
-                    animateCounter('statChapters', totalChapters);
+                        .slice(0, 8);
 
                     storiesGrid.innerHTML = hotStories.map((story, idx) => `
                         <article class="story-card" onclick="window.location.href='/story?id=${story.id}'" tabindex="0" role="button" aria-label="阅读故事：${escapeHtml(story.title)}">

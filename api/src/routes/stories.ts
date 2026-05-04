@@ -47,38 +47,42 @@ router.get('/', optionalAuth, async (req, res) => {
       where.tags = { contains: tag };
     }
 
-    const stories = await prisma.stories.findMany({
-      where,
-      include: {
-        author: {
-          select: { id: true, username: true, avatar: true }
-        },
-        nodes: {
-          where: { parent_id: null },
-          take: 1,
-          select: {
-            id: true,
-            title: true,
-            content: true,
-            rating_avg: true,
-            rating_count: true,
-            review_status: true
+    // 并行查询：故事列表 + 总数
+    const [stories, total] = await Promise.all([
+      prisma.stories.findMany({
+        where,
+        include: {
+          author: {
+            select: { id: true, username: true, avatar: true }
+          },
+          nodes: {
+            where: { parent_id: null },
+            take: 1,
+            select: {
+              id: true,
+              title: true,
+              content: true,
+              rating_avg: true,
+              rating_count: true,
+              review_status: true
+            }
+          },
+          _count: {
+            select: {
+              nodes: true,
+              bookmarks: true,
+              followers: true,
+            }
           }
         },
-        _count: {
-          select: {
-            nodes: true,
-            bookmarks: true,
-            followers: true,
-          }
-        }
-      },
-      orderBy,
-      skip,
-      take: pageSize,
-    });
+        orderBy,
+        skip,
+        take: pageSize,
+      }),
+      prisma.stories.count({ where })
+    ]);
 
-    res.json({ stories, page, pageSize });
+    res.json({ stories, page, pageSize, total });
   } catch (error) {
     console.error('List stories error:', error);
     res.status(500).json({ error: 'Failed to fetch stories' });
@@ -167,6 +171,38 @@ router.post('/', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to create story' });
+  }
+});
+
+// 获取平台统计数据（用于首页展示）
+router.get('/stats', async (req, res) => {
+  try {
+    // 并行查询：故事总数、章节总数、创作者数量
+    const [storyCount, nodeCount, authorCount] = await Promise.all([
+      // 故事总数（有至少一个章节的故事）
+      prisma.stories.count({
+        where: { nodes: { some: { parent_id: null } } }
+      }),
+      // 章节总数
+      prisma.nodes.count(),
+      // 创作者数量（去重的故事作者 + 章节作者）
+      prisma.$queryRaw<[{ count: bigint }]>`
+        SELECT COUNT(DISTINCT author_id) as count FROM (
+          SELECT author_id FROM stories WHERE author_id IS NOT NULL
+          UNION
+          SELECT author_id FROM nodes WHERE author_id IS NOT NULL
+        ) AS authors
+      `.then(result => Number(result[0]?.count || 0))
+    ]);
+
+    res.json({
+      stories: storyCount,
+      chapters: nodeCount,
+      authors: authorCount
+    });
+  } catch (error) {
+    console.error('Get stats error:', error);
+    res.status(500).json({ error: 'Failed to fetch stats' });
   }
 });
 

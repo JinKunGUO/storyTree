@@ -52,6 +52,11 @@ test-*.sh
 
 # Prisma
 # api/prisma/migrations/  # 迁移文件应纳入版本控制
+# 保留 schema 模板文件：schema.mysql.prisma, schema.sqlite.prisma
+
+# 公版书数据（文件太大，不纳入版本控制）
+api/scripts/seed-data/*.json
+api/scripts/seed-data/raw/
 
 # Cache
 .cache/
