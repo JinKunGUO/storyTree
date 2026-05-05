@@ -83,7 +83,7 @@ model nodes {
   title           String            @db.VarChar(500)
   content         String            @db.LongText
   image           String?           @db.VarChar(1000)
-  path            String            @db.VarChar(1000)
+  path            String            @db.VarChar(500)
   ai_generated    Boolean           @default(false)
   is_published    Boolean           @default(false)
   rating_avg      Float             @default(0)
