@@ -233,7 +233,13 @@ async function main() {
       }
     } catch (error: any) {
       failed++;
-      console.log(`  ❌ 导入失败: ${error.message}`);
+      // 显示更详细的错误信息
+      const errorMsg = error.message || String(error);
+      const errorCode = error.code || '';
+      console.log(`  ❌ 导入失败: ${errorMsg}`);
+      if (errorCode) console.log(`     错误代码: ${errorCode}`);
+      // 如果是 Prisma 错误，显示更多信息
+      if (error.meta) console.log(`     详情: ${JSON.stringify(error.meta)}`);
     }
   }
 

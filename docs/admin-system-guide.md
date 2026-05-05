@@ -510,9 +510,224 @@ DELETE /api/admin/users/:id?hardDelete=false
 
 ---
 
-## 七、管理员操作指南（Step by Step）
+## 八、常用运维命令
 
-### 7.1 首次部署 — 创建管理员账号
+### 8.1 管理员账户管理
+
+```bash
+cd api
+
+# 创建默认管理员（用户名: jinhui, 密码: 123456）
+npx ts-node scripts/create-admin.ts
+
+# 自定义管理员（用户名、邮箱、密码）
+npx ts-node scripts/create-admin.ts myAdmin admin@example.com StrongP@ss2026!
+
+# 重置管理员密码（用户名已存在时会更新密码）
+npx ts-node scripts/create-admin.ts jinhui 1025103012@qq.com 新密码
+```
+
+### 8.2 公版书导入
+
+```bash
+cd api
+
+# 导入所有公版书（使用默认管理员 jinhui）
+npx ts-node scripts/batch-import-stories.ts
+
+# 指定管理员用户名导入
+npx ts-node scripts/batch-import-stories.ts --admin-username jinhui
+
+# 导入单本书
+npx ts-node scripts/batch-import-stories.ts --file seed-data/西游记.json
+
+# 预览模式（不写入数据库，仅检查数据）
+npx ts-node scripts/batch-import-stories.ts --dry-run
+
+# 导入后更新用户统计
+npx ts-node scripts/recalculate-user-stats.ts
+```
+
+### 8.3 删除故事
+
+```bash
+cd api
+
+# 删除指定故事（通过故事 ID）
+npx ts-node scripts/delete-story.ts --id 123
+
+# 删除指定故事（通过标题，模糊匹配）
+npx ts-node scripts/delete-story.ts --title "西游记"
+
+# 批量删除某作者的所有故事
+npx ts-node scripts/delete-story.ts --author-id 1
+
+# 预览模式（不实际删除）
+npx ts-node scripts/delete-story.ts --id 123 --dry-run
+```
+
+**注意**：删除故事会级联删除所有章节、评论、书签等关联数据。
+
+### 8.4 删除用户
+
+**方式一：通过管理后台**
+
+1. 登录管理后台 `http://你的域名/admin.html`
+2. 切换到"用户管理"选项卡
+3. 搜索目标用户
+4. 点击"删除"按钮
+5. 选择软删除或硬删除
+
+**方式二：通过 API**
+
+```bash
+# 软删除用户（保留数据，标记为已删除）
+curl -X DELETE "http://localhost:3001/api/admin/users/123" \
+  -H "Authorization: Bearer <admin-token>"
+
+# 硬删除用户（彻底删除，不可恢复）
+curl -X DELETE "http://localhost:3001/api/admin/users/123?hardDelete=true" \
+  -H "Authorization: Bearer <admin-token>"
+```
+
+**方式三：通过脚本**
+
+```bash
+cd api
+
+# 软删除用户
+npx ts-node scripts/delete-user.ts --id 123
+
+# 硬删除用户
+npx ts-node scripts/delete-user.ts --id 123 --hard
+
+# 通过用户名删除
+npx ts-node scripts/delete-user.ts --username testuser
+
+# 预览模式
+npx ts-node scripts/delete-user.ts --id 123 --dry-run
+```
+
+### 8.5 数据库操作
+
+```bash
+cd api
+
+# 同步数据库结构（开发环境）
+npx prisma db push
+
+# 强制重置数据库（清空所有数据）
+npx prisma db push --force-reset
+
+# 生成 Prisma Client
+npx prisma generate
+
+# 查看数据库内容
+npx prisma studio
+```
+
+### 8.6 云端部署
+
+```bash
+# SSH 到云端服务器
+ssh root@120.26.182.140
+
+# 进入项目目录
+cd /var/www/storytree
+
+# 拉取最新代码
+git pull origin main
+
+# 切换到 MySQL schema
+cd api
+cp prisma/schema.mysql.prisma prisma/schema.prisma
+
+# 同步数据库结构
+npx prisma db push
+
+# 重启服务
+pm2 restart storytree-api
+```
+
+### 8.7 日志查看
+
+```bash
+# 查看 API 服务日志
+pm2 logs storytree-api
+
+# 查看最近 100 行日志
+pm2 logs storytree-api --lines 100
+
+# 实时查看日志
+pm2 logs storytree-api --follow
+
+# 查看错误日志
+pm2 logs storytree-api --err
+```
+
+### 8.8 服务管理
+
+```bash
+# 查看服务状态
+pm2 status
+
+# 重启服务
+pm2 restart storytree-api
+
+# 停止服务
+pm2 stop storytree-api
+
+# 启动服务
+pm2 start storytree-api
+
+# 查看服务详情
+pm2 show storytree-api
+```
+
+---
+
+## 九、故障排查
+
+### 9.1 常见问题
+
+| 问题 | 原因 | 解决方法 |
+|------|------|----------|
+| 导入公版书失败 | 管理员用户名不匹配 | 使用 `--admin-username jinhui` 参数 |
+| 数据库连接失败 | `.env` 配置错误 | 检查 `DATABASE_URL` 环境变量 |
+| 索引长度超限 | MySQL VARCHAR 字段太长 | 将 `path` 字段改为 VARCHAR(500) |
+| 管理接口 403 | JWT 中 isAdmin 为 false | 重新登录获取新 Token |
+| 图片上传失败 | uploads 目录权限 | `chmod 755 api/uploads` |
+
+### 9.2 数据库连接测试
+
+```bash
+cd api
+
+# 测试数据库连接
+npx prisma db pull
+
+# 如果成功，会显示数据库结构
+# 如果失败，会显示连接错误
+```
+
+### 9.3 检查环境变量
+
+```bash
+cd api
+
+# 查看当前环境变量
+cat .env
+
+# 必需的环境变量
+# DATABASE_URL=mysql://user:password@host:3306/storytree
+# JWT_SECRET=your-secret-key
+```
+
+---
+
+## 十、管理员操作指南（Step by Step）
+
+### 10.1 首次部署 — 创建管理员账号
 
 ```bash
 # 进入 api 目录
@@ -535,7 +750,7 @@ npx ts-node scripts/create-admin.ts myAdmin admin@mysite.com StrongP@ss2026!
   等级: 99
 ```
 
-### 7.2 登录管理后台
+### 10.2 登录管理后台
 
 **步骤**：
 
@@ -553,7 +768,7 @@ npx ts-node scripts/create-admin.ts myAdmin admin@mysite.com StrongP@ss2026!
 - 页面会提示"当前账号没有管理员权限，请使用管理员账号登录"
 - 然后跳转到首页
 
-### 7.3 管理后台功能区域
+### 10.3 管理后台功能区域
 
 管理后台分为四个选项卡：
 
@@ -564,7 +779,7 @@ npx ts-node scripts/create-admin.ts myAdmin admin@mysite.com StrongP@ss2026!
 | **会员管理** | 会员统计概览、会员列表搜索与筛选、查看会员详情 |
 | **用户管理** | 用户列表、搜索筛选、查看详情、封禁/解封、重置密码、删除用户 |
 
-### 7.4 内容审核操作
+### 10.4 内容审核操作
 
 1. 进入管理后台，默认显示"内容审核"选项卡
 2. 顶部统计卡片显示：待审核内容数、待审核提现数、已通过提现数、提现总额
@@ -575,7 +790,7 @@ npx ts-node scripts/create-admin.ts myAdmin admin@mysite.com StrongP@ss2026!
    - **🚫 下架** → 节点状态设为 `HIDDEN`，自动通知作者
    - **查看举报** → 弹窗显示所有举报记录（举报人、原因、说明、时间）
 
-### 7.5 提现审核操作
+### 10.5 提现审核操作
 
 1. 切换到"提现审核"选项卡
 2. 列表显示所有提现申请：金额、申请用户、提现方式、提现账号、申请时间、状态
@@ -584,7 +799,7 @@ npx ts-node scripts/create-admin.ts myAdmin admin@mysite.com StrongP@ss2026!
    - **❌ 拒绝** → 先展开备注输入框，填写拒绝原因后确认（拒绝必须填写原因，金额退回用户余额）
    - **📊 查看用户收益** → 弹窗显示用户收益余额、总收益、已提现、待审核、解锁次数等
 
-### 7.6 会员管理操作
+### 10.6 会员管理操作
 
 1. 切换到"会员管理"选项卡
 2. 顶部统计：总会员数、今日新增、本月新增、即将到期、活跃会员、自动续费数、本月收入
@@ -592,7 +807,7 @@ npx ts-node scripts/create-admin.ts myAdmin admin@mysite.com StrongP@ss2026!
 4. 支持按用户名搜索
 5. 列表显示：用户名、邮箱、加入时间、会员等级、到期时间、自动续费状态
 
-### 7.7 用户管理操作
+### 10.7 用户管理操作
 
 1. 切换到"用户管理"选项卡
 2. 用户列表显示：头像、用户名、邮箱、等级、积分、会员状态、注册时间
@@ -621,7 +836,7 @@ npx ts-node scripts/create-admin.ts myAdmin admin@mysite.com StrongP@ss2026!
 - 硬删除会将用户创建的内容转移给系统用户，内容不会丢失
 - 软删除的用户无法登录，但数据保留在数据库中
 
-### 7.8 忘记密码
+### 10.8 忘记密码
 
 数据库中密码使用 bcrypt 哈希存储，无法反向解密。重置方法：
 
@@ -631,7 +846,7 @@ cd api && npx ts-node scripts/create-admin.ts jinhui 1025103012@qq.com 新密码
 
 脚本使用 `upsert`，用户名已存在时直接更新密码，不会创建重复账号。
 
-### 7.9 常见问题排查
+### 10.9 常见问题排查
 
 | 现象 | 原因 | 解决方法 |
 |------|------|----------|
