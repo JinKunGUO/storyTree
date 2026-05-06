@@ -103,11 +103,14 @@
               <text class="action-icon">✍️</text>
               <text class="action-label">续写</text>
             </view>
-            <view class="story-action-divider" />
-            <view class="story-action-btn" @tap="manageStory(story.id)">
-              <text class="action-icon">⚙️</text>
-              <text class="action-label">管理</text>
-            </view>
+            <!-- 只有作者才显示管理按钮 -->
+            <template v-if="story.isAuthor">
+              <view class="story-action-divider" />
+              <view class="story-action-btn" @tap="manageStory(story.id)">
+                <text class="action-icon">⚙️</text>
+                <text class="action-label">管理</text>
+              </view>
+            </template>
           </view>
         </view>
       </view>

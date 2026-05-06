@@ -6,9 +6,8 @@
         <text class="nav-back-icon">‹</text>
       </view>
       <text class="nav-title">编辑资料</text>
-      <view class="nav-save" @tap="handleSave">
-        <text class="nav-save-text" :class="{ loading: saving }">{{ saving ? '保存中' : '保存' }}</text>
-      </view>
+      <!-- 右侧占位，保持标题居中 -->
+      <view class="nav-placeholder" />
     </view>
 
     <scroll-view class="content" scroll-y>
@@ -55,6 +54,13 @@
 
       <view class="bottom-placeholder" />
     </scroll-view>
+
+    <!-- 底部保存按钮 -->
+    <view v-if="dataReady" class="footer-bar">
+      <button class="save-btn" :disabled="saving" @tap="handleSave">
+        {{ saving ? '保存中...' : '保存修改' }}
+      </button>
+    </view>
   </view>
 </template>
 
@@ -70,10 +76,11 @@ const userStore = useUserStore()
 const statusBarHeight = ref(20)
 const saving = ref(false)
 const usernameError = ref('')
+const dataReady = ref(false)
 
 const form = ref({
-  username: userStore.userInfo?.username || '',
-  bio: userStore.userInfo?.bio || '',
+  username: '',
+  bio: '',
 })
 
 const avatarUrl = computed(() => userStore.avatarUrl)
@@ -83,7 +90,28 @@ onLoad(() => {
     const info = uni.getSystemInfoSync()
     statusBarHeight.value = info.statusBarHeight || 20
   } catch { /* ignore */ }
+  
+  // 初始化表单数据
+  initFormData()
 })
+
+function initFormData() {
+  // 确保用户信息已加载
+  if (userStore.userInfo) {
+    form.value.username = userStore.userInfo.username || ''
+    form.value.bio = userStore.userInfo.bio || ''
+    dataReady.value = true
+  } else {
+    // 如果用户信息还未加载，等待一下再尝试
+    setTimeout(() => {
+      if (userStore.userInfo) {
+        form.value.username = userStore.userInfo.username || ''
+        form.value.bio = userStore.userInfo.bio || ''
+      }
+      dataReady.value = true
+    }, 300)
+  }
+}
 
 function goBack() {
   uni.navigateBack()
@@ -190,27 +218,14 @@ async function handleSave() {
     color: #ffffff;
   }
 
-  .nav-save {
+  .nav-placeholder {
     width: 72rpx;
     height: 72rpx;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-
-    .nav-save-text {
-      font-size: 28rpx;
-      color: #a78bfa;
-      font-weight: 600;
-
-      &.loading {
-        color: rgba(167, 139, 250, 0.5);
-      }
-    }
   }
 }
 
 .content {
-  height: calc(100vh - 120rpx);
+  height: calc(100vh - 220rpx);
 }
 
 .avatar-section {
@@ -310,7 +325,36 @@ async function handleSave() {
 }
 
 .bottom-placeholder {
-  height: 60rpx;
+  height: 120rpx;
+}
+
+.footer-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20rpx 24rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  background: #ffffff;
+  box-shadow: 0 -2rpx 16rpx rgba(0, 0, 0, 0.06);
+
+  .save-btn {
+    width: 100%;
+    height: 88rpx;
+    background: linear-gradient(135deg, #7c6af7, #a78bfa);
+    color: #ffffff;
+    font-size: 30rpx;
+    font-weight: 600;
+    border-radius: 24rpx;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &[disabled] {
+      opacity: 0.6;
+    }
+  }
 }
 </style>
 

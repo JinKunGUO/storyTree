@@ -169,8 +169,10 @@ async function handleNotificationTap(item: Notification) {
  * 后端格式：
  *   /story.html?id=3&node=6#comment-12  → 跳转到章节页（chapter/index?id=6）
  *   /chapter?id=6                        → 章节页
+ *   /node/6                              → 章节页（路径参数格式）
  *   /story?id=3                          → 故事详情页
  *   /profile                             → 个人主页
+ *   /ai-tasks?id=123                     → AI任务（小程序跳转到个人中心）
  */
 function convertLinkToMiniUrl(link: string): string | null {
   if (!link) return null
@@ -179,22 +181,28 @@ function convertLinkToMiniUrl(link: string): string | null {
   const withoutHash = link.split('#')[0]
   // 解析路径和查询参数
   const [rawPath, query] = withoutHash.split('?')
-  const qs = query ? `?${query}` : ''
 
   // 去掉 .html 后缀，统一处理（如 /story.html → /story, /profile.html → /profile）
   const path = rawPath.replace(/\.html$/, '')
 
+  // 小程序环境不支持 URLSearchParams，手动解析 query string
+  const qsMap: Record<string, string> = {}
+  if (query) {
+    query.split('&').forEach(pair => {
+      const [k, v] = pair.split('=')
+      if (k) qsMap[decodeURIComponent(k)] = decodeURIComponent(v || '')
+    })
+  }
+
+  // 处理路径参数格式：/node/:id → 章节页
+  const nodePathMatch = path.match(/^\/node\/(\d+)$/)
+  if (nodePathMatch) {
+    return `/pages/chapter/index?id=${nodePathMatch[1]}`
+  }
+
   // 后端评论通知格式：/story.html?id=X&node=Y 或 /story?id=X&node=Y
   // node 参数就是 node_id（章节 id），直接跳章节页
   if (path === '/story') {
-    // 小程序环境不支持 URLSearchParams，手动解析 query string
-    const qsMap: Record<string, string> = {}
-    if (query) {
-      query.split('&').forEach(pair => {
-        const [k, v] = pair.split('=')
-        if (k) qsMap[decodeURIComponent(k)] = decodeURIComponent(v || '')
-      })
-    }
     const nodeId = qsMap['node']
     const storyId = qsMap['id']
     if (nodeId) {
@@ -206,13 +214,23 @@ function convertLinkToMiniUrl(link: string): string | null {
     return null
   }
 
-  // /ai-tasks.html 或 /ai-tasks：小程序没有 AI 任务页面，跳转到个人中心
+  // /chapter?id=X → 章节页
+  if (path === '/chapter') {
+    const chapterId = qsMap['id']
+    if (chapterId) {
+      return `/pages/chapter/index?id=${chapterId}`
+    }
+    return null
+  }
+
+  // /ai-tasks.html 或 /ai-tasks：小程序没有独立的 AI 任务页面
+  // 跳转到个人中心，用户可以在写作中心查看草稿
   if (path === '/ai-tasks') {
     return '/pages/profile/index'
   }
 
+  // 路由映射表
   const map: Record<string, string> = {
-    '/chapter':         '/pages/chapter/index',
     '/story-settings':  '/pages/story/manage',
     '/profile':         '/pages/profile/index',
     '/checkin':         '/pages/checkin/index',
@@ -221,10 +239,19 @@ function convertLinkToMiniUrl(link: string): string | null {
     '/notifications':   '/pages/notifications/index',
     '/write':           '/pages/write/index',
     '/create':          '/pages/create/index',
+    '/discover':        '/pages/discover/index',
+    '/invite':          '/pages/invite/index',
+    '/search':          '/pages/search/index',
   }
 
   const miniPath = map[path]
-  if (!miniPath) return null
+  if (!miniPath) {
+    console.log(`[通知跳转] 未知路由: ${link}`)
+    return null
+  }
+
+  // 重新构建查询字符串
+  const qs = query ? `?${query}` : ''
   return `${miniPath}${qs}`
 }
 

@@ -16,8 +16,10 @@
       <view class="code-section">
         <text class="code-label">我的邀请码</text>
         <view class="code-box" @tap="copyCode">
-          <text class="code-text">{{ myCode || '加载中...' }}</text>
-          <text class="copy-btn">复制</text>
+          <text v-if="loading" class="code-text code-loading">加载中...</text>
+          <text v-else-if="myCode" class="code-text">{{ myCode }}</text>
+          <text v-else class="code-text code-empty">暂无邀请码</text>
+          <text v-if="myCode" class="copy-btn">复制</text>
         </view>
       </view>
     </view>
@@ -179,15 +181,40 @@ async function loadData() {
   loading.value = true
   try {
     // 后端 GET /api/invitations/my-codes 同时返回 inviteRecords，无需单独请求
-    const codesRes = await getMyInvitationCodes()
+    const codesRes = await getMyInvitationCodes() as any
+    
     if (codesRes.codes?.length > 0) {
+      // 已有邀请码
       myCode.value = codesRes.codes[0].code
       inviteBonus.value = codesRes.codes[0].bonus_points || 100
+    } else if (codesRes.canGenerate && codesRes.availableCount > 0) {
+      // 没有邀请码但可以生成，自动生成一个
+      try {
+        const generateRes = await http.post<{ success: boolean; code: string }>('/api/invitations/generate')
+        if (generateRes.success && generateRes.code) {
+          myCode.value = generateRes.code
+          inviteBonus.value = 100
+        }
+      } catch (e) {
+        console.error('自动生成邀请码失败', e)
+        myCode.value = ''
+      }
+    } else {
+      // 没有邀请码且不满足生成条件
+      myCode.value = ''
+      // 显示提示
+      uni.showToast({
+        title: codesRes.generateReason || '暂未满足邀请码生成条件',
+        icon: 'none',
+        duration: 3000
+      })
     }
+    
     // inviteRecords 字段由后端在 my-codes 响应中直接返回
-    records.value = (codesRes as any).inviteRecords || []
+    records.value = codesRes.inviteRecords || []
   } catch (e) {
     console.error('加载邀请数据失败', e)
+    myCode.value = ''
   } finally {
     loading.value = false
   }
@@ -326,6 +353,20 @@ function formatTime(dateStr: string) {
         font-weight: 700;
         color: #fff;
         letter-spacing: 6rpx;
+
+        &.code-loading {
+          font-size: 28rpx;
+          font-weight: 400;
+          color: rgba(255, 255, 255, 0.6);
+          letter-spacing: 0;
+        }
+
+        &.code-empty {
+          font-size: 28rpx;
+          font-weight: 400;
+          color: rgba(255, 255, 255, 0.6);
+          letter-spacing: 0;
+        }
       }
 
       .copy-btn {

@@ -855,3 +855,205 @@ cd api && npx ts-node scripts/create-admin.ts jinhui 1025103012@qq.com 新密码
 | 管理接口返回 403 Forbidden | JWT Token 中 isAdmin 为 false | **需要重新登录**（修复前生成的旧 Token 中 isAdmin 为 false，重新登录会生成新的正确 Token） |
 | 提现列表加载失败 404 | 旧版前端缓存 | 清除浏览器缓存后刷新（已修复 API 路径） |
 | 登录后 admin.html 仍显示权限不足 | 数据库中 `isAdmin` 字段为 false | 运行 `create-admin.ts` 脚本或手动 SQL 更新 |
+
+---
+
+## 十一、数据库统计查询
+
+### 11.1 网页端与小程序端的关系
+
+**重要说明**：网页端和小程序端**共用同一个后端 API 和数据库**，用户数据是互通的。
+
+| 环境 | API 地址 | 数据库 |
+|------|----------|--------|
+| 本地开发 | `http://localhost:3001` | `api/prisma/prisma/dev.db`（SQLite） |
+| 云端生产 | `http://120.26.182.140:3001` | MySQL（云端） |
+
+> **注意**：本地开发环境可能存在两个数据库文件：
+> - `api/prisma/dev.db` - 旧路径（可能未使用）
+> - `api/prisma/prisma/dev.db` - 实际使用的数据库
+> 
+> 请使用 `npx prisma studio` 确认实际连接的数据库。
+
+**常见误区**：
+- ❌ 小程序端和网页端是两套独立系统
+- ✅ 两端共用同一后端，用户在网页端注册后，可以用同一账号登录小程序
+
+**小程序端数据显示不全的常见原因**：
+- 小程序的 `scroll-view` 组件需要明确高度才能触发"加载更多"
+- 用户需要滚动到列表底部才会触发分页加载
+- 首次加载只显示第一页（默认 20 条）
+
+### 11.2 用户统计查询
+
+#### SQLite（本地开发环境）
+
+```bash
+cd api
+
+# 查询用户总数
+sqlite3 prisma/prisma/dev.db "SELECT COUNT(*) as total_users FROM users;"
+
+# 查询用户列表（ID、用户名、邮箱、是否管理员、注册时间）
+sqlite3 -header -column prisma/prisma/dev.db \
+  "SELECT id, username, email, is_admin, created_at FROM users ORDER BY id;"
+
+# 按注册来源统计（有微信绑定 vs 仅邮箱注册）
+# 注：本地 SQLite 可能没有 wx_openid 字段，需要先检查 schema
+sqlite3 prisma/prisma/dev.db "SELECT 
+  COUNT(*) as total,
+  SUM(CASE WHEN email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) as email_users
+FROM users;"
+
+# 查询管理员数量
+sqlite3 prisma/prisma/dev.db "SELECT COUNT(*) as admin_count FROM users WHERE is_admin = 1;"
+
+# 查询今日新增用户
+sqlite3 prisma/prisma/dev.db "SELECT COUNT(*) as today_new FROM users 
+  WHERE date(created_at/1000, 'unixepoch') = date('now');"
+```
+
+#### MySQL（云端生产环境）
+
+```bash
+# SSH 到云端服务器
+ssh root@120.26.182.140
+
+# 进入 MySQL
+mysql -u root -p storytree
+
+# 查询用户总数
+SELECT COUNT(*) as total_users FROM users;
+
+# 查询用户列表
+SELECT id, username, email, wx_nickname, is_admin, created_at 
+FROM users ORDER BY id LIMIT 50;
+
+# 按注册来源统计
+SELECT 
+  COUNT(*) as total,
+  SUM(CASE WHEN wx_openid IS NOT NULL THEN 1 ELSE 0 END) as wechat_users,
+  SUM(CASE WHEN email IS NOT NULL AND wx_openid IS NULL THEN 1 ELSE 0 END) as email_only_users,
+  SUM(CASE WHEN wx_openid IS NOT NULL AND email IS NOT NULL THEN 1 ELSE 0 END) as both_bindied
+FROM users;
+
+# 查询今日新增用户
+SELECT COUNT(*) as today_new FROM users 
+WHERE DATE(created_at) = CURDATE();
+
+# 查询本周新增用户
+SELECT COUNT(*) as week_new FROM users 
+WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY);
+
+# 查询活跃用户（最近7天有登录记录）
+SELECT COUNT(DISTINCT user_id) as active_users 
+FROM login_logs 
+WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND status = 'success';
+```
+
+### 11.3 内容统计查询
+
+#### SQLite（本地开发环境）
+
+```bash
+cd api
+
+# 综合统计（用户数、故事数、章节数）
+sqlite3 prisma/prisma/dev.db "SELECT 
+  'users' as table_name, COUNT(*) as count FROM users 
+  UNION ALL SELECT 'stories', COUNT(*) FROM stories 
+  UNION ALL SELECT 'nodes', COUNT(*) FROM nodes
+  UNION ALL SELECT 'comments', COUNT(*) FROM comments;"
+
+# 查询故事列表（含章节数）
+sqlite3 -header -column prisma/prisma/dev.db \
+  "SELECT s.id, s.title, u.username as author, 
+    (SELECT COUNT(*) FROM nodes WHERE story_id = s.id) as node_count 
+   FROM stories s 
+   JOIN users u ON s.author_id = u.id 
+   ORDER BY s.id;"
+
+# 查询每个用户的创作统计
+sqlite3 -header -column prisma/prisma/dev.db \
+  "SELECT u.id, u.username, 
+    (SELECT COUNT(*) FROM stories WHERE author_id = u.id) as story_count,
+    (SELECT COUNT(*) FROM nodes WHERE author_id = u.id) as node_count,
+    u.word_count
+   FROM users u ORDER BY node_count DESC;"
+```
+
+#### MySQL（云端生产环境）
+
+```bash
+# 综合统计
+SELECT 
+  (SELECT COUNT(*) FROM users) as total_users,
+  (SELECT COUNT(*) FROM stories) as total_stories,
+  (SELECT COUNT(*) FROM nodes) as total_nodes,
+  (SELECT COUNT(*) FROM comments WHERE is_deleted = 0) as total_comments;
+
+# 热门故事排行（按追更数）
+SELECT s.id, s.title, u.username as author,
+  (SELECT COUNT(*) FROM story_followers WHERE story_id = s.id) as followers,
+  (SELECT COUNT(*) FROM nodes WHERE story_id = s.id) as chapters
+FROM stories s
+JOIN users u ON s.author_id = u.id
+ORDER BY followers DESC
+LIMIT 20;
+
+# 活跃创作者排行（按章节数）
+SELECT u.id, u.username, u.word_count,
+  COUNT(n.id) as node_count
+FROM users u
+LEFT JOIN nodes n ON n.author_id = u.id
+GROUP BY u.id
+ORDER BY node_count DESC
+LIMIT 20;
+```
+
+### 11.4 通过 API 查询统计
+
+更推荐通过管理后台 API 获取统计数据，避免直接操作数据库：
+
+```bash
+# 获取管理员 Token
+TOKEN=$(curl -s -X POST http://localhost:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"your-password"}' | jq -r '.token')
+
+# 获取仪表盘总览数据
+curl -s http://localhost:3001/api/admin/dashboard/overview \
+  -H "Authorization: Bearer $TOKEN" | jq
+
+# 返回示例：
+# {
+#   "users": { "total": 100, "today": 5 },
+#   "stories": { "total": 50, "today": 2 },
+#   "nodes": { "total": 500, "today": 10 },
+#   "comments": { "total": 200, "today": 8 },
+#   "members": { "total": 20 },
+#   "pendingReports": 3
+# }
+
+# 获取用户增长趋势（最近30天）
+curl -s "http://localhost:3001/api/admin/dashboard/user-growth?days=30" \
+  -H "Authorization: Bearer $TOKEN" | jq
+
+# 获取内容创建统计
+curl -s "http://localhost:3001/api/admin/dashboard/content-stats?days=30" \
+  -H "Authorization: Bearer $TOKEN" | jq
+```
+
+### 11.5 Prisma Studio（可视化查看）
+
+最简单的方式是使用 Prisma Studio 可视化查看数据库：
+
+```bash
+cd api
+
+# 启动 Prisma Studio（会自动打开浏览器）
+npx prisma studio
+
+# 默认地址：http://localhost:5555
+# 可以可视化浏览和编辑所有表的数据
+```

@@ -1,5 +1,5 @@
 <template>
-  <view class="discover-page">
+  <view class="discover-page" :style="{ '--status-bar-height': statusBarHeight + 'px' }">
     <!-- 搜索栏 -->
     <view class="search-header" :style="{ paddingTop: statusBarHeight + 'px' }">
       <view class="search-input-wrap" @tap="goSearch">
@@ -48,10 +48,13 @@
     <scroll-view
       class="story-scroll"
       scroll-y
+      :style="{ height: scrollViewHeight + 'px' }"
+      :lower-threshold="100"
       :refresher-enabled="true"
       :refresher-triggered="refreshing"
       @refresherrefresh="onRefresh"
       @scrolltolower="onLoadMore"
+      @scroll="onScroll"
     >
       <!-- 骨架屏 -->
       <view v-if="loading && stories.length === 0" class="skeleton-rank-list">
@@ -108,12 +111,6 @@
           <text class="rank-arrow">›</text>
         </view>
 
-        <!-- 榜单排行依据说明 -->
-        <view class="rank-basis-tip">
-          <text class="rank-basis-text">
-            {{ currentSort === 'popular' ? '热门榜：综合追更数、章节数及阅读量排序' : currentSort === 'trending' ? '趋势榜：近期活跃度与增长速度排序' : '最新榜：按最新发布时间排序' }}
-          </text>
-        </view>
       </view>
 
       <!-- 空状态 -->
@@ -123,8 +120,30 @@
         <text class="empty-sub">换个标签试试？</text>
       </view>
 
-      <view v-if="loadingMore" class="loading-more">加载中...</view>
-      <view v-if="noMore && stories.length > 0" class="no-more">没有更多了</view>
+      <!-- 加载状态提示 -->
+      <view v-if="stories.length > 0" class="load-status">
+        <view v-if="loadingMore" class="loading-more">
+          <text class="loading-icon">⏳</text>
+          <text>加载中...</text>
+        </view>
+        <view v-else-if="noMore" class="no-more">
+          <text class="no-more-line" />
+          <text class="no-more-text">已加载全部 {{ totalStories }} 本故事</text>
+          <text class="no-more-line" />
+        </view>
+        <view v-else class="load-more-hint">
+          <text class="hint-arrow">↑</text>
+          <text class="hint-text">上拉加载更多（{{ stories.length }}/{{ totalStories }}）</text>
+        </view>
+      </view>
+
+      <!-- 榜单排行依据说明 -->
+      <view v-if="stories.length > 0" class="rank-basis-tip">
+        <text class="rank-basis-text">
+          {{ currentSort === 'popular' ? '热门榜：综合追更数、章节数及阅读量排序' : currentSort === 'trending' ? '趋势榜：近期活跃度与增长速度排序' : '最新榜：按最新发布时间排序' }}
+        </text>
+      </view>
+
       <view class="bottom-placeholder" />
     </scroll-view>
   </view>
@@ -142,12 +161,14 @@ const refreshing = ref(false)
 const loadingMore = ref(false)
 const noMore = ref(false)
 const statusBarHeight = ref(20)
+const scrollViewHeight = ref(500) // 滚动区域高度
 
 const stories = ref<Story[]>([])
 const currentTag = ref('')
 const currentSort = ref<'latest' | 'popular' | 'trending'>('popular')
 const page = ref(1)
 const pageSize = 20
+const totalStories = ref(0)
 
 const popularTags = [
   '奇幻', '科幻', '悬疑', '言情', '武侠', '历史',
@@ -165,8 +186,32 @@ onMounted(() => {
   try {
     const info = uni.getSystemInfoSync()
     statusBarHeight.value = info.statusBarHeight || 20
+    // 计算滚动区域高度：使用屏幕高度减去固定元素
+    // windowHeight 是可用窗口高度（已减去 TabBar）
+    const headerHeight = statusBarHeight.value + 50 // 搜索栏
+    const rankTabsHeight = 70 // Tab 栏
+    const tagsScrollHeight = 60 // 标签栏
+    scrollViewHeight.value = info.windowHeight - headerHeight - rankTabsHeight - tagsScrollHeight
+    console.log('[发现页] 系统信息:', {
+      screenHeight: info.screenHeight,
+      windowHeight: info.windowHeight,
+      statusBarHeight: statusBarHeight.value,
+      scrollViewHeight: scrollViewHeight.value
+    })
   } catch { /* ignore */ }
   loadStories()
+  
+  // 延迟检查实际渲染的高度
+  setTimeout(() => {
+    const query = uni.createSelectorQuery()
+    query.select('.story-scroll').boundingClientRect((rect: any) => {
+      console.log('[发现页] scroll-view 实际尺寸:', rect)
+    })
+    query.select('.rank-list').boundingClientRect((rect: any) => {
+      console.log('[发现页] rank-list 实际尺寸:', rect)
+    })
+    query.exec()
+  }, 1000)
 })
 
 onShow(() => {
@@ -193,6 +238,7 @@ async function loadStories(reset = true) {
     loading.value = true
     page.value = 1
     noMore.value = false
+    totalStories.value = 0
   }
   try {
     const params: any = {
@@ -208,7 +254,9 @@ async function loadStories(reset = true) {
     } else {
       stories.value.push(...res.stories)
     }
-    noMore.value = res.stories.length < pageSize
+    // 使用后端返回的 total 字段来判断是否还有更多数据
+    totalStories.value = res.total || 0
+    noMore.value = stories.value.length >= totalStories.value
   } catch (err) {
     console.error('加载故事失败', err)
   } finally {
@@ -222,7 +270,30 @@ async function onRefresh() {
   refreshing.value = false
 }
 
+// 滚动事件监听（调试用）
+let lastLogTime = 0
+function onScroll(e: any) {
+  const now = Date.now()
+  // 每 500ms 打印一次，避免日志过多
+  if (now - lastLogTime > 500) {
+    lastLogTime = now
+    console.log('[发现页] 滚动中', {
+      scrollTop: e.detail.scrollTop,
+      scrollHeight: e.detail.scrollHeight,
+      containerHeight: scrollViewHeight.value,
+      distanceToBottom: e.detail.scrollHeight - e.detail.scrollTop - scrollViewHeight.value
+    })
+  }
+}
+
 async function onLoadMore() {
+  console.log('[发现页] onLoadMore 触发', {
+    loadingMore: loadingMore.value,
+    noMore: noMore.value,
+    currentPage: page.value,
+    storiesCount: stories.value.length,
+    totalStories: totalStories.value
+  })
   if (loadingMore.value || noMore.value) return
   loadingMore.value = true
   page.value++
@@ -325,9 +396,9 @@ function goStory(id: number) {
 
 // ===== 故事滚动区 =====
 .story-scroll {
-  flex: 1;
-  height: 0;
-  min-height: 0;
+  // 不使用 flex: 1，高度完全由 JS 内联样式控制
+  // 这样才能让 scroll-view 产生滚动，触发 scrolltolower 事件
+  overflow: hidden;
 }
 
 // ===== 榜单列表 =====
@@ -429,9 +500,78 @@ function goStory(id: number) {
   .empty-sub { font-size: 24rpx; color: #94a3b8; margin-top: 12rpx; }
 }
 
-.loading-more, .no-more {
-  text-align: center; padding: 32rpx;
-  font-size: 24rpx; color: #94a3b8;
+// ===== 加载状态提示 =====
+.load-status {
+  padding: 24rpx 32rpx;
+}
+
+.loading-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  padding: 24rpx;
+  font-size: 26rpx;
+  color: #7c6af7;
+  background: rgba(124, 106, 247, 0.08);
+  border-radius: 16rpx;
+
+  .loading-icon {
+    animation: spin 1s linear infinite;
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.no-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16rpx;
+  padding: 16rpx 0;
+
+  .no-more-line {
+    flex: 1;
+    height: 1rpx;
+    background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+  }
+
+  .no-more-text {
+    font-size: 24rpx;
+    color: #94a3b8;
+    white-space: nowrap;
+  }
+}
+
+.load-more-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  padding: 20rpx;
+  background: linear-gradient(180deg, rgba(124, 106, 247, 0.05), rgba(124, 106, 247, 0.12));
+  border-radius: 16rpx;
+  border: 1rpx dashed rgba(124, 106, 247, 0.3);
+
+  .hint-arrow {
+    font-size: 32rpx;
+    color: #7c6af7;
+    animation: bounce 1.5s ease-in-out infinite;
+  }
+
+  .hint-text {
+    font-size: 24rpx;
+    color: #7c6af7;
+    font-weight: 500;
+  }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8rpx); }
 }
 
 // ===== 榜单排行依据说明 =====

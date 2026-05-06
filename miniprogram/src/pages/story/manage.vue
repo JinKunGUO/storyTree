@@ -6,9 +6,8 @@
         <text class="back-icon">←</text>
       </view>
       <text class="top-title">管理故事</text>
-      <view class="save-btn" @tap="saveSettings">
-        <text class="save-text">保存</text>
-      </view>
+      <!-- 右侧占位，保持标题居中 -->
+      <view class="top-placeholder" />
     </view>
 
     <scroll-view v-if="story" class="content-scroll" scroll-y>
@@ -195,6 +194,13 @@
       <view class="bottom-placeholder" />
     </scroll-view>
 
+    <!-- 底部保存按钮 -->
+    <view v-if="story" class="footer-bar">
+      <button class="save-btn" :disabled="saving" @tap="saveSettings">
+        {{ saving ? '保存中...' : '保存修改' }}
+      </button>
+    </view>
+
     <!-- 加载中 -->
     <view v-else-if="loading" class="loading-page">
       <view class="loading-spinner" />
@@ -272,6 +278,13 @@ async function loadStory(id: number) {
   try {
     const res = await getStory(id)
     story.value = res.story
+
+    // 🔒 权限检查：只有作者可以访问管理页面
+    if (!res.story.isAuthor) {
+      uni.showToast({ title: '无权限管理此故事', icon: 'none' })
+      setTimeout(() => goBack(), 1500)
+      return
+    }
 
     // 填充表单
     form.title = res.story.title
@@ -477,20 +490,14 @@ function formatTime(date: string) {
     color: #1e293b;
   }
 
-  .save-btn {
-    padding: 12rpx 28rpx;
-    background: #7c6af7;
-    border-radius: 40rpx;
-    .save-text {
-      font-size: 26rpx;
-      color: #ffffff;
-      font-weight: 600;
-    }
+  .top-placeholder {
+    width: 64rpx;
+    height: 64rpx;
   }
 }
 
 .content-scroll {
-  height: calc(100vh - 160rpx);
+  height: calc(100vh - 260rpx);
 }
 
 .section-card {
@@ -798,7 +805,36 @@ function formatTime(date: string) {
 }
 
 .bottom-placeholder {
-  height: 60rpx;
+  height: 120rpx;
+}
+
+.footer-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20rpx 24rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  background: #ffffff;
+  box-shadow: 0 -2rpx 16rpx rgba(0, 0, 0, 0.06);
+
+  .save-btn {
+    width: 100%;
+    height: 88rpx;
+    background: linear-gradient(135deg, #7c6af7, #a78bfa);
+    color: #ffffff;
+    font-size: 30rpx;
+    font-weight: 600;
+    border-radius: 24rpx;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &[disabled] {
+      opacity: 0.6;
+    }
+  }
 }
 
 .field-placeholder {
