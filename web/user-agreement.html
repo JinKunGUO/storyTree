@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户协议 - StoryTree</title>
+    <link rel="stylesheet" href="styles/design-system.css">
+    <link rel="stylesheet" href="styles/animations.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link rel="stylesheet" href="styles/utilities.css">
+    <link href="libs/fontawesome/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: var(--st-bg-secondary);
+            min-height: 100vh;
+        }
+
+        /* 顶部区域 */
+        .hero-section {
+            position: relative;
+            padding: 120px var(--st-page-padding-x) 50px;
+            background: var(--st-gradient-bg);
+            overflow: hidden;
+        }
+
+        .hero-pattern {
+            position: absolute;
+            inset: 0;
+            opacity: 0.06;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .hero-title {
+            font-family: var(--st-font-display);
+            font-size: clamp(2rem, 5vw, 2.5rem);
+            font-weight: var(--st-font-bold);
+            color: white;
+            margin-bottom: 12px;
+        }
+
+        .hero-update-time {
+            font-size: var(--st-text-sm);
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* 内容区域 */
+        .content-section {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: var(--st-space-8) var(--st-page-padding-x);
+        }
+
+        .section-block {
+            background: white;
+            border-radius: var(--st-radius-xl);
+            padding: var(--st-space-6);
+            margin-bottom: var(--st-space-4);
+            box-shadow: var(--st-shadow-sm);
+            border: 1px solid var(--st-gray-100);
+        }
+
+        .section-title {
+            font-family: var(--st-font-display);
+            font-size: var(--st-text-lg);
+            font-weight: var(--st-font-semibold);
+            color: var(--st-text-primary);
+            margin-bottom: var(--st-space-4);
+        }
+
+        .section-body {
+            font-size: var(--st-text-base);
+            color: var(--st-text-secondary);
+            line-height: 1.8;
+            white-space: pre-wrap;
+        }
+
+        /* 页脚 */
+        .page-footer {
+            text-align: center;
+            padding: var(--st-space-6) var(--st-page-padding-x) var(--st-space-12);
+        }
+
+        .footer-text {
+            font-size: var(--st-text-sm);
+            color: var(--st-text-tertiary);
+        }
+
+        /* 全局页脚 */
+        .footer {
+            background: var(--st-gray-900);
+            color: var(--st-gray-400);
+            text-align: center;
+            padding: var(--st-space-8) var(--st-page-padding-x);
+            font-size: var(--st-text-sm);
+        }
+
+        .footer a {
+            color: var(--st-gray-400);
+            text-decoration: none;
+            margin: 0 var(--st-space-2);
+        }
+
+        .footer a:hover {
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- 跳过链接（无障碍） -->
+    <a href="#main" class="skip-link">跳到主要内容</a>
+
+    <!-- 导航栏 -->
+    <nav class="navbar" id="navbar" role="navigation" aria-label="主导航">
+        <div class="navbar-content">
+            <a href="/" class="nav-brand" aria-label="StoryTree 首页">
+                <i class="fas fa-tree" aria-hidden="true"></i>
+                StoryTree
+            </a>
+            <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleMobileMenu()" aria-label="展开菜单" aria-expanded="false">
+                <i class="fas fa-bars" aria-hidden="true"></i>
+            </button>
+            <div class="nav-menu" id="navMenu" role="menubar">
+                <a href="/" class="nav-link" role="menuitem">
+                    <i class="fas fa-home" aria-hidden="true"></i> 首页
+                </a>
+                <a href="/discover" class="nav-link" role="menuitem">
+                    <i class="fas fa-compass" aria-hidden="true"></i> 发现故事
+                </a>
+                <a href="/membership.html" class="nav-link" role="menuitem">
+                    <i class="fas fa-crown" aria-hidden="true"></i> 会员中心
+                </a>
+                <a href="/points-mall.html" class="nav-link" role="menuitem">
+                    <i class="fas fa-shopping-cart" aria-hidden="true"></i> 积分商城
+                </a>
+                <a href="/notifications.html" class="nav-link nav-notification" id="notificationIcon" style="display: none;" role="menuitem" aria-label="消息通知">
+                    <i class="fas fa-bell" aria-hidden="true"></i> 消息
+                    <span class="notification-badge" id="notificationBadge" style="display: none;" aria-live="polite">0</span>
+                </a>
+                <a href="/login" class="nav-link" id="loginLink" role="menuitem">登录</a>
+                <a href="/register" class="nav-link nav-link-primary" id="registerLink" role="menuitem">注册</a>
+                <a href="/profile" class="nav-link" id="profileLink" style="display: none;" role="menuitem">
+                    <i class="fas fa-user" aria-hidden="true"></i> 个人中心
+                </a>
+                <a href="/login" class="nav-link" id="logoutLink" style="display: none;" onclick="logout(); return false;" role="menuitem">
+                    <i class="fas fa-sign-out-alt" aria-hidden="true"></i> 退出
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要内容 -->
+    <main id="main">
+        <!-- 顶部区域 -->
+        <section class="hero-section">
+            <div class="hero-pattern" aria-hidden="true"></div>
+            <div class="hero-content">
+                <h1 class="hero-title">用户协议</h1>
+                <p class="hero-update-time">最后更新：2024年1月1日</p>
+            </div>
+        </section>
+
+        <!-- 内容区域 -->
+        <div class="content-section">
+            <div class="section-block">
+                <h2 class="section-title">一、服务说明</h2>
+                <p class="section-body">StoryTree（以下简称"本平台"）是一个协作式故事创作平台，为用户提供故事创作、阅读、互动等服务。使用本平台前，请仔细阅读本协议。注册或使用本平台即表示您同意本协议的全部条款。</p>
+            </div>
+
+            <div class="section-block">
+                <h2 class="section-title">二、账号注册与安全</h2>
+                <p class="section-body">1. 您需要注册账号才能使用完整功能。
+2. 您应提供真实、准确的注册信息，并及时更新。
+3. 您的账号和密码由您负责保管，因账号泄露造成的损失由您自行承担。
+4. 每人只能注册一个账号，不得转让、出售账号。
+5. 发现账号被盗用请立即联系我们。</p>
+            </div>
+
+            <div class="section-block">
+                <h2 class="section-title">三、内容规范</h2>
+                <p class="section-body">您在本平台发布的内容必须遵守以下规定：
+
+禁止发布：
+• 违反法律法规的内容
+• 色情、暴力、赌博等违禁内容
+• 侵犯他人知识产权的内容
+• 虚假信息和诈骗内容
+• 侮辱、诽谤他人的内容
+• 政治敏感内容
+
+您对发布的内容承担全部法律责任。</p>
+            </div>
+
+            <div class="section-block">
+                <h2 class="section-title">四、知识产权</h2>
+                <p class="section-body">1. 您保留对自己创作内容的著作权。
+2. 您授权本平台在全球范围内免费使用、复制、修改、展示您发布的内容，用于提供和改进服务。
+3. 本平台的界面设计、代码、商标等知识产权归本平台所有。
+4. 如您认为平台上的内容侵犯了您的权利，请通过官方渠道举报。</p>
+            </div>
+
+            <div class="section-block">
+                <h2 class="section-title">五、积分与会员</h2>
+                <p class="section-body">1. 积分是平台虚拟货币，不可兑换为人民币。
+2. 积分可通过签到、创作、邀请等方式获得，可用于解锁付费内容。
+3. 会员服务为订阅制，到期后自动失效，不退款。
+4. 如因平台原因导致服务中断，我们将酌情补偿会员时长。
+5. 积分和会员不可转让。</p>
+            </div>
+
+            <div class="section-block">
+                <h2 class="section-title">六、免责声明</h2>
+                <p class="section-body">1. 本平台不对用户发布内容的真实性、合法性负责。
+2. 本平台不保证服务不中断，因不可抗力（如服务器故障、网络问题）导致的损失，本平台不承担责任。
+3. 本平台有权在不通知用户的情况下修改、暂停或终止部分功能。</p>
+            </div>
+
+            <div class="section-block">
+                <h2 class="section-title">七、违规处理</h2>
+                <p class="section-body">如您违反本协议，我们有权采取以下措施：
+• 警告提示
+• 删除违规内容
+• 限制账号功能
+• 封禁账号
+• 向相关部门举报
+
+如您对处理结果有异议，可通过客服渠道申诉。</p>
+            </div>
+
+            <div class="section-block">
+                <h2 class="section-title">八、协议修改</h2>
+                <p class="section-body">我们保留修改本协议的权利。重大修改将通过应用内通知提前告知。继续使用本平台即表示您接受修改后的协议。</p>
+            </div>
+
+            <div class="section-block">
+                <h2 class="section-title">九、适用法律</h2>
+                <p class="section-body">本协议适用中华人民共和国法律。如发生争议，双方应友好协商解决；协商不成，提交本平台注册地有管辖权的法院解决。</p>
+            </div>
+
+            <!-- 底部提示 -->
+            <div class="page-footer">
+                <p class="footer-text">感谢您使用 StoryTree</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- 全局页脚 -->
+    <footer class="footer" role="contentinfo">
+        <p>© 2026 StoryTree. 用心创作每一个故事。</p>
+        <p>
+            <a href="/about.html">关于我们</a> ·
+            <a href="/user-agreement.html">用户协议</a> ·
+            <a href="/privacy.html">隐私政策</a>
+        </p>
+    </footer>
+
+    <script src="js/navbar.js"></script>
+    <script>
+        // 检查登录状态
+        function checkAuthStatus() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            const loginLink = document.getElementById('loginLink');
+            const registerLink = document.getElementById('registerLink');
+            const profileLink = document.getElementById('profileLink');
+            const logoutLink = document.getElementById('logoutLink');
+            const notificationIcon = document.getElementById('notificationIcon');
+
+            if (token) {
+                if (loginLink) loginLink.style.display = 'none';
+                if (registerLink) registerLink.style.display = 'none';
+                if (profileLink) profileLink.style.display = 'flex';
+                if (logoutLink) logoutLink.style.display = 'flex';
+                if (notificationIcon) {
+                    notificationIcon.style.display = 'flex';
+                    loadUnreadCount();
+                }
+            } else {
+                if (loginLink) loginLink.style.display = 'flex';
+                if (registerLink) registerLink.style.display = 'flex';
+                if (profileLink) profileLink.style.display = 'none';
+                if (logoutLink) logoutLink.style.display = 'none';
+                if (notificationIcon) notificationIcon.style.display = 'none';
+            }
+        }
+
+        async function loadUnreadCount() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) return;
+            try {
+                const response = await fetch('/api/notifications', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    const badge = document.getElementById('notificationBadge');
+                    if (badge && data.unreadCount > 0) {
+                        badge.textContent = data.unreadCount > 99 ? '99+' : data.unreadCount;
+                        badge.style.display = 'inline-block';
+                    }
+                }
+            } catch (e) { /* 静默失败 */ }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('user');
+            window.location.href = '/login';
+            return false;
+        }
+
+        // 页面加载时检查登录状态
+        document.addEventListener('DOMContentLoaded', checkAuthStatus);
+    </script>
+</body>
+</html>
+

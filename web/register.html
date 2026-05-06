@@ -326,6 +326,45 @@
         }
         .field-action:hover { background: var(--primary-50); }
 
+        /* 协议勾选框 */
+        .agreement-field {
+            margin: 16px 0 8px;
+        }
+        .agreement-checkbox {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            cursor: pointer;
+        }
+        .agreement-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-top: 2px;
+            accent-color: var(--primary);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .agreement-text {
+            font-size: .8125rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .agreement-text a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .agreement-text a:hover {
+            text-decoration: underline;
+        }
+        .agreement-error {
+            display: block;
+            font-size: .75rem;
+            color: var(--error);
+            margin-top: 4px;
+            margin-left: 28px;
+        }
+
         /* 密码强度 */
         .password-strength {
             display: flex;
@@ -680,6 +719,18 @@
                         <span class="field-error" id="inviteCodeError" role="alert"></span>
                     </div>
 
+                    <!-- 协议勾选 -->
+                    <div class="agreement-field">
+                        <label class="agreement-checkbox">
+                            <input type="checkbox" id="agreementCheckbox" name="agreement">
+                            <span class="agreement-text">
+                                我已阅读并同意
+                                <a href="/user-agreement.html" target="_blank">《用户协议》</a>和<a href="/privacy.html" target="_blank">《隐私政策》</a>
+                            </span>
+                        </label>
+                        <span class="agreement-error" id="agreementError" role="alert"></span>
+                    </div>
+
                     <!-- 注册按钮 -->
                     <button type="submit" class="submit-btn auth-button" id="registerBtn">
                         <span class="button-text">立即注册</span>
@@ -707,8 +758,9 @@
 
                 <div class="form-footer">
                     &copy; 2026 StoryTree &nbsp;·&nbsp;
-                    <a href="/user-agreement">用户协议</a>&nbsp;·&nbsp;
-                    <a href="/privacy">隐私政策</a>
+                    <a href="/about.html">关于我们</a>&nbsp;·&nbsp;
+                    <a href="/user-agreement.html">用户协议</a>&nbsp;·&nbsp;
+                    <a href="/privacy.html">隐私政策</a>
                 </div>
 
             </div>

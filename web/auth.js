@@ -122,11 +122,12 @@ function handleRegister() {
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirmPassword').value;
         const invitationCode = document.getElementById('invitationCode')?.value.trim().toUpperCase() || null;
+        const agreementCheckbox = document.getElementById('agreementCheckbox');
         
         let isValid = true;
         
         // 清除所有错误
-        ['usernameError', 'emailError', 'passwordError', 'confirmPasswordError'].forEach(id => clearError(id));
+        ['usernameError', 'emailError', 'passwordError', 'confirmPasswordError', 'agreementError'].forEach(id => clearError(id));
         
         // 验证用户名
         if (!validateUsername(username)) {
@@ -149,6 +150,12 @@ function handleRegister() {
         // 验证确认密码
         if (password !== confirmPassword) {
             showError('confirmPasswordError', '两次输入的密码不一致');
+            isValid = false;
+        }
+        
+        // 验证协议勾选
+        if (agreementCheckbox && !agreementCheckbox.checked) {
+            showError('agreementError', '请阅读并同意用户协议和隐私政策');
             isValid = false;
         }
         

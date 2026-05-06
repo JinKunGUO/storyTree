@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>关于我们 - StoryTree</title>
+    <link rel="stylesheet" href="styles/design-system.css">
+    <link rel="stylesheet" href="styles/animations.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link rel="stylesheet" href="styles/utilities.css">
+    <link href="libs/fontawesome/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: var(--st-bg-secondary);
+            min-height: 100vh;
+        }
+
+        /* 顶部区域 */
+        .hero-section {
+            position: relative;
+            padding: 120px var(--st-page-padding-x) 60px;
+            background: var(--st-gradient-bg);
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .hero-pattern {
+            position: absolute;
+            inset: 0;
+            opacity: 0.06;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .hero-logo {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .hero-logo i {
+            font-size: 36px;
+            color: white;
+        }
+
+        .hero-title {
+            font-family: var(--st-font-display);
+            font-size: clamp(2rem, 5vw, 2.5rem);
+            font-weight: var(--st-font-bold);
+            color: white;
+            margin-bottom: 8px;
+        }
+
+        .hero-version {
+            font-size: var(--st-text-sm);
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 12px;
+        }
+
+        .hero-slogan {
+            font-size: var(--st-text-lg);
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* 内容区域 */
+        .content-section {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: var(--st-space-10) var(--st-page-padding-x);
+        }
+
+        .section-block {
+            margin-bottom: var(--st-space-8);
+        }
+
+        .section-title {
+            font-family: var(--st-font-display);
+            font-size: var(--st-text-xl);
+            font-weight: var(--st-font-semibold);
+            color: var(--st-text-secondary);
+            margin-bottom: var(--st-space-4);
+        }
+
+        .card {
+            background: white;
+            border-radius: var(--st-radius-xl);
+            padding: var(--st-space-6);
+            box-shadow: var(--st-shadow-sm);
+            border: 1px solid var(--st-gray-100);
+        }
+
+        .card p {
+            font-size: var(--st-text-base);
+            color: var(--st-text-secondary);
+            line-height: 1.8;
+        }
+
+        /* 功能网格 */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--st-space-4);
+        }
+
+        @media (max-width: 640px) {
+            .features-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .feature-item {
+            background: white;
+            border-radius: var(--st-radius-xl);
+            padding: var(--st-space-5);
+            text-align: center;
+            box-shadow: var(--st-shadow-sm);
+            border: 1px solid var(--st-gray-100);
+            transition: all var(--st-duration-normal) var(--st-ease-bounce);
+        }
+
+        .feature-item:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--st-shadow-md);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: var(--st-space-3);
+        }
+
+        .feature-name {
+            font-size: var(--st-text-sm);
+            font-weight: var(--st-font-semibold);
+            color: var(--st-text-primary);
+            margin-bottom: var(--st-space-2);
+        }
+
+        .feature-desc {
+            font-size: var(--st-text-xs);
+            color: var(--st-text-tertiary);
+            line-height: 1.4;
+        }
+
+        /* 菜单列表 */
+        .menu-list {
+            background: white;
+            border-radius: var(--st-radius-xl);
+            overflow: hidden;
+            box-shadow: var(--st-shadow-sm);
+            border: 1px solid var(--st-gray-100);
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: var(--st-space-4) var(--st-space-5);
+            border-bottom: 1px solid var(--st-gray-100);
+            cursor: pointer;
+            transition: background var(--st-duration-fast);
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .menu-item:last-child {
+            border-bottom: none;
+        }
+
+        .menu-item:hover {
+            background: var(--st-gray-50);
+        }
+
+        .menu-icon {
+            font-size: 1.25rem;
+            margin-right: var(--st-space-4);
+        }
+
+        .menu-label {
+            flex: 1;
+            font-size: var(--st-text-base);
+            color: var(--st-text-primary);
+        }
+
+        .menu-arrow {
+            font-size: var(--st-text-lg);
+            color: var(--st-gray-400);
+        }
+
+        /* 页脚 */
+        .page-footer {
+            text-align: center;
+            padding: var(--st-space-10) var(--st-page-padding-x);
+        }
+
+        .footer-text {
+            font-size: var(--st-text-sm);
+            color: var(--st-text-tertiary);
+            margin-bottom: var(--st-space-2);
+        }
+
+        /* 全局页脚 */
+        .footer {
+            background: var(--st-gray-900);
+            color: var(--st-gray-400);
+            text-align: center;
+            padding: var(--st-space-8) var(--st-page-padding-x);
+            font-size: var(--st-text-sm);
+        }
+
+        .footer a {
+            color: var(--st-gray-400);
+            text-decoration: none;
+            margin: 0 var(--st-space-2);
+        }
+
+        .footer a:hover {
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- 跳过链接（无障碍） -->
+    <a href="#main" class="skip-link">跳到主要内容</a>
+
+    <!-- 导航栏 -->
+    <nav class="navbar" id="navbar" role="navigation" aria-label="主导航">
+        <div class="navbar-content">
+            <a href="/" class="nav-brand" aria-label="StoryTree 首页">
+                <i class="fas fa-tree" aria-hidden="true"></i>
+                StoryTree
+            </a>
+            <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleMobileMenu()" aria-label="展开菜单" aria-expanded="false">
+                <i class="fas fa-bars" aria-hidden="true"></i>
+            </button>
+            <div class="nav-menu" id="navMenu" role="menubar">
+                <a href="/" class="nav-link" role="menuitem">
+                    <i class="fas fa-home" aria-hidden="true"></i> 首页
+                </a>
+                <a href="/discover" class="nav-link" role="menuitem">
+                    <i class="fas fa-compass" aria-hidden="true"></i> 发现故事
+                </a>
+                <a href="/membership.html" class="nav-link" role="menuitem">
+                    <i class="fas fa-crown" aria-hidden="true"></i> 会员中心
+                </a>
+                <a href="/points-mall.html" class="nav-link" role="menuitem">
+                    <i class="fas fa-shopping-cart" aria-hidden="true"></i> 积分商城
+                </a>
+                <a href="/notifications.html" class="nav-link nav-notification" id="notificationIcon" style="display: none;" role="menuitem" aria-label="消息通知">
+                    <i class="fas fa-bell" aria-hidden="true"></i> 消息
+                    <span class="notification-badge" id="notificationBadge" style="display: none;" aria-live="polite">0</span>
+                </a>
+                <a href="/login" class="nav-link" id="loginLink" role="menuitem">登录</a>
+                <a href="/register" class="nav-link nav-link-primary" id="registerLink" role="menuitem">注册</a>
+                <a href="/profile" class="nav-link" id="profileLink" style="display: none;" role="menuitem">
+                    <i class="fas fa-user" aria-hidden="true"></i> 个人中心
+                </a>
+                <a href="/login" class="nav-link" id="logoutLink" style="display: none;" onclick="logout(); return false;" role="menuitem">
+                    <i class="fas fa-sign-out-alt" aria-hidden="true"></i> 退出
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要内容 -->
+    <main id="main">
+        <!-- 顶部区域 -->
+        <section class="hero-section">
+            <div class="hero-pattern" aria-hidden="true"></div>
+            <div class="hero-content">
+                <div class="hero-logo">
+                    <i class="fas fa-tree" aria-hidden="true"></i>
+                </div>
+                <h1 class="hero-title">StoryTree</h1>
+                <p class="hero-version">版本 1.0.0</p>
+                <p class="hero-slogan">协作式故事创作平台</p>
+            </div>
+        </section>
+
+        <!-- 内容区域 -->
+        <div class="content-section">
+            <!-- 关于我们 -->
+            <div class="section-block">
+                <h2 class="section-title">关于我们</h2>
+                <div class="card">
+                    <p>
+                        StoryTree 是一个创新的协作式故事创作平台，让每位读者都能成为故事的共同创作者。
+                        通过独特的树状故事结构，用户可以在任意章节处延伸出新的故事分支，
+                        创造出无限可能的故事宇宙。
+                    </p>
+                </div>
+            </div>
+
+            <!-- 核心功能 -->
+            <div class="section-block">
+                <h2 class="section-title">核心功能</h2>
+                <div class="features-grid">
+                    <div class="feature-item">
+                        <div class="feature-icon">🌳</div>
+                        <div class="feature-name">故事树</div>
+                        <div class="feature-desc">树状分支结构，无限故事可能</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✍️</div>
+                        <div class="feature-name">协作创作</div>
+                        <div class="feature-desc">与读者共同延伸故事</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✨</div>
+                        <div class="feature-name">AI 助手</div>
+                        <div class="feature-desc">AI 续写/润色/插图</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">💎</div>
+                        <div class="feature-name">积分系统</div>
+                        <div class="feature-desc">创作获得积分奖励</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">📅</div>
+                        <div class="feature-name">每日签到</div>
+                        <div class="feature-desc">坚持创作，积累奖励</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">👑</div>
+                        <div class="feature-name">会员特权</div>
+                        <div class="feature-desc">解锁更多创作权益</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 更多信息 -->
+            <div class="section-block">
+                <h2 class="section-title">更多信息</h2>
+                <div class="menu-list">
+                    <a href="/user-agreement.html" class="menu-item">
+                        <span class="menu-icon">📋</span>
+                        <span class="menu-label">用户协议</span>
+                        <span class="menu-arrow">›</span>
+                    </a>
+                    <a href="/privacy.html" class="menu-item">
+                        <span class="menu-icon">🔒</span>
+                        <span class="menu-label">隐私政策</span>
+                        <span class="menu-arrow">›</span>
+                    </a>
+                    <div class="menu-item" onclick="showContact()">
+                        <span class="menu-icon">📧</span>
+                        <span class="menu-label">联系我们</span>
+                        <span class="menu-arrow">›</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 底部版权 -->
+            <div class="page-footer">
+                <p class="footer-text">© 2026 StoryTree. All rights reserved.</p>
+                <p class="footer-text">让每个人都能创作属于自己的故事</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- 全局页脚 -->
+    <footer class="footer" role="contentinfo">
+        <p>© 2026 StoryTree. 用心创作每一个故事。</p>
+        <p>
+            <a href="/about.html">关于我们</a> ·
+            <a href="/user-agreement.html">用户协议</a> ·
+            <a href="/privacy.html">隐私政策</a>
+        </p>
+    </footer>
+
+    <script src="js/navbar.js"></script>
+    <script>
+        // 检查登录状态
+        function checkAuthStatus() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            const loginLink = document.getElementById('loginLink');
+            const registerLink = document.getElementById('registerLink');
+            const profileLink = document.getElementById('profileLink');
+            const logoutLink = document.getElementById('logoutLink');
+            const notificationIcon = document.getElementById('notificationIcon');
+
+            if (token) {
+                if (loginLink) loginLink.style.display = 'none';
+                if (registerLink) registerLink.style.display = 'none';
+                if (profileLink) profileLink.style.display = 'flex';
+                if (logoutLink) logoutLink.style.display = 'flex';
+                if (notificationIcon) {
+                    notificationIcon.style.display = 'flex';
+                    loadUnreadCount();
+                }
+            } else {
+                if (loginLink) loginLink.style.display = 'flex';
+                if (registerLink) registerLink.style.display = 'flex';
+                if (profileLink) profileLink.style.display = 'none';
+                if (logoutLink) logoutLink.style.display = 'none';
+                if (notificationIcon) notificationIcon.style.display = 'none';
+            }
+        }
+
+        async function loadUnreadCount() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) return;
+            try {
+                const response = await fetch('/api/notifications', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    const badge = document.getElementById('notificationBadge');
+                    if (badge && data.unreadCount > 0) {
+                        badge.textContent = data.unreadCount > 99 ? '99+' : data.unreadCount;
+                        badge.style.display = 'inline-block';
+                    }
+                }
+            } catch (e) { /* 静默失败 */ }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('user');
+            window.location.href = '/login';
+            return false;
+        }
+
+        function showContact() {
+            alert('联系我们\n\n邮箱：support@storytree.com\n微信：storytree_official');
+        }
+
+        // 页面加载时检查登录状态
+        document.addEventListener('DOMContentLoaded', checkAuthStatus);
+    </script>
+</body>
+</html>
+
