@@ -13,6 +13,9 @@ declare global {
   }
 }
 
+// 开发模式认证开关
+const ENABLE_DEV_AUTH = process.env.ENABLE_DEV_AUTH === 'true' && process.env.NODE_ENV !== 'production';
+
 /**
  * 认证中间件 - 从Authorization header或x-user-id header获取用户信息
  * 同时校验 active_token，确保同账号多端互踢：新登录会使旧端 token 失效
@@ -48,9 +51,10 @@ export async function authenticateToken(req: Request, res: Response, next: NextF
     }
   }
 
-  // 方法2: 从x-user-id header获取（仅用于本地开发/测试，生产环境应禁用）
+  // 方法2: 从x-user-id header获取（仅用于本地开发/测试，需要显式开启 ENABLE_DEV_AUTH=true）
   const userIdHeader = req.headers['x-user-id'];
-  if (userIdHeader && process.env.NODE_ENV !== 'production') {
+  if (userIdHeader && ENABLE_DEV_AUTH) {
+    console.warn(`⚠️  开发模式认证: x-user-id=${userIdHeader}`);
     req.userId = parseInt(userIdHeader as string);
     return next();
   }
@@ -60,9 +64,9 @@ export async function authenticateToken(req: Request, res: Response, next: NextF
 }
 
 /**
- * 可选认证中间件 - 如果有token则解析，没有也继续（不校验 active_token，避免影响公开接口性能）
+ * 可选认证中间件 - 如果有token则解析，没有也继续（校验 active_token，确保被踢出用户无法访问）
  */
-export function optionalAuth(req: Request, res: Response, next: NextFunction) {
+export async function optionalAuth(req: Request, res: Response, next: NextFunction) {
   // 方法1: 从Authorization header获取JWT token
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -70,15 +74,28 @@ export function optionalAuth(req: Request, res: Response, next: NextFunction) {
   if (token) {
     const decoded = verifyJWT(token);
     if (decoded) {
-      req.userId = decoded.userId;
-      req.username = decoded.username;
-      req.isAdmin = decoded.isAdmin;
+      // 校验 active_token：查数据库确认此 token 仍是当前有效 token
+      const user = await prisma.users.findUnique({
+        where: { id: decoded.userId },
+        select: { active_token: true, isBanned: true }
+      });
+
+      // 只有通过 active_token 校验且账号未被封禁才设置用户信息
+      if (user &&
+          (!user.active_token || user.active_token === token) &&
+          !user.isBanned) {
+        req.userId = decoded.userId;
+        req.username = decoded.username;
+        req.isAdmin = decoded.isAdmin;
+      }
+      // 如果 active_token 不匹配或账号被封禁，静默忽略（相当于未登录）
     }
   }
 
-  // 方法2: 从x-user-id header获取
+  // 方法2: 从x-user-id header获取（仅用于本地开发/测试，需要显式开启 ENABLE_DEV_AUTH=true）
   const userIdHeader = req.headers['x-user-id'];
-  if (userIdHeader && !req.userId) {
+  if (userIdHeader && !req.userId && ENABLE_DEV_AUTH) {
+    console.warn(`⚠️  开发模式认证: x-user-id=${userIdHeader}`);
     req.userId = parseInt(userIdHeader as string);
   }
 

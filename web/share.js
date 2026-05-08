@@ -3,6 +3,17 @@
  * 提供复制链接、社交媒体分享等功能
  */
 
+// XSS 防护：转义 HTML 特殊字符
+function escapeHtml(text) {
+    if (!text) return '';
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 class ShareManager {
     constructor() {
         this.platforms = {
@@ -352,7 +363,7 @@ class ShareManager {
         toast.className = `share-toast share-toast-${type}`;
         toast.innerHTML = `
             <i class="fas fa-${type === 'success' ? 'check-circle' : 'info-circle'}"></i>
-            <span>${message}</span>
+            <span>${escapeHtml(message)}</span>
         `;
 
         document.body.appendChild(toast);

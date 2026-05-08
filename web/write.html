@@ -1912,7 +1912,7 @@
             messageEl.className = `message message-${type}`;
             messageEl.innerHTML = `
                 <i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'}"></i>
-                <span>${message}</span>
+                <span>${escapeHtml(message)}</span>
             `;
 
             document.body.appendChild(messageEl);
@@ -1976,7 +1976,7 @@
                             margin: 0 0 10px 0;
                             font-size: 16px;
                         ">
-                            使用 <strong>${featureName}</strong> 功能
+                            使用 <strong>${escapeHtml(featureName)}</strong> 功能
                         </p>
                         <p style="
                             text-align: center;
@@ -1997,7 +1997,7 @@
                                 padding: 12px;
                                 border-radius: 8px;
                             ">
-                                ${description}
+                                ${escapeHtml(description)}
                             </p>
                         ` : ''}
                         <div style="

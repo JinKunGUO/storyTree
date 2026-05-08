@@ -2,10 +2,9 @@ import { Router } from 'express';
 import { upload, getFileUrl } from '../utils/upload';
 import { prisma } from '../index';
 import jwt from 'jsonwebtoken';
+import { JWT_SECRET } from '../utils/auth';
 
 const router = Router();
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 
 // 从Authorization header中获取用户ID
 const getUserId = (req: any): number | null => {

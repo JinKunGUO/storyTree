@@ -2,6 +2,7 @@ import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../index';
 import OpenAI from 'openai';
+import { JWT_SECRET } from '../utils/auth';
 
 /**
  * @deprecated v1 AI路由（同步模式）—— 所有前端调用已迁移到 ai-v2.ts
@@ -32,8 +33,7 @@ const getUserId = (req: any): number | null => {
     }
 
     const token = authHeader.substring(7); // 移除 "Bearer " 前缀
-    const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
-    
+
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; username?: string };
     console.log('✅ Token验证成功，用户ID:', decoded.userId);
     return decoded.userId;

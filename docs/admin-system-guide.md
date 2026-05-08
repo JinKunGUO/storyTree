@@ -1057,3 +1057,166 @@ npx prisma studio
 # 默认地址：http://localhost:5555
 # 可以可视化浏览和编辑所有表的数据
 ```
+
+---
+
+## 十二、环境配置与启动指南
+
+### 12.1 修复代码的自动环境适配
+
+**好消息：修复的高危问题代码不需要手动切换！**
+
+代码内部已根据 `NODE_ENV` 环境变量自动区分开发和生产环境：
+
+| 修复项 | 开发环境行为 | 生产环境行为 | 控制方式 |
+|-------|-------------|-------------|---------|
+| **JWT_SECRET** | 未配置时使用随机临时密钥 | 未配置时强制退出 | `NODE_ENV` |
+| **x-user-id 后门** | `ENABLE_DEV_AUTH=true` 时可用 | 完全不可用 | `ENABLE_DEV_AUTH` + `NODE_ENV` |
+| **CORS** | 允许 `localhost` | 只允许配置的域名 | `ALLOWED_ORIGINS` |
+| **XSS 修复** | 转义用户内容 | 转义用户内容 | 统一代码，无需切换 |
+| **N+1 查询优化** | 单次查询 | 单次查询 | 统一代码，无需切换 |
+
+### 12.2 环境变量文件说明
+
+项目使用两个主要的环境配置文件：
+
+| 文件 | 用途 | 数据库 | 适用场景 |
+|-----|------|-------|---------|
+| `.env` | 开发环境 | SQLite | 本地开发、测试 |
+| `.env.production` | 生产环境 | MySQL | 线上部署、阿里云 |
+
+**文件位置**：
+- `storytree/api/.env` - 开发环境配置
+- `storytree/api/.env.production` - 生产环境配置
+- `storytree/api/.env.example` - 配置模板（参考用）
+
+### 12.3 启动命令
+
+#### 开发环境启动（使用 .env）
+
+```bash
+cd storytree/api
+
+# 方式一：直接启动（默认读取 .env）
+npm run dev
+
+# 或者
+npm start
+
+# 方式二：显式指定开发环境
+NODE_ENV=development npm run dev
+```
+
+**启动成功标志**：
+```
+数据库已连接: SQLite
+[邮件服务] SMTP 未配置，邮件将输出到控制台（开发模式）
+🚀 StoryTree API running on port 3001
+```
+
+#### 生产环境启动（使用 .env.production）
+
+```bash
+cd storytree/api
+
+# 方式一：设置环境变量后启动
+NODE_ENV=production npm start
+
+# 方式二：先构建再启动（推荐用于真实部署）
+npm run build
+NODE_ENV=production node dist/index.js
+
+# 方式三：使用 pm2 守护进程（生产环境推荐）
+NODE_ENV=production pm2 start dist/index.js --name storytree-api
+```
+
+**启动成功标志**：
+```
+环境: production
+数据库已连接: MySQL
+[邮件服务] SMTP 已配置，使用 xxx@example.com 发送邮件
+🚀 StoryTree API running on port 3001
+```
+
+### 12.4 环境切换检查清单
+
+#### 切换到生产环境前必做：
+
+```bash
+# 1. 确认使用 .env.production
+cat .env.production | grep NODE_ENV
+# 输出：NODE_ENV=production
+
+# 2. 确认 JWT_SECRET 已配置（非默认值）
+cat .env.production | grep JWT_SECRET
+# 输出：JWT_SECRET=(至少32位的随机字符串)
+
+# 3. 确认 CORS 配置了正确的域名
+cat .env.production | grep ALLOWED_ORIGINS
+# 输出：ALLOWED_ORIGINS=https://your-domain.com
+
+# 4. 确认数据库是 MySQL（不是 SQLite）
+cat .env.production | grep DATABASE_URL
+# 输出：DATABASE_URL="mysql://..."
+```
+
+#### 切换到开发环境前必做：
+
+```bash
+# 1. 确认使用 .env
+cat .env | grep NODE_ENV
+# 输出：NODE_ENV=development
+
+# 2. 如果使用 x-user-id 后门测试，确认已开启
+cat .env | grep ENABLE_DEV_AUTH
+# 输出：ENABLE_DEV_AUTH=true
+```
+
+### 12.5 常见问题
+
+**Q1：我不小心在生产环境用了 .env 启动怎么办？**
+代码会自动检测：
+- 如果使用默认 JWT_SECRET → 服务**强制退出**（无法启动）
+- `x-user-id 后门` → 即使 ENABLE_DEV_AUTH=true 也会**拒绝访问**（因为 NODE_ENV=production）
+- CORS → 只允许 `localhost`，生产域名请求会被**拒绝**
+
+**Q2：如何在同一台机器上同时运行开发和生产环境？**
+
+```bash
+# 终端1：开发环境（端口 3001）
+cd storytree/api
+npm run dev
+
+# 终端2：生产环境（需要修改 .env.production 的 PORT）
+cd storytree/api
+# 修改 .env.production: PORT=3002
+NODE_ENV=production npm start
+```
+
+**Q3：修复代码后需要更新 env 文件吗？**
+
+需要添加两个新配置项（已添加到 .env.example）：
+
+```bash
+# 添加到 .env（开发环境）
+ENABLE_DEV_AUTH=true
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
+
+# 添加到 .env.production（生产环境）
+ENABLE_DEV_AUTH=false
+ALLOWED_ORIGINS=https://your-domain.com,https://www.your-domain.com
+```
+
+如果现有的 env 文件没有这些配置，CORS 会使用默认的 `localhost:3000,localhost:3001`。
+
+**Q4：如何验证当前运行的是哪个环境？**
+
+```bash
+# 调用健康检查接口
+curl http://localhost:3001/api/health
+# 返回状态码 200 表示服务正常
+
+# 查看启动日志中的环境标识
+# - 开发："邮件将输出到控制台（开发模式）"
+# - 生产："SMTP 已配置，使用 xxx@xxx.com 发送邮件"
+```

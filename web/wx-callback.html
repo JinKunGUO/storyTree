@@ -79,6 +79,37 @@
             document.getElementById('errorMsg').textContent = msg || '微信授权失败，请重试';
         }
 
+        /**
+         * 安全验证重定向 URL
+         * 只允许相对路径，禁止外部跳转
+         */
+        function validateRedirectUrl(url) {
+            if (!url || typeof url !== 'string') {
+                return '/';
+            }
+            try {
+                url = decodeURIComponent(url);
+            } catch (e) {
+                return '/';
+            }
+            url = url.replace(/[\s\x00-\x1F\x7F]/g, '');
+            // 允许相对路径（以 / 开头但不以 // 开头）
+            if (url.startsWith('/') && !url.startsWith('//')) {
+                return url;
+            }
+            // 检查是否为当前域名
+            try {
+                const currentHost = window.location.hostname;
+                const urlObj = new URL(url, window.location.origin);
+                if (urlObj.hostname === currentHost &&
+                    (urlObj.protocol === 'http:' || urlObj.protocol === 'https:')) {
+                    return urlObj.pathname + urlObj.search + urlObj.hash;
+                }
+            } catch (e) {}
+            console.warn('重定向 URL 验证失败，已阻止:', url);
+            return '/';
+        }
+
         // 校验 state 防 CSRF
         const savedState = sessionStorage.getItem('wx_state');
         if (state && savedState && state !== savedState) {
@@ -109,8 +140,9 @@
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
 
-            // 跳转到原目标页或首页
-            const redirectUrl = sessionStorage.getItem('wx_redirect') || '/';
+            // 跳转到原目标页或首页（验证重定向 URL 安全性）
+            const rawRedirectUrl = sessionStorage.getItem('wx_redirect') || '/';
+            const redirectUrl = validateRedirectUrl(rawRedirectUrl);
             sessionStorage.removeItem('wx_redirect');
             window.location.href = redirectUrl;
         } catch (err) {

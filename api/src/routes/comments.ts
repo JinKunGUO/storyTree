@@ -5,7 +5,7 @@ import { addPoints, POINT_RULES } from '../utils/points';
 
 const router = Router();
 
-// 获取节点的评论列表
+// 获取节点的评论列表（优化版：单次查询 + 内存构建树结构）
 router.get('/nodes/:node_id/comments', async (req, res) => {
   const { node_id } = req.params;
   const { page = 1, limit = 20 } = req.query;
@@ -18,112 +18,138 @@ router.get('/nodes/:node_id/comments', async (req, res) => {
       userId = decoded?.userId;
     }
 
-    // 递归获取评论及其所有子评论的函数
-    const getCommentsWithReplies = async (commentId: number): Promise<any[]> => {
-      const replies = await prisma.comments.findMany({
-        where: { parent_id: commentId },
-        include: {
-          user: {
-            select: {
-              id: true,
-              username: true,
-              avatar: true
-            }
-          }
-        },
-        orderBy: { created_at: 'asc' }
-      });
+    const nodeIdInt = parseInt(node_id);
+    const pageInt = parseInt(page as string);
+    const limitInt = parseInt(limit as string);
 
-      // 递归获取每个回复的子回复
-      const repliesWithChildren: any[] = await Promise.all(
-        replies.map(async (reply): Promise<any> => {
-          const childReplies: any[] = await getCommentsWithReplies(reply.id);
-          return {
-            ...reply,
-            other_comments: childReplies
-          };
-        })
-      );
-
-      return repliesWithChildren;
-    };
-
-    // 获取顶级评论
-    const comments = await prisma.comments.findMany({
-      where: { node_id: parseInt(node_id), parent_id: null }, // 只获取顶级评论
+    // ========== 第1步：分页获取顶级评论 ==========
+    const topLevelComments = await prisma.comments.findMany({
+      where: { node_id: nodeIdInt, parent_id: null },
       include: {
         user: {
-          select: {
-            id: true,
-            username: true,
-            avatar: true
-          }
+          select: { id: true, username: true, avatar: true }
         }
       },
       orderBy: { created_at: 'desc' },
-      skip: (parseInt(page as string) - 1) * parseInt(limit as string),
-      take: parseInt(limit as string)
+      skip: (pageInt - 1) * limitInt,
+      take: limitInt
     });
 
-    // 为每个顶级评论获取所有回复（递归）
-    const commentsWithReplies = await Promise.all(
-      comments.map(async (comment) => {
-        const replies = await getCommentsWithReplies(comment.id);
-        return {
-          ...comment,
-          other_comments: replies
-        };
-      })
-    );
+    if (topLevelComments.length === 0) {
+      const totalCount = await prisma.comments.count({
+        where: { node_id: nodeIdInt, parent_id: null }
+      });
+      return res.json({
+        comments: [],
+        pagination: { page: pageInt, limit: limitInt, total: totalCount, totalPages: Math.ceil(totalCount / limitInt) }
+      });
+    }
 
-    // 为每个评论添加点赞/踩统计（递归处理所有层级）
-    const addVoteStats = async (comment: any): Promise<any> => {
-      const [likeCount, dislikeCount, userVote] = await Promise.all([
-        prisma.comment_votes.count({
-          where: { comment_id: comment.id, vote_type: 'like' }
-        }),
-        prisma.comment_votes.count({
-          where: { comment_id: comment.id, vote_type: 'dislike' }
-        }),
-        userId ? prisma.comment_votes.findUnique({
-          where: {
-            comment_id_user_id: {
-              comment_id: comment.id,
-              user_id: userId
-            }
-          }
-        }) : null
-      ]);
+    // 获取顶级评论的ID列表
+    const topLevelIds = topLevelComments.map(c => c.id);
 
-      // 递归处理所有回复
-      const repliesWithVotes = await Promise.all(
-        (comment.other_comments || []).map((reply: any) => addVoteStats(reply))
-      );
+    // ========== 第2步：一次性获取所有子评论（所有层级）==========
+    const allReplies = await prisma.comments.findMany({
+      where: {
+        node_id: nodeIdInt,
+        parent_id: { not: null, in: topLevelIds } // 只获取当前页顶级评论的直接回复
+      },
+      include: {
+        user: {
+          select: { id: true, username: true, avatar: true }
+        }
+      },
+      orderBy: { created_at: 'asc' }
+    });
 
-      return {
+    // 获取所有评论ID（用于批量查询投票）
+    const allCommentIds = [...topLevelIds, ...allReplies.map(r => r.id)];
+
+    // ========== 第3步：一次性获取所有投票统计 ==========
+    const voteStats = await prisma.comment_votes.groupBy({
+      by: ['comment_id', 'vote_type'],
+      where: { comment_id: { in: allCommentIds } },
+      _count: true
+    });
+
+    // 构建投票统计 Map
+    const voteCountMap = new Map<number, { likes: number; dislikes: number }>();
+    for (const stat of voteStats) {
+      const existing = voteCountMap.get(stat.comment_id) || { likes: 0, dislikes: 0 };
+      if (stat.vote_type === 'like') {
+        existing.likes = stat._count;
+      } else {
+        existing.dislikes = stat._count;
+      }
+      voteCountMap.set(stat.comment_id, existing);
+    }
+
+    // ========== 第4步：获取当前用户的投票情况 ==========
+    let userVotes: Map<number, string> = new Map();
+    if (userId) {
+      const userVoteRecords = await prisma.comment_votes.findMany({
+        where: {
+          comment_id: { in: allCommentIds },
+          user_id: userId
+        },
+        select: { comment_id: true, vote_type: true }
+      });
+      userVotes = new Map(userVoteRecords.map(v => [v.comment_id, v.vote_type]));
+    }
+
+    // ========== 第5步：在内存中构建评论树 ==========
+    // 将评论放入 Map 方便查找
+    const commentMap = new Map<number, any>();
+
+    // 先放入顶级评论
+    for (const comment of topLevelComments) {
+      const votes = voteCountMap.get(comment.id) || { likes: 0, dislikes: 0 };
+      commentMap.set(comment.id, {
         ...comment,
-        likeCount,
-        dislikeCount,
-        userVote: userVote?.vote_type || null,
-        other_comments: repliesWithVotes
-      };
-    };
+        likeCount: votes.likes,
+        dislikeCount: votes.dislikes,
+        userVote: userVotes.get(comment.id) || null,
+        other_comments: []
+      });
+    }
 
-    const commentsWithVotes = await Promise.all(
-      commentsWithReplies.map((comment) => addVoteStats(comment))
-    );
+    // 放入所有回复
+    for (const reply of allReplies) {
+      const votes = voteCountMap.get(reply.id) || { likes: 0, dislikes: 0 };
+      commentMap.set(reply.id, {
+        ...reply,
+        likeCount: votes.likes,
+        dislikeCount: votes.dislikes,
+        userVote: userVotes.get(reply.id) || null,
+        other_comments: []
+      });
+    }
 
+    // 构建树结构：将回复关联到父评论
+    for (const reply of allReplies) {
+      if (reply.parent_id) {
+        const parent = commentMap.get(reply.parent_id);
+        if (parent) {
+          parent.other_comments.push(commentMap.get(reply.id));
+        }
+      }
+    }
+
+    // 组装最终输出：顶级评论 + 其子评论
+    const commentsWithTree = topLevelComments.map(c => commentMap.get(c.id));
+
+    // ========== 第6步：获取分页统计 ==========
     const totalCount = await prisma.comments.count({
-      where: { node_id: parseInt(node_id), parent_id: null }
+      where: { node_id: nodeIdInt, parent_id: null }
     });
 
     res.json({
-      comments: commentsWithVotes,
+      comments: commentsWithTree,
       pagination: {
-        page: parseInt(page as string),
-        limit: parseInt(limit as string),
+        page: pageInt,
+        limit: limitInt,
         total: totalCount,
-        totalPages: Math.ceil(totalCount / parseInt(limit as string))
+        totalPages: Math.ceil(totalCount / limitInt)
       }
     });
   } catch (error) {

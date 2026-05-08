@@ -594,10 +594,10 @@
                 <div class="collaborator-item">
                     <div class="collaborator-info">
                         <div class="collaborator-avatar">
-                            ${c.user.username.charAt(0).toUpperCase()}
+                            ${escapeHtml(c.user.username).charAt(0).toUpperCase()}
                         </div>
                         <div>
-                            <div style="font-weight: 500;">${c.user.username}</div>
+                            <div style="font-weight: 500;">${escapeHtml(c.user.username)}</div>
                             <span class="collaborator-role">协作者</span>
                         </div>
                     </div>

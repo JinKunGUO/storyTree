@@ -1,5 +1,62 @@
 // 认证功能 JavaScript
 
+// XSS 防护：转义 HTML 特殊字符
+function escapeHtml(text) {
+    if (!text) return '';
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+/**
+ * 安全验证重定向 URL
+ * 只允许相对路径，禁止外部跳转
+ * @param {string} url - 待验证的 URL
+ * @returns {string} - 安全的路径，验证失败返回 '/'
+ */
+function validateRedirectUrl(url) {
+    if (!url || typeof url !== 'string') {
+        return '/';
+    }
+
+    // 解码 URL（防止编码绕过）
+    try {
+        url = decodeURIComponent(url);
+    } catch (e) {
+        // 解码失败，返回安全路径
+        return '/';
+    }
+
+    // 移除不可见字符和空格
+    url = url.replace(/[\s\x00-\x1F\x7F]/g, '');
+
+    // 检查是否为相对路径（以 / 开头但不以 // 开头）
+    if (url.startsWith('/') && !url.startsWith('//')) {
+        return url;
+    }
+
+    // 检查是否为当前域名（提取 hostname 比较）
+    try {
+        const currentHost = window.location.hostname;
+        const urlObj = new URL(url, window.location.origin);
+
+        // 必须是同一域名，且协议必须是 http 或 https
+        if (urlObj.hostname === currentHost &&
+            (urlObj.protocol === 'http:' || urlObj.protocol === 'https:')) {
+            return urlObj.pathname + urlObj.search + urlObj.hash;
+        }
+    } catch (e) {
+        // URL 解析失败
+    }
+
+    // 验证失败，返回安全路径
+    console.warn('重定向 URL 验证失败，已阻止:', url);
+    return '/';
+}
+
 // 邀请码验证
 let inviteCodeVerified = false;
 let verifiedInviteCode = null;
@@ -339,8 +396,9 @@ function handleLogin() {
                     return;
                 }
                 
-                // 跳转到主页或返回页面
-                const redirectUrl = new URLSearchParams(window.location.search).get('redirect') || '/';
+                // 跳转到主页或返回页面（验证重定向 URL 安全性）
+                const rawRedirectUrl = new URLSearchParams(window.location.search).get('redirect') || '/';
+                const redirectUrl = validateRedirectUrl(rawRedirectUrl);
                 console.log('准备跳转到:', redirectUrl);
                 window.location.href = redirectUrl;
             } else if (response.status === 403 && data.code === 'EMAIL_NOT_VERIFIED') {
@@ -441,11 +499,11 @@ function checkAuthStatus() {
 // 更新导航栏显示
 function updateNavbar(user) {
     const profileLink = document.getElementById('profileLink');
-    
+
     if (user && profileLink) {
         const level = user.level || 1;
         const levelBadgeHtml = `<span class="nav-level-badge">Lv${level}</span>`;
-        profileLink.innerHTML = `<i class="fas fa-user"></i> ${user.username} ${levelBadgeHtml}`;
+        profileLink.innerHTML = `<i class="fas fa-user"></i> ${escapeHtml(user.username)} ${levelBadgeHtml}`;
     }
 }
 

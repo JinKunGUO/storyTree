@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
+import { JWT_SECRET } from '../utils/auth';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -16,13 +17,13 @@ function toLocalDateStr(date: Date): string {
 // 验证JWT中间件
 async function authenticateToken(req: any, res: any, next: any) {
   const token = req.headers.authorization?.replace('Bearer ', '');
-  
+
   if (!token) {
     return res.status(401).json({ error: '未提供认证令牌' });
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-this') as { userId: number };
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
     req.userId = decoded.userId;
     next();
   } catch (error) {

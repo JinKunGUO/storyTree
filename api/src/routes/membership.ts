@@ -11,6 +11,7 @@ import {
   isValidMembership
 } from '../utils/membership';
 import crypto from 'crypto';
+import { JWT_SECRET } from '../utils/auth';
 
 const router = Router();
 
@@ -22,7 +23,6 @@ const getUserId = (req: any): number | null => {
       return null;
     }
     const token = authHeader.substring(7);
-    const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
     return decoded.userId;
   } catch (error) {

@@ -13,6 +13,7 @@ import {
   isValidEmail,
   isValidPassword,
   isValidUsername,
+  JWT_SECRET,
 } from '../utils/auth';
 
 const router = Router();
@@ -356,8 +357,34 @@ router.post('/login', loginLimiter, async (req, res) => {
           fail_reason: 'wrong_password',
         }
       }).catch(err => console.error('记录登录日志失败:', err));
-      
+
       return res.status(401).json({ error: '邮箱或密码错误' });
+    }
+
+    // 检查用户是否被封禁
+    const userWithBanStatus = await prisma.users.findUnique({
+      where: { id: user.id },
+      select: { isBanned: true, bannedReason: true }
+    });
+
+    if (userWithBanStatus?.isBanned) {
+      // 记录失败日志 - 账号被封禁
+      await prisma.login_logs.create({
+        data: {
+          user_id: user.id,
+          ip: String(ip),
+          user_agent: userAgent,
+          platform: 'web',
+          status: 'failed',
+          fail_reason: 'account_banned',
+        }
+      }).catch(err => console.error('记录登录日志失败:', err));
+
+      return res.status(403).json({
+        error: '账号已被封禁',
+        code: 'ACCOUNT_BANNED',
+        reason: userWithBanStatus.bannedReason || '违反社区规范',
+      });
     }
 
     // 检查邮箱是否已验证
@@ -461,7 +488,7 @@ router.get('/me', async (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-this') as { userId: number };
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
     
     const user = await prisma.users.findUnique({
       where: { id: decoded.userId },
@@ -904,7 +931,7 @@ router.post('/bind-wx', async (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-this') as { userId: number };
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
 
     const wxUrl = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${appSecret}&js_code=${code}&grant_type=authorization_code`;
     const wxRes = await fetch(wxUrl);
@@ -967,7 +994,7 @@ router.post('/bind-email', async (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-this') as { userId: number };
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
 
     // 获取当前用户
     const currentUser = await prisma.users.findUnique({
@@ -1196,7 +1223,7 @@ router.delete('/account', async (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-this') as { userId: number };
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
 
     const user = await prisma.users.findUnique({
       where: { id: decoded.userId },

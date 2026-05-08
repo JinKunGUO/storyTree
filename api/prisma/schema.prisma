@@ -230,6 +230,10 @@ model users {
   wx_unionid                 String?                   @unique
   active_token               String?                   // 当前有效 token，新登录时替换旧值，实现单端互踢
   isAdmin                    Boolean                   @default(false) @map("is_admin")
+  isBanned                   Boolean                   @default(false) @map("is_banned")
+  bannedAt                   DateTime?                 @map("banned_at")
+  bannedReason               String?                   @map("banned_reason")
+  bannedBy                   Int?                      @map("banned_by")
   emailVerified              Boolean                   @default(false) @map("email_verified")
   emailVerificationToken     String?                   @map("email_verification_token")
   emailVerificationExpires   DateTime?                 @map("email_verification_expires")

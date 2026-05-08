@@ -170,8 +170,7 @@ router.get('/:id', async (req, res) => {
  * POST /api/admin/users/:id/ban
  * Body: { reason?: string }
  *
- * 实现方式：将用户的 active_token 清空（强制下线），
- * 并在 bio 字段前缀 [BANNED] 标记（简单方案，后续可增加 banned 字段）
+ * 实现方式：使用独立的 is_banned 字段，不再依赖 bio 字段
  */
 router.post('/:id/ban', async (req, res) => {
   try {
@@ -196,13 +195,15 @@ router.post('/:id/ban', async (req, res) => {
     }
 
     const reason = req.body.reason || '违反社区规范';
-    const banPrefix = `[BANNED:${reason}] `;
 
     await prisma.users.update({
       where: { id: userId },
       data: {
         active_token: null, // 强制下线
-        bio: user.bio?.startsWith('[BANNED') ? user.bio : banPrefix + (user.bio || ''),
+        isBanned: true,
+        bannedAt: new Date(),
+        bannedReason: reason,
+        bannedBy: req.userId,
       },
     });
 
@@ -229,16 +230,15 @@ router.post('/:id/unban', async (req, res) => {
       return res.status(404).json({ error: '用户不存在' });
     }
 
-    // 移除 bio 中的 [BANNED] 标记
-    let newBio = user.bio || '';
-    const banMatch = newBio.match(/^\[BANNED:[^\]]*\]\s*/);
-    if (banMatch) {
-      newBio = newBio.slice(banMatch[0].length);
-    }
-
+    // 使用独立的封禁字段
     await prisma.users.update({
       where: { id: userId },
-      data: { bio: newBio || null },
+      data: {
+        isBanned: false,
+        bannedAt: null,
+        bannedReason: null,
+        bannedBy: null,
+      },
     });
 
     res.json({ message: `用户 ${user.username} 已解封` });

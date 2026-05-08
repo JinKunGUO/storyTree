@@ -43,7 +43,36 @@ if (!isDevelopmentMode) {
 }
 
 // JWT配置
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
+const DEFAULT_JWT_SECRETS = [
+  'your-secret-key-change-this',
+  'secret',
+  'jwt-secret',
+  'your-jwt-secret',
+  '',
+];
+
+function getJWTSecret(): string {
+  const secret = process.env.JWT_SECRET;
+
+  // 生产环境必须配置安全的 JWT_SECRET
+  if (process.env.NODE_ENV === 'production') {
+    if (!secret || DEFAULT_JWT_SECRETS.includes(secret)) {
+      throw new Error('生产环境必须配置安全的 JWT_SECRET，不能使用默认值');
+    }
+    return secret;
+  }
+
+  // 开发环境：如果未配置，使用临时密钥（会打印警告）
+  if (!secret || DEFAULT_JWT_SECRETS.includes(secret)) {
+    console.warn('⚠️  警告：JWT_SECRET 未配置或使用了默认值，开发环境使用临时密钥');
+    return 'dev-temp-secret-do-not-use-in-production-' + Date.now();
+  }
+
+  return secret;
+}
+
+// 导出 JWT_SECRET 供其他模块使用（延迟初始化）
+export const JWT_SECRET = getJWTSecret();
 const JWT_EXPIRES_IN = '7d';
 
 // 生成随机token
