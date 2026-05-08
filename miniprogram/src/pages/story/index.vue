@@ -443,20 +443,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, defineAsyncComponent } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
 import { getStory, followStory, unfollowStory, applyCollaboration, leaveCollaboration } from '@/api/stories'
 import { formatRelativeTime } from '@/utils/helpers'
 import { getImageUrl } from '@/utils/request'
 import ChapterTree from '@/components/chapter-tree/index.vue'
-import TreeChart from '@/components/tree-chart/index.vue'
 import { submitAiCreateChapter, getAiTaskStatus } from '@/api/ai'
 import { publishNode, deleteNode } from '@/api/nodes'
 import type { Story } from '@/api/stories'
 import type { Node } from '@/api/nodes'
 import type { AiWritingStyle, AiSurpriseTime } from '@/api/ai'
 import { mpWsClient } from '@/utils/ws-client'
+
+// 懒加载 TreeChart 组件（弹窗内使用，减少首屏加载体积）
+const TreeChart = defineAsyncComponent(() => import('@/components/tree-chart/index.vue'))
 
 const userStore = useUserStore()
 

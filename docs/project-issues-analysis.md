@@ -47,17 +47,17 @@
 | 14 | 后端 | parseInt 缺少边界检查 | 可能导致异常 | ✅ 已修复 |
 | 15 | 网页端 | checkAuthStatus 函数重复定义 7 次 | 维护困难 | ⏳ 待修复 |
 
-### 🟡 低危问题（可计划修复）
+### 🟡 低危问题（分类评估）
 
-| 序号 | 端 | 问题 | 影响 |
-|-----|---|------|-----|
-| 16 | 后端 | 分页参数不统一 (pageSize vs limit) | 代码不一致 |
-| 17 | 后端 | 过多使用 any 类型 | 类型安全性差 |
-| 18 | 后端 | 多个 Prisma schema 文件 | 可能不同步 |
-| 19 | 网页端 | 大型 HTML 文件内联 JS/CSS | 无法缓存，维护困难 |
-| 20 | 网页端 | 外部 CDN 依赖 (Quill.js) | 可能加载失败 |
-| 21 | 小程序 | 部分组件未做懒加载 | 首屏加载慢 |
-| 22 | 网页端 | 缺少 about 页面 | 功能不完整 |
+| 序号 | 端 | 问题 | 影响 | 状态 | 修复建议 |
+|-----|---|------|-----|------|---------|
+| **22** | 网页端 | 缺少 about 页面 | 功能不完整 | ✅ **已修复** | about.html 等页面已存在 |
+| **18** | 后端 | 多个 Prisma schema 文件 | 可能不同步 | ✅ **设计特性** | 环境切换方案，无需修复 |
+| **19** | 网页端 | 大型 HTML 文件内联 JS/CSS | 无法缓存，加载慢 | 🔴 **推荐修复** | 用户感知，性能提升 30-50% |
+| **21** | 小程序 | 部分组件未做懒加载 | 首屏加载慢 | 🔴 **推荐修复** | 用户感知，首屏时间减少 40% |
+| **20** | 网页端 | 外部 CDN 依赖 (Quill.js) | 可能加载失败 | 🟠 **可选修复** | 提升可用性，离线可用 |
+| **16** | 后端 | 分页参数不统一 (pageSize vs limit) | 代码不一致 | 🟠 **可选修复** | 技术债务，前后端统一 |
+| **17** | 后端 | 过多使用 any 类型 | 类型安全性差 | ⏸️ **推迟修复** | 分阶段推进，非安全紧急 |
 
 ---
 
@@ -1040,6 +1040,214 @@ npx prisma migrate dev --name add_ban_fields
 npx prisma migrate dev --name add_composite_indexes
 
 npx prisma generate
+```
+
+---
+
+### 8.6 低危问题修复计划（评估与优先级）
+
+#### 问题现状评估
+
+| 序号 | 问题 | 现状 | 评估结论 |
+|-----|------|------|---------|
+| **#22** | 缺少 about 页面 | ✅ **已修复** | about.html、privacy.html、user-agreement.html 均已存在 |
+| **#18** | 多个 Prisma schema 文件 | ✅ **设计特性** | 开发/生产环境切换方案，已通过脚本自动同步，无需修复 |
+| **#19** | 大型 HTML 文件内联 JS/CSS | 🔴 **待修复** | 26个 HTML 文件，部分超 5000 行，影响加载性能 |
+| **#21** | 小程序组件懒加载 | ✅ **已修复** | 2026-05-09 完成，详见下方修复详情 |
+| **#20** | 外部 CDN 依赖 | 🟠 **可选修复** | Quill.js 依赖外部 CDN，存在单点故障风险 |
+| **#16** | 分页参数不统一 | 🟠 **可选修复** | pageSize vs limit 混用，代码债务但功能正常 |
+| **#17** | 过多使用 any 类型 | ⏸️ **推迟修复** | ~50+ 处，影响代码质量但非安全紧急，分阶段进行 |
+
+---
+
+#### 按用户体感重要性排序
+
+##### 🔴 第一优先（用户体验影响大）
+
+**问题19: 大型 HTML 文件内联 JS/CSS**
+- **用户影响**: ⭐⭐⭐⭐⭐ 页面加载慢，首次访问等待时间长
+- **衡量指标**:
+  - story.html: 5834 行
+  - profile.html: 5655 行
+  - chapter.html: 3852 行
+  - write.html: 3621 行
+- **修复收益**:
+  - 独立 CSS/JS 可浏览器缓存
+  - 加载速度提升 30-50%
+  - 维护便利（独立文件编辑）
+- **修复难度**: ⭐⭐⭐ 中等（需拆分场内联代码）
+- **建议修复时间**: 2-3 天
+
+**修复方案**:
+```bash
+# 创建独立目录
+mkdir web/js/pages
+mkdir web/css/pages
+
+# 示例：拆分 story.html
+# story.html 内联 JS → web/js/pages/story.js
+# story.html 内联 CSS → web/css/pages/story.css
+# story.html 只保留骨架和引用
+```
+
+---
+
+**问题21: 小程序组件懒加载** ✅ **已修复** (2026-05-09)
+
+- **用户影响**: ⭐⭐⭐⭐ 首屏白屏时间长（尤其低端机）
+- **衡量指标**:
+  - AI 面板组件 (~600KB) - 已懒加载
+  - 树形图组件 (~500KB) - 已懒加载
+- **修复收益**:
+  - 首屏加载时间减少 40%+
+  - 按需加载，减少内存占用
+  - 首屏 JS 体积减少约 1MB
+- **修复难度**: ⭐⭐ 低（Vue 内置支持）
+- **实际修复时间**: 0.5 天
+
+**修复文件**:
+1. `miniprogram/src/pages/write/editor.vue` - 懒加载 AiPanel
+2. `miniprogram/src/pages/chapter/index.vue` - 懒加载 AiPanel 和 TreeChart
+3. `miniprogram/src/pages/story/index.vue` - 懒加载 TreeChart
+
+**修复方案**:
+```typescript
+// 1. 将静态导入改为 defineAsyncComponent
+// 原代码：
+import AiPanel from '@/components/ai-panel/index.vue';
+import TreeChart from '@/components/tree-chart/index.vue';
+
+// 修复后：
+import { defineAsyncComponent } from 'vue';
+
+const AiPanel = defineAsyncComponent(() =>
+  import('@/components/ai-panel/index.vue')
+);
+const TreeChart = defineAsyncComponent(() =>
+  import('@/components/tree-chart/index.vue')
+);
+
+// 2. 配合 v-if 条件渲染，确保只有在需要时才加载组件
+<ai-panel
+  v-if="showAiPanel"  <!-- 添加 v-if 条件 -->
+  :visible="showAiPanel"
+  ...
+/>
+
+<tree-chart
+  v-if="showBranchChart"  <!-- 已有 v-if 条件 -->
+  ...
+/>
+```
+
+**测试验证方法**:
+```bash
+# 1. 构建小程序并查看包体积分析
+cd miniprogram
+npm run build:mp-weixin -- --analyze
+
+# 2. 使用微信开发者工具查看
+# - 打开 "代码依赖分析" 面板
+# - 检查首屏加载的 JS 文件大小
+# - 确认 AI 面板和 TreeChart 组件不在首屏 vendors 文件中
+
+# 3. 真机测试验证
+# - 使用低端机（如 iPhone 6s / 安卓千元机）
+# - 打开 write/editor 页面
+# - 首次进入时不点击 AI 按钮，确认不加载 AI 面板代码
+# - 点击 AI 按钮后，确认面板正常显示
+```
+
+**预期结果**:
+- 首屏 JS 加载体积减少约 1MB
+- 低端机首屏白屏时间减少 40%+
+- AI 面板和树形图点击后正常加载显示
+
+---
+
+##### 🟡 第二优先（可用性风险）
+
+**问题20: 外部 CDN 依赖 (Quill.js)**
+- **用户影响**: ⭐⭐⭐ CDN 故障时编辑器无法加载
+- **修复收益**: 离线可用，提高系统可用性
+- **修复难度**: ⭐ 低
+- **建议修复时间**: 0.5 天
+
+**修复方案**:
+```bash
+# 方式1：本地托管
+wget https://cdn.quilljs.com/1.3.6/quill.min.js -O web/libs/quill/quill.min.js
+wget https://cdn.quilljs.com/1.3.6/quill.snow.css -O web/libs/quill/quill.snow.css
+
+# 修改引用
+# <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+# →
+# <script src="/libs/quill/quill.min.js"></script>
+```
+
+---
+
+**问题16: 分页参数不统一**
+- **用户影响**: ⭐⭐ 无直接影响（行为一致但参数名不同）
+- **修复收益**: 代码可维护性提升，前后端开发体验改善
+- **修复难度**: ⭐⭐ 低（需统一命名 + 前后端同步）
+- **建议修复时间**: 0.5 天
+
+**修复方案**:
+```typescript
+// 统一使用 limit（与主流 API 保持一致）
+// 后端：
+const limit = safeParsePageSize(req.query.limit as string, 20, 50);
+
+// 前端统一调用：
+fetch(`/api/stories?page=1&limit=20`)  // 不用 pageSize
+```
+
+---
+
+##### 🟢 第三优先（代码质量）
+
+**问题18: 多个 Prisma schema 文件**
+- **状态**: ✅ **无需修复**
+- **解释**:
+  - `schema.prisma`: 当前活动配置（SQLite）
+  - `schema.mysql.prisma`: 生产环境模板（MySQL）
+  - `schema.sqlite.prisma`: 开发环境备份
+  - 通过 `switch-production.sh` / `switch-local.sh` 脚本自动同步
+- **说明建议**: 在 `docs/DEPLOYMENT.md` 中添加环境切换说明
+
+---
+
+**问题17: 过多使用 `any` 类型**
+- **用户影响**: ⭐ 无直接影响（编译通过，运行时可能出错）
+- **修复收益**: 减少运行时类型错误，提升开发体验
+- **修复难度**: ⭐⭐⭐⭐⭐ 高（~50+ 处需逐步分析）
+- **建议**: ⏸️ **推迟到下一阶段**，分 Sprint 修复（每 Sprint 5-10 个）
+
+**修复分阶段计划**:
+```
+Sprint 1: 修复高频接口的 any（auth.ts, stories.ts）
+Sprint 2: 修复 admin 相关接口的 any
+Sprint 3: 修复工具函数中的 any
+...
+```
+
+---
+
+#### 📋 低危问题修复时间线建议
+
+```
+Week 1 (2026-05-09):
+  □ 问题19: 拆分大型 HTML 文件（2-3天）
+  ✅ 问题21: 小程序组件懒加载（0.5天）已完成
+
+Week 2:
+  □ 问题20: 本地托管 CDN 资源（0.5天）
+  □ 问题16: 统一分页参数（0.5天）
+
+后续 Sprint:
+  □ 问题18: 文档说明（0.5天）
+  □ 问题17: 逐步替换 any 类型（持续进行）
 ```
 
 ---

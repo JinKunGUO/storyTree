@@ -356,9 +356,10 @@
       </view>
     </view>
 
-    <!-- AI 创作面板 -->
+    <!-- AI 创作面板 - 使用 v-if 配合懒加载，只在需要时加载组件 -->
     <!-- initial-tab="continue"：章节阅读页打开 AI 面板时默认切到「AI 续写」tab，与网页端一致 -->
     <ai-panel
+      v-if="showAiPanel"
       :visible="showAiPanel"
       :node-id="node?.id"
       :story-id="node?.story_id"
@@ -402,17 +403,19 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { onLoad, onShareAppMessage } from '@dcloudio/uni-app'
+import { onLoad, onShareAppMessage, defineAsyncComponent } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
 import { useAppStore } from '@/store/app'
 import { getNode, rateNode, bookmarkNode, unbookmarkNode, incrementReadCount, buildSubTree, getStoryNodes } from '@/api/nodes'
 import { getNodeComments, createComment, voteComment } from '@/api/comments'
 import { formatRelativeTime } from '@/utils/helpers'
 import { getImageUrl } from '@/utils/request'
-import AiPanel from '@/components/ai-panel/index.vue'
-import TreeChart from '@/components/tree-chart/index.vue'
 import type { Node } from '@/api/nodes'
 import type { Comment } from '@/api/comments'
+
+// 懒加载大型组件（减少首屏加载体积）
+const AiPanel = defineAsyncComponent(() => import('@/components/ai-panel/index.vue'))
+const TreeChart = defineAsyncComponent(() => import('@/components/tree-chart/index.vue'))
 
 const userStore = useUserStore()
 const appStore = useAppStore()
