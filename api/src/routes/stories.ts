@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../index';
 import { needsReview } from '../utils/sensitiveWords';
-import { authenticateToken, optionalAuth, getUserId } from '../utils/middleware';
+import { authenticateToken, optionalAuth, getUserId, safeParsePage, safeParsePageSize } from '../utils/middleware';
 import { canViewStory, canEditStory, checkViewPermission, checkEditPermission } from '../utils/permissions';
 
 const router = Router();
@@ -14,8 +14,8 @@ router.get('/', optionalAuth, async (req, res) => {
   try {
     const sort = (req.query.sort as string) || 'latest';
     const tag = req.query.tag as string | undefined;
-    const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const pageSize = Math.min(50, Math.max(1, parseInt(req.query.pageSize as string) || 20));
+    const page = safeParsePage(req.query.page as string, 1, 1000);
+    const pageSize = safeParsePageSize(req.query.pageSize as string, 20, 50);
     const skip = (page - 1) * pageSize;
 
     // 根据 sort 参数决定 orderBy

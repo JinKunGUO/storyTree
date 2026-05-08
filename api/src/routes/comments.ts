@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../index';
 import { verifyJWT } from '../utils/auth';
 import { addPoints, POINT_RULES } from '../utils/points';
+import { safeParseId, safeParsePage, safeParsePageSize } from '../utils/middleware';
 
 const router = Router();
 
@@ -18,9 +19,9 @@ router.get('/nodes/:node_id/comments', async (req, res) => {
       userId = decoded?.userId;
     }
 
-    const nodeIdInt = parseInt(node_id);
-    const pageInt = parseInt(page as string);
-    const limitInt = parseInt(limit as string);
+    const nodeIdInt = safeParseId(node_id);
+    const pageInt = safeParsePage(page as string);
+    const limitInt = safeParsePageSize(limit as string, 20, 50);
 
     // ========== 第1步：分页获取顶级评论 ==========
     const topLevelComments = await prisma.comments.findMany({

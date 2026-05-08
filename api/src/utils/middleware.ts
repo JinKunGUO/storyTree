@@ -124,3 +124,97 @@ export function getUserId(req: Request): number | null {
   return req.userId || null;
 }
 
+/**
+ * 安全解析整数
+ * 解决 parseInt 缺少边界检查的问题
+ * @param value - 待解析的值
+ * @param defaultValue - 解析失败时的默认值
+ * @param min - 最小值限制（可选）
+ * @param max - 最大值限制（可选）
+ * @returns 解析后的安全整数
+ */
+export function safeParseInt(
+  value: string | number | undefined | null,
+  defaultValue: number = 0,
+  min?: number,
+  max?: number
+): number {
+  // 处理空值
+  if (value === undefined || value === null || value === '') {
+    return defaultValue;
+  }
+
+  // 转换为字符串并去除空白
+  const strValue = String(value).trim();
+
+  // 处理空字符串
+  if (strValue === '') {
+    return defaultValue;
+  }
+
+  // 使用 parseInt 解析
+  const parsed = parseInt(strValue, 10);
+
+  // 检查是否为有效数字
+  if (isNaN(parsed) || !isFinite(parsed)) {
+    return defaultValue;
+  }
+
+  // 检查是否超出安全整数范围
+  if (parsed < Number.MIN_SAFE_INTEGER || parsed > Number.MAX_SAFE_INTEGER) {
+    return defaultValue;
+  }
+
+  // 应用最小值限制
+  if (min !== undefined && parsed < min) {
+    return min;
+  }
+
+  // 应用最大值限制
+  if (max !== undefined && parsed > max) {
+    return max;
+  }
+
+  return parsed;
+}
+
+/**
+ * 安全解析正整数（用于ID类参数）
+ * @param value - 待解析的值
+ * @param defaultValue - 解析失败时的默认值
+ * @returns 解析后的正整数（最小为1）
+ */
+export function safeParseId(value: string | number | undefined | null, defaultValue: number = 1): number {
+  return safeParseInt(value, defaultValue, 1);
+}
+
+/**
+ * 安全解析分页参数
+ * @param value - 待解析的值
+ * @param defaultValue - 默认值
+ * @param max - 最大值限制（防止过大查询）
+ * @returns 解析后的正整数
+ */
+export function safeParsePage(
+  value: string | number | undefined | null,
+  defaultValue: number = 1,
+  max: number = 1000
+): number {
+  return safeParseInt(value, defaultValue, 1, max);
+}
+
+/**
+ * 安全解析分页大小
+ * @param value - 待解析的值
+ * @param defaultValue - 默认值
+ * @param max - 最大限制（通常50或100）
+ * @returns 解析后的正整数
+ */
+export function safeParsePageSize(
+  value: string | number | undefined | null,
+  defaultValue: number = 20,
+  max: number = 100
+): number {
+  return safeParseInt(value, defaultValue, 1, max);
+}
+
