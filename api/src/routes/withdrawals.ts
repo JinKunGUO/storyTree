@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../index';
-import { authenticateToken, requireAdmin } from '../utils/middleware';
+import { authenticateToken, requireAdmin, safeParsePage, safeParseLimit } from '../utils/middleware';
 
 const router = Router();
 

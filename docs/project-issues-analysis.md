@@ -53,10 +53,10 @@
 |-----|---|------|-----|------|---------|
 | **22** | 网页端 | 缺少 about 页面 | 功能不完整 | ✅ **已修复** | about.html 等页面已存在 |
 | **18** | 后端 | 多个 Prisma schema 文件 | 可能不同步 | ✅ **设计特性** | 环境切换方案，无需修复 |
-| **19** | 网页端 | 大型 HTML 文件内联 JS/CSS | 无法缓存，加载慢 | 🔴 **推荐修复** | 用户感知，性能提升 30-50% |
-| **21** | 小程序 | 部分组件未做懒加载 | 首屏加载慢 | 🔴 **推荐修复** | 用户感知，首屏时间减少 40% |
+| **19** | 网页端 | 大型 HTML 文件内联 JS/CSS | 无法缓存，加载慢 | ✅ **已修复** | 4个主要页面已拆分，性能提升显著 |
+| **21** | 小程序 | 部分组件未做懒加载 | 首屏加载慢 | ✅ **已修复** | AI面板、树形图已实现懒加载 |
 | **20** | 网页端 | 外部 CDN 依赖 (Quill.js) | 可能加载失败 | 🟠 **可选修复** | 提升可用性，离线可用 |
-| **16** | 后端 | 分页参数不统一 (pageSize vs limit) | 代码不一致 | 🟠 **可选修复** | 技术债务，前后端统一 |
+| **16** | 后端 | 分页参数不统一 (pageSize vs limit) | 代码不一致 | ✅ **已修复** | pageSize 统一为 limit，兼容支持 |
 | **17** | 后端 | 过多使用 any 类型 | 类型安全性差 | ⏸️ **推迟修复** | 分阶段推进，非安全紧急 |
 
 ---
@@ -1029,6 +1029,7 @@ ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
 | **重定向参数验证** | `web/auth.js`, `web/wx-callback.html` | 添加 `validateRedirectUrl()` 函数，阻止外部跳转 |
 | **复合数据库索引** | `api/prisma/schema.prisma` | 为 `nodes/comments/point_transactions` 添加复合索引 |
 | **安全整数解析** | `api/src/utils/middleware.ts`, `comments.ts`, `stories.ts` | 添加 `safeParseInt/safeParseId/safeParsePage/safeParsePageSize` 函数 |
+| **分页参数统一** | `api/src/utils/middleware.ts`, `stories.ts`, `bookmarks.ts`, `users.ts` 等 | 添加 `safeParseLimit()`，统一使用 limit 参数（兼容 pageSize） |
 
 **数据库迁移命令**：
 ```bash

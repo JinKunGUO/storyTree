@@ -30,9 +30,13 @@ export function getRedisClient(): Redis | null {
   try {
     redisClient = new Redis(redisUrl, {
       maxRetriesPerRequest: 3,
-      retryDelayOnFailover: 100,
       lazyConnect: true,
-    });
+      // 连接重试策略：指数退避
+      reconnectOnError: (err: Error) => {
+        const targetErrors = ['READONLY', 'ETIMEDOUT', 'ECONNREFUSED'];
+        return targetErrors.some(e => err.message.includes(e));
+      },
+    } as any);
 
     redisClient.on('connect', () => {
       console.log('✅ Redis 连接成功');

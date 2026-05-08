@@ -477,7 +477,7 @@ router.get('/:id/nodes', async (req, res) => {
 router.get('/:id/collaborated-stories', optionalAuth, async (req, res) => {
   const { id } = req.params;
   const page = parseInt(req.query.page as string) || 1;
-  const pageSize = parseInt(req.query.pageSize as string) || 100;
+  const limit = parseInt(req.query.limit as string) || 100;
 
   try {
     // 获取协作故事（未被移除）
@@ -508,8 +508,8 @@ router.get('/:id/collaborated-stories', optionalAuth, async (req, res) => {
         }
       },
       orderBy: { created_at: 'desc' },
-      skip: (page - 1) * pageSize,
-      take: pageSize
+      skip: (page - 1) * limit,
+      take: limit
     });
 
     // 处理故事数据，计算总浏览量

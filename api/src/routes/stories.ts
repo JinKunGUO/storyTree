@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { prisma } from '../index';
 import { needsReview } from '../utils/sensitiveWords';
-import { authenticateToken, optionalAuth, getUserId, safeParsePage, safeParsePageSize } from '../utils/middleware';
+import { authenticateToken, optionalAuth, getUserId, safeParsePage, safeParseLimit, safeParsePageSize } from '../utils/middleware';
 import { canViewStory, canEditStory, checkViewPermission, checkEditPermission } from '../utils/permissions';
 
 const router = Router();
 
 // List all stories with first node info
-// 支持参数：sort(popular/trending/latest)、tag、page、pageSize
+// 支持参数：sort(popular/trending/latest)、tag、page、limit (兼容 pageSize)
 router.get('/', optionalAuth, async (req, res) => {
   const userId = getUserId(req);
 
@@ -15,8 +15,8 @@ router.get('/', optionalAuth, async (req, res) => {
     const sort = (req.query.sort as string) || 'latest';
     const tag = req.query.tag as string | undefined;
     const page = safeParsePage(req.query.page as string, 1, 1000);
-    const pageSize = safeParsePageSize(req.query.pageSize as string, 20, 50);
-    const skip = (page - 1) * pageSize;
+    const limit = safeParseLimit(req, 20, 50);
+    const skip = (page - 1) * limit;
 
     // 根据 sort 参数决定 orderBy
     let orderBy: any;
@@ -77,12 +77,12 @@ router.get('/', optionalAuth, async (req, res) => {
         },
         orderBy,
         skip,
-        take: pageSize,
+        take: limit,
       }),
       prisma.stories.count({ where })
     ]);
 
-    res.json({ stories, page, pageSize, total });
+    res.json({ stories, page, limit, pageSize: limit, total });
   } catch (error) {
     console.error('List stories error:', error);
     res.status(500).json({ error: 'Failed to fetch stories' });
@@ -1284,7 +1284,7 @@ router.get('/:id/followers', optionalAuth, async (req, res) => {
   const userId = getUserId(req);
   const { id } = req.params;
   const page = parseInt(req.query.page as string) || 1;
-  const pageSize = parseInt(req.query.pageSize as string) || 20;
+  const limit = parseInt(req.query.limit as string) || 20;
 
   try {
     // 检查查看权限
@@ -1312,17 +1312,18 @@ router.get('/:id/followers', optionalAuth, async (req, res) => {
         }
       },
       orderBy: { created_at: 'desc' },
-      skip: (page - 1) * pageSize,
-      take: pageSize
+      skip: (page - 1) * limit,
+      take: limit
     });
 
     res.json({
       followers,
       pagination: {
         page,
-        pageSize,
+        limit,
+        pageSize: limit,
         total,
-        totalPages: Math.ceil(total / pageSize)
+        totalPages: Math.ceil(total / limit)
       }
     });
   } catch (error) {
@@ -1336,7 +1337,7 @@ router.get('/user/:userId/followed-stories', optionalAuth, async (req, res) => {
   const currentUserId = getUserId(req);
   const { userId } = req.params;
   const page = parseInt(req.query.page as string) || 1;
-  const pageSize = parseInt(req.query.pageSize as string) || 20;
+  const limit = parseInt(req.query.limit as string) || 20;
 
   try {
     // 获取关注总数
@@ -1364,8 +1365,8 @@ router.get('/user/:userId/followed-stories', optionalAuth, async (req, res) => {
         }
       },
       orderBy: { created_at: 'desc' },
-      skip: (page - 1) * pageSize,
-      take: pageSize
+      skip: (page - 1) * limit,
+      take: limit
     });
 
     // 过滤掉当前用户无权查看的故事
@@ -1381,9 +1382,10 @@ router.get('/user/:userId/followed-stories', optionalAuth, async (req, res) => {
       follows: visibleFollows,
       pagination: {
         page,
-        pageSize,
+        limit,
+        pageSize: limit,
         total,
-        totalPages: Math.ceil(total / pageSize)
+        totalPages: Math.ceil(total / limit)
       }
     });
   } catch (error) {

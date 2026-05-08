@@ -204,11 +204,29 @@ export function safeParsePage(
 }
 
 /**
- * 安全解析分页大小
+ * 安全解析分页大小（统一使用 limit，兼容 pageSize 作为别名）
+ * @param req - Express 请求对象，用于同时获取 limit 和 pageSize 参数
+ * @param defaultValue - 默认值
+ * @param max - 最大限制（通常50或100）
+ * @returns 解析后的正整数
+ */
+export function safeParseLimit(
+  req: { query: { limit?: string | number; pageSize?: string | number } },
+  defaultValue: number = 20,
+  max: number = 100
+): number {
+  // 优先使用 limit，如果没有则使用 pageSize 作为兼容
+  const value = req.query.limit !== undefined ? req.query.limit : req.query.pageSize;
+  return safeParseInt(value, defaultValue, 1, max);
+}
+
+/**
+ * 安全解析分页大小（保留以兼容旧代码，推荐使用 safeParseLimit）
  * @param value - 待解析的值
  * @param defaultValue - 默认值
  * @param max - 最大限制（通常50或100）
  * @returns 解析后的正整数
+ * @deprecated 使用 safeParseLimit 替代，支持统一的 limit 参数
  */
 export function safeParsePageSize(
   value: string | number | undefined | null,

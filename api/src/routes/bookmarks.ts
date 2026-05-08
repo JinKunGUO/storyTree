@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../index';
 import { verifyJWT } from '../utils/auth';
 import { addPoints, POINT_RULES } from '../utils/points';
+import { safeParsePage, safeParseLimit } from '../utils/middleware';
 
 const router = Router();
 
@@ -10,7 +11,7 @@ const router = Router();
 // ============================================
 
 // 获取当前用户收藏的故事列表
-// GET /api/bookmarks?page=1&pageSize=20
+// GET /api/bookmarks?page=1&limit=20 (兼容 pageSize)
 router.get('/', async (req, res) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) {
@@ -23,8 +24,8 @@ router.get('/', async (req, res) => {
       return res.status(401).json({ error: '无效的Token' });
     }
 
-    const page = parseInt(req.query.page as string) || 1;
-    const pageSize = parseInt(req.query.pageSize as string) || 20;
+    const page = safeParsePage(req.query.page as string, 1, 1000);
+    const limit = safeParseLimit(req, 20, 50);
 
     const total = await prisma.bookmarks.count({
       where: { user_id: decoded.userId },
@@ -45,13 +46,13 @@ router.get('/', async (req, res) => {
         },
       },
       orderBy: { created_at: 'desc' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
+      skip: (page - 1) * limit,
+      take: limit,
     });
 
     res.json({
       bookmarks,
-      pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
+      pagination: { page, limit, pageSize: limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (error) {
     console.error('获取收藏列表错误:', error);
