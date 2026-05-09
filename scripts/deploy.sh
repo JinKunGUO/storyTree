@@ -166,10 +166,10 @@ run_migrations() {
         fi
     done < .env.production
 
-    # 将 schema.prisma 中的 provider 切换为 mysql（生产环境）
+    # 使用 MySQL 版本的 schema（生产环境）
     SCHEMA_FILE="$API_DIR/prisma/schema.prisma"
-    sed -i 's/provider = "sqlite"/provider = "mysql"/' "$SCHEMA_FILE"
-    log_info "已将 Prisma provider 切换为 mysql"
+    cp "$API_DIR/prisma/schema.mysql.prisma" "$SCHEMA_FILE"
+    log_info "已切换到 MySQL 版本的 schema"
 
     # 同步 migration_lock.toml 中的 provider（避免 P3019 错误）
     LOCK_FILE="$API_DIR/prisma/migrations/migration_lock.toml"

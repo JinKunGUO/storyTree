@@ -60,6 +60,9 @@ model comments {
   @@index([user_id])
   @@index([node_id])
   @@index([pinned])
+  @@index([node_id, parent_id, created_at])
+  @@index([node_id, is_deleted, created_at])
+  @@index([user_id, created_at])
 }
 
 model follows {
@@ -112,6 +115,9 @@ model nodes {
   @@index([path])
   @@index([parent_id])
   @@index([story_id])
+  @@index([story_id, is_published, path])
+  @@index([author_id, created_at])
+  @@index([parent_id, is_published])
 }
 
 model notifications {
@@ -234,6 +240,10 @@ model users {
   wx_unionid                 String?                   @unique @db.VarChar(100)
   active_token               String?                   @db.VarChar(500)
   isAdmin                    Boolean                   @default(false) @map("is_admin")
+  isBanned                   Boolean                   @default(false) @map("is_banned")
+  bannedAt                   DateTime?                 @map("banned_at")
+  bannedReason               String?                   @map("banned_reason") @db.Text
+  bannedBy                   Int?                      @map("banned_by")
   emailVerified              Boolean                   @default(false) @map("email_verified")
   emailVerificationToken     String?                   @map("email_verification_token") @db.VarChar(200)
   emailVerificationExpires   DateTime?                 @map("email_verification_expires")
