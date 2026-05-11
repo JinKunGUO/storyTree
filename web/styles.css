@@ -9,7 +9,14 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     background: var(--st-gradient-bg, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
     min-height: 100vh;
-    color: #333;
+    color: var(--st-text-primary, #333);
+}
+
+/* 暗黑模式适配 */
+@media (prefers-color-scheme: dark) {
+    body {
+        background: linear-gradient(135deg, #3d4c91 0%, #4a3574 100%);
+    }
 }
 
 /* 认证页面样式 */
@@ -22,7 +29,7 @@ body {
 }
 
 .auth-card {
-    background: white;
+    background: var(--st-bg-primary, white);
     border-radius: 20px;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
     overflow: hidden;
@@ -58,11 +65,11 @@ body {
 .logo h1 {
     font-size: 32px;
     font-weight: 700;
-    color: #333;
+    color: var(--st-text-primary);
 }
 
 .subtitle {
-    color: #666;
+    color: var(--st-text-secondary);
     font-size: 16px;
     line-height: 1.6;
 }
@@ -80,7 +87,7 @@ body {
     display: block;
     margin-bottom: 8px;
     font-weight: 600;
-    color: #333;
+    color: var(--st-text-primary);
 }
 
 .input-group {
@@ -92,14 +99,14 @@ body {
 .input-group i {
     position: absolute;
     left: 15px;
-    color: #999;
+    color: var(--st-text-tertiary);
     z-index: 1;
 }
 
 .input-group input {
     width: 100%;
     padding: 15px 15px 15px 45px;
-    border: 2px solid #e0e0e0;
+    border: 2px solid var(--st-gray-300);
     border-radius: 10px;
     font-size: 16px;
     transition: all 0.3s ease;
@@ -116,7 +123,7 @@ body {
     right: 15px;
     background: none;
     border: none;
-    color: #999;
+    color: var(--st-text-tertiary);
     cursor: pointer;
     padding: 5px;
 }
@@ -131,7 +138,7 @@ body {
 
 .strength-bar {
     height: 4px;
-    background: #e0e0e0;
+    background: var(--st-gray-300);
     border-radius: 2px;
     overflow: hidden;
 }
@@ -145,7 +152,7 @@ body {
 
 .strength-text {
     font-size: 12px;
-    color: #666;
+    color: var(--st-text-secondary);
     margin-top: 5px;
 }
 
@@ -194,7 +201,7 @@ body {
     align-items: center;
     cursor: pointer;
     font-size: 14px;
-    color: #666;
+    color: var(--st-text-secondary);
 }
 
 .checkbox-container input {
@@ -215,7 +222,7 @@ body {
     text-align: center;
     margin-top: 30px;
     font-size: 14px;
-    color: #666;
+    color: var(--st-text-secondary);
 }
 
 .auth-footer a {
@@ -376,7 +383,7 @@ body {
 }
 
 .nav-link {
-    color: #333;
+    color: var(--st-text-primary);
     text-decoration: none;
     padding: 8px 16px;
     border-radius: 20px;
@@ -391,7 +398,7 @@ body {
     align-items: center;
     padding: 2px 8px;
     background: var(--st-gradient-gold, linear-gradient(135deg, #ffd700 0%, #ffed4e 100%));
-    color: #333;
+    color: var(--st-text-primary);
     border-radius: 10px;
     font-size: 12px;
     font-weight: 700;
@@ -418,7 +425,7 @@ body {
     border: none;
     font-size: 24px;
     cursor: pointer;
-    color: #333;
+    color: var(--st-text-primary);
 }
 
 /* 移动端导航 */

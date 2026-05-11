@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
     <title>StoryTree - 故事树</title>
     <!-- 字体预连接（提升加载速度） -->
     <!-- 设计系统 -->
@@ -103,7 +104,7 @@
             align-items: center;
             gap: var(--st-space-2);
             padding: var(--st-space-4) var(--st-space-8);
-            background: white;
+            background: var(--st-bg-primary, white);
             color: var(--st-primary-600);
             font-size: var(--st-text-base);
             font-weight: var(--st-font-semibold);
@@ -113,6 +114,12 @@
             text-decoration: none;
             transition: all var(--st-duration-normal) var(--st-ease-bounce);
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .hero-btn-primary {
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            }
         }
 
         .hero-btn-primary:hover {
@@ -241,7 +248,7 @@
 
         /* 骨架屏 */
         .skeleton-card {
-            background: white;
+            background: var(--st-bg-primary);
             border-radius: var(--st-radius-xl);
             overflow: hidden;
             border: 1px solid var(--st-gray-100);
@@ -303,7 +310,7 @@
 
         /* ===== 功能特性区域 ===== */
         .features-section {
-            background: linear-gradient(135deg, var(--st-primary-50) 0%, #F5F3FF 100%);
+            background: linear-gradient(135deg, var(--st-primary-50) 0%, var(--st-bg-secondary) 100%);
             padding: var(--st-space-16) var(--st-page-padding-x-lg);
         }
 
@@ -355,7 +362,7 @@
         }
 
         .feature-card {
-            background: white;
+            background: var(--st-bg-primary);
             padding: var(--st-space-8);
             border-radius: var(--st-radius-2xl);
             box-shadow: var(--st-shadow-md);

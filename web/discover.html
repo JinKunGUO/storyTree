@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
     <title>发现故事 - StoryTree</title>
     <!-- 字体预连接（提升加载速度） -->
     <!-- 设计系统 -->
@@ -55,7 +56,7 @@
 
         /* ===== 搜索区域 ===== */
         .search-section {
-            background: white;
+            background: var(--st-bg-primary);
             border-radius: var(--st-radius-2xl);
             padding: var(--st-space-6);
             box-shadow: var(--st-shadow-xl);
@@ -141,7 +142,7 @@
             .hot-stories-layout { grid-template-columns: 1fr; }
         }
         .featured-story-card {
-            background: white;
+            background: var(--st-bg-primary);
             border-radius: var(--st-radius-2xl);
             overflow: hidden;
             box-shadow: var(--st-shadow-lg);
@@ -233,7 +234,7 @@
             display: flex;
             align-items: center;
             gap: var(--st-space-3);
-            background: white;
+            background: var(--st-bg-primary);
             border-radius: var(--st-radius-xl);
             padding: var(--st-space-4);
             box-shadow: var(--st-shadow-sm);
@@ -307,7 +308,7 @@
 
         /* 骨架屏 */
         .skeleton-card {
-            background: white; border-radius: var(--st-radius-xl);
+            background: var(--st-bg-primary); border-radius: var(--st-radius-xl);
             overflow: hidden; border: 1px solid var(--st-gray-100);
         }
         .skeleton-cover {
@@ -340,9 +341,17 @@
 
         /* ===== 页脚 ===== */
         .footer {
-            background: var(--st-gray-900); color: var(--st-gray-400);
+            background: var(--st-bg-tertiary); color: var(--st-text-secondary);
             text-align: center; padding: var(--st-space-8) var(--st-page-padding-x);
             font-size: var(--st-text-sm); margin-top: var(--st-space-16);
+        }
+
+        .footer a {
+            color: var(--st-text-secondary);
+        }
+
+        .footer a:hover {
+            color: var(--st-primary-500);
         }
 
         /* ===== 高级筛选面板 ===== */

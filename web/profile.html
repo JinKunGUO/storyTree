@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
     <title>个人中心 - StoryTree</title>
     <link rel="stylesheet" href="styles/design-system.css">
     <link rel="stylesheet" href="styles/animations.css">
@@ -231,8 +232,8 @@
             </div>
             
             <!-- 兑换邀请码输入框 -->
-            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
-                <h3 style="margin: 0 0 15px 0; color: #333; font-size: 16px;">
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--st-gray-200);">
+                <h3 style="margin: 0 0 15px 0; color: var(--st-text-primary); font-size: 16px;">
                     <i class="fas fa-ticket-alt"></i> 兑换邀请码
                 </h3>
                 <div style="display: flex; gap: 10px; align-items: center;">
@@ -244,14 +245,14 @@
                         style="
                             flex: 1;
                             padding: 12px 15px;
-                            border: 2px solid #e0e0e0;
+                            border: 2px solid var(--st-gray-200);
                             border-radius: 8px;
                             font-size: 14px;
                             transition: all 0.3s;
                             outline: none;
                         "
                         onfocus="this.style.borderColor='var(--st-primary-500)'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)';"
-                        onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none';"
+                        onblur="this.style.borderColor='var(--st-gray-200)'; this.style.boxShadow='none';"
                     />
                     <button 
                         onclick="redeemInviteCode()"
@@ -279,8 +280,8 @@
 
         <!-- 收益管理（即将开放占位卡片） -->
         <div class="content-section" style="
-            background: linear-gradient(135deg, #f8f9fa 0%, #f0f2ff 100%);
-            border: 2px dashed #c5cae9;
+            background: var(--st-bg-tertiary);
+            border: 2px dashed var(--st-gray-300);
         ">
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
                 <!-- 左侧：图标 + 标题 + 说明 -->
@@ -300,7 +301,7 @@
                     </div>
                     <div>
                         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
-                            <h2 style="margin: 0; font-size: 18px; color: #333; font-weight: 700;">
+                            <h2 style="margin: 0; font-size: 18px; color: var(--st-text-primary); font-weight: 700;">
                                 收益管理
                             </h2>
                             <span style="
@@ -313,7 +314,7 @@
                                 letter-spacing: 0.5px;
                             ">即将开放</span>
                         </div>
-                        <p style="margin: 0; color: #888; font-size: 14px; line-height: 1.6;">
+                        <p style="margin: 0; color: var(--st-text-tertiary); font-size: 14px; line-height: 1.6;">
                             查看创作收益、申请提现等功能即将上线，敬请期待。
                         </p>
                     </div>

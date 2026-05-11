@@ -10,7 +10,7 @@
         }
 
         .write-header {
-            background: white;
+            background: var(--st-bg-primary);
             border-radius: 15px;
             padding: 30px;
             margin-bottom: 20px;
@@ -23,7 +23,7 @@
             gap: 15px;
             margin-bottom: 20px;
             padding-bottom: 20px;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid var(--st-gray-200);
         }
 
         .story-info i {
@@ -34,13 +34,13 @@
         .story-title {
             font-size: 20px;
             font-weight: bold;
-            color: #333;
+            color: var(--st-text-primary);
         }
 
         .chapter-title-input {
             width: 100%;
             padding: 15px;
-            border: 2px solid #e0e0e0;
+            border: 2px solid var(--st-gray-200);
             border-radius: 10px;
             font-size: 18px;
             font-weight: bold;
@@ -53,7 +53,7 @@
         }
 
         .editor-container {
-            background: white;
+            background: var(--st-bg-primary);
             border-radius: 15px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             overflow: hidden;
@@ -71,9 +71,9 @@
         }
 
         .ql-toolbar {
-            background: #f9f9f9;
+            background: var(--st-bg-secondary);
             border: none !important;
-            border-bottom: 1px solid #e0e0e0 !important;
+            border-bottom: 1px solid var(--st-gray-200) !important;
         }
 
         .ql-container {
@@ -105,7 +105,7 @@
         }
 
         .btn-save {
-            background: white;
+            background: var(--st-bg-primary);
             color: var(--st-primary-500);
         }
 
@@ -135,11 +135,11 @@
             position: fixed;
             bottom: 30px;
             left: 30px;
-            background: white;
+            background: var(--st-bg-primary);
             padding: 15px 25px;
             border-radius: 50px;
             box-shadow: 0 5px 20px rgba(0,0,0,0.15);
-            color: #666;
+            color: var(--st-text-secondary);
             font-size: 14px;
         }
 
@@ -206,7 +206,7 @@
             position: fixed;
             top: 80px;
             right: 20px;
-            background: white;
+            background: var(--st-bg-primary);
             padding: 15px 25px;
             border-radius: 10px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
@@ -292,7 +292,7 @@
         }
 
         .ai-modal-content {
-            background: white;
+            background: var(--st-bg-primary);
             border-radius: 20px;
             width: 90%;
             max-width: 900px;
@@ -316,7 +316,7 @@
 
         .ai-modal-header {
             padding: 25px 30px;
-            border-bottom: 1px solid #e0e0e0;
+            border-bottom: 1px solid var(--st-gray-200);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -364,13 +364,13 @@
         }
 
         .ai-loading p {
-            color: #666;
+            color: var(--st-text-secondary);
             font-size: 18px;
         }
 
         /* AI选项卡片 */
         .ai-option-card {
-            background: #f9f9f9;
+            background: var(--st-bg-secondary);
             border-radius: 15px;
             padding: 25px;
             margin-bottom: 20px;
@@ -404,12 +404,12 @@
         .ai-option-title {
             font-size: 20px;
             font-weight: bold;
-            color: #333;
+            color: var(--st-text-primary);
             margin-bottom: 15px;
         }
 
         .ai-option-content {
-            color: #666;
+            color: var(--st-text-secondary);
             line-height: 1.8;
             font-size: 16px;
             max-height: 200px;
@@ -445,18 +445,18 @@
         }
 
         .btn-preview {
-            background: white;
+            background: var(--st-bg-primary);
             color: var(--st-primary-500);
             border: 2px solid var(--st-primary-500);
         }
 
         .btn-preview:hover {
-            background: #f5f5f5;
+            background: var(--st-bg-secondary);
         }
 
         .ai-modal-footer {
             padding: 20px 30px;
-            border-top: 1px solid #e0e0e0;
+            border-top: 1px solid var(--st-gray-200);
             display: flex;
             gap: 15px;
             justify-content: flex-end;
@@ -487,14 +487,14 @@
         /* 插图风格按钮样式 */
         .illustration-style-btn {
             padding: 15px 20px;
-            background: white;
-            border: 2px solid #e0e0e0;
+            background: var(--st-bg-primary);
+            border: 2px solid var(--st-gray-200);
             border-radius: 12px;
             cursor: pointer;
             transition: all 0.3s;
             font-size: 14px;
             font-weight: 600;
-            color: #666;
+            color: var(--st-text-secondary);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -527,10 +527,10 @@
         /* 润色风格按钮 */
         .polish-style-btn {
             padding: 12px 20px;
-            border: 2px solid #e0e0e0;
+            border: 2px solid var(--st-gray-200);
             border-radius: 10px;
-            background: white;
-            color: #666;
+            background: var(--st-bg-primary);
+            color: var(--st-text-secondary);
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
@@ -561,10 +561,10 @@
         /* 惊喜时间按钮 */
         .surprise-time-btn {
             padding: 12px 20px;
-            border: 2px solid #e0e0e0;
+            border: 2px solid var(--st-gray-200);
             border-radius: 10px;
-            background: white;
-            color: #666;
+            background: var(--st-bg-primary);
+            color: var(--st-text-secondary);
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
@@ -595,10 +595,10 @@
         /* AI风格按钮 */
         .ai-style-btn {
             padding: 12px 20px;
-            border: 2px solid #e0e0e0;
+            border: 2px solid var(--st-gray-200);
             border-radius: 10px;
-            background: white;
-            color: #666;
+            background: var(--st-bg-primary);
+            color: var(--st-text-secondary);
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;

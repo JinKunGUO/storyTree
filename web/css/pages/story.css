@@ -6,7 +6,7 @@
 
         /* ===== 面包屑导航 ===== */
         .story-breadcrumb {
-            background: rgba(255, 255, 255, 0.9);
+            background: var(--st-bg-primary);
             border-bottom: 1px solid var(--st-gray-100);
             position: sticky;
             top: 64px;
@@ -55,7 +55,7 @@
 
         /* 故事头部 */
         .story-header {
-            background: white;
+            background: var(--st-bg-primary);
             border-radius: 20px;
             padding: 40px;
             margin-bottom: 30px;
@@ -89,7 +89,7 @@
         .story-title {
             font-size: 32px;
             font-weight: bold;
-            color: #333;
+            color: var(--st-text-primary);
             margin-bottom: 15px;
         }
 
@@ -104,7 +104,7 @@
             display: flex;
             align-items: center;
             gap: 5px;
-            color: #666;
+            color: var(--st-text-secondary);
             font-size: 14px;
         }
 
@@ -120,15 +120,15 @@
         }
 
         .tag {
-            background: #f0f0f0;
+            background: var(--st-bg-tertiary);
             padding: 5px 15px;
             border-radius: 20px;
             font-size: 14px;
-            color: #666;
+            color: var(--st-text-secondary);
         }
 
         .story-description {
-            color: #666;
+            color: var(--st-text-secondary);
             line-height: 1.8;
             margin-bottom: 20px;
         }
@@ -151,7 +151,7 @@
 
         .stat-label {
             font-size: 14px;
-            color: #999;
+            color: var(--st-text-tertiary);
             margin-top: 5px;
         }
 
@@ -209,7 +209,7 @@
         }
 
         .btn-secondary {
-            background: white;
+            background: var(--st-bg-primary);
             color: var(--st-primary-500);
             border: 2px solid var(--st-primary-500);
         }
@@ -221,7 +221,7 @@
 
         /* 作者信息 */
         .author-section {
-            background: white;
+            background: var(--st-bg-primary);
             border-radius: 20px;
             padding: 30px;
             margin-bottom: 30px;
@@ -254,13 +254,13 @@
         .author-name {
             font-size: 18px;
             font-weight: bold;
-            color: #333;
+            color: var(--st-text-primary);
             margin-bottom: 5px;
         }
 
         .author-stats {
             font-size: 14px;
-            color: #999;
+            color: var(--st-text-tertiary);
         }
 
         .btn-follow {
@@ -279,7 +279,7 @@
 
         /* 章节列表 */
         .chapters-section {
-            background: white;
+            background: var(--st-bg-primary);
             border-radius: 20px;
             padding: 30px;
             box-shadow: var(--st-shadow-lg);
@@ -291,13 +291,13 @@
             align-items: center;
             margin-bottom: 20px;
             padding-bottom: 15px;
-            border-bottom: 2px solid #f0f0f0;
+            border-bottom: 2px solid var(--st-bg-tertiary);
         }
 
         .section-title {
             font-size: 24px;
             font-weight: bold;
-            color: #333;
+            color: var(--st-text-primary);
         }
 
         .chapter-sort {
@@ -307,11 +307,12 @@
 
         .sort-btn {
             padding: 8px 15px;
-            background: #f0f0f0;
+            background: var(--st-bg-tertiary);
             border: none;
             border-radius: 20px;
             cursor: pointer;
             transition: all 0.3s;
+            color: var(--st-text-secondary);
         }
 
         .sort-btn.active {
@@ -328,14 +329,14 @@
             display: flex;
             align-items: center;
             padding: 20px;
-            background: #f9f9f9;
+            background: var(--st-bg-secondary);
             border-radius: 10px;
             cursor: pointer;
             transition: all 0.3s;
         }
 
         .chapter-item:hover {
-            background: #f0f0f0;
+            background: var(--st-bg-tertiary);
             transform: translateX(5px);
         }
 
@@ -359,7 +360,7 @@
         .chapter-title {
             font-size: 18px;
             font-weight: bold;
-            color: #333;
+            color: var(--st-text-primary);
             margin-bottom: 5px;
             display: flex;
             align-items: center;
@@ -389,7 +390,7 @@
             display: flex;
             gap: 15px;
             font-size: 14px;
-            color: #999;
+            color: var(--st-text-tertiary);
         }
 
         .chapter-status {
@@ -399,20 +400,20 @@
         }
 
         .status-published {
-            background: #e8f5e9;
-            color: #4caf50;
+            background: var(--st-success-100);
+            color: var(--st-success-700);
         }
 
         .status-draft {
-            background: #fff3e0;
-            color: #ff9800;
+            background: var(--st-warning-100);
+            color: var(--st-warning-700);
         }
 
         /* 空状态 */
         .empty-state {
             text-align: center;
             padding: 60px 20px;
-            color: #999;
+            color: var(--st-text-tertiary);
         }
 
         .empty-state i {
@@ -425,7 +426,7 @@
         .loading {
             text-align: center;
             padding: 40px;
-            color: #999;
+            color: var(--st-text-tertiary);
         }
 
         .loading i {
@@ -475,7 +476,7 @@
             position: fixed;
             top: 100px;
             right: 20px;
-            background: white;
+            background: var(--st-bg-primary);
             padding: 15px 25px;
             border-radius: 10px;
             box-shadow: var(--st-shadow-lg);
@@ -548,7 +549,7 @@
         }
 
         .edit-modal-content {
-            background: white;
+            background: var(--st-bg-primary);
             border-radius: 20px;
             max-width: 600px;
             width: 100%;
@@ -578,7 +579,7 @@
 
         .edit-modal-header h2 {
             font-size: 24px;
-            color: #333;
+            color: var(--st-text-primary);
             display: flex;
             align-items: center;
             gap: 10px;
@@ -588,7 +589,7 @@
             background: none;
             border: none;
             font-size: 28px;
-            color: #999;
+            color: var(--st-text-tertiary);
             cursor: pointer;
             transition: all 0.3s;
             width: 40px;
@@ -600,8 +601,8 @@
         }
 
         .close-btn:hover {
-            background: #f0f0f0;
-            color: #333;
+            background: var(--st-bg-tertiary);
+            color: var(--st-text-primary);
         }
 
         .edit-modal-body {
@@ -615,7 +616,7 @@
         .form-group label {
             display: block;
             margin-bottom: 8px;
-            color: #333;
+            color: var(--st-text-primary);
             font-weight: 600;
             font-size: 14px;
         }
@@ -625,11 +626,13 @@
         .form-group select {
             width: 100%;
             padding: 12px 15px;
-            border: 2px solid #e0e0e0;
+            border: 2px solid var(--st-gray-200);
             border-radius: 10px;
             font-size: 14px;
             transition: all 0.3s;
             font-family: inherit;
+            background: var(--st-bg-primary);
+            color: var(--st-text-primary);
         }
 
         .form-group input:focus,
@@ -647,7 +650,7 @@
 
         .form-hint {
             font-size: 12px;
-            color: #999;
+            color: var(--st-text-tertiary);
             margin-top: 5px;
         }
 
@@ -662,11 +665,11 @@
             height: 168px;
             border-radius: 10px;
             overflow: hidden;
-            background: #f0f0f0;
+            background: var(--st-bg-tertiary);
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 2px dashed #ddd;
+            border: 2px dashed var(--st-gray-300);
         }
 
         .cover-preview img {
@@ -677,7 +680,7 @@
 
         .cover-preview i {
             font-size: 32px;
-            color: #ccc;
+            color: var(--st-gray-400);
         }
 
         .cover-upload-btn {
@@ -704,8 +707,8 @@
 
         .btn-cancel {
             padding: 12px 30px;
-            background: #f0f0f0;
-            color: #666;
+            background: var(--st-bg-tertiary);
+            color: var(--st-text-secondary);
             border: none;
             border-radius: 10px;
             cursor: pointer;
@@ -714,7 +717,7 @@
         }
 
         .btn-cancel:hover {
-            background: #e0e0e0;
+            background: var(--st-gray-200);
         }
 
         .btn-save {
@@ -745,10 +748,10 @@
         /* 惊喜时间按钮样式 */
         .surprise-time-btn {
             padding: 12px 20px;
-            border: 2px solid #e0e0e0;
+            border: 2px solid var(--st-gray-200);
             border-radius: 10px;
-            background: white;
-            color: #666;
+            background: var(--st-bg-primary);
+            color: var(--st-text-secondary);
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
@@ -779,7 +782,7 @@
 
         /* AI选项卡片样式 */
         .ai-option-card {
-            background: #f9f9f9;
+            background: var(--st-bg-secondary);
             border-radius: 15px;
             padding: 20px;
             margin-bottom: 15px;
@@ -787,7 +790,7 @@
         }
 
         .ai-option-card:hover {
-            background: #f0f0f0;
+            background: var(--st-bg-tertiary);
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
@@ -808,12 +811,12 @@
         .ai-option-title {
             font-size: 18px;
             font-weight: bold;
-            color: #333;
+            color: var(--st-text-primary);
             margin-bottom: 10px;
         }
 
         .ai-option-content {
-            color: #666;
+            color: var(--st-text-secondary);
             line-height: 1.8;
             margin-bottom: 15px;
             max-height: 200px;
@@ -850,7 +853,7 @@
 
         .ai-option-actions .btn-preview {
             padding: 10px 20px;
-            background: white;
+            background: var(--st-bg-primary);
             color: var(--st-primary-500);
             border: 2px solid var(--st-primary-500);
             border-radius: 8px;
@@ -871,7 +874,7 @@
 
         /* 标签页样式 */
         .tabs-section {
-            background: white;
+            background: var(--st-bg-primary);
             border-radius: 20px;
             box-shadow: var(--st-shadow-lg);
             overflow: hidden;
@@ -879,8 +882,8 @@
 
         .tabs-nav {
             display: flex;
-            background: #f9f9f9;
-            border-bottom: 2px solid #f0f0f0;
+            background: var(--st-bg-secondary);
+            border-bottom: 2px solid var(--st-bg-tertiary);
         }
 
         .tab-btn {
@@ -890,7 +893,7 @@
             border: none;
             font-size: 16px;
             font-weight: 600;
-            color: #999;
+            color: var(--st-text-tertiary);
             cursor: pointer;
             transition: all 0.3s;
             border-bottom: 3px solid transparent;
@@ -902,12 +905,12 @@
 
         .tab-btn:hover {
             color: var(--st-primary-500);
-            background: #f0f0f0;
+            background: var(--st-bg-tertiary);
         }
 
         .tab-btn.active {
             color: var(--st-primary-500);
-            background: white;
+            background: var(--st-bg-primary);
             border-bottom-color: var(--st-primary-500);
         }
 
@@ -927,7 +930,7 @@
             align-items: center;
             margin-bottom: 20px;
             padding: 15px;
-            background: #f9f9f9;
+            background: var(--st-bg-secondary);
             border-radius: 10px;
             flex-wrap: wrap;
             gap: 10px;
@@ -943,8 +946,8 @@
 
         .toolbar-btn {
             padding: 8px 16px;
-            background: white;
-            border: 2px solid #e0e0e0;
+            background: var(--st-bg-primary);
+            border: 2px solid var(--st-gray-200);
             border-radius: 8px;
             font-size: 14px;
             cursor: pointer;
@@ -952,6 +955,7 @@
             display: flex;
             align-items: center;
             gap: 6px;
+            color: var(--st-text-secondary);
         }
 
         .toolbar-btn:hover {
@@ -969,9 +973,9 @@
         .tree-chart-container {
             width: 100%;
             height: 600px;
-            border: 2px solid #f0f0f0;
+            border: 2px solid var(--st-bg-tertiary);
             border-radius: 15px;
-            background: #fafafa;
+            background: var(--st-bg-secondary);
             overflow: visible;
             position: relative;
         }
@@ -986,10 +990,10 @@
             position: absolute;
             z-index: 200;
             width: 280px;
-            background: white;
+            background: var(--st-bg-primary);
             border-radius: 14px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
-            border: 1px solid #E5E7EB;
+            border: 1px solid var(--st-gray-200);
             padding: 16px;
             display: none;
             pointer-events: auto;
@@ -1022,7 +1026,7 @@
         .node-detail-title {
             font-size: 14px;
             font-weight: 700;
-            color: #111827;
+            color: var(--st-text-primary);
             display: flex;
             align-items: center;
             gap: 6px;
@@ -1041,7 +1045,7 @@
             background: none;
             border: none;
             font-size: 18px;
-            color: #9CA3AF;
+            color: var(--st-text-tertiary);
             cursor: pointer;
             width: 24px;
             height: 24px;
@@ -1055,8 +1059,8 @@
         }
 
         .node-detail-close:hover {
-            background: #F3F4F6;
-            color: #374151;
+            background: var(--st-bg-tertiary);
+            color: var(--st-text-secondary);
         }
 
         .node-detail-content {
@@ -1067,21 +1071,21 @@
         }
 
         .detail-item {
-            background: #F9FAFB;
+            background: var(--st-bg-secondary);
             padding: 8px 10px;
             border-radius: 8px;
         }
 
         .detail-label {
             font-size: 11px;
-            color: #9CA3AF;
+            color: var(--st-text-tertiary);
             margin-bottom: 2px;
         }
 
         .detail-value {
             font-size: 15px;
             font-weight: 600;
-            color: #111827;
+            color: var(--st-text-primary);
         }
 
         .node-detail-actions {
@@ -1124,16 +1128,16 @@
         /* 统计图表容器 */
         .stats-chart-container {
             margin-top: 24px;
-            background: white;
+            background: var(--st-bg-primary);
             border-radius: 16px;
             padding: 24px;
             box-shadow: 0 2px 12px rgba(0,0,0,0.07);
-            border: 1px solid #F3F4F6;
+            border: 1px solid var(--st-gray-100);
         }
 
         .stats-chart-container h3 {
             margin: 0 0 20px 0;
-            color: #111827;
+            color: var(--st-text-primary);
             font-size: 16px;
             font-weight: 600;
             display: flex;
@@ -1162,7 +1166,7 @@
             }
 
             .tab-btn {
-                border-bottom: 1px solid #f0f0f0;
+                border-bottom: 1px solid var(--st-bg-tertiary);
             }
 
             .tree-toolbar {
@@ -1244,10 +1248,10 @@
 
         /* 组合卡片：中列、右列 */
         .stat-card-group {
-            background: white;
+            background: var(--st-bg-primary);
             border-radius: 16px;
             box-shadow: 0 2px 12px rgba(0,0,0,0.07);
-            border: 1px solid #F3F4F6;
+            border: 1px solid var(--st-gray-100);
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -1257,10 +1261,10 @@
             padding: 14px 20px 10px;
             font-size: 12px;
             font-weight: 600;
-            color: #9CA3AF;
+            color: var(--st-text-tertiary);
             text-transform: uppercase;
             letter-spacing: 0.8px;
-            border-bottom: 1px solid #F9FAFB;
+            border-bottom: 1px solid var(--st-gray-100);
         }
 
         .stat-card-group-items {
@@ -1278,10 +1282,10 @@
             flex: 1;
         }
         .stat-card-row:not(:last-child) {
-            border-bottom: 1px solid #F9FAFB;
+            border-bottom: 1px solid var(--st-gray-100);
         }
         .stat-card-row:hover {
-            background: #FAFAFA;
+            background: var(--st-bg-secondary);
         }
 
         .stat-card-row .stat-card-icon-wrap {
@@ -1300,13 +1304,13 @@
         .stat-card-row .stat-card-value {
             font-size: 24px;
             font-weight: 700;
-            color: #111827;
+            color: var(--st-text-primary);
             line-height: 1.1;
             margin-bottom: 2px;
         }
         .stat-card-row .stat-card-label {
             font-size: 12px;
-            color: #9CA3AF;
+            color: var(--st-text-tertiary);
             font-weight: 500;
         }
 
@@ -1324,7 +1328,7 @@
         .stat-card-ratio-bar {
             height: 4px;
             border-radius: 2px;
-            background: #F3F4F6;
+            background: var(--st-gray-100);
             overflow: hidden;
             margin-top: 6px;
         }
@@ -1338,7 +1342,7 @@
             display: flex;
             justify-content: space-between;
             font-size: 11px;
-            color: #9CA3AF;
+            color: var(--st-text-tertiary);
             margin-top: 4px;
         }
 

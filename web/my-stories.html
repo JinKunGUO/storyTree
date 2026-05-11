@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
     <title>我的故事 - StoryTree</title>
     <link rel="stylesheet" href="styles/design-system.css">
     <link rel="stylesheet" href="styles/animations.css">
@@ -27,7 +28,7 @@
 
         .page-header h1 {
             font-size: 28px;
-            color: #333;
+            color: var(--st-text-primary);
             margin-bottom: 10px;
         }
 
@@ -35,7 +36,7 @@
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
-            border-bottom: 2px solid #eee;
+            border-bottom: 2px solid var(--st-gray-200);
         }
 
         .filter-tab {
@@ -44,7 +45,7 @@
             border: none;
             cursor: pointer;
             font-size: 16px;
-            color: #666;
+            color: var(--st-text-secondary);
             transition: all 0.3s;
             border-bottom: 3px solid transparent;
             margin-bottom: -2px;
@@ -64,7 +65,7 @@
         }
 
         .story-card {
-            background: white;
+            background: var(--st-bg-primary);
             border-radius: var(--st-radius-xl);
             overflow: hidden;
             box-shadow: var(--st-shadow-sm);
@@ -169,7 +170,7 @@
             flex: 1;
             padding: 8px 12px;
             border: 1px solid var(--st-gray-200);
-            background: white;
+            background: var(--st-bg-primary);
             border-radius: var(--st-radius-md);
             cursor: pointer;
             font-size: var(--st-text-xs);

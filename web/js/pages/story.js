@@ -2851,6 +2851,9 @@ function getTreeOption(treeData, layout) {
             // 统一字体（中英文混排）
             const FONT_FAMILY = 'system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
 
+            // 检测深色模式
+            const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
             // 处理树数据：扁平化过长的分支，用省略号简化中间章节
             const processedData = processTreeDataForDisplay(JSON.parse(JSON.stringify(treeData)), 0, 5, null, layout);
 
@@ -2861,38 +2864,69 @@ function getTreeOption(treeData, layout) {
                     ? { top: '5%', left: '12%', bottom: '5%', right: '18%' }
                     : { top: '10%', left: '8%', bottom: '10%', right: '8%' };
 
+            // 深色模式颜色配置
+            const colors = isDarkMode ? {
+                tooltipBg: 'rgba(36, 36, 64, 0.97)',
+                tooltipBorder: '#353560',
+                tooltipText: '#f0f0f5',
+                tooltipSubText: '#b8b8c8',
+                tooltipMuted: '#8888a0',
+                nodeText: '#f0f0f5',
+                lineColor: '#6366F1',
+                nodeFill: '#1a1a2e',
+                nodeBorder: '#818CF8',
+                leafFill: '#0f2e1b',
+                leafBorder: '#27c563',
+                badgeBg: '#3d2b0a',
+                badgeText: '#f5aa3d'
+            } : {
+                tooltipBg: 'rgba(255, 255, 255, 0.97)',
+                tooltipBorder: '#E5E7EB',
+                tooltipText: '#374151',
+                tooltipSubText: '#374151',
+                tooltipMuted: '#9CA3AF',
+                nodeText: '#374151',
+                lineColor: '#A5B4FC',
+                nodeFill: '#EEF2FF',
+                nodeBorder: '#818CF8',
+                leafFill: '#F0FDF4',
+                leafBorder: '#4ADE80',
+                badgeBg: '#FEF3C7',
+                badgeText: '#D97706'
+            };
+
             return {
                 tooltip: {
                     trigger: 'item',
                     triggerOn: 'mousemove',
-                    backgroundColor: 'rgba(255, 255, 255, 0.97)',
-                    borderColor: '#E5E7EB',
+                    backgroundColor: colors.tooltipBg,
+                    borderColor: colors.tooltipBorder,
                     borderWidth: 1,
                     padding: [12, 16],
                     textStyle: {
-                        color: '#374151',
+                        color: colors.tooltipText,
                         fontSize: 13,
                         fontFamily: FONT_FAMILY
                     },
-                    extraCssText: 'box-shadow: 0 8px 24px rgba(0,0,0,0.12); border-radius: 10px;',
+                    extraCssText: `box-shadow: 0 8px 24px rgba(0,0,0,${isDarkMode ? '0.4' : '0.12'}); border-radius: 10px;`,
                     formatter: function(params) {
                         const data = params.data;
                         if (data.isEllipsis) {
                             return `<div style="min-width:120px;font-family:${FONT_FAMILY}">
                                 <div style="font-weight:600;color:#6366F1;margin-bottom:4px;">${data.name}</div>
-                                <div style="color:#9CA3AF;font-size:12px;">点击展开更多章节</div>
+                                <div style="color:${colors.tooltipMuted};font-size:12px;">点击展开更多章节</div>
                             </div>`;
                         }
                         if (data.isVirtualRoot || !data.id) return '';
-                        const draftBadge = data.isPublished === false 
-                            ? '<div style="display:inline-block;background:#FEF3C7;color:#D97706;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-bottom:6px;">草稿</div>' 
+                        const draftBadge = data.isPublished === false
+                            ? `<div style="display:inline-block;background:${colors.badgeBg};color:${colors.badgeText};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-bottom:6px;">草稿</div>`
                             : '';
                         return `<div style="min-width:150px;font-family:${FONT_FAMILY}">
                             ${draftBadge}
-                            <div style="font-weight:700;color:#111827;margin-bottom:8px;font-size:14px;border-bottom:1px solid #F3F4F6;padding-bottom:6px;">${data.name}</div>
-                            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="color:#9CA3AF;width:44px;">作者</span><span style="color:#374151;font-weight:500;">${data.author || '未知'}</span></div>
-                            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="color:#9CA3AF;width:44px;">阅读</span><span style="color:#374151;font-weight:500;">${data.readCount || 0}</span></div>
-                            <div style="display:flex;align-items:center;gap:6px;"><span style="color:#9CA3AF;width:44px;">分支</span><span style="color:#374151;font-weight:500;">${data.branchCount || 0}</span></div>
+                            <div style="font-weight:700;color:${isDarkMode ? '#f0f0f5' : '#111827'};margin-bottom:8px;font-size:14px;border-bottom:1px solid ${colors.tooltipBorder};padding-bottom:6px;">${data.name}</div>
+                            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="color:${colors.tooltipMuted};width:44px;">作者</span><span style="color:${colors.tooltipSubText};font-weight:500;">${data.author || '未知'}</span></div>
+                            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="color:${colors.tooltipMuted};width:44px;">阅读</span><span style="color:${colors.tooltipSubText};font-weight:500;">${data.readCount || 0}</span></div>
+                            <div style="display:flex;align-items:center;gap:6px;"><span style="color:${colors.tooltipMuted};width:44px;">分支</span><span style="color:${colors.tooltipSubText};font-weight:500;">${data.branchCount || 0}</span></div>
                         </div>`;
                     }
                 },
@@ -2923,16 +2957,16 @@ function getTreeOption(treeData, layout) {
                         animationDuration: 400,
                         animationDurationUpdate: 500,
                         lineStyle: {
-                            color: '#A5B4FC',
+                            color: colors.lineColor,
                             width: 1.5,
                             curveness: isRadial ? 0.3 : 0.05
                         },
                         itemStyle: {
-                            color: '#EEF2FF',
-                            borderColor: '#818CF8',
+                            color: colors.nodeFill,
+                            borderColor: colors.nodeBorder,
                             borderWidth: 1.5,
                             shadowBlur: 3,
-                            shadowColor: 'rgba(99, 102, 241, 0.15)'
+                            shadowColor: isDarkMode ? 'rgba(99, 102, 241, 0.3)' : 'rgba(99, 102, 241, 0.15)'
                         },
                         label: {
                             show: true,
@@ -2941,7 +2975,7 @@ function getTreeOption(treeData, layout) {
                             align: isVertical ? 'center' : (isHorizontal ? 'right' : 'center'),
                             fontSize: 12,
                             fontWeight: 'normal',
-                            color: '#374151',
+                            color: colors.nodeText,
                             fontFamily: FONT_FAMILY,
                             distance: isHorizontal ? 8 : 5,
                             formatter: function(params) {
@@ -2957,7 +2991,7 @@ function getTreeOption(treeData, layout) {
                                 align: isVertical ? 'center' : (isHorizontal ? 'left' : 'center'),
                                 fontSize: 12,
                                 fontWeight: 'normal',
-                                color: '#374151',
+                                color: colors.nodeText,
                                 fontFamily: FONT_FAMILY,
                                 distance: isHorizontal ? 8 : 5,
                                 formatter: function(params) {
@@ -2967,8 +3001,8 @@ function getTreeOption(treeData, layout) {
                                 }
                             },
                             itemStyle: {
-                                color: '#F0FDF4',
-                                borderColor: '#4ADE80',
+                                color: colors.leafFill,
+                                borderColor: colors.leafBorder,
                                 borderWidth: 1.5
                             }
                         }

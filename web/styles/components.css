@@ -50,7 +50,7 @@
 
 /* 次要按钮 */
 .btn-secondary {
-  background: white;
+  background: var(--st-bg-primary);
   color: var(--st-primary-600);
   border-color: var(--st-primary-200);
 }
@@ -531,7 +531,7 @@
   left: 2px;
   width: 20px;
   height: 20px;
-  background: white;
+  background: var(--st-bg-primary);
   border-radius: var(--st-radius-full);
   transition: transform var(--st-duration-normal) var(--st-ease-bounce);
   box-shadow: var(--st-shadow-sm);
@@ -722,6 +722,13 @@
   transition: box-shadow var(--st-duration-normal) var(--st-ease-default);
 }
 
+@media (prefers-color-scheme: dark) {
+  .navbar {
+    background: rgba(26, 26, 46, 0.95);
+    border-bottom-color: var(--st-gray-200);
+  }
+}
+
 .navbar-content {
   display: flex;
   align-items: center;
@@ -857,7 +864,7 @@
   font-size: var(--st-text-base);
   font-weight: var(--st-font-medium);
   color: var(--st-text-secondary);
-  background: white;
+  background: var(--st-bg-primary);
   border: 1px solid var(--st-gray-200);
   border-radius: var(--st-radius-md);
   cursor: pointer;
@@ -1490,7 +1497,7 @@
     top: 64px;
     left: 0;
     right: 0;
-    background: white;
+    background: var(--st-bg-primary);
     flex-direction: column;
     padding: var(--st-space-4);
     gap: var(--st-space-1);

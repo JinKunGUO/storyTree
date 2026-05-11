@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
     <title>故事详情 - StoryTree</title>
     <!-- 字体预连接（提升加载速度） -->
     <!-- 设计系统 -->
@@ -413,7 +414,7 @@
                         </button>
                     </div>
                     <!-- 自定义时间选择器 -->
-                    <div id="customAiTimeSelector" style="display: none; padding: 15px; background: #f9f9f9; border-radius: 10px; cursor: pointer;" onclick="document.getElementById('customAiDateTime').showPicker()">
+                    <div id="customAiTimeSelector" style="display: none; padding: 15px; background: var(--st-bg-secondary); border-radius: 10px; cursor: pointer;" onclick="document.getElementById('customAiDateTime').showPicker()">
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <input type="datetime-local" id="customAiDateTime" style="
                                 flex: 1;
@@ -495,7 +496,7 @@
                     </div>
                     
                     <!-- 自定义字数输入框 -->
-                    <div id="customWordCountInput" style="display: none; margin-top: 15px; padding: 15px; background: #f9f9f9; border-radius: 10px;">
+                    <div id="customWordCountInput" style="display: none; margin-top: 15px; padding: 15px; background: var(--st-bg-secondary); border-radius: 10px;">
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <input type="number" id="customWordCountValue" 
                                    min="200" max="5000" step="100" value="2000"
@@ -627,16 +628,16 @@
                 <div style="
                     margin-top: 20px;
                     padding: 15px;
-                    background: #f9f9f9;
+                    background: var(--st-bg-secondary);
                     border-radius: 8px;
                     border-left: 4px solid var(--st-primary-500);
                 ">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                        <span style="color: #666;">当前积分余额：</span>
-                        <span id="userPointsBalance" style="font-weight: 600; color: #f5576c;">0</span>
+                        <span style="color: var(--st-text-secondary);">当前积分余额：</span>
+                        <span id="userPointsBalance" style="font-weight: 600; color: var(--st-error-500);">0</span>
                     </div>
                     <div style="display: flex; justify-content: space-between;">
-                        <span style="color: #666;">置顶后余额：</span>
+                        <span style="color: var(--st-text-secondary);">置顶后余额：</span>
                         <span id="remainingPoints" style="font-weight: 600; color: var(--st-primary-500);">0</span>
                     </div>
                 </div>

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
     <title>章节阅读 - StoryTree</title>
     <!-- 字体预连接（提升加载速度） -->
     <!-- 设计系统 -->
@@ -510,21 +511,21 @@
                                 <i class="fas fa-robot"></i> AI创作
                             </span>
                         </div>
-                        <div style="color: #666; margin-bottom: 15px;">
+                        <div style="color: var(--st-text-secondary); margin-bottom: 15px;">
                             <span><i class="fas fa-user"></i> <span id="recommendAuthor">作者</span></span>
                         </div>
                         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 15px;">
-                            <div style="text-align: center; padding: 15px; background: white; border-radius: 10px;">
+                            <div style="text-align: center; padding: 15px; background: var(--st-bg-primary); border-radius: 10px;">
                                 <div style="font-size: 24px; font-weight: 600; color: var(--st-primary-500);" id="recommendReadCount">0</div>
-                                <div style="color: #999; font-size: 12px; margin-top: 5px;">阅读量</div>
+                                <div style="color: var(--st-text-tertiary); font-size: 12px; margin-top: 5px;">阅读量</div>
                             </div>
-                            <div style="text-align: center; padding: 15px; background: white; border-radius: 10px;">
+                            <div style="text-align: center; padding: 15px; background: var(--st-bg-primary); border-radius: 10px;">
                                 <div style="font-size: 24px; font-weight: 600; color: #ffc107;" id="recommendRating">0.0</div>
-                                <div style="color: #999; font-size: 12px; margin-top: 5px;">评分</div>
+                                <div style="color: var(--st-text-tertiary); font-size: 12px; margin-top: 5px;">评分</div>
                             </div>
-                            <div style="text-align: center; padding: 15px; background: white; border-radius: 10px;">
+                            <div style="text-align: center; padding: 15px; background: var(--st-bg-primary); border-radius: 10px;">
                                 <div style="font-size: 24px; font-weight: 600; color: #4caf50;" id="recommendComments">0</div>
-                                <div style="color: #999; font-size: 12px; margin-top: 5px;">评论数</div>
+                                <div style="color: var(--st-text-tertiary); font-size: 12px; margin-top: 5px;">评论数</div>
                             </div>
                         </div>
                         <button id="goToRecommendBtn" style="
