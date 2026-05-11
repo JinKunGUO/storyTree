@@ -268,20 +268,20 @@
                 <a href="/" class="nav-link" role="menuitem">
                     <i class="fas fa-home" aria-hidden="true"></i> 首页
                 </a>
-                <a href="/discover" class="nav-link" role="menuitem">
+                <a href="/discover.html" class="nav-link" role="menuitem">
                     <i class="fas fa-compass" aria-hidden="true"></i> 发现故事
                 </a>
-                <a href="/ai-tasks" class="nav-link active" role="menuitem">
+                <a href="/ai-tasks.html" class="nav-link active" role="menuitem">
                     <i class="fas fa-robot" aria-hidden="true"></i> AI任务
                 </a>
                 <a href="/notifications.html" class="nav-link nav-notification" id="notificationIcon" role="menuitem" aria-label="消息通知">
                     <i class="fas fa-bell" aria-hidden="true"></i> 消息
                     <span class="notification-badge" id="notificationBadge" style="display: none;" aria-live="polite">0</span>
                 </a>
-                <a href="/profile" class="nav-link" id="profileLink" role="menuitem" style="display: none;">
+                <a href="/profile.html" class="nav-link" id="profileLink" role="menuitem" style="display: none;">
                     <i class="fas fa-user" aria-hidden="true"></i> 个人中心
                 </a>
-                <a href="/login" class="nav-link" id="loginLink" role="menuitem">
+                <a href="/login.html" class="nav-link" id="loginLink" role="menuitem">
                     <i class="fas fa-sign-in-alt" aria-hidden="true"></i> 登录
                 </a>
             </div>
@@ -369,7 +369,7 @@
                 const token = localStorage.getItem('token') || sessionStorage.getItem('token');
                 
                 if (!token) {
-                    window.location.href = '/login?redirect=' + encodeURIComponent(window.location.href);
+                    window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.href);
                     return;
                 }
 

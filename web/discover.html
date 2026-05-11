@@ -536,7 +536,7 @@
                 <a href="/" class="nav-link" role="menuitem">
                     <i class="fas fa-home" aria-hidden="true"></i> 首页
                 </a>
-                <a href="/discover" class="nav-link active" role="menuitem">
+                <a href="/discover.html" class="nav-link active" role="menuitem">
                     <i class="fas fa-compass" aria-hidden="true"></i> 发现故事
                 </a>
                 <a href="/membership.html" class="nav-link" role="menuitem">
@@ -549,12 +549,12 @@
                     <i class="fas fa-bell" aria-hidden="true"></i> 消息
                     <span class="notification-badge" id="notificationBadge" style="display: none;" aria-live="polite">0</span>
                 </a>
-                <a href="/login" class="nav-link" id="loginLink" role="menuitem">登录</a>
-                <a href="/register" class="nav-link nav-link-primary" id="registerLink" role="menuitem">注册</a>
-                <a href="/profile" class="nav-link" id="profileLink" style="display: none;" role="menuitem">
+                <a href="/login.html" class="nav-link" id="loginLink" role="menuitem">登录</a>
+                <a href="/register.html" class="nav-link nav-link-primary" id="registerLink" role="menuitem">注册</a>
+                <a href="/profile.html" class="nav-link" id="profileLink" style="display: none;" role="menuitem">
                     <i class="fas fa-user" aria-hidden="true"></i> 个人中心
                 </a>
-                <a href="/login" class="nav-link" id="logoutLink" style="display: none;" onclick="logout(); return false;" role="menuitem">
+                <a href="/login.html" class="nav-link" id="logoutLink" style="display: none;" onclick="logout(); return false;" role="menuitem">
                     <i class="fas fa-sign-out-alt" aria-hidden="true"></i> 退出
                 </a>
             </div>
@@ -801,7 +801,7 @@
 
         function logout() {
             ['token','user'].forEach(k => { localStorage.removeItem(k); sessionStorage.removeItem(k); });
-            window.location.href = '/login';
+            window.location.href = '/login.html';
             return false;
         }
 
@@ -926,7 +926,7 @@
             const coverGrad = 'linear-gradient(135deg, #EC4899 0%, #F43F5E 100%)';
 
             document.getElementById('featuredStoryCard').innerHTML = `
-                <div class="featured-story-card" onclick="window.location.href='/story?id=${top.id}'" tabindex="0" role="button" aria-label="阅读：${escapeHtml(top.title)}">
+                <div class="featured-story-card" onclick="window.location.href='/story.html?id=${top.id}'" tabindex="0" role="button" aria-label="阅读：${escapeHtml(top.title)}">
                     <div class="featured-cover" style="background: ${coverGrad}">
                         <i class="fas fa-crown" aria-hidden="true"></i>
                         <div class="featured-badge">
@@ -952,7 +952,7 @@
                 const rank = i + 2;
                 const rankClass = rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
                 return `
-                    <div class="ranking-item" onclick="window.location.href='/story?id=${story.id}'" tabindex="0" role="button" aria-label="阅读：${escapeHtml(story.title)}">
+                    <div class="ranking-item" onclick="window.location.href='/story.html?id=${story.id}'" tabindex="0" role="button" aria-label="阅读：${escapeHtml(story.title)}">
                         <div class="rank-badge ${rankClass}">${rank}</div>
                         <div class="ranking-content">
                             <div class="ranking-title">${escapeHtml(story.title)}</div>
@@ -979,7 +979,7 @@
             if (!stories.length) { showEmptyState(); return; }
 
             const storiesHtml = stories.map((story, idx) => `
-                <article class="story-card" onclick="window.location.href='/story?id=${story.id}'" tabindex="0" role="button" aria-label="阅读故事：${escapeHtml(story.title)}">
+                <article class="story-card" onclick="window.location.href='/story.html?id=${story.id}'" tabindex="0" role="button" aria-label="阅读故事：${escapeHtml(story.title)}">
                     <div class="story-card-cover" style="background: ${coverGradients[idx % coverGradients.length]}">
                         <i class="fas fa-book-open" aria-hidden="true"></i>
                         ${story._count?.nodes > 0 ? `<span class="story-card-badge">${story._count.nodes} 章节</span>` : ''}
@@ -1063,7 +1063,7 @@
                     <div class="empty-state-icon"><i class="fas fa-book-open" aria-hidden="true"></i></div>
                     <h3 class="empty-state-title">暂无故事</h3>
                     <p class="empty-state-desc">快来创建第一个故事吧！</p>
-                    <a href="/create" class="btn btn-primary"><i class="fas fa-pen-nib" aria-hidden="true"></i> 开始创作</a>
+                    <a href="/create.html" class="btn btn-primary"><i class="fas fa-pen-nib" aria-hidden="true"></i> 开始创作</a>
                 </div>
             `;
         }

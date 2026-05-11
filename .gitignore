@@ -26,6 +26,9 @@ api/uploads/
 .DS_Store
 Thumbs.db
 
+# skills
+.claude/
+
 # Logs
 logs/
 *.log

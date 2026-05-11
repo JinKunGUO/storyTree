@@ -64,7 +64,7 @@
 
             if (!storyId) {
                 showError('故事ID不存在');
-                window.location.href = '/discover';
+                window.location.href = '/discover.html';
                 return;
             }
 
@@ -289,7 +289,7 @@
                 // 未登录用户
                 followBtn.addEventListener('click', () => {
                     showError('请先登录');
-                    setTimeout(() => window.location.href = '/login', 1500);
+                    setTimeout(() => window.location.href = '/login.html', 1500);
                 });
                 return;
             }
@@ -353,7 +353,7 @@
             const token = localStorage.getItem('token') || sessionStorage.getItem('token');
             if (!token) {
                 showError('请先登录');
-                setTimeout(() => window.location.href = '/login', 1500);
+                setTimeout(() => window.location.href = '/login.html', 1500);
                 return;
             }
 
@@ -437,11 +437,11 @@
                 
                 newFollowBtn.addEventListener('click', () => {
                     showError('请先登录');
-                    setTimeout(() => window.location.href = '/login', 1500);
+                    setTimeout(() => window.location.href = '/login.html', 1500);
                 });
                 newApplyBtn.addEventListener('click', () => {
                     showError('请先登录');
-                    setTimeout(() => window.location.href = '/login', 1500);
+                    setTimeout(() => window.location.href = '/login.html', 1500);
                 });
                 return;
             }
@@ -715,7 +715,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
             const token = localStorage.getItem('token') || sessionStorage.getItem('token');
             if (!token) {
                 showError('请先登录');
-                setTimeout(() => window.location.href = '/login', 1500);
+                setTimeout(() => window.location.href = '/login.html', 1500);
                 return;
             }
 
@@ -772,7 +772,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                 const token = localStorage.getItem('token') || sessionStorage.getItem('token');
                 if (!token) {
                     showError('请先登录');
-                    setTimeout(() => window.location.href = '/login', 1500);
+                    setTimeout(() => window.location.href = '/login.html', 1500);
                     return;
                 }
 

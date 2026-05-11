@@ -56,9 +56,6 @@ model comments {
   @@index([user_id])
   @@index([node_id])
   @@index([pinned])
-  @@index([node_id, parent_id, created_at])
-  @@index([node_id, is_deleted, created_at])
-  @@index([user_id, created_at])
 }
 
 model follows {
@@ -111,9 +108,6 @@ model nodes {
   @@index([path])
   @@index([parent_id])
   @@index([story_id])
-  @@index([story_id, is_published, path])
-  @@index([author_id, created_at])
-  @@index([parent_id, is_published])
 }
 
 model notifications {
@@ -237,8 +231,8 @@ model users {
   active_token               String?                   // 当前有效 token，新登录时替换旧值，实现单端互踢
   isAdmin                    Boolean                   @default(false) @map("is_admin")
   isBanned                   Boolean                   @default(false) @map("is_banned")
-  bannedAt                   DateTime?                 @map("banned_at")
   bannedReason               String?                   @map("banned_reason")
+  bannedAt                   DateTime?                 @map("banned_at")
   bannedBy                   Int?                      @map("banned_by")
   emailVerified              Boolean                   @default(false) @map("email_verified")
   emailVerificationToken     String?                   @map("email_verification_token")
@@ -339,8 +333,6 @@ model point_transactions {
   @@index([user_id])
   @@index([created_at])
   @@index([type])
-  @@index([user_id, type, created_at])
-  @@index([type, created_at])
 }
 
 model orders {

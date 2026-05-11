@@ -214,7 +214,7 @@
                 <a href="/" class="nav-link" role="menuitem">
                     <i class="fas fa-home" aria-hidden="true"></i> 首页
                 </a>
-                <a href="/discover" class="nav-link" role="menuitem">
+                <a href="/discover.html" class="nav-link" role="menuitem">
                     <i class="fas fa-compass" aria-hidden="true"></i> 发现故事
                 </a>
                 <a href="/membership.html" class="nav-link" role="menuitem">
@@ -226,12 +226,12 @@
                 <a href="/notifications.html" class="nav-link nav-link-active" role="menuitem">
                     <i class="fas fa-bell" aria-hidden="true"></i> 消息
                 </a>
-                <a href="/login" class="nav-link" id="loginLink" role="menuitem">登录</a>
-                <a href="/register" class="nav-link nav-link-primary" id="registerLink" role="menuitem">注册</a>
-                <a href="/profile" class="nav-link" id="profileLink" style="display: none;" role="menuitem">
+                <a href="/login.html" class="nav-link" id="loginLink" role="menuitem">登录</a>
+                <a href="/register.html" class="nav-link nav-link-primary" id="registerLink" role="menuitem">注册</a>
+                <a href="/profile.html" class="nav-link" id="profileLink" style="display: none;" role="menuitem">
                     <i class="fas fa-user" aria-hidden="true"></i> 个人中心
                 </a>
-                <a href="/login" class="nav-link" id="logoutLink" style="display: none;" onclick="logout(event)" role="menuitem">
+                <a href="/login.html" class="nav-link" id="logoutLink" style="display: none;" onclick="logout(event)" role="menuitem">
                     <i class="fas fa-sign-out-alt" aria-hidden="true"></i> 退出
                 </a>
             </div>
@@ -614,7 +614,7 @@
             event.preventDefault();
             localStorage.removeItem('token');
             sessionStorage.removeItem('token');
-            window.location.href = '/login';
+            window.location.href = '/login.html';
         }
     </script>
     <script src="js/loading.js"></script>

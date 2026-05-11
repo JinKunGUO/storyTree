@@ -254,12 +254,12 @@ function handleRegister() {
                             confirmText: '去登录',
                             showCancel: false,
                             onConfirm: () => {
-                                window.location.href = '/login';
+                                window.location.href = '/login.html';
                             }
                         });
                     } else {
                         alert(`注册成功！验证邮件已发送至 ${data.email || email}，请查收邮件并点击链接完成验证后登录。`);
-                        window.location.href = '/login';
+                        window.location.href = '/login.html';
                     }
                     return;
                 }
@@ -446,7 +446,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 检查是否已登录
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    if (token && (window.location.pathname === '/login' || window.location.pathname === '/register')) {
+    if (token && (window.location.pathname === '/login.html' || window.location.pathname === '/register.html')) {
         window.location.href = '/';
     }
 });
@@ -515,5 +515,5 @@ function logout() {
     sessionStorage.removeItem('user');
     
     console.log('已退出登录');
-    window.location.href = '/login';
+    window.location.href = '/login.html';
 }

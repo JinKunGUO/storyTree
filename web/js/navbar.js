@@ -127,7 +127,7 @@
         localStorage.removeItem('user');
         sessionStorage.removeItem('token');
         sessionStorage.removeItem('user');
-        window.location.href = '/login';
+        window.location.href = '/login.html';
         return false;
     };
 

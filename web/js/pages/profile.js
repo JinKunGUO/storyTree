@@ -10,7 +10,7 @@
             const token = localStorage.getItem('token') || sessionStorage.getItem('token');
             
             if (!token) {
-                window.location.href = '/login?redirect=/profile';
+                window.location.href = '/login.html?redirect=/profile';
                 return false;
             }
             return true;
@@ -22,7 +22,7 @@
             localStorage.removeItem('user');
             sessionStorage.removeItem('token');
             sessionStorage.removeItem('user');
-            window.location.href = '/login';
+            window.location.href = '/login.html';
         }
 
         // 加载用户信息
@@ -36,7 +36,7 @@
                 
                 if (!token) {
                     console.error('Token不存在，跳转到登录页');
-                    window.location.href = '/login?redirect=/profile';
+                    window.location.href = '/login.html?redirect=/profile';
                     return;
                 }
                 
@@ -1493,7 +1493,7 @@ profileHeader.innerHTML = `
                 totalViews += viewCount;
                 
                 return `
-                    <div class="story-item" onclick="window.location.href='/story?id=${story.id}'">
+                    <div class="story-item" onclick="window.location.href='/story.html?id=${story.id}'">
                         <div class="story-icon">
                             <i class="fas fa-book-open"></i>
                         </div>
@@ -1533,7 +1533,7 @@ profileHeader.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-book"></i>
                     <p>还没有创作任何故事</p>
-                    <a href="/create" class="btn btn-primary">
+                    <a href="/create.html" class="btn btn-primary">
                         <i class="fas fa-plus"></i> 创建第一个故事
                     </a>
                 </div>
@@ -1680,7 +1680,7 @@ profileHeader.innerHTML = `
                 }
                 
                 return `
-                    <div class="story-item" onclick="window.location.href='/story?id=${story.id}'" style="cursor: pointer;">
+                    <div class="story-item" onclick="window.location.href='/story.html?id=${story.id}'" style="cursor: pointer;">
                         <div class="story-icon ${iconClass}">
                             <i class="fas ${icon}"></i>
                         </div>
@@ -1750,7 +1750,7 @@ profileHeader.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-star"></i>
                     <p>还没有关注任何故事</p>
-                    <a href="/discover" class="btn btn-primary">
+                    <a href="/discover.html" class="btn btn-primary">
                         <i class="fas fa-search"></i> 去发现故事
                     </a>
                 </div>

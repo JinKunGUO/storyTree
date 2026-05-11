@@ -1143,7 +1143,7 @@
             if (!token) {
                 showError('请先登录');
                 setTimeout(() => {
-                    window.location.href = '/login?redirect=' + encodeURIComponent(window.location.href);
+                    window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.href);
                 }, 1500);
                 return;
             }
@@ -1248,7 +1248,7 @@
             if (!token) {
                 showError('请先登录');
                 setTimeout(() => {
-                    window.location.href = '/login?redirect=' + encodeURIComponent(window.location.href);
+                    window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.href);
                 }, 1500);
                 return;
             }
@@ -1650,7 +1650,7 @@
             if (!token) {
                 showError('请先登录');
                 setTimeout(() => {
-                    window.location.href = '/login?redirect=' + encodeURIComponent(window.location.href);
+                    window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.href);
                 }, 1500);
                 return;
             }
@@ -1753,7 +1753,7 @@
                     <div style="background: white; border-radius: 10px; padding: 15px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s;"
                          onmouseover="this.style.boxShadow='0 5px 15px rgba(0,0,0,0.1)'"
                          onmouseout="this.style.boxShadow='none'"
-                         onclick="window.location.href='/chapter?id=${alt.id}'">
+                         onclick="window.location.href='/chapter.html?id=${alt.id}'">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                             <h4 style="margin: 0; color: #333;">${alt.title}</h4>
                             ${alt.aiGenerated ? '<span style="background: var(--st-primary-700); color: white; padding: 2px 8px; border-radius: 8px; font-size: 11px;"><i class="fas fa-robot"></i> AI</span>' : ''}

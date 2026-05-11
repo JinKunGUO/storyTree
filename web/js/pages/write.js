@@ -262,7 +262,7 @@
                 console.error('故事ID不存在');
                 showError('故事ID不存在');
                 setTimeout(() => {
-                    window.location.href = '/create';
+                    window.location.href = '/create.html';
                 }, 2000);
                 return;
             }
@@ -1505,7 +1505,7 @@
                     errorMessage = '请先登录后再使用AI续写功能';
                     setTimeout(() => {
                         showConfirm('需要登录才能使用AI续写功能，是否前往登录页？', () => {
-                            window.location.href = '/login?redirect=' + encodeURIComponent(window.location.href);
+                            window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.href);
                         }, { title: '需要登录', confirmText: '前往登录', onCancel: closeAiModalFunc });
                     }, 1000);
                 } else if (error.message.includes('任务正在处理')) {
