@@ -119,7 +119,7 @@ const points = user.points || 0;
                 navProfileLink.innerHTML = `<i class="fas fa-user" aria-hidden="true"></i><span class="nav-username" title="${escaped}">${escaped}</span>`;
             }
 
-const avatarUrl = user.avatar || '/assets/default-avatar.svg';
+const avatarUrl = user.avatar || '/assets/default-avatar.svg?v=2';
 profileHeader.innerHTML = `
                 <div class="profile-main-content">
                     <div class="profile-avatar" style="background: none; overflow: hidden;">
