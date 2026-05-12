@@ -37,6 +37,8 @@ interface StoryData {
   chapters: ChapterData[];
 }
 
+const DEFAULT_COVER = '/assets/default-cover.svg';
+
 // 解析命令行参数
 const args = process.argv.slice(2);
 function getArg(name: string): string | undefined {
@@ -84,7 +86,7 @@ async function importStory(storyData: StoryData, authorId: number): Promise<{ st
       data: {
         title: storyData.title,
         description: storyData.description || '',
-        cover_image: storyData.cover_image || null,
+        cover_image: storyData.cover_image || DEFAULT_COVER,
         tags: storyData.tags || null,
         author_id: authorId,
         visibility: 'public',

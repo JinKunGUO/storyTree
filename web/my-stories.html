@@ -367,7 +367,7 @@
 
             container.innerHTML = filteredStories.map(story => `
                 <div class="story-card" onclick="viewStory(${story.id})">
-                    <img src="${story.cover_image || 'https://via.placeholder.com/300x180?text=Story'}" 
+                    <img src="${story.cover_image || '/assets/default-cover.svg'}"
                          alt="${story.title}" 
                          class="story-cover">
                     <div class="story-content">
