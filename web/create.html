@@ -455,7 +455,7 @@
                     
                     // 跳转到撰写页面
                     setTimeout(() => {
-                        window.location.href = `/write?storyId=${data.story.id}`;
+                        window.location.href = `/write.html?storyId=${data.story.id}`;
                     }, 1500);
                 } else {
                     toast.error(data.error || '创建失败，请重试');

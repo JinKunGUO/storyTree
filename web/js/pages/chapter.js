@@ -471,7 +471,7 @@
                     
                     // 添加创建分支按钮的点击事件
                     createBranchBtn.onclick = () => {
-                        window.location.href = `/write?storyId=${storyId}&parentId=${chapter.id}`;
+                        window.location.href = `/write.html?storyId=${storyId}&parentId=${chapter.id}`;
                     };
                 }
 
@@ -506,7 +506,7 @@
             // editMode=true 表示编辑模式
             // nodeId 表示要编辑的章节ID
             // storyId 表示所属故事ID
-            window.location.href = `/write?storyId=${storyId}&nodeId=${currentChapter.id}&editMode=true`;
+            window.location.href = `/write.html?storyId=${storyId}&nodeId=${currentChapter.id}&editMode=true`;
         }
 
         // 关闭编辑模态框
@@ -660,7 +660,7 @@
                 prevBtns.forEach(btn => {
                     if (prevChapter) {
                         btn.disabled = false;
-                        btn.onclick = () => window.location.href = `/chapter?id=${prevChapter.id}`;
+                        btn.onclick = () => window.location.href = `/chapter.html?id=${prevChapter.id}`;
                     } else {
                         btn.disabled = true;
                     }
@@ -676,7 +676,7 @@
                 nextBtns.forEach(btn => {
                     if (nextChapter) {
                         btn.disabled = false;
-                        btn.onclick = () => window.location.href = `/chapter?id=${nextChapter.id}`;
+                        btn.onclick = () => window.location.href = `/chapter.html?id=${nextChapter.id}`;
                     } else {
                         btn.disabled = true;
                     }
@@ -684,7 +684,7 @@
 
                 // 返回按钮
                 document.getElementById('backBtn').onclick = () => {
-                    window.location.href = `/story?id=${storyId}`;
+                    window.location.href = `/story.html?id=${storyId}`;
                 };
 
             } catch (error) {
@@ -739,7 +739,7 @@
             // 添加故事标题
             if (currentBreadcrumbStory) {
                 breadcrumbHTML += `
-                    <a href="/story?id=${currentBreadcrumbStory.id}" class="breadcrumb-item">
+                    <a href="/story.html?id=${currentBreadcrumbStory.id}" class="breadcrumb-item">
                         <i class="fas fa-book"></i>
                         <span>${currentBreadcrumbStory.title}</span>
                     </a>
@@ -762,7 +762,7 @@
                         `;
                     } else {
                         breadcrumbHTML += `
-                            <a href="/chapter?id=${node.id}" class="breadcrumb-item">
+                            <a href="/chapter.html?id=${node.id}" class="breadcrumb-item">
                                 <i class="fas fa-file-alt"></i>
                                 <span>${node.title}</span>
                             </a>
@@ -783,7 +783,7 @@
                     breadcrumbHTML += '<span class="breadcrumb-separator"><i class="fas fa-chevron-right"></i></span>';
                 }
                 breadcrumbHTML += `
-                    <a href="/chapter?id=${fullBreadcrumbPath[0].id}" class="breadcrumb-item">
+                    <a href="/chapter.html?id=${fullBreadcrumbPath[0].id}" class="breadcrumb-item">
                         <i class="fas fa-file-alt"></i>
                         <span>${fullBreadcrumbPath[0].title}</span>
                     </a>
@@ -813,7 +813,7 @@
                         const node = fullBreadcrumbPath[i];
                         breadcrumbHTML += '<span class="breadcrumb-separator"><i class="fas fa-chevron-right"></i></span>';
                         breadcrumbHTML += `
-                            <a href="/chapter?id=${node.id}" class="breadcrumb-item">
+                            <a href="/chapter.html?id=${node.id}" class="breadcrumb-item">
                                 <i class="fas fa-file-alt"></i>
                                 <span>${node.title}</span>
                             </a>
@@ -836,7 +836,7 @@
                         `;
                     } else {
                         breadcrumbHTML += `
-                            <a href="/chapter?id=${node.id}" class="breadcrumb-item">
+                            <a href="/chapter.html?id=${node.id}" class="breadcrumb-item">
                                 <i class="fas fa-file-alt"></i>
                                 <span>${node.title}</span>
                             </a>
@@ -1741,7 +1741,7 @@
 
             // 跳转按钮
             document.getElementById('goToRecommendBtn').onclick = () => {
-                window.location.href = `/chapter?id=${recommended.id}`;
+                window.location.href = `/chapter.html?id=${recommended.id}`;
             };
 
             // 显示备选分支

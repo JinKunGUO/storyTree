@@ -643,7 +643,7 @@
                 e.preventDefault();
                 const urlParams = new URLSearchParams(window.location.search);
                 const storyId = urlParams.get('id');
-                window.location.href = `/story?id=${storyId}`;
+                window.location.href = `/story.html?id=${storyId}`;
             });
         });
 
@@ -1146,11 +1146,11 @@
 
             // 设置按钮事件
             document.getElementById('readNode').onclick = () => {
-                window.location.href = `/chapter?id=${selectedNodeId}`;
+                window.location.href = `/chapter.html?id=${selectedNodeId}`;
             };
 
             document.getElementById('continueNode').onclick = () => {
-                window.location.href = `/write?storyId=${currentStory.id}&parentId=${selectedNodeId}`;
+                window.location.href = `/write.html?storyId=${currentStory.id}&parentId=${selectedNodeId}`;
             };
 
             // 草稿节点：显示「发布草稿」按钮（仅当前用户是节点作者时）

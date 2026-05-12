@@ -215,7 +215,7 @@
                     if (storyData && storyData.nodes && storyData.nodes.length > 0) {
                         // 找根章节（parent_id 为 null）
                         const rootChapter = storyData.nodes.find(n => !n.parent_id) || storyData.nodes[0];
-                        window.location.href = `/chapter?id=${rootChapter.id}`;
+                        window.location.href = `/chapter.html?id=${rootChapter.id}`;
                     } else {
                         // 降级：点击章节列表中的第一项
                         const firstChapter = document.querySelector('.chapter-item');
@@ -1416,7 +1416,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                         return;
                     }
                     const chapterId = this.dataset.chapterId;
-                    window.location.href = `/chapter?id=${chapterId}`;
+                    window.location.href = `/chapter.html?id=${chapterId}`;
                 });
             });
         }
@@ -3440,7 +3440,7 @@ function getTreeOption(treeData, layout) {
             document.getElementById('readNode')?.addEventListener('click', function() {
                 const nodeId = this.dataset.nodeId;
                 if (nodeId) {
-                    window.location.href = `/chapter?id=${nodeId}`;
+                    window.location.href = `/chapter.html?id=${nodeId}`;
                 }
             });
 
@@ -3449,7 +3449,7 @@ function getTreeOption(treeData, layout) {
                 const nodeId = this.dataset.nodeId;
                 const storyId = window.currentStory?.id;
                 if (nodeId && storyId) {
-                    window.location.href = `/write?storyId=${storyId}&parentId=${nodeId}`;
+                    window.location.href = `/write.html?storyId=${storyId}&parentId=${nodeId}`;
                 }
             });
 

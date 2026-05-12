@@ -486,7 +486,7 @@ function checkAuthStatus() {
     
     if (protectedPages.includes(currentPath) && !token) {
         console.log('未登录，跳转到登录页');
-        window.location.href = `/login?redirect=${encodeURIComponent(window.location.href)}`;
+        window.location.href = `/login.html?redirect=${encodeURIComponent(window.location.href)}`;
         return false;
     }
     

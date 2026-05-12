@@ -570,9 +570,9 @@
                     // 跳转到新创建的章节页面
                     setTimeout(() => {
                         if (data.node && data.node.id) {
-                            window.location.href = `/chapter?id=${data.node.id}`;
+                            window.location.href = `/chapter.html?id=${data.node.id}`;
                         } else {
-                            window.location.href = `/story?id=${storyId}`;
+                            window.location.href = `/story.html?id=${storyId}`;
                         }
                     }, 1500);
                 } else {
@@ -653,7 +653,7 @@
                     
                     // 跳转回章节页面
                     setTimeout(() => {
-                        window.location.href = `/chapter?id=${editNodeId}`;
+                        window.location.href = `/chapter.html?id=${editNodeId}`;
                     }, 1500);
                 } else {
                     // 保存修改：显示成功消息，留在当前页面

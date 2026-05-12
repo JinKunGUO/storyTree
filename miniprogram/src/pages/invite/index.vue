@@ -229,7 +229,7 @@ function copyCode() {
 }
 
 function copyInviteLink() {
-  const link = `https://storytree.com/register?invite=${myCode.value}`
+  const link = `https://storytree.online/register.html?invite=${myCode.value}`
   uni.setClipboardData({
     data: link,
     success: () => uni.showToast({ title: '邀请链接已复制', icon: 'success' })
