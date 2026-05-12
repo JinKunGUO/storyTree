@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-const DEFAULT_COVER = '/assets/default-cover.svg';
+const DEFAULT_COVER = '/assets/default-cover.png';
 
 /**
  * 更新所有没有封面的故事，使用默认封面

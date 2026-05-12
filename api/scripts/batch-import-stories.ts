@@ -37,7 +37,7 @@ interface StoryData {
   chapters: ChapterData[];
 }
 
-const DEFAULT_COVER = '/assets/default-cover.svg';
+const DEFAULT_COVER = '/assets/default-cover.png';
 
 // 解析命令行参数
 const args = process.argv.slice(2);
