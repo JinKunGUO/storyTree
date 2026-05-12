@@ -119,10 +119,11 @@ const points = user.points || 0;
                 navProfileLink.innerHTML = `<i class="fas fa-user" aria-hidden="true"></i><span class="nav-username" title="${escaped}">${escaped}</span>`;
             }
 
+const avatarUrl = user.avatar || '/assets/default-avatar.svg';
 profileHeader.innerHTML = `
                 <div class="profile-main-content">
-                    <div class="profile-avatar">
-                        <i class="fas fa-user"></i>
+                    <div class="profile-avatar" style="background: none; overflow: hidden;">
+                        <img src="${avatarUrl}" alt="头像" style="width: 100%; height: 100%; object-fit: cover;">
                     </div>
                     <div class="profile-info">
                         <div class="profile-name">

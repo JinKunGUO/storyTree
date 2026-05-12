@@ -47,7 +47,7 @@
         <view class="author-row">
           <image
             class="author-avatar"
-            :src="getImageUrl(node.author.avatar) || '/static/images/default-avatar.png'"
+            :src="getImageUrl(node.author.avatar) || '/static/images/default-avatar.svg'"
             mode="aspectFill"
           />
           <text class="author-name" :style="{ color: subTextColors[settings.theme] }">
@@ -188,7 +188,7 @@
           <view v-for="comment in comments" :key="comment.id" class="comment-item">
             <image
               class="comment-avatar"
-              :src="getImageUrl(comment.user.avatar) || '/static/images/default-avatar.png'"
+              :src="getImageUrl(comment.user.avatar) || '/static/images/default-avatar.svg'"
               mode="aspectFill"
             />
             <view class="comment-content">

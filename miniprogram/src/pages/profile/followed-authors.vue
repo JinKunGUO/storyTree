@@ -36,7 +36,7 @@
           >
             <image
               class="author-avatar"
-              :src="getImageUrl(author.avatar) || '/static/images/default-avatar.png'"
+              :src="getImageUrl(author.avatar) || '/static/images/default-avatar.svg'"
               mode="aspectFill"
             />
             <view class="author-info">

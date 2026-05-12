@@ -150,6 +150,7 @@ router.post('/register', registerLimiter, async (req, res) => {
           username,
           email: email || null,
           password: hashedPassword,
+          avatar: '/assets/default-avatar.svg', // 默认头像
           emailVerified: !email, // 无邮箱用户直接标记为已验证
           emailVerificationToken: verificationToken,
           emailVerificationExpires: verificationExpires,
@@ -825,7 +826,7 @@ router.post('/wx-login', async (req, res) => {
             wx_unionid: unionid || null,
             wx_nickname: nickname?.trim() || null,
             wx_avatar: avatarUrl || null,
-            avatar: avatarUrl || null, // 同时设置用户头像
+            avatar: avatarUrl || '/assets/default-avatar.svg', // 优先使用微信头像，否则使用默认头像
             emailVerified: true, // 微信登录视为已验证
             points: inviteCodeData ? inviteCodeData.bonus_points : 0,
             invited_by_code: invitationCode?.toUpperCase() || null,
@@ -1162,7 +1163,7 @@ router.post('/wx-web-login', async (req, res) => {
           wx_unionid: unionid || null,
           wx_nickname: wxNickname,
           wx_avatar: wxAvatar,
-          avatar: wxAvatar, // 同时设置用户头像
+          avatar: wxAvatar || '/assets/default-avatar.svg', // 优先使用微信头像，否则使用默认头像
           emailVerified: true,
           updatedAt: new Date(),
         },

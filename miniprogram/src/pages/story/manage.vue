@@ -19,7 +19,7 @@
         <view class="cover-row" @tap="changeCover">
           <image
             class="cover-thumb"
-            :src="getImageUrl(form.cover_image) || '/static/images/default-cover.png'"
+            :src="getImageUrl(form.cover_image) || '/static/images/default-cover.svg'"
             mode="aspectFill"
           />
           <view class="cover-info">
@@ -147,7 +147,7 @@
         >
           <image
             class="req-avatar"
-            :src="getImageUrl(req.user.avatar) || '/static/images/default-avatar.png'"
+            :src="getImageUrl(req.user.avatar) || '/static/images/default-avatar.svg'"
             mode="aspectFill"
           />
           <view class="req-info">
@@ -175,7 +175,7 @@
         >
           <image
             class="collab-avatar"
-            :src="getImageUrl(c.avatar) || '/static/images/default-avatar.png'"
+            :src="getImageUrl(c.avatar) || '/static/images/default-avatar.svg'"
             mode="aspectFill"
           />
           <text class="collab-name">{{ c.username }}</text>

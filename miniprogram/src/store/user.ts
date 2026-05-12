@@ -55,7 +55,7 @@ export const useUserStore = defineStore('user', () => {
   })
   const isAdmin = computed(() => userInfo.value?.isAdmin ?? false)
   const avatarUrl = computed(() => {
-    if (!userInfo.value?.avatar) return '/static/images/default-avatar.png'
+    if (!userInfo.value?.avatar) return '/static/images/default-avatar.svg'
     // 如果是相对路径，拼接 API 基础地址
     if (userInfo.value.avatar.startsWith('/')) {
       return `${import.meta.env.VITE_API_BASE_URL || ''}${userInfo.value.avatar}`

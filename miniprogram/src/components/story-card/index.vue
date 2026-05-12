@@ -2,7 +2,7 @@
   <view class="story-card" @tap="$emit('tap', story.id)">
     <image
       class="cover"
-      :src="story.cover_image || '/static/images/default-cover.png'"
+      :src="story.cover_image || '/static/images/default-cover.svg'"
       mode="aspectFill"
     />
     <view class="info">
@@ -12,7 +12,7 @@
         <view class="author">
           <image
             class="avatar"
-            :src="story.author.avatar || '/static/images/default-avatar.png'"
+            :src="story.author.avatar || '/static/images/default-avatar.svg'"
             mode="aspectFill"
           />
           <text class="author-name">{{ story.author.username }}</text>

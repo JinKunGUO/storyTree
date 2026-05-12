@@ -29,7 +29,7 @@
         >
           <image
             class="story-cover"
-            :src="getImageUrl(story.cover_image) || '/static/images/default-cover.png'"
+            :src="getImageUrl(story.cover_image) || '/static/images/default-cover.svg'"
             mode="aspectFill"
           />
           <view class="story-info">

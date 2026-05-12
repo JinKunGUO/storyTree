@@ -27,7 +27,7 @@
       <view class="cover-section">
         <image
           class="cover-bg"
-          :src="getImageUrl(story.cover_image) || '/static/images/default-cover.png'"
+          :src="getImageUrl(story.cover_image) || '/static/images/default-cover.svg'"
           mode="aspectFill"
         />
         <view class="cover-overlay" />
@@ -52,7 +52,7 @@
           <view class="story-meta">
             <image
               class="author-avatar"
-              :src="getImageUrl(story.author.avatar) || '/static/images/default-avatar.png'"
+              :src="getImageUrl(story.author.avatar) || '/static/images/default-avatar.svg'"
               mode="aspectFill"
             />
             <text class="author-name">{{ story.author.username }}</text>
@@ -173,7 +173,7 @@
             >
               <image
                 class="collab-avatar"
-                :src="getImageUrl(c.avatar) || '/static/images/default-avatar.png'"
+                :src="getImageUrl(c.avatar) || '/static/images/default-avatar.svg'"
                 mode="aspectFill"
               />
               <text class="collab-name">{{ c.username }}</text>

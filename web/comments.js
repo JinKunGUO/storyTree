@@ -73,7 +73,7 @@ class CommentSystem {
         const currentUser = this.getCurrentUser();
         const isOwner = currentUser && currentUser.id === comment.user.id;
         const isStoryAuthor = this.storyInfo && currentUser && this.storyInfo.author_id === currentUser.id;
-        const avatar = comment.user.avatar || '/assets/default-avatar.png';
+        const avatar = comment.user.avatar || '/assets/default-avatar.svg';
         const isDeleted = comment.is_deleted || false;
         const isPinned = comment.pinned || false;
         
