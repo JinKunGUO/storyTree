@@ -21,10 +21,10 @@
         <view class="tab-bar">
           <view
             class="tab-item"
-            :class="{ active: activeTab === 'email' }"
-            @tap="activeTab = 'email'"
+            :class="{ active: activeTab === 'account' }"
+            @tap="activeTab = 'account'"
           >
-            邮箱登录
+            账号登录
           </view>
           <view
             class="tab-item"
@@ -35,15 +35,15 @@
           </view>
         </view>
 
-        <!-- 邮箱登录 -->
-        <view v-if="activeTab === 'email'" class="form-body">
+        <!-- 账号登录 -->
+        <view v-if="activeTab === 'account'" class="form-body">
           <view class="input-group">
-            <text class="input-icon">✉️</text>
+            <text class="input-icon">👤</text>
             <input
-              v-model="form.email"
+              v-model="form.account"
               class="input"
               type="text"
-              placeholder="请输入邮箱"
+              placeholder="请输入邮箱或用户名"
               placeholder-class="placeholder"
               @confirm="focusPassword"
             />
@@ -116,13 +116,13 @@ import { login, wxLogin } from '@/api/auth'
 
 const userStore = useUserStore()
 
-const activeTab = ref<'email' | 'wx'>('email')
+const activeTab = ref<'account' | 'wx'>('account')
 const loading = ref(false)
 const showPassword = ref(false)
 const passwordInput = ref(null)
 
 const form = reactive({
-  email: '',
+  account: '',
   password: '',
 })
 
@@ -131,8 +131,8 @@ function focusPassword() {
 }
 
 async function handleLogin() {
-  if (!form.email.trim()) {
-    uni.showToast({ title: '请输入邮箱', icon: 'none' })
+  if (!form.account.trim()) {
+    uni.showToast({ title: '请输入邮箱或用户名', icon: 'none' })
     return
   }
   if (!form.password.trim()) {
@@ -142,7 +142,7 @@ async function handleLogin() {
 
   loading.value = true
   try {
-    const res = await login({ email: form.email.trim(), password: form.password })
+    const res = await login({ account: form.account.trim(), password: form.password })
     userStore.login(res.token, res.user as any)
     uni.showToast({ title: '登录成功', icon: 'success' })
 

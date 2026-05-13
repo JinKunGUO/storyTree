@@ -65,7 +65,7 @@
                 v-model="form.password"
                 class="input"
                 :type="showPassword ? 'text' : 'password'"
-                placeholder="至少8位，包含字母和数字"
+                placeholder="至少8位，含大小写字母和数字"
                 placeholder-class="placeholder"
                 maxlength="32"
                 @blur="validatePassword"
@@ -222,6 +222,14 @@ function validateUsername() {
     errors.username = '用户名至少2个字符'
     return false
   }
+  if (form.username.trim().length > 20) {
+    errors.username = '用户名不能超过20个字符'
+    return false
+  }
+  if (!/^[一-龥a-zA-Z0-9_-]+$/.test(form.username.trim())) {
+    errors.username = '用户名只能包含中文、字母、数字、下划线和连字符'
+    return false
+  }
   errors.username = ''
   return true
 }
@@ -249,8 +257,8 @@ function validatePassword() {
     errors.password = '密码至少8位'
     return false
   }
-  if (!/[A-Za-z]/.test(form.password) || !/[0-9]/.test(form.password)) {
-    errors.password = '密码需包含字母和数字'
+  if (!/[A-Z]/.test(form.password) || !/[a-z]/.test(form.password) || !/[0-9]/.test(form.password)) {
+    errors.password = '密码需包含大写字母、小写字母和数字'
     return false
   }
   errors.password = ''

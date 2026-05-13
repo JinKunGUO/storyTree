@@ -142,11 +142,11 @@ function validateEmail(email) {
 }
 
 function validateUsername(username) {
-    return username.length >= 3 && username.length <= 20 && /^[a-zA-Z0-9_]+$/.test(username);
+    return username.length >= 2 && username.length <= 20 && /^[一-龥a-zA-Z0-9_-]+$/.test(username);
 }
 
 function validatePassword(password) {
-    return password.length >= 6;
+    return password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password);
 }
 
 // 显示错误信息
@@ -188,7 +188,7 @@ function handleRegister() {
         
         // 验证用户名
         if (!validateUsername(username)) {
-            showError('usernameError', '用户名必须为3-20位字母、数字或下划线');
+            showError('usernameError', '用户名为2-20位，支持中文、字母、数字、下划线和连字符');
             isValid = false;
         }
         
@@ -200,7 +200,7 @@ function handleRegister() {
         
         // 验证密码
         if (!validatePassword(password)) {
-            showError('passwordError', '密码至少6位字符');
+            showError('passwordError', '密码至少8位，需包含大写字母、小写字母和数字');
             isValid = false;
         }
         
@@ -321,18 +321,18 @@ function handleLogin() {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        const email = document.getElementById('email').value.trim();
+        const account = document.getElementById('account').value.trim();
         const password = document.getElementById('password').value;
         const rememberMe = document.getElementById('rememberMe').checked;
-        
+
         let isValid = true;
-        
+
         // 清除所有错误
-        ['emailError', 'passwordError'].forEach(id => clearError(id));
-        
-        // 验证邮箱
-        if (!validateEmail(email)) {
-            showError('emailError', '请输入有效的邮箱地址');
+        ['accountError', 'passwordError'].forEach(id => clearError(id));
+
+        // 验证账号（邮箱或用户名）
+        if (!account) {
+            showError('accountError', '请输入邮箱或用户名');
             isValid = false;
         }
         
@@ -359,7 +359,7 @@ function handleLogin() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ account, password })
             });
             
             const data = await response.json();
@@ -408,8 +408,8 @@ function handleLogin() {
                 }));
             } else {
                 // 显示错误信息
-                if (data.error.includes('邮箱') || data.error.includes('密码')) {
-                    showError('emailError', data.error);
+                if (data.error.includes('账号') || data.error.includes('邮箱') || data.error.includes('密码')) {
+                    showError('accountError', data.error);
                     showError('passwordError', data.error);
                 } else {
                     window.toast ? toast.error(data.error || '登录失败，请重试') : alert(data.error || '登录失败，请重试');

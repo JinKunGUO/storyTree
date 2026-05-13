@@ -5,7 +5,7 @@
 import http from '@/utils/request'
 
 export interface LoginParams {
-  email: string
+  account: string
   password: string
 }
 

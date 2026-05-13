@@ -293,10 +293,12 @@ router.post('/register', registerLimiter, async (req, res) => {
 
 // 用户登录
 router.post('/login', loginLimiter, async (req, res) => {
-  const { email, password } = req.body;
+  // 兼容旧字段名 email 和新字段名 account
+  const account = req.body.account || req.body.email || '';
+  const { password } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ error: '请填写邮箱和密码' });
+  if (!account || !password) {
+    return res.status(400).json({ error: '请填写账号和密码' });
   }
 
   // 获取请求信息用于日志
@@ -304,8 +306,10 @@ router.post('/login', loginLimiter, async (req, res) => {
   const userAgent = req.headers['user-agent'];
 
   try {
+    // 判断 account 是邮箱还是用户名
+    const isEmail = account.includes('@');
     const user = await prisma.users.findUnique({
-      where: { email },
+      where: isEmail ? { email: account } : { username: account },
       select: {
         id: true,
         username: true,
@@ -342,7 +346,7 @@ router.post('/login', loginLimiter, async (req, res) => {
         }
       }).catch(err => console.error('记录登录日志失败:', err));
       
-      return res.status(401).json({ error: '邮箱或密码错误' });
+      return res.status(401).json({ error: '账号或密码错误' });
     }
 
     const isPasswordValid = await verifyPassword(password, user.password!);
@@ -359,7 +363,7 @@ router.post('/login', loginLimiter, async (req, res) => {
         }
       }).catch(err => console.error('记录登录日志失败:', err));
 
-      return res.status(401).json({ error: '邮箱或密码错误' });
+      return res.status(401).json({ error: '账号或密码错误' });
     }
 
     // 检查用户是否被封禁

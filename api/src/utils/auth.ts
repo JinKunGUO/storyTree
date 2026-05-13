@@ -305,14 +305,14 @@ export function isValidPassword(password: string): { valid: boolean; message?: s
 
 // 验证用户名格式
 export function isValidUsername(username: string): { valid: boolean; message?: string } {
-  if (username.length < 3) {
-    return { valid: false, message: '用户名长度至少为3位' };
+  if (username.length < 2) {
+    return { valid: false, message: '用户名长度至少为2位' };
   }
   if (username.length > 20) {
     return { valid: false, message: '用户名长度不能超过20位' };
   }
-  if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
-    return { valid: false, message: '用户名只能包含字母、数字、下划线和连字符' };
+  if (!/^[一-龥a-zA-Z0-9_-]+$/.test(username)) {
+    return { valid: false, message: '用户名只能包含中文、字母、数字、下划线和连字符' };
   }
   return { valid: true };
 }

@@ -670,15 +670,15 @@
                 <!-- 登录表单 -->
                 <form id="loginForm" novalidate>
 
-                    <!-- 邮箱 -->
+                    <!-- 账号 -->
                     <div class="field">
-                        <label class="field-label" for="email">邮箱地址</label>
+                        <label class="field-label" for="account">邮箱或用户名</label>
                         <div class="field-wrap">
-                            <svg class="field-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                            <input class="field-input" type="email" id="email" name="email"
-                                   placeholder="your@email.com" autocomplete="email" required>
+                            <svg class="field-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            <input class="field-input" type="text" id="account" name="account"
+                                   placeholder="请输入邮箱或用户名" autocomplete="username" required>
                         </div>
-                        <span class="field-error" id="emailError" role="alert"></span>
+                        <span class="field-error" id="accountError" role="alert"></span>
                     </div>
 
                     <!-- 密码 -->
@@ -767,7 +767,7 @@
 
         // 表单错误样式联动
         (function () {
-            ['email', 'password'].forEach(function (id) {
+            ['account', 'password'].forEach(function (id) {
                 const input = document.getElementById(id);
                 const error = document.getElementById(id + 'Error');
                 if (!input || !error) return;
