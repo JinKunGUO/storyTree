@@ -17,37 +17,12 @@
       }
     },
     {
-      "path": "pages/create/index",
-      "style": {
-        "navigationBarTitleText": "创作",
-        "navigationBarBackgroundColor": "#1a1a2e",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
       "path": "pages/write/index",
       "style": {
         "navigationBarTitleText": "写作",
         "navigationBarBackgroundColor": "#1a1a2e",
         "navigationBarTextStyle": "white",
         "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/write/editor",
-      "style": {
-        "navigationBarTitleText": "写作",
-        "navigationBarBackgroundColor": "#1a1a2e",
-        "navigationBarTextStyle": "white",
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/notifications/index",
-      "style": {
-        "navigationBarTitleText": "消息",
-        "navigationBarBackgroundColor": "#1a1a2e",
-        "navigationBarTextStyle": "white"
       }
     },
     {
@@ -59,106 +34,6 @@
       }
     },
     {
-      "path": "pages/profile/stories",
-      "style": {
-        "navigationBarTitleText": "我的故事",
-        "navigationBarBackgroundColor": "#1a1a2e",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
-      "path": "pages/profile/nodes",
-      "style": {
-        "navigationBarTitleText": "我写的章节",
-        "navigationBarBackgroundColor": "#1a1a2e",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
-      "path": "pages/profile/bookmarks",
-      "style": {
-        "navigationBarTitleText": "我的收藏",
-        "navigationBarBackgroundColor": "#1a1a2e",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
-      "path": "pages/profile/following",
-      "style": {
-        "navigationBarTitleText": "我的追更",
-        "navigationBarBackgroundColor": "#1a1a2e",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
-      "path": "pages/profile/followed-authors",
-      "style": {
-        "navigationBarTitleText": "关注的作者",
-        "navigationBarBackgroundColor": "#1a1a2e",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
-      "path": "pages/profile/edit",
-      "style": {
-        "navigationBarTitleText": "编辑资料",
-        "navigationBarBackgroundColor": "#1a1a2e",
-        "navigationBarTextStyle": "white",
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/auth/login/index",
-      "style": {
-        "navigationBarTitleText": "登录",
-        "navigationBarBackgroundColor": "#1a1a2e",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
-      "path": "pages/auth/register/index",
-      "style": {
-        "navigationBarTitleText": "注册",
-        "navigationBarBackgroundColor": "#1a1a2e",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
-      "path": "pages/story/index",
-      "style": {
-        "navigationBarTitleText": "故事详情",
-        "navigationBarBackgroundColor": "#1a1a2e",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
-      "path": "pages/story/create",
-      "style": {
-        "navigationBarTitleText": "新建故事",
-        "navigationBarBackgroundColor": "#1a1a2e",
-        "navigationBarTextStyle": "white",
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/story/manage",
-      "style": {
-        "navigationBarTitleText": "管理故事",
-        "navigationBarBackgroundColor": "#1a1a2e",
-        "navigationBarTextStyle": "white",
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/chapter/index",
-      "style": {
-        "navigationBarTitleText": "阅读",
-        "navigationBarBackgroundColor": "#1a1a2e",
-        "navigationBarTextStyle": "white",
-        "navigationStyle": "custom"
-      }
-    },
-    {
       "path": "pages/search/index",
       "style": {
         "navigationBarTitleText": "搜索",
@@ -167,62 +42,232 @@
       }
     },
     {
-      "path": "pages/membership/index",
+      "path": "pages/notifications/index",
       "style": {
-        "navigationBarTitleText": "会员中心",
-        "navigationBarBackgroundColor": "#1a1a2e",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
-      "path": "pages/points/index",
-      "style": {
-        "navigationBarTitleText": "积分中心",
-        "navigationBarBackgroundColor": "#1a1a2e",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
-      "path": "pages/checkin/index",
-      "style": {
-        "navigationBarTitleText": "每日签到",
-        "navigationBarBackgroundColor": "#1a1a2e",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
-      "path": "pages/invite/index",
-      "style": {
-        "navigationBarTitleText": "邀请好友",
-        "navigationBarBackgroundColor": "#1a1a2e",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
-      "path": "pages/about/index",
-      "style": {
-        "navigationBarTitleText": "关于我们",
-        "navigationBarBackgroundColor": "#1a1a2e",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
-      "path": "pages/about/privacy",
-      "style": {
-        "navigationBarTitleText": "隐私政策",
-        "navigationBarBackgroundColor": "#1a1a2e",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
-      "path": "pages/about/user-agreement",
-      "style": {
-        "navigationBarTitleText": "用户协议",
+        "navigationBarTitleText": "消息",
         "navigationBarBackgroundColor": "#1a1a2e",
         "navigationBarTextStyle": "white"
       }
     }
   ],
+  "subPackages": [
+    {
+      "root": "pkgStory",
+      "pages": [
+        {
+          "path": "pages/story/index",
+          "style": {
+            "navigationBarTitleText": "故事详情",
+            "navigationBarBackgroundColor": "#1a1a2e",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "pages/story/create",
+          "style": {
+            "navigationBarTitleText": "新建故事",
+            "navigationBarBackgroundColor": "#1a1a2e",
+            "navigationBarTextStyle": "white",
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "pages/story/manage",
+          "style": {
+            "navigationBarTitleText": "管理故事",
+            "navigationBarBackgroundColor": "#1a1a2e",
+            "navigationBarTextStyle": "white",
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "pages/chapter/index",
+          "style": {
+            "navigationBarTitleText": "阅读",
+            "navigationBarBackgroundColor": "#1a1a2e",
+            "navigationBarTextStyle": "white",
+            "navigationStyle": "custom"
+          }
+        }
+      ]
+    },
+    {
+      "root": "pkgWrite",
+      "pages": [
+        {
+          "path": "pages/create/index",
+          "style": {
+            "navigationBarTitleText": "创作",
+            "navigationBarBackgroundColor": "#1a1a2e",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "pages/write/editor",
+          "style": {
+            "navigationBarTitleText": "写作",
+            "navigationBarBackgroundColor": "#1a1a2e",
+            "navigationBarTextStyle": "white",
+            "navigationStyle": "custom"
+          }
+        }
+      ]
+    },
+    {
+      "root": "pkgProfile",
+      "pages": [
+        {
+          "path": "pages/profile/stories",
+          "style": {
+            "navigationBarTitleText": "我的故事",
+            "navigationBarBackgroundColor": "#1a1a2e",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "pages/profile/nodes",
+          "style": {
+            "navigationBarTitleText": "我写的章节",
+            "navigationBarBackgroundColor": "#1a1a2e",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "pages/profile/bookmarks",
+          "style": {
+            "navigationBarTitleText": "我的收藏",
+            "navigationBarBackgroundColor": "#1a1a2e",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "pages/profile/following",
+          "style": {
+            "navigationBarTitleText": "我的追更",
+            "navigationBarBackgroundColor": "#1a1a2e",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "pages/profile/followed-authors",
+          "style": {
+            "navigationBarTitleText": "关注的作者",
+            "navigationBarBackgroundColor": "#1a1a2e",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "pages/profile/edit",
+          "style": {
+            "navigationBarTitleText": "编辑资料",
+            "navigationBarBackgroundColor": "#1a1a2e",
+            "navigationBarTextStyle": "white",
+            "navigationStyle": "custom"
+          }
+        }
+      ]
+    },
+    {
+      "root": "pkgAuth",
+      "pages": [
+        {
+          "path": "pages/auth/login/index",
+          "style": {
+            "navigationBarTitleText": "登录",
+            "navigationBarBackgroundColor": "#1a1a2e",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "pages/auth/register/index",
+          "style": {
+            "navigationBarTitleText": "注册",
+            "navigationBarBackgroundColor": "#1a1a2e",
+            "navigationBarTextStyle": "white"
+          }
+        }
+      ]
+    },
+    {
+      "root": "pkgMisc",
+      "pages": [
+        {
+          "path": "pages/membership/index",
+          "style": {
+            "navigationBarTitleText": "会员中心",
+            "navigationBarBackgroundColor": "#1a1a2e",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "pages/points/index",
+          "style": {
+            "navigationBarTitleText": "积分中心",
+            "navigationBarBackgroundColor": "#1a1a2e",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "pages/checkin/index",
+          "style": {
+            "navigationBarTitleText": "每日签到",
+            "navigationBarBackgroundColor": "#1a1a2e",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "pages/invite/index",
+          "style": {
+            "navigationBarTitleText": "邀请好友",
+            "navigationBarBackgroundColor": "#1a1a2e",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "pages/about/index",
+          "style": {
+            "navigationBarTitleText": "关于我们",
+            "navigationBarBackgroundColor": "#1a1a2e",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "pages/about/privacy",
+          "style": {
+            "navigationBarTitleText": "隐私政策",
+            "navigationBarBackgroundColor": "#1a1a2e",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "pages/about/user-agreement",
+          "style": {
+            "navigationBarTitleText": "用户协议",
+            "navigationBarBackgroundColor": "#1a1a2e",
+            "navigationBarTextStyle": "white"
+          }
+        }
+      ]
+    }
+  ],
+  "preloadRule": {
+    "pages/index/index": {
+      "network": "all",
+      "packages": ["pkgStory"]
+    },
+    "pages/discover/index": {
+      "network": "all",
+      "packages": ["pkgStory"]
+    },
+    "pages/profile/index": {
+      "network": "all",
+      "packages": ["pkgProfile"]
+    },
+    "pages/write/index": {
+      "network": "all",
+      "packages": ["pkgWrite"]
+    }
+  },
   "globalStyle": {
     "navigationBarTextStyle": "white",
     "navigationBarTitleText": "StoryTree",
@@ -271,15 +316,14 @@
       },
       {
         "name": "故事详情",
-        "path": "pages/story/index",
+        "path": "pkgStory/pages/story/index",
         "query": "id=1"
       },
       {
         "name": "章节阅读",
-        "path": "pages/chapter/index",
+        "path": "pkgStory/pages/chapter/index",
         "query": "id=1"
       }
     ]
   }
 }
-

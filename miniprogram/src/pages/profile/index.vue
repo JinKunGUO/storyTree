@@ -212,7 +212,7 @@ async function checkCheckin() {
 }
 
 function goLogin() {
-  uni.navigateTo({ url: '/pages/auth/login/index' })
+  uni.navigateTo({ url: '/pkgAuth/pages/auth/login/index' })
 }
 
 function changeAvatar() {
@@ -237,19 +237,19 @@ function changeAvatar() {
 }
 
 function goEditProfile() {
-  uni.navigateTo({ url: '/pages/profile/edit' })
+  uni.navigateTo({ url: '/pkgProfile/pages/profile/edit' })
 }
 
 function goCheckin() {
-  uni.navigateTo({ url: '/pages/checkin/index' })
+  uni.navigateTo({ url: '/pkgMisc/pages/checkin/index' })
 }
 
 function goPoints() {
-  uni.navigateTo({ url: '/pages/points/index' })
+  uni.navigateTo({ url: '/pkgMisc/pages/points/index' })
 }
 
 function goMembership() {
-  uni.navigateTo({ url: '/pages/membership/index' })
+  uni.navigateTo({ url: '/pkgMisc/pages/membership/index' })
 }
 
 function goNotifications() {
@@ -257,19 +257,19 @@ function goNotifications() {
 }
 
 function goMyStories() {
-  uni.navigateTo({ url: `/pages/profile/stories?userId=${userStore.userInfo?.id}` })
+  uni.navigateTo({ url: `/pkgProfile/pages/profile/stories?userId=${userStore.userInfo?.id}` })
 }
 
 function goMyNodes() {
-  uni.navigateTo({ url: '/pages/profile/nodes' })
+  uni.navigateTo({ url: '/pkgProfile/pages/profile/nodes' })
 }
 
 function goFollowing() {
-  uni.navigateTo({ url: '/pages/profile/following' })
+  uni.navigateTo({ url: '/pkgProfile/pages/profile/following' })
 }
 
 function goFollowedAuthors() {
-  uni.navigateTo({ url: '/pages/profile/followed-authors' })
+  uni.navigateTo({ url: '/pkgProfile/pages/profile/followed-authors' })
 }
 
 function goChangePassword() {
@@ -281,11 +281,11 @@ function goNotificationSettings() {
 }
 
 function goAbout() {
-  uni.navigateTo({ url: '/pages/about/index' })
+  uni.navigateTo({ url: '/pkgMisc/pages/about/index' })
 }
 
 function goInvite() {
-  uni.navigateTo({ url: '/pages/invite/index' })
+  uni.navigateTo({ url: '/pkgMisc/pages/invite/index' })
 }
 
 function goClearCache() {

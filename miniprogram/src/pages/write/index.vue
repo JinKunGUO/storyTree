@@ -177,7 +177,7 @@ async function loadStories() {
 
 function openDraft(draft: DraftNode) {
   uni.navigateTo({
-    url: `/pages/write/editor?draftNodeId=${draft.id}`,
+    url: `/pkgWrite/pages/write/editor?draftNodeId=${draft.id}`,
   })
 }
 
@@ -202,31 +202,31 @@ function deleteDraft(draft: DraftNode) {
 }
 
 function goCreateStory() {
-  uni.navigateTo({ url: '/pages/story/create' })
+  uni.navigateTo({ url: '/pkgStory/pages/story/create' })
 }
 
 function goStory(id: number) {
-  uni.navigateTo({ url: `/pages/story/index?id=${id}` })
+  uni.navigateTo({ url: `/pkgStory/pages/story/index?id=${id}` })
 }
 
 async function continueStory(story: Story) {
   if (!story.root_node_id) {
     // 还没有章节，直接写第一章
     uni.navigateTo({
-      url: `/pages/write/editor?storyId=${story.id}&storyTitle=${encodeURIComponent(story.title)}`,
+      url: `/pkgWrite/pages/write/editor?storyId=${story.id}&storyTitle=${encodeURIComponent(story.title)}`,
     })
     return
   }
   // 有章节，直接跳转到故事树让用户选择续写节点
-  uni.navigateTo({ url: `/pages/story/index?id=${story.id}` })
+  uni.navigateTo({ url: `/pkgStory/pages/story/index?id=${story.id}` })
 }
 
 function manageStory(id: number) {
-  uni.navigateTo({ url: `/pages/story/manage?id=${id}` })
+  uni.navigateTo({ url: `/pkgStory/pages/story/manage?id=${id}` })
 }
 
 function goLogin() {
-  uni.navigateTo({ url: '/pages/auth/login/index' })
+  uni.navigateTo({ url: '/pkgAuth/pages/auth/login/index' })
 }
 
 function formatTime(dateStr: string): string {

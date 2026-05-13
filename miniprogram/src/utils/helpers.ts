@@ -178,7 +178,7 @@ export function navigateToLogin(): void {
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1]
   const redirect = encodeURIComponent(`/${currentPage.route}`)
-  uni.navigateTo({ url: `/pages/auth/login/index?redirect=${redirect}` })
+  uni.navigateTo({ url: `/pkgAuth/pages/auth/login/index?redirect=${redirect}` })
 }
 
 /**

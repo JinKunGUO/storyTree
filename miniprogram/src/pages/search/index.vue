@@ -193,7 +193,7 @@ function clearSearch() {
 }
 
 function goStory(id: number) {
-  uni.navigateTo({ url: `/pages/story/index?id=${id}` })
+  uni.navigateTo({ url: `/pkgStory/pages/story/index?id=${id}` })
 }
 
 function goBack() {

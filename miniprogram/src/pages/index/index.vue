@@ -567,14 +567,14 @@ function goSearch() {
 
 function goCheckin() {
   if (!userStore.isLoggedIn) {
-    uni.navigateTo({ url: '/pages/auth/login/index' })
+    uni.navigateTo({ url: '/pkgAuth/pages/auth/login/index' })
     return
   }
-  uni.navigateTo({ url: '/pages/checkin/index' })
+  uni.navigateTo({ url: '/pkgMisc/pages/checkin/index' })
 }
 
 function goLogin() {
-  uni.navigateTo({ url: '/pages/auth/login/index' })
+  uni.navigateTo({ url: '/pkgAuth/pages/auth/login/index' })
 }
 
 function goDiscover(sort: 'popular' | 'collab' | 'latest' = 'popular') {
@@ -584,11 +584,11 @@ function goDiscover(sort: 'popular' | 'collab' | 'latest' = 'popular') {
 }
 
 function goStory(id: number) {
-  uni.navigateTo({ url: `/pages/story/index?id=${id}` })
+  uni.navigateTo({ url: `/pkgStory/pages/story/index?id=${id}` })
 }
 
 function goChapter(id: number) {
-  uni.navigateTo({ url: `/pages/chapter/index?id=${id}` })
+  uni.navigateTo({ url: `/pkgStory/pages/chapter/index?id=${id}` })
 }
 </script>
 

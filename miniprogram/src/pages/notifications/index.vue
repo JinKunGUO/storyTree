@@ -65,6 +65,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useAppStore } from '@/store/app'
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '@/api/users'
 import { formatRelativeTime } from '@/utils/helpers'
+import { resolveSubpackagePath } from '@/utils/routes'
 import type { Notification } from '@/api/users'
 
 const appStore = useAppStore()
@@ -158,7 +159,9 @@ async function handleNotificationTap(item: Notification) {
       if (tabBarPages.includes(miniUrl.split('?')[0])) {
         uni.switchTab({ url: miniUrl.split('?')[0] })
       } else {
-        uni.navigateTo({ url: miniUrl })
+        // 分包后路径可能需要映射
+        const resolvedUrl = resolveSubpackagePath(miniUrl)
+        uni.navigateTo({ url: resolvedUrl })
       }
     }
   }
@@ -197,7 +200,7 @@ function convertLinkToMiniUrl(link: string): string | null {
   // 处理路径参数格式：/node/:id → 章节页
   const nodePathMatch = path.match(/^\/node\/(\d+)$/)
   if (nodePathMatch) {
-    return `/pages/chapter/index?id=${nodePathMatch[1]}`
+    return `/pkgStory/pages/chapter/index?id=${nodePathMatch[1]}`
   }
 
   // 后端评论通知格式：/story.html?id=X&node=Y 或 /story?id=X&node=Y
@@ -206,10 +209,10 @@ function convertLinkToMiniUrl(link: string): string | null {
     const nodeId = qsMap['node']
     const storyId = qsMap['id']
     if (nodeId) {
-      return `/pages/chapter/index?id=${nodeId}`
+      return `/pkgStory/pages/chapter/index?id=${nodeId}`
     }
     if (storyId) {
-      return `/pages/story/index?id=${storyId}`
+      return `/pkgStory/pages/story/index?id=${storyId}`
     }
     return null
   }
@@ -218,7 +221,7 @@ function convertLinkToMiniUrl(link: string): string | null {
   if (path === '/chapter') {
     const chapterId = qsMap['id']
     if (chapterId) {
-      return `/pages/chapter/index?id=${chapterId}`
+      return `/pkgStory/pages/chapter/index?id=${chapterId}`
     }
     return null
   }
@@ -231,16 +234,16 @@ function convertLinkToMiniUrl(link: string): string | null {
 
   // 路由映射表
   const map: Record<string, string> = {
-    '/story-settings':  '/pages/story/manage',
+    '/story-settings':  '/pkgStory/pages/story/manage',
     '/profile':         '/pages/profile/index',
-    '/checkin':         '/pages/checkin/index',
-    '/points':          '/pages/points/index',
-    '/membership':      '/pages/membership/index',
+    '/checkin':         '/pkgMisc/pages/checkin/index',
+    '/points':          '/pkgMisc/pages/points/index',
+    '/membership':      '/pkgMisc/pages/membership/index',
     '/notifications':   '/pages/notifications/index',
     '/write':           '/pages/write/index',
-    '/create':          '/pages/create/index',
+    '/create':          '/pkgWrite/pages/create/index',
     '/discover':        '/pages/discover/index',
-    '/invite':          '/pages/invite/index',
+    '/invite':          '/pkgMisc/pages/invite/index',
     '/search':          '/pages/search/index',
   }
 

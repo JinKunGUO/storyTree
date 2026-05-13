@@ -95,7 +95,7 @@ function request<T = unknown>(options: RequestOptions): Promise<T> {
               showCancel: false,
               confirmText: '重新登录',
               success: () => {
-                uni.reLaunch({ url: '/pages/auth/login/index' })
+                uni.reLaunch({ url: '/pkgAuth/pages/auth/login/index' })
               }
             })
             reject(new Error(isKicked ? '账号已在其他设备登录' : '登录已过期，请重新登录'))
