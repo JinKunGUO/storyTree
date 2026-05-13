@@ -76,7 +76,7 @@
         >
           <image
             class="result-cover"
-            :src="getImageUrl(story.cover_image) || '/static/images/default-cover.svg'"
+            :src="getImageUrl(story.cover_image) || '/static/images/default-cover.png'"
             mode="aspectFill"
           />
           <view class="result-info">

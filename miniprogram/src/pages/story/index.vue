@@ -27,7 +27,7 @@
       <view class="cover-section">
         <image
           class="cover-bg"
-          :src="getImageUrl(story.cover_image) || '/static/images/default-cover.svg'"
+          :src="getImageUrl(story.cover_image) || '/static/images/default-cover.png'"
           mode="aspectFill"
         />
         <view class="cover-overlay" />
@@ -52,7 +52,7 @@
           <view class="story-meta">
             <image
               class="author-avatar"
-              :src="getImageUrl(story.author.avatar) || '/static/images/default-avatar.svg'"
+              :src="getImageUrl(story.author.avatar) || '/static/images/default-avatar.png'"
               mode="aspectFill"
             />
             <text class="author-name">{{ story.author.username }}</text>
@@ -173,7 +173,7 @@
             >
               <image
                 class="collab-avatar"
-                :src="getImageUrl(c.avatar) || '/static/images/default-avatar.svg'"
+                :src="getImageUrl(c.avatar) || '/static/images/default-avatar.png'"
                 mode="aspectFill"
               />
               <text class="collab-name">{{ c.username }}</text>
@@ -443,7 +443,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, defineAsyncComponent } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
 import { getStory, followStory, unfollowStory, applyCollaboration, leaveCollaboration } from '@/api/stories'
@@ -457,8 +457,7 @@ import type { Node } from '@/api/nodes'
 import type { AiWritingStyle, AiSurpriseTime } from '@/api/ai'
 import { mpWsClient } from '@/utils/ws-client'
 
-// 懒加载 TreeChart 组件（弹窗内使用，减少首屏加载体积）
-const TreeChart = defineAsyncComponent(() => import('@/components/tree-chart/index.vue'))
+import TreeChart from '@/components/tree-chart/index.vue'
 
 const userStore = useUserStore()
 
@@ -482,12 +481,40 @@ const statusBarHeight = _sbh || 20
 // 如果在这里也减，会造成"双重减法"，canvas 高度被过度压缩，导致上方白色遮挡和下方溢出。
 const treeModalHeight = windowHeight - statusBarHeight - 44
 
+// 记录打开树状图弹窗前的页面滚动位置，关闭时恢复
+let _savedScrollTop = 0
+
 function openTreeModal() {
+  // 微信小程序原生 canvas 的渲染位置基于页面文档流 + 滚动偏移，
+  // 即使弹窗用 position:fixed，canvas 仍会按页面滚动位置渲染，
+  // 导致滚动后弹窗内 canvas 上方出现空白遮挡。
+  // 解决方案：打开弹窗前先将页面滚动到顶部，使 canvas 对齐视口。
+  // 先通过 onPageScroll 记录的值或 viewport 查询获取当前滚动位置，
+  // 再滚动到顶部，最后显示弹窗。
+  _savedScrollTop = 0
+  uni.createSelectorQuery()
+    .selectViewport()
+    .scrollOffset((res: any) => {
+      _savedScrollTop = res?.scrollTop || 0
+      // 在回调中确保先拿到滚动位置，再滚动到顶部
+      uni.pageScrollTo({ scrollTop: 0, duration: 0 })
+    })
+    .exec()
+
   showTreeModal.value = true
+  // 关键修复：等待弹窗动画和 canvas 初始化完成后，刷新 canvas 坐标系
+  // 微信原生 canvas 的坐标系是相对于视口的，页面滚动后需要重新计算
+  setTimeout(() => {
+    treeChartRef.value?.refresh()
+  }, 500)
 }
 
 function closeTreeModal() {
   showTreeModal.value = false
+  // 恢复打开弹窗前的滚动位置
+  if (_savedScrollTop > 0) {
+    uni.pageScrollTo({ scrollTop: _savedScrollTop, duration: 0 })
+  }
 }
 
 // 弹窗外层 view 的 touchmove 拦截器

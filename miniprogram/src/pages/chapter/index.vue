@@ -47,7 +47,7 @@
         <view class="author-row">
           <image
             class="author-avatar"
-            :src="getImageUrl(node.author.avatar) || '/static/images/default-avatar.svg'"
+            :src="getImageUrl(node.author.avatar) || '/static/images/default-avatar.png'"
             mode="aspectFill"
           />
           <text class="author-name" :style="{ color: subTextColors[settings.theme] }">
@@ -120,7 +120,7 @@
           </view>
 
           <!-- 多个后续节点：点击展开全屏分支图 -->
-          <view v-else class="branch-chart-trigger" @tap="showBranchChart = true">
+          <view v-else class="branch-chart-trigger" @tap="openBranchChart">
             <view class="bct-left">
               <text class="bct-icon">🌿</text>
               <view class="bct-info">
@@ -188,7 +188,7 @@
           <view v-for="comment in comments" :key="comment.id" class="comment-item">
             <image
               class="comment-avatar"
-              :src="getImageUrl(comment.user.avatar) || '/static/images/default-avatar.svg'"
+              :src="getImageUrl(comment.user.avatar) || '/static/images/default-avatar.png'"
               mode="aspectFill"
             />
             <view class="comment-content">
@@ -373,7 +373,7 @@
     <!-- @touchmove.stop.prevent：阻止弹窗内 touch 事件冒泡到页面层，防止页面被意外滚动 -->
     <view v-if="showBranchChart" class="branch-chart-mask" @touchmove.stop.prevent="onBranchChartTouchMove">
       <!-- 遮罩背景区域：点击关闭 -->
-      <view class="branch-chart-mask-bg" @tap="showBranchChart = false" />
+      <view class="branch-chart-mask-bg" @tap="closeBranchChart" />
       <!-- 面板主体：阻止事件冒泡到遮罩 -->
       <view class="branch-chart-panel" @tap.stop>
         <!-- 面板头部 -->
@@ -381,7 +381,7 @@
           <view class="bcp-handle" />
           <view class="bcp-title-row">
             <text class="bcp-title">故事分支图</text>
-            <view class="bcp-close" @tap="showBranchChart = false">
+            <view class="bcp-close" @tap="closeBranchChart">
               <text class="bcp-close-icon">×</text>
             </view>
           </view>
@@ -402,8 +402,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
-import { onLoad, onShareAppMessage, defineAsyncComponent } from '@dcloudio/uni-app'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { onLoad, onShareAppMessage } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
 import { useAppStore } from '@/store/app'
 import { getNode, rateNode, bookmarkNode, unbookmarkNode, incrementReadCount, buildSubTree, getStoryNodes } from '@/api/nodes'
@@ -413,9 +413,8 @@ import { getImageUrl } from '@/utils/request'
 import type { Node } from '@/api/nodes'
 import type { Comment } from '@/api/comments'
 
-// 懒加载大型组件（减少首屏加载体积）
-const AiPanel = defineAsyncComponent(() => import('@/components/ai-panel/index.vue'))
-const TreeChart = defineAsyncComponent(() => import('@/components/tree-chart/index.vue'))
+import AiPanel from '@/components/ai-panel/index.vue'
+import TreeChart from '@/components/tree-chart/index.vue'
 
 const userStore = useUserStore()
 const appStore = useAppStore()
@@ -615,6 +614,34 @@ function onBranchChartTouchMove(e: any) {
   if (typeof e.preventDefault === 'function') e.preventDefault()
 }
 
+// 记录打开分支图弹窗前的页面滚动位置，关闭时恢复
+let _branchSavedScrollTop = 0
+
+function openBranchChart() {
+  // 微信小程序原生 canvas 的渲染位置基于页面文档流 + 滚动偏移，
+  // 即使弹窗用 position:fixed，canvas 仍会按页面滚动位置渲染，
+  // 导致滚动后弹窗内 canvas 上方出现空白遮挡。
+  // 解决方案：打开弹窗前先将页面滚动到顶部，使 canvas 对齐视口。
+  _branchSavedScrollTop = 0
+  uni.createSelectorQuery()
+    .selectViewport()
+    .scrollOffset((res: any) => {
+      _branchSavedScrollTop = res?.scrollTop || 0
+      // 在回调中确保先拿到滚动位置，再滚动到顶部
+      uni.pageScrollTo({ scrollTop: 0, duration: 0 })
+    })
+    .exec()
+  showBranchChart.value = true
+}
+
+function closeBranchChart() {
+  showBranchChart.value = false
+  // 恢复打开弹窗前的滚动位置
+  if (_branchSavedScrollTop > 0) {
+    uni.pageScrollTo({ scrollTop: _branchSavedScrollTop, duration: 0 })
+  }
+}
+
 async function toggleBookmark() {
   if (!userStore.isLoggedIn) {
     uni.navigateTo({ url: '/pages/auth/login/index' })
@@ -741,11 +768,12 @@ function goChapter(id: number) {
 }
 
 function onBranchNodeTap(id: number) {
+  // 先关闭分支图面板，再跳转。用 nextTick 确保面板关闭动画开始后再跳转，
+  // 避免在 canvas 异步操作进行中销毁页面导致 webviewId 找不到
   showBranchChart.value = false
-  // 用 redirectTo 替换当前页，避免页面栈超限；延迟让面板关闭后再跳转
-  setTimeout(() => {
+  nextTick(() => {
     uni.redirectTo({ url: `/pages/chapter/index?id=${id}` })
-  }, 150)
+  })
 }
 
 function writeBranch() {

@@ -134,7 +134,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { onLoad, onHide, onUnload } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
 import { createNode, updateNode, getNode, createDraftNode, updateDraftNode, publishNode } from '@/api/nodes'
@@ -142,8 +142,7 @@ import { getAiV2Quota } from '@/api/ai'
 import { http } from '@/utils/request'
 import type { Node } from '@/api/nodes'
 
-// 懒加载 AI 面板组件（减少首屏加载体积）
-const AiPanel = defineAsyncComponent(() => import('@/components/ai-panel/index.vue'))
+import AiPanel from '@/components/ai-panel/index.vue'
 
 const userStore = useUserStore()
 

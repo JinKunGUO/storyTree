@@ -59,7 +59,7 @@
           <view class="banner-item">
             <image
               class="banner-img"
-              :src="getImageUrl(story.cover_image) || '/static/images/default-cover.svg'"
+              :src="getImageUrl(story.cover_image) || '/static/images/default-cover.png'"
               mode="aspectFill"
             />
             <view class="banner-overlay">
@@ -127,7 +127,7 @@
             >
               <image
                 class="h-cover"
-                :src="getImageUrl(story.cover_image) || '/static/images/default-cover.svg'"
+                :src="getImageUrl(story.cover_image) || '/static/images/default-cover.png'"
                 mode="aspectFill"
               />
               <view class="h-info">
@@ -173,7 +173,7 @@
           >
             <image
               class="collab-cover"
-              :src="getImageUrl(story.cover_image) || '/static/images/default-cover.svg'"
+              :src="getImageUrl(story.cover_image) || '/static/images/default-cover.png'"
               mode="aspectFill"
             />
             <view class="collab-info">
@@ -218,7 +218,7 @@
           >
             <image
               class="latest-cover"
-              :src="getImageUrl(story.cover_image) || '/static/images/default-cover.svg'"
+              :src="getImageUrl(story.cover_image) || '/static/images/default-cover.png'"
               mode="aspectFill"
             />
             <view class="latest-info">
@@ -309,7 +309,7 @@
               >
                 <image
                   class="story-cover"
-                  :src="getImageUrl(item.story.cover_image) || '/static/images/default-cover.svg'"
+                  :src="getImageUrl(item.story.cover_image) || '/static/images/default-cover.png'"
                   mode="aspectFill"
                 />
                 <view class="story-info">

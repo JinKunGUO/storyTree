@@ -73,7 +73,7 @@
         <view v-for="record in records" :key="record.id" class="record-item">
           <image
             class="invitee-avatar"
-            :src="getImageUrl(record.invitee?.avatar) || '/static/images/default-avatar.svg'"
+            :src="getImageUrl(record.invitee?.avatar) || '/static/images/default-avatar.png'"
             mode="aspectFill"
           />
           <view class="record-info">

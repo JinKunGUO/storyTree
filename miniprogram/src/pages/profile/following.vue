@@ -27,7 +27,7 @@
         >
           <image
             class="story-cover"
-            :src="getImageUrl(item.story?.cover_image || item.cover_image) || '/static/images/default-cover.svg'"
+            :src="getImageUrl(item.story?.cover_image || item.cover_image) || '/static/images/default-cover.png'"
             mode="aspectFill"
           />
           <view class="story-info">
@@ -35,7 +35,7 @@
             <view class="story-author">
               <image
                 class="author-avatar"
-                :src="getImageUrl(item.story?.author?.avatar || item.author?.avatar) || '/static/images/default-avatar.svg'"
+                :src="getImageUrl(item.story?.author?.avatar || item.author?.avatar) || '/static/images/default-avatar.png'"
                 mode="aspectFill"
               />
               <text class="author-name">{{ item.story?.author?.username || item.author?.username }}</text>

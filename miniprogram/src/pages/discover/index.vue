@@ -85,7 +85,7 @@
           <!-- 封面 -->
           <image
             class="rank-cover"
-            :src="getImageUrl(story.cover_image) || '/static/images/default-cover.svg'"
+            :src="getImageUrl(story.cover_image) || '/static/images/default-cover.png'"
             mode="aspectFill"
           />
 
@@ -95,7 +95,7 @@
             <view class="rank-author-row">
               <image
                 class="rank-avatar"
-                :src="getImageUrl(story.author.avatar) || '/static/images/default-avatar.svg'"
+                :src="getImageUrl(story.author.avatar) || '/static/images/default-avatar.png'"
                 mode="aspectFill"
               />
               <text class="rank-author">{{ story.author.username }}</text>

@@ -21,7 +21,7 @@
       >
         <image
           class="comment-avatar"
-          :src="comment.user.avatar || '/static/images/default-avatar.svg'"
+          :src="comment.user.avatar || '/static/images/default-avatar.png'"
           mode="aspectFill"
         />
         <view class="comment-body">
