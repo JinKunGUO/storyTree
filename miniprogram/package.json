@@ -7,7 +7,10 @@
     "build:mp-weixin": "uni build -p mp-weixin",
     "dev:mp-alipay": "uni -p mp-alipay",
     "build:mp-alipay": "uni build -p mp-alipay",
-    "type-check": "vue-tsc --noEmit"
+    "type-check": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-5000720260408001",
@@ -22,9 +25,11 @@
     "@dcloudio/uni-cli-shared": "3.0.0-5000720260408001",
     "@dcloudio/vite-plugin-uni": "3.0.0-5000720260408001",
     "@types/node": "^20.0.0",
+    "@vitest/coverage-v8": "^4.1.6",
     "sass": "^1.69.0",
     "typescript": "^5.3.3",
     "vite": "^5.0.0",
+    "vitest": "^3.2.4",
     "vue-tsc": "^2.0.0"
   },
   "engines": {

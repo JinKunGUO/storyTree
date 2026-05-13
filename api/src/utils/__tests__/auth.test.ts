@@ -1,0 +1,220 @@
+import { describe, it, expect, vi } from 'vitest';
+import {
+  isValidEmail,
+  isValidPassword,
+  isValidUsername,
+  hashToken,
+  generateJWT,
+  verifyJWT,
+  hashPassword,
+  verifyPassword,
+} from '../auth';
+
+// ---------------------------------------------------------------------------
+// isValidEmail
+// ---------------------------------------------------------------------------
+describe('isValidEmail', () => {
+  it('returns true for a valid email', () => {
+    expect(isValidEmail('user@example.com')).toBe(true);
+  });
+
+  it('returns true for email with subdomain', () => {
+    expect(isValidEmail('user@mail.example.co')).toBe(true);
+  });
+
+  it('returns false when @ is missing', () => {
+    expect(isValidEmail('userexample.com')).toBe(false);
+  });
+
+  it('returns false for empty string', () => {
+    expect(isValidEmail('')).toBe(false);
+  });
+
+  it('returns false when spaces are present', () => {
+    expect(isValidEmail('user @example.com')).toBe(false);
+  });
+
+  it('returns false when domain has no dot', () => {
+    expect(isValidEmail('user@domain')).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isValidPassword
+// ---------------------------------------------------------------------------
+describe('isValidPassword', () => {
+  it('returns valid for a strong password', () => {
+    const result = isValidPassword('Abc12345');
+    expect(result.valid).toBe(true);
+    expect(result.message).toBeUndefined();
+  });
+
+  it('returns invalid when too short', () => {
+    const result = isValidPassword('Ab1');
+    expect(result.valid).toBe(false);
+    expect(result.message).toContain('8');
+  });
+
+  it('returns invalid when no uppercase letter', () => {
+    const result = isValidPassword('abc12345');
+    expect(result.valid).toBe(false);
+    expect(result.message).toContain('大写');
+  });
+
+  it('returns invalid when no lowercase letter', () => {
+    const result = isValidPassword('ABC12345');
+    expect(result.valid).toBe(false);
+    expect(result.message).toContain('小写');
+  });
+
+  it('returns invalid when no digit', () => {
+    const result = isValidPassword('Abcdefgh');
+    expect(result.valid).toBe(false);
+    expect(result.message).toContain('数字');
+  });
+
+  it('returns invalid when too long (over 128 chars)', () => {
+    const result = isValidPassword('A' + 'b'.repeat(100) + '1' + 'x'.repeat(30));
+    expect(result.valid).toBe(false);
+    expect(result.message).toContain('128');
+  });
+
+  it('accepts exactly 8 characters meeting all requirements', () => {
+    expect(isValidPassword('Abcd1234').valid).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isValidUsername
+// ---------------------------------------------------------------------------
+describe('isValidUsername', () => {
+  it('returns valid for simple alphanumeric', () => {
+    const result = isValidUsername('abc');
+    expect(result.valid).toBe(true);
+  });
+
+  it('returns valid for Chinese characters', () => {
+    const result = isValidUsername('用户名');
+    expect(result.valid).toBe(true);
+  });
+
+  it('returns valid for mixed characters with underscore and hyphen', () => {
+    const result = isValidUsername('ab_cd-ef');
+    expect(result.valid).toBe(true);
+  });
+
+  it('returns invalid when too short (1 char)', () => {
+    const result = isValidUsername('a');
+    expect(result.valid).toBe(false);
+    expect(result.message).toContain('2');
+  });
+
+  it('returns invalid when too long (21 chars)', () => {
+    const result = isValidUsername('a'.repeat(21));
+    expect(result.valid).toBe(false);
+    expect(result.message).toContain('20');
+  });
+
+  it('returns invalid for special characters', () => {
+    const result = isValidUsername('ab@cd');
+    expect(result.valid).toBe(false);
+    expect(result.message).toContain('中文');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// hashToken
+// ---------------------------------------------------------------------------
+describe('hashToken', () => {
+  it('is deterministic — same input produces same output', () => {
+    const a = hashToken('hello');
+    const b = hashToken('hello');
+    expect(a).toBe(b);
+  });
+
+  it('produces different outputs for different inputs', () => {
+    const a = hashToken('hello');
+    const b = hashToken('world');
+    expect(a).not.toBe(b);
+  });
+
+  it('returns a 64-character hex string', () => {
+    const result = hashToken('test-token');
+    expect(result).toHaveLength(64);
+    expect(result).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// generateJWT / verifyJWT
+// ---------------------------------------------------------------------------
+describe('generateJWT / verifyJWT', () => {
+  it('round-trips: verifyJWT decodes a token generated by generateJWT', () => {
+    const token = generateJWT(1, 'alice', false);
+    const decoded = verifyJWT(token);
+    expect(decoded).not.toBeNull();
+    expect(decoded!.userId).toBe(1);
+    expect(decoded!.username).toBe('alice');
+    expect(decoded!.isAdmin).toBe(false);
+  });
+
+  it('returns null for an invalid token', () => {
+    expect(verifyJWT('this-is-not-a-jwt')).toBeNull();
+  });
+
+  it('returns null for an empty token', () => {
+    expect(verifyJWT('')).toBeNull();
+  });
+
+  it('includes platform field in the token payload', () => {
+    const token = generateJWT(2, 'bob', false, 'miniprogram');
+    // Decode raw payload to check platform is included (verifyJWT strips it)
+    const parts = token.split('.');
+    const payload = JSON.parse(
+      Buffer.from(parts[1], 'base64url').toString('utf-8')
+    );
+    expect(payload.platform).toBe('miniprogram');
+  });
+
+  it('defaults isAdmin to false when not provided', () => {
+    const token = generateJWT(3, 'charlie');
+    const decoded = verifyJWT(token);
+    expect(decoded!.isAdmin).toBe(false);
+  });
+
+  it('sets isAdmin to true when passed', () => {
+    const token = generateJWT(4, 'admin', true);
+    const decoded = verifyJWT(token);
+    expect(decoded!.isAdmin).toBe(true);
+  });
+
+  it('defaults platform to "web"', () => {
+    const token = generateJWT(5, 'dave');
+    const parts = token.split('.');
+    const payload = JSON.parse(
+      Buffer.from(parts[1], 'base64url').toString('utf-8')
+    );
+    expect(payload.platform).toBe('web');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// hashPassword / verifyPassword
+// ---------------------------------------------------------------------------
+describe('hashPassword / verifyPassword', () => {
+  it('verifies correct password as true', async () => {
+    const hashed = await hashPassword('MySecret123');
+    expect(await verifyPassword('MySecret123', hashed)).toBe(true);
+  });
+
+  it('verifies wrong password as false', async () => {
+    const hashed = await hashPassword('MySecret123');
+    expect(await verifyPassword('WrongPassword', hashed)).toBe(false);
+  });
+
+  it('produces different hashes for the same password (salt)', async () => {
+    const a = await hashPassword('SamePass1');
+    const b = await hashPassword('SamePass1');
+    expect(a).not.toBe(b);
+  });
+});
