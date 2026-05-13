@@ -19,7 +19,7 @@
         <view class="cover-row" @tap="changeCover">
           <image
             class="cover-thumb"
-            :src="getImageUrl(form.cover_image) || '/static/images/default-cover.png'"
+            :src="getImageUrl(form.cover_image) || '/static/images/default-cover.jpg'"
             mode="aspectFill"
           />
           <view class="cover-info">

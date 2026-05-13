@@ -27,7 +27,7 @@
         >
           <image
             class="story-cover"
-            :src="getImageUrl(item.story?.cover_image || item.cover_image) || '/static/images/default-cover.png'"
+            :src="getImageUrl(item.story?.cover_image || item.cover_image) || '/static/images/default-cover.jpg'"
             mode="aspectFill"
           />
           <view class="story-info">

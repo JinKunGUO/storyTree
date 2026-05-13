@@ -2,7 +2,7 @@
   <view class="story-card" @tap="$emit('tap', story.id)">
     <image
       class="cover"
-      :src="story.cover_image || '/static/images/default-cover.png'"
+      :src="story.cover_image || '/static/images/default-cover.jpg'"
       mode="aspectFill"
     />
     <view class="info">

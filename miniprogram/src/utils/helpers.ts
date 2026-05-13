@@ -67,7 +67,7 @@ export function formatWordCount(count: number): string {
  * 构建图片完整 URL
  */
 export function getImageUrl(path?: string): string {
-  if (!path) return '/static/images/default-cover.png'
+  if (!path) return '/static/images/default-cover.jpg'
   if (path.startsWith('http://') || path.startsWith('https://')) return path
   if (path.startsWith('/')) return `${API_BASE_URL}${path}`
   return path

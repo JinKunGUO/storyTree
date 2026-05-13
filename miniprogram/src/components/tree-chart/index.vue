@@ -59,7 +59,7 @@
       <!-- 节点信息头部 -->
       <view class="sheet-header">
         <view class="sheet-node-icon">
-          <text>{{ sheet.isDraft ? '📝' : (sheet.isLeaf ? '🍃' : '🌿') }}</text>
+          <text class="icon-text">{{ sheet.isDraft ? '📝' : (sheet.isLeaf ? '🍃' : '🌿') }}</text>
         </view>
         <view class="sheet-node-info">
           <text class="sheet-title">{{ sheet.title }}</text>
@@ -69,7 +69,7 @@
             <view v-if="sheet.isDraft" class="sheet-draft-badge">草稿</view>
           </view>
         </view>
-        <view class="sheet-close" @tap="closeSheet"><text>×</text></view>
+        <view class="sheet-close" @tap="closeSheet"><text class="close-text">×</text></view>
       </view>
 
       <!-- 节点统计 -->
@@ -419,7 +419,7 @@ function setupChart(canvasNode: any, width?: number, height?: number) {
   const ctx = canvasNode.getContext('2d')
   const wxCanvas = new WxCanvas(ctx, 'treeCanvas', canvasNode)
 
-  echartsStatic.setCanvasCreator(() => wxCanvas)
+  echartsStatic.setPlatformAPI({ createCanvas: () => wxCanvas as any })
 
   chartInstance = echartsStatic.init(wxCanvas as any, null, {
     width: w,
@@ -1178,7 +1178,7 @@ defineExpose({
   justify-content: center;
   flex-shrink: 0;
 
-  text { font-size: 36rpx; }
+  .icon-text { font-size: 36rpx; }
 }
 
 .sheet-node-info {
@@ -1225,7 +1225,7 @@ defineExpose({
   justify-content: center;
   flex-shrink: 0;
 
-  text { font-size: 32rpx; color: #94a3b8; line-height: 1; }
+  .close-text { font-size: 32rpx; color: #94a3b8; line-height: 1; }
 }
 
 /* ── Sheet 统计 ── */
