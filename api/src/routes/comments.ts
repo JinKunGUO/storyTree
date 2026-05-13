@@ -49,19 +49,29 @@ router.get('/nodes/:node_id/comments', async (req, res) => {
     // 获取顶级评论的ID列表
     const topLevelIds = topLevelComments.map(c => c.id);
 
-    // ========== 第2步：一次性获取所有子评论（所有层级）==========
-    const allReplies = await prisma.comments.findMany({
-      where: {
-        node_id: nodeIdInt,
-        parent_id: { not: null, in: topLevelIds } // 只获取当前页顶级评论的直接回复
-      },
-      include: {
-        user: {
-          select: { id: true, username: true, avatar: true }
-        }
-      },
-      orderBy: { created_at: 'asc' }
-    });
+    // ========== 第2步：递归获取所有子评论（所有层级）==========
+    // 先获取顶级评论的直接回复，再逐层获取回复的回复，直到没有更多子评论
+    const allReplies: any[] = [];
+    let parentIdsToQuery: number[] = [...topLevelIds];
+
+    while (parentIdsToQuery.length > 0) {
+      const replies = await prisma.comments.findMany({
+        where: {
+          node_id: nodeIdInt,
+          parent_id: { in: parentIdsToQuery }
+        },
+        include: {
+          user: {
+            select: { id: true, username: true, avatar: true }
+          }
+        },
+        orderBy: { created_at: 'asc' }
+      });
+
+      allReplies.push(...replies);
+      // 下一层查询的 parent_id 是当前层回复的 ID
+      parentIdsToQuery = replies.map(r => r.id);
+    }
 
     // 获取所有评论ID（用于批量查询投票）
     const allCommentIds = [...topLevelIds, ...allReplies.map(r => r.id)];

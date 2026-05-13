@@ -198,13 +198,27 @@
                 <text class="comment-time">{{ formatTime(comment.created_at) }}</text>
                 <view
                   class="vote-btn"
-                  :class="{ voted: comment.userVote === 'like' || (comment as any)._myVote === 'up' }"
+                  :class="{ voted: comment.userVote === 'like' }"
                   @tap="voteOnComment(comment.id, 'up')"
                 >
-                  <text>👍 {{ comment.likeCount ?? comment._count?.votes ?? 0 }}</text>
+                  <text>👍 {{ comment.likeCount ?? 0 }}</text>
+                </view>
+                <view
+                  class="vote-btn"
+                  :class="{ voted: comment.userVote === 'dislike' }"
+                  @tap="voteOnComment(comment.id, 'down')"
+                >
+                  <text>👎 {{ comment.dislikeCount ?? 0 }}</text>
                 </view>
                 <view class="reply-btn" @tap="openReply(comment.id, comment.user.username)">
                   <text>回复</text>
+                </view>
+                <view
+                  v-if="userStore.userInfo && userStore.userInfo.id === comment.user.id"
+                  class="delete-btn"
+                  @tap="handleDeleteComment(comment.id)"
+                >
+                  <text>删除</text>
                 </view>
               </view>
 
@@ -230,8 +244,22 @@
                       >
                         <text>👍 {{ item.comment.likeCount ?? 0 }}</text>
                       </view>
+                      <view
+                        class="reply-vote"
+                        :class="{ voted: item.comment.userVote === 'dislike' }"
+                        @tap="voteOnComment(item.comment.id, 'down')"
+                      >
+                        <text>👎 {{ item.comment.dislikeCount ?? 0 }}</text>
+                      </view>
                       <view class="reply-btn-inline" @tap="openReply(item.comment.id, item.comment.user.username)">
                         <text>回复</text>
+                      </view>
+                      <view
+                        v-if="userStore.userInfo && userStore.userInfo.id === item.comment.user.id"
+                        class="reply-delete-btn"
+                        @tap="handleDeleteComment(item.comment.id)"
+                      >
+                        <text>删除</text>
                       </view>
                     </view>
                   </view>
@@ -407,7 +435,7 @@ import { onLoad, onShareAppMessage } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
 import { useAppStore } from '@/store/app'
 import { getNode, rateNode, bookmarkNode, unbookmarkNode, incrementReadCount, buildSubTree, getStoryNodes } from '@/api/nodes'
-import { getNodeComments, createComment, voteComment } from '../../api/comments'
+import { getNodeComments, createComment, deleteComment, voteComment } from '../../api/comments'
 import { formatRelativeTime } from '@/utils/helpers'
 import { getImageUrl } from '@/utils/request'
 import type { Node } from '@/api/nodes'
@@ -703,33 +731,65 @@ async function voteOnComment(commentId: number, type: 'up' | 'down') {
     uni.navigateTo({ url: '/pkgAuth/pages/auth/login/index' })
     return
   }
-  // 递归查找，支持顶级评论和子评论点赞
   const comment = findComment(comments.value, commentId)
   if (!comment) return
 
-  // 后端逻辑：POST 相同 voteType 会自动切换（已投则取消，未投则添加）
-  // 后端返回 'like'/'dislike'，本地用 _myVote 缓存当前状态
   const backendVote = type === 'up' ? 'like' : 'dislike'
-  const alreadyVoted = comment.userVote === backendVote || (comment as any)._myVote === type
+  const alreadyVoted = comment.userVote === backendVote
   try {
     await voteComment(commentId, type)
-    if (!comment._count) comment._count = { votes: 0 }
+    // 取消投票
     if (alreadyVoted) {
-      // 取消点赞
-      comment._count.votes = Math.max(0, (comment._count.votes || 0) - 1)
-      comment.likeCount = Math.max(0, (comment.likeCount || 0) - 1)
-      comment.userVote = null;
-      (comment as any)._myVote = null
+      if (type === 'up') {
+        comment.likeCount = Math.max(0, (comment.likeCount || 0) - 1)
+      } else {
+        comment.dislikeCount = Math.max(0, (comment.dislikeCount || 0) - 1)
+      }
+      comment.userVote = null
     } else {
-      // 新增点赞
-      comment._count.votes = (comment._count.votes || 0) + 1
-      comment.likeCount = (comment.likeCount || 0) + 1
-      comment.userVote = backendVote as 'like' | 'dislike';
-      (comment as any)._myVote = type
+      // 如果之前投了相反的票，先减掉
+      if (comment.userVote) {
+        if (comment.userVote === 'like') {
+          comment.likeCount = Math.max(0, (comment.likeCount || 0) - 1)
+        } else {
+          comment.dislikeCount = Math.max(0, (comment.dislikeCount || 0) - 1)
+        }
+      }
+      // 新增投票
+      if (type === 'up') {
+        comment.likeCount = (comment.likeCount || 0) + 1
+      } else {
+        comment.dislikeCount = (comment.dislikeCount || 0) + 1
+      }
+      comment.userVote = backendVote as 'like' | 'dislike'
     }
   } catch (err: any) {
     uni.showToast({ title: err.message || '操作失败', icon: 'none' })
   }
+}
+
+async function handleDeleteComment(commentId: number) {
+  if (!userStore.isLoggedIn) return
+  uni.showModal({
+    title: '删除评论',
+    content: '确定要删除这条评论吗？',
+    confirmText: '删除',
+    confirmColor: '#ef4444',
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        await deleteComment(commentId)
+        uni.showToast({ title: '已删除', icon: 'success' })
+        // 重新加载评论列表
+        const res = await getNodeComments(node.value!.id, { page: 1, pageSize: 10 })
+        comments.value = res.comments
+        totalComments.value = res.total
+        hasMoreComments.value = res.total > 10
+      } catch (err: any) {
+        uni.showToast({ title: err.message || '删除失败', icon: 'none' })
+      }
+    },
+  })
 }
 
 function toggleNav() {
@@ -1437,6 +1497,12 @@ function flattenReplies(
           font-size: 22rpx;
           color: #94a3b8;
         }
+
+        .delete-btn {
+          font-size: 22rpx;
+          color: #ef4444;
+          margin-left: auto;
+        }
       }
 
       .replies-wrap {
@@ -1491,6 +1557,12 @@ function flattenReplies(
             .reply-btn-inline {
               font-size: 20rpx;
               color: #94a3b8;
+            }
+
+            .reply-delete-btn {
+              font-size: 20rpx;
+              color: #ef4444;
+              margin-left: auto;
             }
           }
         }
