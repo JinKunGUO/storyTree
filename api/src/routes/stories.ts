@@ -1471,4 +1471,53 @@ router.get('/:id/role', authenticateToken, async (req, res) => {
   }
 });
 
+// ===================================
+// 管理 API：修复错误的默认封面路径
+// ===================================
+// 使用方法：
+//   curl -X POST https://api.storytree.online/api/stories/admin/fix-cover-path \
+//     -H "Authorization: Bearer <ADMIN_TOKEN>"
+//
+router.post('/admin/fix-cover-path', authenticateToken, async (req: any, res) => {
+  // 仅允许管理员执行
+  if (!req.user?.isAdmin) {
+    return res.status(403).json({ error: '需要管理员权限' });
+  }
+
+  try {
+    const OLD_DEFAULT_COVER = '/assets/default-cover.svg';
+    const NEW_DEFAULT_COVER = '/assets/default-cover.jpg';
+
+    // 统计需要更新的故事数量
+    const count = await prisma.stories.count({
+      where: { cover_image: OLD_DEFAULT_COVER }
+    });
+
+    if (count === 0) {
+      return res.json({
+        success: true,
+        message: '无需更新，所有故事的封面路径已正确',
+        updated: 0
+      });
+    }
+
+    // 执行更新
+    const result = await prisma.stories.updateMany({
+      where: { cover_image: OLD_DEFAULT_COVER },
+      data: { cover_image: NEW_DEFAULT_COVER }
+    });
+
+    res.json({
+      success: true,
+      message: `已更新 ${result.count} 个故事的封面路径`,
+      updated: result.count,
+      from: OLD_DEFAULT_COVER,
+      to: NEW_DEFAULT_COVER
+    });
+  } catch (error) {
+    console.error('Fix cover path error:', error);
+    res.status(500).json({ error: '修复封面路径失败' });
+  }
+});
+
 export default router;

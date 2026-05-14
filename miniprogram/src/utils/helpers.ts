@@ -67,7 +67,7 @@ export function formatWordCount(count: number): string {
  * 构建图片完整 URL
  */
 export function getImageUrl(path?: string): string {
-  if (!path) return '/static/images/default-cover.jpg'
+  if (!path) return `${API_BASE_URL}/static/images/default-cover.jpg`
   if (path.startsWith('http://') || path.startsWith('https://')) return path
   if (path.startsWith('/')) return `${API_BASE_URL}${path}`
   return path
@@ -77,7 +77,7 @@ export function getImageUrl(path?: string): string {
  * 构建头像完整 URL
  */
 export function getAvatarUrl(avatar?: string): string {
-  if (!avatar) return '/static/images/default-avatar.png'
+  if (!avatar) return `${API_BASE_URL}/static/images/default-avatar.png`
   if (avatar.startsWith('http://') || avatar.startsWith('https://')) return avatar
   if (avatar.startsWith('/')) return `${API_BASE_URL}${avatar}`
   return avatar
