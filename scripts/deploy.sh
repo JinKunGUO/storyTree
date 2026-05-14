@@ -128,13 +128,15 @@ setup_nginx() {
 update_code() {
     log_info "拉取最新代码..."
     cd "$APP_DIR"
-    git pull origin main
 
-    # 恢复数据库相关文件（这些文件在部署时会自动生成/切换）
-    # 避免 git diff 非空导致下次部署失败
+    # 先恢复数据库相关文件（这些文件在部署时会自动生成/切换）
+    # 避免 git diff 非空导致 git pull 失败
     log_info "恢复数据库相关文件..."
     git checkout -- api/prisma/schema.prisma 2>/dev/null || true
     git checkout -- api/prisma/migrations/migration_lock.toml 2>/dev/null || true
+
+    # 再拉取代码
+    git pull origin main
     log_success "代码更新完成（$(git log --oneline -1)）"
 }
 
