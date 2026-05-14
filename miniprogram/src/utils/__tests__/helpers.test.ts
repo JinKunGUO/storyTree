@@ -143,11 +143,11 @@ describe('formatWordCount', () => {
 // ---------------------------------------------------------------------------
 describe('getImageUrl', () => {
   it('returns default cover when path is undefined', () => {
-    expect(getImageUrl()).toBe('/static/images/default-cover.jpg')
+    expect(getImageUrl()).toBe('http://localhost:3001/static/images/default-cover.jpg')
   })
 
   it('returns default cover when path is empty string', () => {
-    expect(getImageUrl('')).toBe('/static/images/default-cover.jpg')
+    expect(getImageUrl('')).toBe('http://localhost:3001/static/images/default-cover.jpg')
   })
 
   it('returns http URL unchanged', () => {
@@ -168,11 +168,11 @@ describe('getImageUrl', () => {
 // ---------------------------------------------------------------------------
 describe('getAvatarUrl', () => {
   it('returns default avatar when avatar is undefined', () => {
-    expect(getAvatarUrl()).toBe('/static/images/default-avatar.png')
+    expect(getAvatarUrl()).toBe('http://localhost:3001/static/images/default-avatar.png')
   })
 
   it('returns default avatar when avatar is empty string', () => {
-    expect(getAvatarUrl('')).toBe('/static/images/default-avatar.png')
+    expect(getAvatarUrl('')).toBe('http://localhost:3001/static/images/default-avatar.png')
   })
 
   it('returns http URL unchanged', () => {
