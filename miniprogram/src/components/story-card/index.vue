@@ -2,7 +2,7 @@
   <view class="story-card" @tap="$emit('tap', story.id)">
     <image
       class="cover"
-      :src="story.cover_image || '/static/images/default-cover.jpg'"
+      :src="getImageUrl(story.cover_image) || '/static/images/default-cover.jpg'"
       mode="aspectFill"
     />
     <view class="info">
@@ -37,6 +37,7 @@
 
 <script setup lang="ts">
 import type { Story } from '@/api/stories'
+import { getImageUrl } from '@/utils/request'
 
 defineProps<{
   story: Story

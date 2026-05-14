@@ -113,7 +113,7 @@ router.post('/', authenticateToken, async (req, res) => {
         data: {
           title,
           description,
-          cover_image: cover_image || '/assets/default-cover.png',
+          cover_image: cover_image || '/assets/default-cover.jpg',
           author_id: userId,
           updated_at: new Date(),
           nodes: {
@@ -152,7 +152,7 @@ router.post('/', authenticateToken, async (req, res) => {
         data: {
           title,
           description,
-          cover_image: cover_image || '/assets/default-cover.png',
+          cover_image: cover_image || '/assets/default-cover.jpg',
           author_id: userId,
           updated_at: new Date()
         },
