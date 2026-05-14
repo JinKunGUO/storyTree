@@ -200,6 +200,7 @@ export interface AiCreateChapterParams {
   style?: AiWritingStyle
   wordCount?: number      // 期望字数
   publishImmediately?: boolean  // true=自动发布，false=保存为草稿
+  userPrompt?: string     // 用户自定义要求（最多 200 字）
 }
 
 // 提交 AI 创作章节任务
@@ -227,6 +228,7 @@ export function submitAiCreateChapter(params: AiCreateChapterParams) {
     publishImmediately: params.publishImmediately ?? true,
     count,
     mode: 'full',
+    userPrompt: params.userPrompt?.trim() || undefined,
   })
 }
 

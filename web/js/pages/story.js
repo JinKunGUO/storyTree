@@ -1824,6 +1824,16 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                 customBtn.innerHTML = '<i class="fas fa-edit"></i> 自定义';
             }
             
+            // 重置用户自定义输入
+            const userPromptInput = document.getElementById('userPromptInput');
+            const userPromptCounter = document.getElementById('userPromptCounter');
+            if (userPromptInput) {
+                userPromptInput.value = '';
+            }
+            if (userPromptCounter) {
+                userPromptCounter.textContent = '0/200';
+            }
+            
             // ========== 新增：加载配额信息并更新徽章 ==========
             loadAiChapterQuotaInfo();
             // ===============================================
@@ -1831,6 +1841,15 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
             // 显示模态框
             aiChapterModalOpen = true;
             modal.classList.add('active');
+        }
+        
+        // 用户自定义输入字符计数实时更新
+        const userPromptInput = document.getElementById('userPromptInput');
+        const userPromptCounter = document.getElementById('userPromptCounter');
+        if (userPromptInput && userPromptCounter) {
+            userPromptInput.addEventListener('input', function() {
+                userPromptCounter.textContent = `${this.value.length}/200`;
+            });
         }
 
         // 关闭AI创作章节模态框
@@ -1919,11 +1938,16 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
 
 // 开始 AI 章节生成
         async function startAiChapterGeneration(publishImmediately = true) {
+            // 获取用户自定义输入
+            const userPromptInput = document.getElementById('userPromptInput');
+            const userPrompt = userPromptInput ? userPromptInput.value.trim() : undefined;
+
             console.log('开始 AI 章节生成');
             console.log('惊喜时间:', selectedAiSurpriseTime);
             console.log('风格:', selectedAiChapterStyle);
             console.log('期望字数:', selectedAiWordCount);
             console.log('发布状态:', publishImmediately ? '自动发布' : '保存为草稿');
+            console.log('用户自定义输入:', userPrompt || '无');
             
             // 隐藏选择器，显示加载状态
             document.getElementById('aiSurpriseTimeSelector').style.display = 'none';
@@ -2064,7 +2088,8 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                         mode: 'chapter', // 整章模式
                         surpriseTime: surpriseTimeToSend !== 'immediate' ? surpriseTimeToSend : null,
                         publishImmediately: publishImmediately, // 传递发布状态
-                        wordCount: selectedAiWordCount // 传递期望字数
+                        wordCount: selectedAiWordCount, // 传递期望字数
+                        userPrompt: userPrompt || undefined // 传递用户自定义输入
                     })
                 });
 

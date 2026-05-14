@@ -444,6 +444,7 @@ interface ContinuationJobData {
   count: number;
   mode?: string;
   wordCount?: number; // 期望生成字数
+  userPrompt?: string; // 用户自定义输入
 }
 
 /**
@@ -472,7 +473,7 @@ interface IllustrationJobData {
  * 处理AI续写任务
  */
 aiContinuationQueue.process(3, async (job: Job<ContinuationJobData>) => {
-  const { taskId, userId, storyId, nodeId, context, storyTitle, storyDescription, style, count, mode, wordCount = 1500 } = job.data;
+  const { taskId, userId, storyId, nodeId, context, storyTitle, storyDescription, style, count, mode, wordCount = 1500, userPrompt } = job.data;
 
   console.log(`🚀 开始处理AI续写任务: ${taskId}, 使用${USE_QWEN ? '千问' : 'Claude'}API`);
   console.log(`📝 期望生成字数: ${wordCount}字`);
@@ -509,6 +510,17 @@ aiContinuationQueue.process(3, async (job: Job<ContinuationJobData>) => {
       `${i + 1}. ${s}向 - ${styleOptions[s]}`
     ).join('\n');
 
+    // 处理用户自定义输入
+    const userPromptInstruction = userPrompt && userPrompt.trim()
+      ? `
+
+【用户自定义要求】
+${userPrompt.trim()}
+
+⚠️ 重要：请优先满足用户的自定义要求，在此基础上保持故事连贯性和风格一致性。如果用户要求与风格冲突，以用户要求为准。`
+      : '';
+
+
     // 根据模式和期望字数调整prompt
     const isChapterMode = mode === 'chapter';
     const wordCountHint = isChapterMode 
@@ -528,7 +540,7 @@ ${context.substring(0, 2000)}${context.length > 2000 ? '\n...(内容过长已截
 【续写要求】
 请续写${count}个不同方向的后续${isChapterMode ? '章节' : '段落'}：
 
-${styleInstructions}
+${styleInstructions}${userPromptInstruction}
 
 【字数要求】
 ${wordCountHint}

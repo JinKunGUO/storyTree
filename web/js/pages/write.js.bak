@@ -1011,16 +1011,6 @@
                 startAiGenerationBtn.addEventListener('click', startAiGeneration);
             }
 
-            // 用户自定义输入字符计数实时更新
-            const userPromptInput = document.getElementById('userPromptInput');
-            const userPromptCounter = document.getElementById('userPromptCounter');
-            if (userPromptInput && userPromptCounter) {
-                userPromptInput.addEventListener('input', function() {
-                    userPromptCounter.textContent = `${this.value.length}/200`;
-                });
-            }
-
-
             // 点击模态框背景关闭
             if (aiModal) {
                 aiModal.addEventListener('click', function(e) {
@@ -1274,11 +1264,6 @@
                 if (!token) {
                     throw new Error('请先登录');
                 }
-
-
-                // 获取用户自定义输入
-                const userPromptInput = document.getElementById('userPromptInput');
-                const userPrompt = userPromptInput ? userPromptInput.value.trim() : undefined;
 
                 console.log('调用AI API v2...');
                 console.log('故事ID:', storyId);

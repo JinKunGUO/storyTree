@@ -291,7 +291,7 @@
           </view>
         </view>
 
-        <scroll-view scroll-y class="ai-panel-scroll">
+        <scroll-view scroll-y enhanced scroll-anchoring class="ai-panel-scroll">
           <!-- 惊喜时间 -->
           <view class="ai-section">
             <view class="ai-section-header">
@@ -397,6 +397,24 @@
                 <text class="wc-name">自定义</text>
                 <text class="wc-value">{{ aiForm.customWordCount ? aiForm.customWordCount + ' 字' : '输入字数' }}</text>
               </view>
+            </view>
+          </view>
+
+          <!-- 自定义要求 -->
+          <view class="ai-section">
+            <view class="ai-section-header">
+              <text class="ai-section-icon">💬</text>
+              <text class="ai-section-label">自定义要求（可选）</text>
+              <text class="ai-section-desc">可以指定故事走向、角色行为、场景细节等，最多 200 字</text>
+            </view>
+            <view class="ai-prompt-input-wrapper">
+              <textarea
+                v-model="aiForm.userPrompt"
+                class="ai-prompt-input"
+                placeholder="例如：&#10;• 希望加入一个神秘角色登场&#10;• 让主角发现一个重要线索&#10;• 增加更多对话和心理描写&#10;• 故事发生在雨夜的咖啡馆"
+                maxlength="200"
+              />
+              <view class="char-counter">{{ (aiForm.userPrompt || '').length }}/200</view>
             </view>
           </view>
         </scroll-view>
@@ -544,6 +562,7 @@ const aiForm = reactive<{
   customWordCount: number | null
   customDate: string   // 自定义日期，格式 YYYY-MM-DD
   customTime: string   // 自定义时间，格式 HH:mm
+  userPrompt: string   // 用户自定义要求
 }>({
   surpriseTime: 'immediate',
   style: undefined,
@@ -551,6 +570,7 @@ const aiForm = reactive<{
   customWordCount: null,
   customDate: '',
   customTime: '',
+  userPrompt: '',
 })
 
 const timeOptions = [
@@ -643,6 +663,7 @@ async function submitAiCreate(publishImmediately: boolean) {
       style: aiForm.style,
       wordCount: aiForm.customWordCount || aiForm.wordCount,
       publishImmediately,
+      userPrompt: aiForm.userPrompt.trim() || undefined,
     })
     showAiCreatePanel.value = false
     uni.showToast({ title: 'AI任务已提交', icon: 'success', duration: 2000 })
@@ -1941,12 +1962,13 @@ function formatTime(date: string) {
 
   .ai-panel-scroll {
     flex: 1;
-    overflow: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
 .ai-section {
-  padding: 28rpx 32rpx 0;
+  padding: 28rpx 32rpx 16rpx;
 
   .ai-section-header {
     display: flex;
@@ -1963,6 +1985,37 @@ function formatTime(date: string) {
     .ai-section-desc {
       font-size: 22rpx;
       color: #94a3b8;
+    }
+  }
+  
+  // 自定义要求输入框
+  .ai-prompt-input-wrapper {
+    position: relative;
+    margin-top: 12rpx;
+    
+    .ai-prompt-input {
+      width: 100%;
+      height: 200rpx;
+      padding: 16rpx;
+      padding-bottom: 40rpx;
+      border-radius: 12rpx;
+      border: 2rpx solid #e2e8f0;
+      background: #f8fafc;
+      font-size: 26rpx;
+      color: #1e293b;
+      line-height: 1.6;
+      box-sizing: border-box;
+    }
+    
+    .char-counter {
+      position: absolute;
+      bottom: 12rpx;
+      right: 16rpx;
+      font-size: 22rpx;
+      color: #94a3b8;
+      background: rgba(248, 250, 252, 0.9);
+      padding: 4rpx 8rpx;
+      border-radius: 4rpx;
     }
   }
 }

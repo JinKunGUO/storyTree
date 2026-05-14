@@ -80,7 +80,7 @@ router.post('/continuation/submit', async (req, res) => {
     return res.status(401).json({ error: '未登录' });
   }
 
-  const { storyId, nodeId, context, style, count = 3, mode = 'segment', surpriseTime, publishImmediately = true, wordCount: rawWordCount = 1500 } = req.body;
+  const { storyId, nodeId, context, style, count = 3, mode = 'segment', surpriseTime, publishImmediately = true, wordCount: rawWordCount = 1500, userPrompt } = req.body;
 
   if (!storyId) {
     return res.status(400).json({ error: 'storyId是必需的' });
@@ -92,6 +92,19 @@ router.post('/continuation/submit', async (req, res) => {
   const wordCount = Math.min(Math.max(Number(rawWordCount) || 1500, MIN_WORD_COUNT), MAX_WORD_COUNT);
   if (Number(rawWordCount) > MAX_WORD_COUNT) {
     console.warn(`⚠️ 用户 ${userId} 请求字数 ${rawWordCount} 超过上限，已限制为 ${MAX_WORD_COUNT}`);
+  }
+
+  // 用户自定义输入校验：最多 200 字
+  const MAX_USER_PROMPT_LENGTH = 200;
+  let validatedUserPrompt: string | undefined;
+  if (userPrompt && typeof userPrompt === 'string') {
+    const trimmedPrompt = userPrompt.trim();
+    if (trimmedPrompt.length > 0) {
+      if (trimmedPrompt.length > MAX_USER_PROMPT_LENGTH) {
+        return res.status(400).json({ error: `自定义要求最多${MAX_USER_PROMPT_LENGTH}字` });
+      }
+      validatedUserPrompt = trimmedPrompt;
+    }
   }
 
   try {
@@ -266,6 +279,7 @@ router.post('/continuation/submit', async (req, res) => {
           mode, // 保存模式信息
           publishImmediately, // 保存发布状态
           wordCount, // 保存期望字数
+          userPrompt: validatedUserPrompt, // 保存用户自定义输入
           usePoints: permission.usePoints, // 是否需要使用积分
           pointsCost: permission.pointsCost, // 需要消耗的积分数
           quotaRemaining: permission.quotaRemaining // 剩余配额
@@ -288,7 +302,8 @@ router.post('/continuation/submit', async (req, res) => {
         style,
         count,
         mode,
-        wordCount // 传递期望字数到队列
+        wordCount, // 传递期望字数到队列
+        userPrompt: validatedUserPrompt // 传递用户自定义输入到队列
       },
       {
         delay: Math.max(delay, 0),

@@ -268,6 +268,33 @@
                     </div>
                 </div>
 
+                <!-- 自定义要求输入框 -->
+                <div id="aiUserPromptSelector" style="margin-bottom: 25px;">
+                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 10px; color: var(--st-text-primary);">
+                        <i class="fas fa-comment-dots"></i> 自定义要求（可选）
+                        <span class="char-counter" id="userPromptCounter" style="font-size: 12px; font-weight: 400; color: var(--st-text-tertiary); margin-left: 10px;">0/200</span>
+                    </div>
+                    <textarea
+                        id="userPromptInput"
+                        placeholder="例如：&#10;• 希望加入一个神秘角色登场&#10;• 让主角发现一个重要线索&#10;• 增加更多对话和心理描写&#10;• 故事发生在雨夜的咖啡馆"
+                        maxlength="200"
+                        rows="4"
+                        style="
+                            width: 100%;
+                            padding: 12px;
+                            border: 2px solid #e0e0e0;
+                            border-radius: 10px;
+                            font-size: 14px;
+                            font-family: inherit;
+                            resize: vertical;
+                            box-sizing: border-box;
+                        "
+                    ></textarea>
+                    <div style="font-size: 12px; color: var(--st-text-tertiary); margin-top: 8px;">
+                        <i class="fas fa-lightbulb"></i> 可以指定故事走向、角色行为、场景细节等，最多 200 字
+                    </div>
+                </div>
+
                 <!-- 生成按钮 -->
                 <div style="margin-bottom: 25px; text-align: center;">
                     <button id="startAiGenerationBtn" style="

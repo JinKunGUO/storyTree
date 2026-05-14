@@ -60,14 +60,21 @@
           </scroll-view>
         </view>
         <view class="section">
-          <text class="section-label">补充说明（可选）</text>
+          <view class="section-label-row">
+            <text class="section-label">补充说明（可选）</text>
+            <text class="char-counter">{{ customPrompt?.length || 0 }}/200</text>
+          </view>
           <textarea
             v-model="customPrompt"
             class="prompt-input"
-            placeholder="例如：请写得更悬疑一些，加入更多对话..."
+            placeholder="例如：&#10;• 希望加入一个神秘角色登场&#10;• 让主角发现一个重要线索&#10;• 增加更多对话和心理描写&#10;• 故事发生在雨夜的咖啡馆"
             :maxlength="200"
             auto-height
           />
+          <view class="input-hint">
+            <text class="hint-icon">💡</text>
+            <text class="hint-text">可以指定故事走向、角色行为、场景细节等，最多 200 字</text>
+          </view>
         </view>
       </view>
 
@@ -339,6 +346,7 @@ async function generate() {
         style: selectedStyle.value !== 'default' ? selectedStyle.value : undefined,
         count: 1,
         mode: 'segment',
+        userPrompt: customPrompt.value.trim() || undefined,
       }, { showError: false })
 
       const taskId = submitRes.taskId
@@ -653,6 +661,40 @@ onUnmounted(() => {
       color: #64748b;
       display: block;
       margin-bottom: 16rpx;
+    }
+
+    .section-label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16rpx;
+
+      .section-label {
+        margin-bottom: 0;
+      }
+
+      .char-counter {
+        font-size: 22rpx;
+        color: #94a3b8;
+      }
+    }
+
+    .input-hint {
+      display: flex;
+      align-items: flex-start;
+      gap: 8rpx;
+      margin-top: 12rpx;
+
+      .hint-icon {
+        font-size: 24rpx;
+        flex-shrink: 0;
+      }
+
+      .hint-text {
+        font-size: 22rpx;
+        color: #94a3b8;
+        line-height: 1.6;
+      }
     }
 
     // 风格横向滚动（续写）
