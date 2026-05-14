@@ -136,7 +136,7 @@ const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
 }) : null;
 
-const openai = new OpenAI({
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
   timeout: 120000, // 2分钟超时（DALL-E 3生成较慢）
   maxRetries: 2,   // 失败后重试2次
@@ -145,7 +145,7 @@ const openai = new OpenAI({
       ? new (require('https-proxy-agent').HttpsProxyAgent)(process.env.HTTP_PROXY)
       : undefined
   })
-});
+}) : null;
 
 /**
  * 千问API响应类型
