@@ -1,325 +1,691 @@
-# 自动化测试与 CI/CD 使用指南
+# StoryTree 自动化测试指南
 
-## 概览
-
-项目使用 [Vitest](https://vitest.dev/) 作为统一测试框架，覆盖 API 后端和小程序前端两个子项目。
-
-| 子项目 | 测试文件数 | 测试用例数 | 覆盖模块 |
-|--------|-----------|-----------|---------|
-| API 后端 | 7 | 160 | 纯函数验证、权限矩阵、注册/登录流程 |
-| 小程序前端 | 11 | 121 | 工具函数、路由映射、Pinia Store、API 调用 |
-| **合计** | **18** | **281** | |
+> 最后更新：2026-05-14  
+> 适用对象：开发者、测试人员、项目管理者、对测试感兴趣的任何人
 
 ---
 
-## 快速开始
+## 一、什么是自动化测试？为什么需要它？
 
-### 运行 API 后端测试
+### 用一个故事理解自动化测试
+
+想象你开了一家餐厅🍽️：
+
+**没有自动化测试时：**
+- 每次修改菜谱后，你需要亲自尝每一道菜
+- 换了新厨师，你要一道一道检查他做的菜
+- 有一天忙不过来，没检查就上菜，结果顾客投诉了
+
+**有自动化测试后：**
+- 你请了一位"品尝师"（测试程序）
+- 每次修改菜谱，"品尝师"自动帮你尝一遍
+- 新厨师做的菜，"品尝师"也能立即判断是否合格
+- 你有了更多时间研发新菜品
+
+### StoryTree 的"品尝师"在检查什么？
+
+| 检查项 | 具体内容 | 为什么重要 |
+|-------|---------|-----------|
+| 用户登录 | 密码对不对、账号是否被封禁 | 用户进不来，一切都白费 |
+| 故事创作 | 能不能创建、编辑、删除故事 | 核心功能，必须正常 |
+| AI 续写 | 能不能调用 AI、积分扣没扣对 | 付费功能，出错会赔钱 |
+| 敏感词 | 违禁内容能不能被过滤 | 合规要求，不能出错 |
+| 权限控制 | 别人能不能看到不该看的故事 | 隐私保护，用户信任 |
+
+### 自动化测试的好处
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  人工测试                        自动化测试              │
+├─────────────────────────────────────────────────────────┤
+│  ❌ 每次都要手动点一遍            ✅ 一键运行，5 分钟完成  │
+│  ❌ 容易漏掉边界情况              ✅ 覆盖所有边界值       │
+│  ❌ 重复劳动，枯燥乏味            ✅ 解放人力，做更有价值的事 │
+│  ❌ 人员流动，测试经验丢失        ✅ 测试代码永久保存     │
+│  ❌ 深夜上线，心里没底            ✅ 测试通过，放心睡觉   │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 二、当前测试覆盖情况总览
+
+### 项目结构回顾
+
+```
+storytree/
+├── api/              # 后端 API 服务（Node.js + TypeScript）
+│   ├── src/
+│   │   ├── routes/   # API 路由（处理用户请求）
+│   │   └── utils/    # 工具函数（验证、计算等）
+│   └── tests/        # 测试代码
+│
+├── miniprogram/      # 微信小程序前端（Vue 3 + TypeScript）
+│   ├── src/
+│   │   ├── api/      # API 调用封装
+│   │   ├── utils/    # 工具函数
+│   │   └── store/    # 状态管理
+│   └── tests/        # 测试代码
+│
+└── web/              # Web 前端（原生 HTML/CSS/JS）
+    └──               # 暂无测试（待补充）
+```
+
+### 测试成绩单（截至 2026-05-14）
+
+| 子项目 | 测试文件数 | 测试用例数 | 测试类型 |
+|-------|-----------|-----------|---------|
+| API 后端 | 11 个 | 238 个 | 功能验证、权限检查、接口测试、积分系统、签到系统、会员系统 |
+| 小程序前端 | 11 个 | 121 个 | 工具函数、API 调用、状态管理 |
+| **合计** | **22 个** | **359 个** | |
+
+---
+
+## 三、每个测试文件具体在测什么？
+
+### 后端 API 测试（11 个文件）
+
+#### 1. `auth.test.ts` — 用户认证工具
+
+**测试文件位置**：`api/src/utils/__tests__/auth.test.ts`
+
+**测什么**：验证用户输入是否合法、登录凭证是否安全
+
+| 测试用例 | 测的是什么 | 为什么测这个 |
+|---------|-----------|-------------|
+| 邮箱格式验证 | `user@example.com` ✓ / `not-an-email` ✗ | 防止用户乱填邮箱 |
+| 密码强度验证 | `Abc12345` ✓ / `abc` ✗ | 保护用户账号安全 |
+| 用户名验证 | `张三` ✓ / `a` ✗ / `ab@cd` ✗ | 用户名要规范，不能有特殊字符 |
+| JWT 令牌生成 | 生成 → 验证 → 拿到用户信息 | 登录凭证要可靠 |
+| 密码加密 | 同一密码每次加密结果不同 | 防止密码泄露后被破解 |
+
+**通俗理解**：这就是个"把关的"，确保用户输入的东西符合规则，防止有人搞破坏。
+
+---
+
+#### 2. `middleware.test.ts` — 请求参数安全检查
+
+**测试文件位置**：`api/src/utils/__tests__/middleware.test.ts`
+
+**测什么**：用户传过来的参数是否安全、是否越界
+
+| 测试用例 | 测的是什么 | 实际场景 |
+|---------|-----------|---------|
+| `safeParseInt` | 用户传 `"abc"` → 返回默认值 | 防止恶意输入搞崩服务 |
+| `safeParseId` | 用户传 `-10` → 返回 `1` | ID 不能是负数 |
+| `safeParsePage` | 用户传 `9999` → 返回 `1000` | 分页不能太大，防止拖垮数据库 |
+| `safeParseLimit` | 用户传 `limit=500` → 返回 `100` | 一次查太多数据会卡死 |
+| `requireAdmin` | 普通用户访问管理员接口 → 拒绝 | 权限检查，普通人不能管后台 |
+
+**通俗理解**：这就是个"安检员"，检查用户传过来的每个参数，防止有人搞事情。
+
+---
+
+#### 3. `points.test.ts` — 用户等级和积分计算
+
+**测试文件位置**：`api/src/utils/__tests__/points.test.ts`
+
+**测什么**：用户有多少积分、是什么等级、还能不能用 AI 功能
+
+| 测试内容 | 具体规则 | 测试用例 |
+|---------|---------|---------|
+| 等级划分 | 0-99 分=新手作者，100-499=活跃作者，500-1999=专业作者，2000+=大师作者 | 边界值测试：99 分、100 分、499 分、500 分... |
+| 升级进度 | 当前等级走了百分之多少 | 0 分=0%，2000 分=100% |
+| AI 配额 | 每个等级每天能用几次 AI | 新手=5 次续写，大师=20 次 |
+
+**通俗理解**：这就是个"记账的"，算清楚用户有多少积分、该享受什么待遇。
+
+---
+
+#### 4. `milestones.test.ts` — 里程碑和徽章系统
+
+**测试文件位置**：`api/src/utils/__tests__/milestones.test.ts`
+
+**测什么**：用户写了多少字、该解锁什么成就
+
+| 测试内容 | 里程碑 | 奖励 |
+|---------|-------|------|
+| 字数里程碑 | 1 万字、5 万字、10 万字、50 万字、100 万字、500 万字、1000 万字 | 积分 + 徽章 |
+| 徽章系统 | 初出茅庐、崭露头角、中流砥柱、出类拔萃、登堂入室、大师作者、殿堂作者 | 荣誉标识 |
+
+**测试用例举例**：
+- 0 字 → 下一个里程碑是 1 万字
+- 9999 字 → 下一个里程碑是 1 万字
+- 10000 字 → 下一个里程碑是 5 万字
+- 1000 万字 → 所有里程碑都达成了 ✓
+
+**通俗理解**：这就是个"颁奖的"，鼓励用户多写作。
+
+---
+
+#### 5. `sensitiveWords.test.ts` — 敏感词检测和过滤
+
+**测试文件位置**：`api/src/utils/__tests__/sensitiveWords.test.ts`
+
+**测什么**：用户写的内容有没有违禁词
+
+| 敏感词类别 | 例子 | 处理方式 |
+|-----------|------|---------|
+| 违法类 | 毒品、赌博 | 直接屏蔽，需要人工审核 |
+| 色情类 | 色情 | 屏蔽，需要审核 |
+| 暴力类 | 杀人 | 屏蔽，需要审核 |
+|  spam 类 | 加微信 | 屏蔽，防止打广告 |
+
+**测试用例举例**：
+```
+输入："不要碰毒品" → 检测到"毒品"(违法类) → 需要审核 ✓
+输入："这是一段正常文字" → 没检测到 → 直接发布 ✓
+输入："毒品和色情都有" → 检测到两个 → 违法类优先 ✓
+```
+
+**通俗理解**：这就是个"审查员"，防止违规内容发布出去。
+
+---
+
+#### 6. `permissions.test.ts` — 故事访问权限检查
+
+**测试文件位置**：`api/src/utils/__tests__/permissions.test.ts`
+
+**测什么**：谁能看这个故事
+
+| 可见性 | 谁能看 | 测试场景 |
+|-------|-------|---------|
+| `public` (公开) | 所有人 | 游客也能看 ✓ |
+| `author_only` (仅作者) | 只有作者自己 | 协作者、粉丝都看不了 ✗ |
+| `collaborators` (协作者) | 作者 + 协作者 | 普通人看不了 ✗ |
+| `followers` (粉丝) | 作者 + 协作者 + 粉丝 + 关注作者的人 | 路人看不了 ✗ |
+
+**测试用例矩阵**（20 个用例）：
+```
+故事可见性    访问者身份    能否访问
+─────────────────────────────────────
+author_only   作者本人     ✓ 能
+author_only   协作者       ✗ 不能
+author_only   普通用户     ✗ 不能
+collaborators 作者本人     ✓ 能
+collaborators 协作者       ✓ 能
+collaborators 普通用户     ✗ 不能
+followers     作者本人     ✓ 能
+followers     粉丝         ✓ 能
+followers     关注作者的人  ✓ 能
+followers     路人         ✗ 不能
+public        任何人       ✓ 能
+```
+
+**通俗理解**：这就是个"门卫"，检查你有没有资格看这个故事。
+
+---
+
+#### 7. `routes/auth.test.ts` — 注册/登录 API 接口
+
+**测试文件位置**：`api/src/routes/__tests__/auth.test.ts`
+
+**测什么**：用户注册和登录的整个流程
+
+**注册流程测试**（7 个用例）：
+
+| 场景 | 输入 | 期望结果 |
+|-----|------|---------|
+| 用户名已存在 | `{ username: 'testuser' }` | 400 错误："用户名已被使用" |
+| 邮箱格式不对 | `{ email: 'not-an-email' }` | 400 错误："邮箱格式不正确" |
+| 密码太简单 | `{ password: 'weak' }` | 400 错误："密码强度不足" |
+| 注册成功（无需邮箱） | `{ username: 'testuser' }` | 201 成功 + 返回 token |
+| 注册成功（需要邮箱验证） | `{ username, email, password }` | 201 成功 + requireVerification=true |
+
+**登录流程测试**（7 个用例）：
+
+| 场景 | 输入 | 期望结果 |
+|-----|------|---------|
+| 账号不存在 | `{ account: 'nonexistent' }` | 401 错误："密码错误" |
+| 密码错误 | `{ password: 'WrongPassword' }` | 401 错误 |
+| 账号被封禁 | 用户 isBanned=true | 403 错误："账号已被封禁" |
+| 邮箱未验证 | 用户 emailVerified=false | 403 错误："请验证邮箱" |
+| 登录成功 | 正常用户 + 正确密码 | 200 成功 + 返回 token |
+
+**通俗理解**：这就是个"前台"，处理用户的注册和登录请求。
+
+---
+
+#### 8. `points.test.ts` — 积分和等级系统
+
+**测什么**：用户注册和登录的整个流程
+
+**注册流程测试**（7 个用例）：
+
+| 场景 | 输入 | 期望结果 |
+|-----|------|---------|
+| 用户名已存在 | `{ username: 'testuser' }` | 400 错误："用户名已被使用" |
+| 邮箱格式不对 | `{ email: 'not-an-email' }` | 400 错误："邮箱格式不正确" |
+| 密码太简单 | `{ password: 'weak' }` | 400 错误："密码强度不足" |
+| 注册成功（无需邮箱） | `{ username: 'testuser' }` | 201 成功 + 返回 token |
+| 注册成功（需要邮箱验证） | `{ username, email, password }` | 201 成功 + requireVerification=true |
+
+**登录流程测试**（7 个用例）：
+
+| 场景 | 输入 | 期望结果 |
+|-----|------|---------|
+| 账号不存在 | `{ account: 'nonexistent' }` | 401 错误："密码错误" |
+| 密码错误 | `{ password: 'WrongPassword' }` | 401 错误 |
+| 账号被封禁 | 用户 isBanned=true | 403 错误："账号已被封禁" |
+| 邮箱未验证 | 用户 emailVerified=false | 403 错误："请验证邮箱" |
+| 登录成功 | 正常用户 + 正确密码 | 200 成功 + 返回 token |
+
+**通俗理解**：这就是个"前台"，处理用户的注册和登录请求。
+
+---
+
+#### 9. `points.test.ts` — 积分和等级系统
+
+**测试文件位置**：`api/src/routes/__tests__/points.test.ts`
+
+**测什么**：用户积分的增减、等级计算、升级逻辑
+
+| 测试内容 | 具体规则 | 测试用例 |
+|---------|---------|---------|
+| 添加积分 | 发布故事奖励、签到奖励等 | 添加积分后返回新积分和等级信息 |
+| 升级逻辑 | 积分达到阈值自动升级 | 添加积分后检查是否升级 |
+| 扣除积分 | AI 续写、润色等功能消费 | 积分足够时扣除，不足时返回失败 |
+| 管理员豁免 | 管理员使用功能不扣除积分 | 管理员身份检查 |
+| 积分检查 | 检查积分是否足够 | 返回 true/false |
+| 等级计算 | 0-99=Lv1, 100-499=Lv2, 500-1999=Lv3, 2000+=Lv4 | 边界值测试 |
+
+**通俗理解**：这就是个"记账的 + 颁奖的"，算清楚用户有多少积分、该享受什么待遇。
+
+---
+
+#### 10. `stories.test.ts` — 故事权限和验证
+
+**测试文件位置**：`api/src/routes/__tests__/stories.test.ts`
+
+**测什么**：故事可见性权限、编辑权限、数据验证
+
+| 测试内容 | 权限规则 | 测试用例 |
+|---------|---------|---------|
+| 公开故事 | 所有人都可以查看 | 未登录用户、作者、其他用户都能看 |
+| 仅作者 | 只有作者可以查看 | 作者可以看，其他人不能看 |
+| 协作者 | 作者 + 协作者可以查看 | 协作者需要未被移除 |
+| 粉丝可见 | 作者 + 协作者 + 粉丝可以查看 | 粉丝包括故事粉丝和作者粉丝 |
+| 编辑权限 | 仅作者可以编辑 | 协作者不能编辑 |
+| 标题验证 | 2-100 字 | 空标题、1 个字、超长标题都拒绝 |
+| 描述验证 | 10-1000 字 | 太短、太长的描述都拒绝 |
+
+**通俗理解**：这就是个"门卫 + 审查员"，检查你有没有资格看这个故事，内容是否合规。
+
+---
+
+#### 11. `checkin.test.ts` — 签到系统
+
+**测试文件位置**：`api/src/routes/__tests__/checkin.test.ts`
+
+**测什么**：每日签到、连续天数计算、补签功能、奖励积分
+
+| 测试内容 | 具体规则 | 测试用例 |
+|---------|---------|---------|
+| 签到奖励 | 第 1 天 10 分，第 2-7 天每天 +2 分 | 边界值测试：1 天、7 天 |
+| 周奖励 | 第 8-30 天，每周递增 5 分 | 第 8 天、第 14 天、第 21 天 |
+| 月奖励 | 第 31 天起，每月递增 10 分 | 第 31 天、第 60 天、第 90 天 |
+| 签到检查 | 今天已签到不能重复签 | 昨天签到可继续，前天签到需补签 |
+| 补签逻辑 | 可以补签最近 7 天内的日期 | 补签日期验证 |
+| 边界情况 | 闰年、跨年、时区 | 特殊日期处理 |
+
+**通俗理解**：这就是个"打卡的"，记录用户每天签到，奖励坚持签到的用户。
+
+---
+
+#### 12. `membership.test.ts` — 会员系统
+
+**测试文件位置**：`api/src/routes/__tests__/membership.test.ts`
+
+**测什么**：会员等级配置、权益检查、配额计算
+
+| 测试内容 | 会员等级 | 测试用例 |
+|---------|---------|---------|
+| 会员配置 | 免费/体验/月度/季度/年度/企业版 | 价格、时长、配额倍数 |
+| 权益列表 | 每个等级的特权 | 徽章颜色、AI 优先级、导出功能 |
+| 会员有效性 | 是否在有效期内 | 免费用户、过期会员、管理员 |
+| 等级顺序 | 价格从低到高 | 季度比月度优惠，年度比季度优惠 |
+| 配额倍数 | 免费 1x、体验 1.2x、月度 1.5x、季度 1.8x、年度/企业无限 | 配额计算 |
+
+**会员等级价格**：
+- 免费用户：0 元
+- 体验会员：9.9 元（7 天）
+- 月度会员：39 元（30 天）
+- 季度会员：99 元（90 天）
+- 年度会员：388 元（365 天）
+- 企业版：999 元（365 天）
+
+**通俗理解**：这就是个"VIP 服务员"，不同等级的会员享受不同的待遇。
+
+---
+
+### 小程序前端测试（11 个文件）
+
+小程序前端的测试分为三类：
+
+#### A. 工具函数测试（真实单元测试）
+
+**测试文件**：`src/utils/__tests__/helpers.test.ts`
+
+**测什么**：一些纯函数，输入什么就输出什么，不依赖外部服务
+
+| 函数 | 作用 | 测试用例 |
+|-----|------|---------|
+| `getImageUrl()` | 把图片路径变成完整 URL | 空路径→默认封面，相对路径→加域名，http/https→不变 |
+| `getAvatarUrl()` | 把头像路径变成完整 URL | 同上 |
+
+---
+
+#### B. API 调用测试（Mock 测试）
+
+**测试文件**：`src/api/__tests__/*.test.ts`（6 个文件）
+
+**测什么**：确保前端代码调用了正确的 API 地址和参数
+
+**重要说明**：这类测试**不验证后端是否真的工作**，只保证前端"打电话"时拨对了号码。
+
+| 测试文件 | 测的 API | 测试内容 |
+|---------|---------|---------|
+| `auth.test.ts` | 登录/注册/微信登录 | URL 对不对、参数格式对不对 |
+| `stories.test.ts` | 获取故事列表/详情/创建 | URL 对不对、参数格式对不对 |
+| `users.test.ts` | 获取用户资料/更新资料/关注 | URL 对不对、参数格式对不对 |
+| `nodes.test.ts` | 获取章节/构建树状结构 | URL 对不对 + 树构建逻辑 |
+| `checkin.test.ts` | 签到相关 | URL 对不对、参数格式对不对 |
+| `ai.test.ts` | AI 续写/润色 | URL 对不对、参数格式对不对 |
+
+**测试示例**：
+```typescript
+// 测试：登录函数是否调用了正确的 URL
+it('login 调用正确的 API', async () => {
+  await login({ account: 'user1', password: 'pass123' })
+
+  // 验证：是否拨打了正确的"电话号码"
+  expect(mockHttp.post).toHaveBeenCalledWith('/api/auth/login', {
+    account: 'user1',
+    password: 'pass123',
+  })
+})
+```
+
+---
+
+#### C. 状态管理测试（Pinia Store）
+
+**测试文件**：`src/store/__tests__/app.test.ts` 和 `user.test.ts`
+
+**测什么**：前端全局状态是否正确
+
+| Store | 测的内容 |
+|-------|---------|
+| `app` | 阅读设置（字体大小、主题） |
+| `user` | 用户信息、登录状态、积分余额 |
+
+---
+
+## 四、测试是怎么运行的？
+
+### 本地运行测试
+
+```bash
+# 后端 API 测试
+cd api
+npm test
+
+# 小程序测试
+cd miniprogram
+npm test
+```
+
+运行结果示例：
+```
+ ✓ src/utils/__tests__/auth.test.ts  (18 tests) 45ms
+ ✓ src/utils/__tests__/middleware.test.ts  (26 tests) 12ms
+ ✓ src/utils/__tests__/points.test.ts  (15 tests) 8ms
+ ...
+
+ Test Files  7 passed (7)
+      Tests  105 passed (105)
+```
+
+### 自动化测试（GitHub Actions）
+
+每次你提交代码到 GitHub 时，自动化测试会自动运行：
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  1. 你推送代码到 GitHub                                  │
+│         ↓                                               │
+│  2. GitHub Actions 被触发                               │
+│         ↓                                               │
+│  3. 创建干净的测试环境（Ubuntu 系统，全新安装）           │
+│         ↓                                               │
+│  4. 安装 Node.js 20 和项目依赖                          │
+│         ↓                                               │
+│  5. 运行所有测试（181 个用例）                           │
+│         ↓                                               │
+│  6. 生成测试报告                                         │
+│         ↓                                               │
+│  7. 全部通过 ✅ → 可以合并                              │
+│     有失败 ❌ → 需要修复                                │
+└─────────────────────────────────────────────────────────┘
+```
+
+**配置文件位置**：`.github/workflows/test.yml`
+
+---
+
+## 五、测试的局限性
+
+### 当前测试能覆盖什么？
+
+✅ **能测试的**：
+- 纯函数逻辑（输入→输出）
+- API 调用约定（URL、参数）
+- 权限判断逻辑（谁能看什么）
+- 积分/等级计算
+- 敏感词检测
+
+❌ **不能测试的**：
+- 真实的数据库操作（用 Mock 代替）
+- 真实的网络请求（用 Mock 代替）
+- 用户界面长什么样（需要截图对比工具）
+- 用户体验好不好（需要人工测试）
+
+### 什么是 Mock？为什么用 Mock？
+
+**Mock** 就是"假装"的意思。
+
+**场景**：你要测试一个"查询用户信息"的函数，这个函数会连接数据库查数据。
+
+**不用 Mock**：
+- 真的要连数据库
+- 测试完还要清理数据
+- 数据库挂了测试也挂了
+- 测试跑得很慢
+
+**用 Mock**：
+- "假装"数据库返回了数据
+- 不用清理数据
+- 不依赖数据库
+- 测试跑得飞快
+
+**示例**：
+```typescript
+// "假装"数据库里有个用户
+mockPrisma.users.findUnique.mockResolvedValue({
+  id: 1,
+  username: 'testuser',
+  email: 'test@test.com',
+})
+
+// 调用函数
+const result = await getUser(1)
+
+// 验证结果
+expect(result.username).toBe('testuser')
+```
+
+---
+
+## 六、下一步：补充高优先级测试
+
+根据项目需求，以下功能最需要补充测试（按优先级排序）：
+
+### 高优先级（核心业务逻辑）
+
+| 功能模块 | 为什么重要 | 建议测试内容 |
+|---------|-----------|-------------|
+| 故事 CRUD | 核心功能，用户天天用 | 创建、读取、更新、删除故事 |
+| 章节管理 | 核心功能，故事由章节组成 | 章节创建、树状结构、分支对比 |
+| AI 续写/润色 | 付费功能，出错会赔钱 | 任务提交、配额检查、状态查询 |
+| 积分系统 | 涉及钱，不能出错 | 获取积分、消费积分、交易记录 |
+| 会员系统 | 涉及钱，不能出错 | 会员购买、权益检查、到期处理 |
+| 签到系统 | 用户活跃度，每天用 | 每日签到、补签、连续天数计算 |
+
+### 中优先级（重要但非核心）
+
+| 功能模块 | 建议测试内容 |
+|---------|-------------|
+| 评论系统 | 发表评论、回复、点赞、置顶 |
+| 收藏功能 | 收藏故事、收藏章节 |
+| 关注系统 | 关注作者、追更故事 |
+| 支付功能 | 支付宝支付、订单处理 |
+| 通知系统 | 系统通知、WebSocket 推送 |
+
+### 低优先级（UI/样式相关）
+
+| 功能模块 | 建议测试方式 |
+|---------|-------------|
+| Web 前端 | 使用 Playwright/Cypress 做端到端测试 |
+| 小程序 UI | 使用小程序测试框架 |
+| CSS 样式 | 视觉回归测试（Percy/Chromatic） |
+
+---
+
+## 七、如何编写第一个测试？
+
+### 第一步：找到要测试的函数
+
+假设我们要测试"故事标题验证"功能：
+
+```typescript
+// api/src/utils/validate-story.ts
+export function validateStoryTitle(title: string) {
+  if (!title) return { valid: false, message: '标题不能为空' };
+  if (title.length < 2) return { valid: false, message: '标题至少 2 个字' };
+  if (title.length > 50) return { valid: false, message: '标题最多 50 字' };
+  return { valid: true };
+}
+```
+
+### 第二步：创建测试文件
+
+```typescript
+// api/src/utils/__tests__/validate-story.test.ts
+import { describe, it, expect } from 'vitest';
+import { validateStoryTitle } from '../validate-story';
+
+describe('validateStoryTitle', () => {
+  it('空标题返回无效', () => {
+    const result = validateStoryTitle('');
+    expect(result.valid).toBe(false);
+    expect(result.message).toBe('标题不能为空');
+  });
+
+  it('1 个字标题返回无效', () => {
+    const result = validateStoryTitle('短');
+    expect(result.valid).toBe(false);
+    expect(result.message).toBe('标题至少 2 个字');
+  });
+
+  it('正常标题返回有效', () => {
+    const result = validateStoryTitle('我的故事');
+    expect(result.valid).toBe(true);
+  });
+
+  it('超过 50 字返回无效', () => {
+    const result = validateStoryTitle('a'.repeat(51));
+    expect(result.valid).toBe(false);
+    expect(result.message).toBe('标题最多 50 字');
+  });
+});
+```
+
+### 第三步：运行测试
 
 ```bash
 cd api
-
-# 运行所有测试
-npm test
-
-# 监听模式（文件变动自动重跑）
-npm run test:watch
-
-# 生成覆盖率报告
-npm run test:coverage
+npm test -- validate-story
 ```
 
-### 运行小程序前端测试
-
-```bash
-cd miniprogram
-
-# 运行所有测试
-npm test
-
-# 监听模式
-npm run test:watch
-
-# 生成覆盖率报告
-npm run test:coverage
-```
-
-覆盖率报告生成在 `coverage/` 目录下，打开 `coverage/index.html` 可查看详细结果。
-
----
-
-## 测试文件结构
-
-测试文件采用就近原则，放在源码目录的 `__tests__/` 子目录中：
+### 第四步：查看结果，修复问题
 
 ```
-api/
-  vitest.config.ts
-  tests/
-    setup.ts                    # 全局 setup：环境变量 + Prisma mock
-    helpers/
-      prisma-mock.ts            # 类型化的 Prisma mock 访问器
-      express-mock.ts           # mockRequest / mockResponse / mockNext
-  src/
-    utils/__tests__/
-      middleware.test.ts         # safeParseInt 系列 + requireAdmin
-      auth.test.ts              # 验证函数 + JWT + bcrypt
-      points.test.ts            # getUserLevel 边界值 + 常量
-      sensitiveWords.test.ts    # 敏感词扫描/屏蔽/审核
-      milestones.test.ts        # 里程碑查找 + 徽章
-      permissions.test.ts       # canViewStory 可见性矩阵
-    routes/__tests__/
-      auth.test.ts              # 注册/登录 HTTP 接口测试
+ ✓ src/utils/__tests__/validate-story.test.ts  (4 tests) 5ms
 
-miniprogram/
-  vitest.config.ts
-  tests/
-    setup.ts                    # 全局 setup：uni 对象 mock
-    mocks/
-      request.ts                # HTTP 请求模块 mock
-  src/
-    utils/__tests__/
-      helpers.test.ts           # 12 个工具函数
-      routes.test.ts            # resolveSubpackagePath
-    api/__tests__/
-      nodes.test.ts             # buildSubTree 纯函数
-      auth.test.ts              # 认证 API 调用
-      stories.test.ts           # 故事 API 调用
-      users.test.ts             # 用户 API 调用
-      checkin.test.ts           # 签到 API 调用
-      ai.test.ts                # AI API 调用
-    pkgStory/api/__tests__/
-      comments.test.ts          # 评论 API（voteType 映射）
-    store/__tests__/
-      user.test.ts              # 用户 Store 计算属性 + actions
-      app.test.ts               # 应用 Store 阅读设置
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
 ```
 
 ---
 
-## 添加新测试
+## 八、常见问题解答
 
-### API 后端：纯函数测试
+### Q1: 测试失败了怎么办？
 
-适用于不依赖数据库的工具函数，零 mock 成本：
-
-```ts
-// api/src/utils/__tests__/myUtil.test.ts
-import { describe, it, expect } from 'vitest'
-import { myFunction } from '../myUtil'
-
-describe('myFunction', () => {
-  it('handles normal input', () => {
-    expect(myFunction('hello')).toBe('HELLO')
-  })
-
-  it('handles edge case', () => {
-    expect(myFunction('')).toBe('')
-  })
-})
+```
+1. 查看测试报告，找到失败的测试用例
+         ↓
+2. 阅读错误信息，理解失败原因
+         ↓
+3. 判断是代码问题还是测试问题：
+   - 代码有 bug → 修复代码
+   - 测试写错了 → 修复测试
+   - 需求变了 → 更新测试
+         ↓
+4. 重新运行测试，确认修复
 ```
 
-### API 后端：需要 Prisma mock 的测试
+### Q2: 为什么测试比开发代码还多？
 
-对于依赖数据库的函数，Prisma 已在 `tests/setup.ts` 中全局 mock，直接使用即可：
+**答**：一个功能通常只需要几行代码实现，但测试需要考虑各种边界情况：
 
-```ts
-// api/src/utils/__tests__/myFeature.test.ts
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { myDbFunction } from '../myFeature'
-import { prisma } from '../../index'
+```typescript
+// 实现代码（1 行）
+const isValid = password.length >= 8 && hasUpper && hasLower && hasDigit;
 
-describe('myDbFunction', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('returns data when found', async () => {
-    // 设置 mock 返回值
-    (prisma.users.findUnique as any).mockResolvedValue({ id: 1, username: 'test' })
-
-    const result = await myDbFunction(1)
-    expect(result).toEqual({ id: 1, username: 'test' })
-  })
-})
+// 测试代码（7 个用例）
+it('8 位有效密码通过');
+it('7 位密码拒绝（太短）');
+it('无大写字母拒绝');
+it('无小写字母拒绝');
+it('无数字拒绝');
+it('超过 128 位拒绝');
+it('刚好 8 位通过');
 ```
 
-Express 中间件/路由测试可使用 `tests/helpers/` 中的工厂函数：
+### Q3: 测试能代替人工测试吗？
 
-```ts
-import { mockRequest, mockResponse, mockNext } from '../../../tests/helpers/express-mock'
-```
+**答**：不能完全代替，但能覆盖大部分场景：
 
-### 小程序前端：纯函数测试
+| 测试类型 | 自动化 | 人工 |
+|---------|-------|------|
+| 功能逻辑 | ✅ 可以 | ✅ 可以 |
+| 视觉样式 | ❌ 困难 | ✅ 推荐 |
+| 用户体验 | ❌ 困难 | ✅ 推荐 |
+| 边界情况 | ✅ 推荐 | ❌ 易遗漏 |
+| 回归测试 | ✅ 推荐 | ❌ 费时 |
 
-```ts
-// miniprogram/src/utils/__tests__/myHelper.test.ts
-import { describe, it, expect } from 'vitest'
-import { myHelper } from '../myHelper'
+**最佳策略**：自动化测试 + 人工抽查
 
-describe('myHelper', () => {
-  it('works correctly', () => {
-    expect(myHelper('input')).toBe('output')
-  })
-})
-```
+### Q4: Mock 测试有什么用？
 
-### 小程序前端：Pinia Store 测试
+**答**：Mock 测试确保前端代码"按约定"调用后端 API。例如：
+- 登录函数是否调用了正确的 URL（`/api/auth/login`）
+- 参数格式是否正确（`{ account, password }`）
 
-```ts
-// miniprogram/src/store/__tests__/myStore.test.ts
-import { describe, it, expect, beforeEach } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
-import { useMyStore } from '../myStore'
+但 Mock 测试**不验证**后端是否真的处理了请求。
 
-beforeEach(() => {
-  setActivePinia(createPinia())
-})
-
-describe('useMyStore', () => {
-  it('computed property works', () => {
-    const store = useMyStore()
-    expect(store.someComputed).toBe(true)
-  })
-})
-```
-
-### 小程序前端：API 模块测试
-
-```ts
-// miniprogram/src/api/__tests__/myApi.test.ts
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-
-// 用 vi.hoisted 定义 mock，确保 vi.mock 工厂可引用
-const mockHttp = vi.hoisted(() => ({
-  get: vi.fn(() => Promise.resolve({} as any)),
-  post: vi.fn(() => Promise.resolve({} as any)),
-}))
-
-vi.mock('@/utils/request', () => ({ default: mockHttp }))
-
-// 必须在 vi.mock 之后导入
-import { myApiFunction } from '../myApi'
-
-beforeEach(() => {
-  vi.clearAllMocks()
-})
-
-describe('myApiFunction', () => {
-  it('calls correct URL', async () => {
-    await myApiFunction({ id: 1 })
-    expect(mockHttp.get).toHaveBeenCalledWith('/api/my-endpoint', { id: 1 })
-  })
-})
-```
-
----
-
-## Mock 策略说明
-
-### API 后端
-
-| Mock 对象 | 实现方式 | 文件 |
-|-----------|---------|------|
-| Prisma Client | `vi.mock('../src/db')` 全局替换 | `tests/setup.ts` |
-| Express index | `vi.mock('../src/index')` 阻止服务器启动 | `tests/setup.ts` |
-| 环境变量 | setup 中直接设置 `process.env` | `tests/setup.ts` |
-| Request/Response | 工厂函数创建 mock 对象 | `tests/helpers/express-mock.ts` |
-
-`tests/setup.ts` 在所有测试之前执行，设置了：
-- `JWT_SECRET` — 避免 auth 模块在无配置时报错
-- `NODE_ENV=test` — 标识测试环境
-- `DISABLE_EMAIL=true` — 阻止真实邮件发送
-- Prisma 全局 mock — 所有 `prisma.*` 调用返回 `undefined`，单个测试用 `mockResolvedValue` 覆盖
-
-### 小程序前端
-
-| Mock 对象 | 实现方式 | 文件 |
-|-----------|---------|------|
-| `uni` 全局 | `vi.stubGlobal('uni', ...)` | `tests/setup.ts` |
-| `getCurrentPages` | `vi.stubGlobal` | `tests/setup.ts` |
-| Storage | Map 模拟，`beforeEach` 清空 | `tests/setup.ts` |
-| HTTP 请求 | 各测试文件内 `vi.mock('@/utils/request')` | 每个测试文件 |
-| `import.meta.env` | `vitest.config.ts` 中 `define` | `vitest.config.ts` |
-
----
-
-## CI/CD
-
-### GitHub Actions 工作流
-
-配置文件：`.github/workflows/test.yml`
-
-**触发条件**：推送到 `main` 或 `develop` 分支，以及向这两个分支提交 PR。
-
-**并行 Job**：
-
-| Job | 工作目录 | 步骤 |
-|-----|---------|------|
-| `api-tests` | `api/` | npm ci → prisma generate → npm test → 上传覆盖率 |
-| `miniprogram-tests` | `miniprogram/` | npm ci --legacy-peer-deps → npm test → 上传覆盖率 |
-
-两个 Job 并行运行，互不阻塞。覆盖率报告作为 Artifact 上传，可在 Actions 页面下载查看。
-
-### 启用 PR 状态检查
-
-在 GitHub 仓库中配置 PR 合并保护规则，确保测试通过才能合并：
-
-1. 进入仓库 **Settings → Branches → Branch protection rules**
-2. 点击 **Add rule**，Branch name pattern 填 `main`
-3. 勾选 **Require status checks to pass before merging**
-4. 搜索并勾选 `api-tests` 和 `miniprogram-tests`
-5. 点击 **Create**
-
-配置后，PR 必须两个 Job 都通过才能合并。
-
-### 本地验证 CI 行为
-
-提交前可本地模拟 CI 流程：
-
-```bash
-# API 后端
-cd api
-npm ci
-npx prisma generate
-npm test
-
-# 小程序前端
-cd miniprogram
-npm ci --legacy-peer-deps
-npm test
-```
-
----
-
-## 常见问题
-
-### Q: 运行测试时出现 `EADDRINUSE` 错误
-
-A: 确保 `api/tests/setup.ts` 中已 mock `../src/index`，阻止 Express 服务器在测试中启动。如果新增的路由文件导入了未 mock 的模块导致服务器启动，需要在 setup.ts 中补充 mock。
-
-### Q: 小程序测试中 `uni is not defined`
-
-A: 确保 `miniprogram/tests/setup.ts` 被正确加载。检查 `vitest.config.ts` 中 `setupFiles` 路径是否正确。如果新测试文件引用了未 mock 的 `uni` 方法，在 setup.ts 的 `uniMock` 对象中补充。
-
-### Q: API 测试中 Prisma mock 不生效
-
-A: 检查 mock 路径。源码中 `import { prisma } from '../index'` 对应的 mock 路径是 `../src/index`（从 setup.ts 角度），而不是 `@prisma/client`。如果某个测试文件需要覆盖全局 mock，可在该文件中用 `vi.mock('../../index', ...)` 重新定义。
-
-### Q: 小程序 API 测试中 `Cannot read properties of undefined`
-
-A: 确保 `vi.mock('@/utils/request', ...)` 写在 `import` 语句之前。Vitest 会自动提升 `vi.mock` 调用，但 mock 工厂中引用的变量需要用 `vi.hoisted()` 包裹：
-
-```ts
-const mockHttp = vi.hoisted(() => ({
-  get: vi.fn(() => Promise.resolve({})),
-  post: vi.fn(() => Promise.resolve({})),
-}))
-
-vi.mock('@/utils/request', () => ({ default: mockHttp }))
-```
-
-### Q: 如何只运行某个测试文件
+### Q5: 如何只运行某个测试文件？
 
 ```bash
 # API 后端
@@ -329,20 +695,29 @@ cd api && npx vitest run src/utils/__tests__/auth.test.ts
 cd miniprogram && npx vitest run src/utils/__tests__/helpers.test.ts
 ```
 
-### Q: 如何跳过某个测试
+---
 
-```ts
-it.skip('暂时跳过', () => { ... })
-// 或
-describe.skip('整组跳过', () => { ... })
-```
-
-### Q: npm ci 在小程序端失败
-
-A: 小程序端存在 echarts 版本冲突（echarts-for-weixin 要求 v5，项目使用 v6），需加 `--legacy-peer-deps`：
+## 附录：测试命令速查
 
 ```bash
-npm ci --legacy-peer-deps
+# 运行所有测试
+npm test
+
+# 运行特定测试文件
+npm test -- auth.test.ts
+
+# 运行匹配的测试用例
+npm test -- -t "login"
+
+# 生成覆盖率报告
+npm run test:coverage
+
+# 监视模式（文件改动自动重跑）
+npm run test:watch
 ```
 
-CI 工作流中已配置此参数。
+---
+
+*文档版本：v2.0*  
+*维护者：StoryTree 开发团队*  
+*最后更新：2026-05-14*
