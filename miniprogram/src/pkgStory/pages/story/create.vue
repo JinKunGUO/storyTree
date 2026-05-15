@@ -1,16 +1,26 @@
 <template>
-  <view class="create-story-page" :style="{ '--status-bar-height': statusBarHeight + 'px' }">
-    <!-- 顶部导航栏 -->
-    <view class="toolbar">
-      <view class="toolbar-left">
-        <view class="back-btn" @tap="handleBack">
-          <text class="back-icon">←</text>
+  <view class="create-story-page">
+    <!-- 页面主体：内容区域 + 底部固定栏 -->
+    <scroll-view
+      scroll-y
+      class="main-scroll"
+      :style="{
+        paddingTop: navAndStatusBarHeight + 'px',
+        paddingBottom: footerBarHeight + 'px'
+      }"
+    >
+      <!-- AI 辅助创作入口 -->
+      <view class="ai-creation-banner" @tap="goToAiCreate">
+        <view class="ai-banner-content">
+          <text class="ai-banner-icon">✨</text>
+          <view class="ai-banner-text">
+            <text class="ai-banner-title">试试 AI 辅助创作</text>
+            <text class="ai-banner-desc">智能导入立项、AI 生成大纲，多种起始方式任你选</text>
+          </view>
+          <text class="ai-banner-arrow">›</text>
         </view>
-        <text class="toolbar-title">新建故事</text>
       </view>
-    </view>
 
-    <scroll-view scroll-y class="form-scroll">
       <!-- 封面上传 -->
       <view class="form-section">
         <text class="section-label">故事封面</text>
@@ -81,9 +91,21 @@
         <text class="form-hint">最多 5 个标签，每个标签不超过 10 个字</text>
       </view>
 
-      <!-- 设置 -->
+      <!-- 故事设置 -->
       <view class="form-section">
         <text class="section-label">故事设置</text>
+
+        <view class="setting-row">
+          <view class="setting-info">
+            <text class="setting-title">默认公开可见</text>
+            <text class="setting-desc">故事默认对所有人可见（读者视角）</text>
+          </view>
+          <switch
+            :checked="form.visibility === 'public'"
+            color="#7c6af7"
+            @change="form.visibility = ($event as any).detail.value ? 'public' : 'private'"
+          />
+        </view>
 
         <view class="setting-row">
           <view class="setting-info">
@@ -109,12 +131,22 @@
           />
         </view>
       </view>
-
-      <view class="bottom-placeholder" />
     </scroll-view>
 
-    <!-- 底部操作栏 -->
-    <view class="footer-bar">
+    <!-- 顶部导航栏（浮动在内容上方） -->
+    <view class="navbar" :style="{ paddingTop: statusBarHeight + 'px' }">
+      <view class="navbar-inner" :style="{ height: navInnerHeight + 'px' }">
+        <view class="navbar-left">
+          <view class="back-btn" @tap="handleBack">
+            <text class="back-icon">←</text>
+          </view>
+          <text class="navbar-title">新建故事</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 底部操作栏（固定在底部） -->
+    <view class="footer-bar" :style="{ height: footerBarHeight + 'px' }">
       <button
         class="create-btn"
         :disabled="!canCreate || creating"
@@ -129,21 +161,58 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { createStory } from '@/api/stories'
 import { http } from '@/utils/request'
+import { useUserStore } from '@/store/user'
 
-const statusBarHeight = ref(0)
+const userStore = useUserStore()
+
+// ===== 精确布局计算 =====
+// 状态栏高度（系统给定）
+const statusBarHeight = ref(20)
+// 胶囊按钮信息
+const menuButtonInfo = ref<any>(null)
+// 导航栏内部高度 = 胶囊按钮高度 + 上下间距（固定 4px + 4px）
+const navInnerHeight = ref(0)
+// 总导航栏高度 = 状态栏 + 导航栏内部高度
+const navAndStatusBarHeight = ref(0)
+// 底部操作栏高度（固定值，与 CSS 同步）
+const footerBarHeight = ref(80)
 
 onLoad(() => {
   const info = uni.getSystemInfoSync()
-  statusBarHeight.value = info.statusBarHeight || 0
+  statusBarHeight.value = info.statusBarHeight || 20
+
+  // 获取胶囊按钮信息
+  const menu = uni.getMenuButtonBoundingClientRect()
+  menuButtonInfo.value = menu
+
+  // 导航栏内部高度 = 胶囊高度 + 上下间距（各 4px）
+  const navInner = menu.height + 8
+  navInnerHeight.value = navInner
+
+  // 总高度 = 状态栏 + 导航栏内部
+  navAndStatusBarHeight.value = statusBarHeight.value + navInner
+
+  // 底部栏高度 = padding(20) + button(48) + safe-area(~20)
+  // 固定值 88rpx 适配大部分设备
+  footerBarHeight.value = 88
+
+  // 加载时检查登录状态
+  userStore.checkLoginStatus()
+})
+
+// 每次页面显示时检查登录状态
+onShow(() => {
+  userStore.checkLoginStatus()
 })
 
 const form = reactive({
   title: '',
   description: '',
   cover_image: '',
+  visibility: 'public',
   allow_branch: true,
   allow_comment: true,
 })
@@ -212,7 +281,7 @@ async function handleCreate() {
       tags: tagsJson,
       allow_branch: form.allow_branch,
       allow_comment: form.allow_comment,
-      visibility: 'public',
+      visibility: form.visibility,
     })
 
     const story = res.story
@@ -233,6 +302,12 @@ async function handleCreate() {
 function handleBack() {
   uni.navigateBack()
 }
+
+function goToAiCreate() {
+  uni.navigateTo({
+    url: '/pkgStory/pages/story/create-ai',
+  })
+}
 </script>
 
 <style lang="scss" scoped>
@@ -241,23 +316,27 @@ function handleBack() {
   background: #f0f2f5;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
-.toolbar {
-  position: sticky;
+/* ===== 顶部导航栏（固定在顶部）===== */
+.navbar {
+  position: fixed;
   top: 0;
-  z-index: 100;
-  padding-top: calc(var(--status-bar-height) * 1px);
+  left: 0;
+  right: 0;
+  z-index: 1000;
   background: #1a1a2e;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-left: 24rpx;
-  padding-right: 24rpx;
-  padding-bottom: 20rpx;
-  min-height: 88rpx;
 
-  .toolbar-left {
+  .navbar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 24rpx;
+    padding-right: calc(220rpx + 24rpx);
+  }
+
+  .navbar-left {
     display: flex;
     align-items: center;
     gap: 16rpx;
@@ -278,16 +357,93 @@ function handleBack() {
     }
   }
 
-  .toolbar-title {
+  .navbar-title {
     font-size: 32rpx;
     font-weight: 600;
     color: #ffffff;
   }
 }
 
-.form-scroll {
+/* ===== 主内容滚动区 ===== */
+.main-scroll {
   flex: 1;
-  padding-bottom: 160rpx;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  /* padding-top 和 padding-bottom 通过内联样式动态设置 */
+}
+
+/* ===== 底部操作栏（固定在底部）===== */
+.footer-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: #ffffff;
+  box-shadow: 0 -2rpx 16rpx rgba(0, 0, 0, 0.06);
+  padding: 20rpx 24rpx;
+  display: flex;
+  align-items: center;
+
+  .create-btn {
+    width: 100%;
+    height: 96rpx;
+    background: linear-gradient(135deg, #7c6af7, #a78bfa);
+    color: #ffffff;
+    font-size: 30rpx;
+    font-weight: 600;
+    border-radius: 24rpx;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &[disabled] {
+      opacity: 0.5;
+    }
+  }
+}
+
+.ai-creation-banner {
+  margin: 20rpx 24rpx 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 20rpx;
+  padding: 28rpx 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(102, 126, 234, 0.3);
+
+  .ai-banner-content {
+    display: flex;
+    align-items: center;
+    gap: 16rpx;
+  }
+
+  .ai-banner-icon {
+    font-size: 48rpx;
+    flex-shrink: 0;
+  }
+
+  .ai-banner-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8rpx;
+  }
+
+  .ai-banner-title {
+    font-size: 28rpx;
+    font-weight: 600;
+    color: #ffffff;
+  }
+
+  .ai-banner-desc {
+    font-size: 22rpx;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .ai-banner-arrow {
+    font-size: 40rpx;
+    color: rgba(255, 255, 255, 0.7);
+  }
 }
 
 .form-section {
@@ -469,37 +625,5 @@ function handleBack() {
   }
 }
 
-.bottom-placeholder {
-  height: 40rpx;
-}
-
-.footer-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 20rpx 24rpx;
-  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
-  background: #ffffff;
-  box-shadow: 0 -2rpx 16rpx rgba(0, 0, 0, 0.06);
-
-  .create-btn {
-    width: 100%;
-    height: 96rpx;
-    background: linear-gradient(135deg, #7c6af7, #a78bfa);
-    color: #ffffff;
-    font-size: 30rpx;
-    font-weight: 600;
-    border-radius: 24rpx;
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    &[disabled] {
-      opacity: 0.5;
-    }
-  }
-}
 </style>
 

@@ -146,12 +146,20 @@ async function handleLogin() {
     userStore.login(res.token, res.user as any)
     uni.showToast({ title: '登录成功', icon: 'success' })
 
-    // 跳转到首页或上一页
-    const pages = getCurrentPages()
-    if (pages.length > 1) {
-      uni.navigateBack()
+    // 检查是否有故事 ID 需要返回（从故事详情页跳转登录的情况）
+    const storyId = uni.getStorageSync('st_login_return_story_id')
+    if (storyId) {
+      uni.removeStorageSync('st_login_return_story_id')
+      // 返回故事详情页（delta=1）
+      uni.navigateBack({ delta: 1 })
     } else {
-      uni.switchTab({ url: '/pages/index/index' })
+      // 正常返回上一页或首页
+      const pages = getCurrentPages()
+      if (pages.length > 1) {
+        uni.navigateBack()
+      } else {
+        uni.switchTab({ url: '/pages/index/index' })
+      }
     }
   } catch (err: any) {
     if (err.code === 'EMAIL_NOT_VERIFIED') {
@@ -183,6 +191,9 @@ async function handleWxLogin() {
     const res = await wxLogin({ code })
     userStore.login(res.token, res.user as any)
 
+    // 检查是否有故事 ID 需要返回
+    const storyId = uni.getStorageSync('st_login_return_story_id')
+
     if (res.isNewUser) {
       // 新用户：提示可在个人中心修改昵称
       uni.showModal({
@@ -194,22 +205,32 @@ async function handleWxLogin() {
           if (result.confirm) {
             uni.switchTab({ url: '/pages/profile/index' })
           } else {
-            const pages = getCurrentPages()
-            if (pages.length > 1) {
-              uni.navigateBack()
+            if (storyId) {
+              uni.removeStorageSync('st_login_return_story_id')
+              uni.navigateBack({ delta: 1 })
             } else {
-              uni.switchTab({ url: '/pages/index/index' })
+              const pages = getCurrentPages()
+              if (pages.length > 1) {
+                uni.navigateBack()
+              } else {
+                uni.switchTab({ url: '/pages/index/index' })
+              }
             }
           }
         }
       })
     } else {
       uni.showToast({ title: '登录成功', icon: 'success' })
-      const pages = getCurrentPages()
-      if (pages.length > 1) {
-        uni.navigateBack()
+      if (storyId) {
+        uni.removeStorageSync('st_login_return_story_id')
+        uni.navigateBack({ delta: 1 })
       } else {
-        uni.switchTab({ url: '/pages/index/index' })
+        const pages = getCurrentPages()
+        if (pages.length > 1) {
+          uni.navigateBack()
+        } else {
+          uni.switchTab({ url: '/pages/index/index' })
+        }
       }
     }
   } catch (err: any) {

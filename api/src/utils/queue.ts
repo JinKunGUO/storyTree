@@ -53,6 +53,94 @@ export const aiIllustrationQueue = new Queue('ai-illustration', {
   }
 });
 
+// AI 辅助创作队列（立项书/大纲生成）
+export const aiProjectBriefQueue = new Queue('ai-project-brief', {
+  redis: redisConfig,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: {
+      type: 'exponential',
+      delay: 2000
+    },
+    removeOnComplete: 100,
+    removeOnFail: 50
+  }
+});
+
+export const aiOutlineQueue = new Queue('ai-outline', {
+  redis: redisConfig,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: {
+      type: 'exponential',
+      delay: 2000
+    },
+    removeOnComplete: 100,
+    removeOnFail: 50
+  }
+});
+
+// AI 仿写和模板队列
+export const aiPasticheQueue = new Queue('ai-pastiche', {
+  redis: redisConfig,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: {
+      type: 'exponential',
+      delay: 2000
+    },
+    removeOnComplete: 100,
+    removeOnFail: 50
+  }
+});
+
+export const aiTemplateQueue = new Queue('ai-template', {
+  redis: redisConfig,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: {
+      type: 'exponential',
+      delay: 2000
+    },
+    removeOnComplete: 100,
+    removeOnFail: 50
+  }
+});
+
+// 队列事件监听
+aiPasticheQueue.on('completed', (job, result) => {
+  console.log(`✅ AI 仿写任务完成：${job.id}`);
+});
+
+aiPasticheQueue.on('failed', (job, err) => {
+  console.error(`❌ AI 仿写任务失败：${job?.id}`, err);
+});
+
+aiTemplateQueue.on('completed', (job, result) => {
+  console.log(`✅ AI 模板任务完成：${job.id}`);
+});
+
+aiTemplateQueue.on('failed', (job, err) => {
+  console.error(`❌ AI 模板任务失败：${job?.id}`, err);
+});
+
+// 队列事件监听
+aiProjectBriefQueue.on('completed', (job, result) => {
+  console.log(`✅ AI 立项书任务完成：${job.id}`);
+});
+
+aiProjectBriefQueue.on('failed', (job, err) => {
+  console.error(`❌ AI 立项书任务失败：${job?.id}`, err);
+});
+
+aiOutlineQueue.on('completed', (job, result) => {
+  console.log(`✅ AI 大纲任务完成：${job.id}`);
+});
+
+aiOutlineQueue.on('failed', (job, err) => {
+  console.error(`❌ AI 大纲任务失败：${job?.id}`, err);
+});
+
 // 队列事件监听
 aiContinuationQueue.on('completed', (job, result) => {
   console.log(`✅ AI续写任务完成: ${job.id}`);
@@ -83,6 +171,10 @@ export const closeQueues = async () => {
   await aiContinuationQueue.close();
   await aiPolishQueue.close();
   await aiIllustrationQueue.close();
+  await aiProjectBriefQueue.close();
+  await aiOutlineQueue.close();
+  await aiPasticheQueue.close();
+  await aiTemplateQueue.close();
   await redisClient.quit();
 };
 

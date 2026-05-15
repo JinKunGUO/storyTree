@@ -249,9 +249,91 @@ export function getAiTaskStatus(taskId: number) {
       autoAccepted?: boolean
       acceptedNodeId?: number
       publishStatus?: 'published' | 'draft'
+      projectBrief?: any
+      outline?: any
     }
     errorMessage?: string
   }>(`/api/ai/v2/tasks/${taskId}`)
+}
+
+// ==================== AI 辅助创作功能 ====================
+
+// 生成项目立项书
+export function generateProjectBrief(data: {
+  storyIdea: string
+  genre?: string
+  targetAudience?: string
+  writingStyle?: string
+}) {
+  return http.post<{
+    sessionId: string
+    taskId: number
+    message: string
+  }>('/api/ai/creation/generate-project-brief', data)
+}
+
+// 修改项目立项书
+export function reviseProjectBrief(data: {
+  sessionId: string
+  feedback: string
+}) {
+  return http.post<{
+    taskId: number
+    message: string
+  }>('/api/ai/creation/revise-project-brief', data)
+}
+
+// 生成故事大纲
+export function generateOutline(data: {
+  genre?: string
+  coreIdea: string
+  projectBrief?: any
+}) {
+  return http.post<{
+    sessionId: string
+    taskId: number
+    message: string
+  }>('/api/ai/creation/generate-outline', data)
+}
+
+// 修改故事大纲
+export function reviseOutline(data: {
+  sessionId: string
+  feedback: string
+}) {
+  return http.post<{
+    taskId: number
+    message: string
+  }>('/api/ai/creation/revise-outline', data)
+}
+
+// 查询任务状态（别名，用于 AI 创作）
+export const queryTaskStatus = getAiTaskStatus
+
+// 生成经典仿写
+export function generatePastiche(data: {
+  bookName: string
+  pasticheType?: string
+  innovation?: string
+}) {
+  return http.post<{
+    sessionId: string
+    taskId: number
+    message: string
+  }>('/api/ai/creation/generate-pastiche', data)
+}
+
+// 基于模板生成
+export function generateFromTemplate(data: {
+  templateId: number
+  protagonistName?: string
+  coreConflict?: string
+}) {
+  return http.post<{
+    sessionId: string
+    taskId: number
+    message: string
+  }>('/api/ai/creation/generate-from-template', data)
 }
 
 

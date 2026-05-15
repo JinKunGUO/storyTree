@@ -26,6 +26,7 @@
             checkEditMode();
             
             initEditor();
+            initSidebar();
             loadStoryInfo();
             
             // 延迟初始化AI功能，确保DOM完全加载
@@ -2421,3 +2422,209 @@
                 }
             }
         }
+
+// ==================== 侧边栏功能（立项书/大纲） ====================
+
+// 侧边栏初始化
+function initSidebar() {
+    // 标签页切换
+    document.querySelectorAll('.sidebar-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            const tabName = this.dataset.tab;
+            switchSidebarTab(tabName);
+        });
+    });
+
+    // 切换侧边栏显示/隐藏
+    const toggleBtn = document.getElementById('toggleSidebarBtn');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', toggleSidebar);
+    }
+
+    // 加载立项书和大纲
+    loadProjectBrief();
+    loadOutline();
+}
+
+// 切换侧边栏标签页
+function switchSidebarTab(tabName) {
+    document.querySelectorAll('.sidebar-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelectorAll('.sidebar-panel').forEach(panel => {
+        panel.classList.remove('active');
+    });
+
+    const activeTab = document.querySelector(`.sidebar-tab[data-tab="${tabName}"]`);
+    const activePanel = document.getElementById(`panel${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`);
+
+    if (activeTab) activeTab.classList.add('active');
+    if (activePanel) activePanel.classList.add('active');
+}
+
+// 切换侧边栏显示/隐藏
+function toggleSidebar() {
+    const sidebar = document.getElementById('writeSidebar');
+    if (sidebar) {
+        sidebar.style.display = sidebar.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+// 加载立项书
+async function loadProjectBrief() {
+    const contentEl = document.getElementById('projectBriefContent');
+    if (!contentEl || !storyId) return;
+
+    try {
+        const token = localStorage.getItem('authToken');
+        const response = await fetch(`/api/stories/${storyId}/project-brief`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('获取立项书失败');
+        }
+
+        const data = await response.json();
+
+        if (!data.projectBrief) {
+            contentEl.innerHTML = `
+                <div class="loading-placeholder">
+                    <i class="fas fa-file-alt"></i>
+                    <p>暂无立项书</p>
+                    <p style="font-size: 12px; margin-top: 10px; color: var(--st-text-tertiary);">
+                        使用 AI 辅助创作功能可生成立项书
+                    </p>
+                </div>
+            `;
+            return;
+        }
+
+        const brief = data.projectBrief;
+        contentEl.innerHTML = `
+            <div class="panel-section">
+                <div class="panel-section-title">故事标题</div>
+                <div class="panel-section-content">${brief.title || '未指定'}</div>
+            </div>
+            <div class="panel-section">
+                <div class="panel-section-title">故事梗概</div>
+                <div class="panel-section-content">${brief.synopsis || '暂无内容'}</div>
+            </div>
+            <div class="panel-section">
+                <div class="panel-section-title">核心创意</div>
+                <div class="panel-section-content">${brief.coreIdea || '暂无内容'}</div>
+            </div>
+            ${brief.targetAudience ? `
+            <div class="panel-section">
+                <div class="panel-section-title">目标读者</div>
+                <div class="panel-section-content">${brief.targetAudience}</div>
+            </div>
+            ` : ''}
+            ${brief.genre ? `
+            <div class="panel-section">
+                <div class="panel-section-title">类型标签</div>
+                <div class="panel-section-content">${brief.genre}</div>
+            </div>
+            ` : ''}
+            ${brief.highlights && brief.highlights.length > 0 ? `
+            <div class="panel-section">
+                <div class="panel-section-title">作品亮点</div>
+                <div class="panel-section-content">
+                    <ul style="padding-left: 20px; margin: 0;">
+                        ${brief.highlights.map(h => `<li>${h}</li>`).join('')}
+                    </ul>
+                </div>
+            </div>
+            ` : ''}
+        `;
+    } catch (error) {
+        console.error('加载立项书失败:', error);
+        contentEl.innerHTML = `
+            <div class="loading-placeholder">
+                <i class="fas fa-exclamation-circle"></i>
+                <p>加载失败</p>
+            </div>
+        `;
+    }
+}
+
+// 加载大纲
+async function loadOutline() {
+    const contentEl = document.getElementById('outlineContent');
+    if (!contentEl || !storyId) return;
+
+    try {
+        const token = localStorage.getItem('authToken');
+
+        // 获取当前大纲
+        const response = await fetch(`/api/stories/${storyId}/outlines/active`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('获取大纲失败');
+        }
+
+        const data = await response.json();
+
+        if (!data.outline) {
+            contentEl.innerHTML = `
+                <div class="loading-placeholder">
+                    <i class="fas fa-list-ol"></i>
+                    <p>暂无大纲</p>
+                    <p style="font-size: 12px; margin-top: 10px; color: var(--st-text-tertiary);">
+                        使用 AI 辅助创作功能可生成大纲
+                    </p>
+                </div>
+            `;
+            return;
+        }
+
+        const outline = data.outline;
+        contentEl.innerHTML = `
+            ${outline.worldBuilding ? `
+            <div class="panel-section">
+                <div class="panel-section-title">世界观设定</div>
+                <div class="panel-section-content">${outline.worldBuilding}</div>
+            </div>
+            ` : ''}
+            ${outline.characters && outline.characters.length > 0 ? `
+            <div class="panel-section">
+                <div class="panel-section-title">主要角色</div>
+                ${outline.characters.map(c => `
+                    <div style="margin-bottom: 15px; padding: 10px; background: var(--st-bg-secondary); border-radius: 8px;">
+                        <strong>${c.name}</strong>
+                        <span style="margin-left: 10px; padding: 2px 6px; background: var(--st-primary-100); color: var(--st-primary-700); border-radius: 4px; font-size: 11px;">
+                            ${c.role === 'protagonist' ? '主角' : c.role === 'antagonist' ? '反派' : '配角'}
+                        </span>
+                        <p style="margin-top: 5px; font-size: 13px; color: var(--st-text-secondary);">${c.description || ''}</p>
+                    </div>
+                `).join('')}
+            </div>
+            ` : ''}
+            ${outline.chapterOutlines && outline.chapterOutlines.length > 0 ? `
+            <div class="panel-section">
+                <div class="panel-section-title">章节大纲（前 10 章）</div>
+                ${outline.chapterOutlines.slice(0, 10).map(c => `
+                    <div style="margin-bottom: 10px; padding: 10px; background: var(--st-bg-secondary); border-radius: 8px;">
+                        <strong>第${c.chapter}章：${c.title || '无题'}</strong>
+                        <p style="margin-top: 5px; font-size: 13px; color: var(--st-text-secondary);">${c.summary || '暂无内容'}</p>
+                    </div>
+                `).join('')}
+            </div>
+            ` : ''}
+        `;
+    } catch (error) {
+        console.error('加载大纲失败:', error);
+        contentEl.innerHTML = `
+            <div class="loading-placeholder">
+                <i class="fas fa-exclamation-circle"></i>
+                <p>加载失败</p>
+            </div>
+        `;
+    }
+}

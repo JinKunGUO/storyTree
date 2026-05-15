@@ -59,27 +59,80 @@
 
     <!-- 撰写容器 -->
     <div class="write-container">
-        <!-- 头部信息 -->
-        <div class="write-header">
-            <div class="story-info">
-                <i class="fas fa-book"></i>
-                <div>
-                    <div class="story-title" id="storyTitle">加载中...</div>
-                    <div style="color: var(--st-text-tertiary); font-size: 14px; margin-top: 5px;">撰写第一章</div>
+        <!-- 侧边栏 -->
+        <div class="write-sidebar" id="writeSidebar">
+            <!-- 侧边栏标签页 -->
+            <div class="sidebar-tabs">
+                <button class="sidebar-tab active" data-tab="project">
+                    <i class="fas fa-file-alt"></i> 立项书
+                </button>
+                <button class="sidebar-tab" data-tab="outline">
+                    <i class="fas fa-list-ol"></i> 大纲
+                </button>
+            </div>
+
+            <!-- 立项书面板 -->
+            <div class="sidebar-panel active" id="panelProject">
+                <div class="panel-header">
+                    <h3><i class="fas fa-file-alt"></i> 项目立项书</h3>
+                    <button class="btn-icon" id="editProjectBtn" title="编辑立项书">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </div>
+                <div class="panel-content" id="projectBriefContent">
+                    <div class="loading-placeholder">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span>加载中...</span>
+                    </div>
                 </div>
             </div>
-            <input 
-                type="text" 
-                class="chapter-title-input" 
-                id="chapterTitle" 
-                placeholder="输入章节标题，例如：第一章 - 开端"
-                maxlength="100"
-            >
+
+            <!-- 大纲面板 -->
+            <div class="sidebar-panel" id="panelOutline">
+                <div class="panel-header">
+                    <h3><i class="fas fa-list-ol"></i> 故事大纲</h3>
+                    <div class="version-selector">
+                        <select id="outlineVersionSelect">
+                            <option value="current">当前版本</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="panel-content" id="outlineContent">
+                    <div class="loading-placeholder">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span>加载中...</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- 富文本编辑器 -->
-        <div class="editor-container">
-            <div id="editor"></div>
+        <!-- 主编辑区 -->
+        <div class="write-main">
+            <!-- 头部信息 -->
+            <div class="write-header">
+                <div class="story-info">
+                    <i class="fas fa-book"></i>
+                    <div>
+                        <div class="story-title" id="storyTitle">加载中...</div>
+                        <div style="color: var(--st-text-tertiary); font-size: 14px; margin-top: 5px;">撰写第一章</div>
+                    </div>
+                </div>
+                <button class="btn-toggle-sidebar" id="toggleSidebarBtn" title="切换侧边栏">
+                    <i class="fas fa-columns"></i>
+                </button>
+                <input
+                    type="text"
+                    class="chapter-title-input"
+                    id="chapterTitle"
+                    placeholder="输入章节标题，例如：第一章 - 开端"
+                    maxlength="100"
+                >
+            </div>
+
+            <!-- 富文本编辑器 -->
+            <div class="editor-container">
+                <div id="editor"></div>
+            </div>
         </div>
     </div>
 

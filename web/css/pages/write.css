@@ -678,6 +678,182 @@
             }
         }
 
+        /* ==================== 侧边栏样式 ==================== */
+        .write-container {
+            display: flex;
+            gap: 20px;
+        }
+
+        .write-sidebar {
+            width: 350px;
+            flex-shrink: 0;
+            background: var(--st-bg-primary);
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+            height: calc(100vh - 140px);
+            position: sticky;
+            top: 84px;
+        }
+
+        .write-main {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .sidebar-tabs {
+            display: flex;
+            border-bottom: 2px solid var(--st-gray-200);
+        }
+
+        .sidebar-tab {
+            flex: 1;
+            padding: 15px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--st-text-secondary);
+            transition: all 0.2s;
+        }
+
+        .sidebar-tab:hover {
+            background: var(--st-gray-100);
+        }
+
+        .sidebar-tab.active {
+            color: var(--st-primary-600);
+            border-bottom-color: var(--st-primary-500);
+            background: var(--st-primary-50);
+        }
+
+        .sidebar-panel {
+            display: none;
+            height: calc(100% - 50px);
+            overflow-y: auto;
+        }
+
+        .sidebar-panel.active {
+            display: block;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            border-bottom: 1px solid var(--st-gray-200);
+        }
+
+        .panel-header h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--st-text-primary);
+            margin: 0;
+        }
+
+        .btn-icon {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 5px;
+            color: var(--st-text-tertiary);
+            transition: all 0.2s;
+        }
+
+        .btn-icon:hover {
+            background: var(--st-gray-100);
+            color: var(--st-primary-500);
+        }
+
+        .version-selector select {
+            padding: 5px 10px;
+            border: 1px solid var(--st-gray-200);
+            border-radius: 5px;
+            font-size: 12px;
+            color: var(--st-text-secondary);
+            background: var(--st-bg-secondary);
+        }
+
+        .panel-content {
+            padding: 15px;
+        }
+
+        .panel-section {
+            margin-bottom: 20px;
+        }
+
+        .panel-section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--st-text-tertiary);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .panel-section-content {
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--st-text-secondary);
+        }
+
+        .loading-placeholder {
+            text-align: center;
+            padding: 30px;
+            color: var(--st-text-tertiary);
+        }
+
+        .btn-toggle-sidebar {
+            background: transparent;
+            border: 1px solid var(--st-gray-200);
+            border-radius: 8px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--st-text-secondary);
+            transition: all 0.2s;
+        }
+
+        .btn-toggle-sidebar:hover {
+            background: var(--st-gray-100);
+            color: var(--st-primary-500);
+        }
+
+        /* 响应式 */
+        @media (max-width: 1024px) {
+            .write-sidebar {
+                display: none;
+            }
+
+            .write-container.sidebar-open .write-sidebar {
+                display: block;
+                position: fixed;
+                left: 20px;
+                top: 84px;
+                z-index: 1000;
+                height: calc(100vh - 140px);
+                box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .write-container {
+                flex-direction: column;
+            }
+
+            .write-sidebar {
+                width: 100%;
+                height: auto;
+                position: static;
+            }
+        }
+
         /* 按钮相对定位 */
         .action-btn.btn-ai {
             position: relative;

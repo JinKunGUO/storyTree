@@ -72,6 +72,15 @@
           }
         },
         {
+          "path": "pages/story/create-ai",
+          "style": {
+            "navigationBarTitleText": "AI 辅助创作",
+            "navigationBarBackgroundColor": "#1a1a2e",
+            "navigationBarTextStyle": "white",
+            "navigationStyle": "custom"
+          }
+        },
+        {
           "path": "pages/story/manage",
           "style": {
             "navigationBarTitleText": "管理故事",

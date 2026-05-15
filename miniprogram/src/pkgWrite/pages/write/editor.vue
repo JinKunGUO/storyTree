@@ -115,6 +115,64 @@
             </view>
           </view>
         </view>
+
+        <!-- 大纲 Tab -->
+        <view class="outline-tab-section">
+          <view class="outline-tab-header" @tap="toggleOutlinePanel">
+            <text class="outline-tab-icon">📝</text>
+            <text class="outline-tab-title">故事大纲</text>
+            <text class="outline-tab-arrow" :class="{ 'rotate': showOutlinePanel }">›</text>
+          </view>
+          <view v-if="showOutlinePanel" class="outline-panel">
+            <view v-if="outlineLoading" class="outline-loading">加载中...</view>
+            <view v-else-if="outlineError" class="outline-error">{{ outlineError }}</view>
+            <view v-else-if="outlineData" class="outline-content">
+              <!-- 世界观 -->
+              <view v-if="outlineData.worldBuilding" class="outline-section">
+                <text class="outline-section-title">🌍 世界观</text>
+                <text class="outline-section-text">{{ outlineData.worldBuilding }}</text>
+              </view>
+              <!-- 角色设定 -->
+              <view v-if="outlineData.characters && outlineData.characters.length > 0" class="outline-section">
+                <text class="outline-section-title">👥 角色</text>
+                <view v-for="char in outlineData.characters" :key="char.name" class="outline-character">
+                  <text class="outline-character-name">{{ char.name }}</text>
+                  <text class="outline-character-role">{{ getRoleText(char.role) }}</text>
+                  <text class="outline-character-desc">{{ char.description }}</text>
+                </view>
+              </view>
+              <!-- 三幕结构 -->
+              <view v-if="outlineData.plotStructure" class="outline-section">
+                <text class="outline-section-title">📖 故事结构</text>
+                <view class="outline-act">
+                  <text class="outline-act-title">第一幕</text>
+                  <text class="outline-act-text">{{ outlineData.plotStructure.act1 }}</text>
+                </view>
+                <view class="outline-act">
+                  <text class="outline-act-title">第二幕</text>
+                  <text class="outline-act-text">{{ outlineData.plotStructure.act2 }}</text>
+                </view>
+                <view class="outline-act">
+                  <text class="outline-act-title">第三幕</text>
+                  <text class="outline-act-text">{{ outlineData.plotStructure.act3 }}</text>
+                </view>
+              </view>
+              <!-- 分章大纲 -->
+              <view v-if="outlineData.chapterOutlines && outlineData.chapterOutlines.length > 0" class="outline-section">
+                <text class="outline-section-title">📑 分章大纲</text>
+                <view v-for="chapter in outlineData.chapterOutlines" :key="chapter.chapter" class="outline-chapter">
+                  <text class="outline-chapter-title">{{ chapter.title || '第' + chapter.chapter + '章' }}</text>
+                  <text class="outline-chapter-summary">{{ chapter.summary }}</text>
+                </view>
+              </view>
+            </view>
+            <view v-else class="outline-empty">
+              <text class="outline-empty-icon">📝</text>
+              <text class="outline-empty-text">暂无大纲</text>
+              <text v-if="aiCreationMethod" class="outline-empty-hint">AI 创作的故事自动生成大纲</text>
+            </view>
+          </view>
+        </view>
       </view>
     </scroll-view>
 
@@ -199,6 +257,13 @@ const aiQuota = ref<{
   }
   costs: { continuation: number; polish: number; illustration: number }
 } | null>(null)
+
+// ─── 大纲面板 ──────────────────────────────────────────────────────────────────
+const showOutlinePanel = ref(false)
+const outlineLoading = ref(false)
+const outlineError = ref('')
+const outlineData = ref<any>(null)
+const aiCreationMethod = ref<string | null>(null)
 
 // ─── 计算属性 ──────────────────────────────────────────────────────────────────
 const toolbarTitle = computed(() => {
@@ -587,6 +652,60 @@ function handleBack() {
     doBack()
   }
 }
+
+// ─── 大纲面板相关 ──────────────────────────────────────────────────────────────
+
+function toggleOutlinePanel() {
+  showOutlinePanel.value = !showOutlinePanel.value
+  if (showOutlinePanel.value && !outlineData.value && !outlineLoading.value) {
+    loadOutline()
+  }
+}
+
+async function loadOutline() {
+  if (!storyId.value) return
+
+  outlineLoading.value = true
+  outlineError.value = ''
+
+  try {
+    // 先加载故事信息，检查是否是 AI 创作的
+    const storyRes = await http.get(`/api/stories/${storyId.value}`)
+    if (storyRes.story) {
+      aiCreationMethod.value = storyRes.story.ai_assisted_created
+        ? storyRes.story.ai_creation_method
+        : null
+    }
+
+    // 加载大纲
+    const res = await http.get(`/api/stories/${storyId.value}/outlines/active`)
+    if (res.outline) {
+      outlineData.value = typeof res.outline === 'string'
+        ? JSON.parse(res.outline)
+        : res.outline
+    } else {
+      outlineData.value = null
+    }
+  } catch (err: any) {
+    if (err.statusCode === 404) {
+      outlineData.value = null
+    } else {
+      outlineError.value = '加载大纲失败'
+    }
+  } finally {
+    outlineLoading.value = false
+  }
+}
+
+function getRoleText(role: string): string {
+  const roleMap: Record<string, string> = {
+    protagonist: '主角',
+    antagonist: '反派',
+    supporting: '配角',
+    love_interest: '感情线',
+  }
+  return roleMap[role] || role
+}
 </script>
 
 <style lang="scss" scoped>
@@ -907,6 +1026,198 @@ function handleBack() {
         color: #ffffff;
         font-weight: 600;
       }
+    }
+  }
+}
+
+// 大纲 Tab
+.outline-tab-section {
+  margin: 0 24rpx 24rpx;
+  background: #ffffff;
+  border-radius: 16rpx;
+  border: 1rpx solid #e2e8f0;
+  overflow: hidden;
+
+  .outline-tab-header {
+    display: flex;
+    align-items: center;
+    padding: 20rpx 24rpx;
+    background: #f8fafc;
+    border-bottom: 1rpx solid #e2e8f0;
+
+    .outline-tab-icon {
+      font-size: 32rpx;
+      margin-right: 12rpx;
+    }
+
+    .outline-tab-title {
+      flex: 1;
+      font-size: 28rpx;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .outline-tab-arrow {
+      font-size: 32rpx;
+      color: #94a3b8;
+      transition: transform 0.3s ease;
+
+      &.rotate {
+        transform: rotate(90deg);
+      }
+    }
+  }
+
+  .outline-panel {
+    max-height: 600rpx;
+    overflow-y: auto;
+    background: #ffffff;
+  }
+
+  .outline-loading,
+  .outline-error,
+  .outline-empty {
+    padding: 40rpx 24rpx;
+    text-align: center;
+  }
+
+  .outline-loading {
+    font-size: 26rpx;
+    color: #94a3b8;
+  }
+
+  .outline-error {
+    font-size: 26rpx;
+    color: #ef4444;
+  }
+
+  .outline-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12rpx;
+
+    .outline-empty-icon {
+      font-size: 64rpx;
+      opacity: 0.5;
+    }
+
+    .outline-empty-text {
+      font-size: 26rpx;
+      color: #64748b;
+    }
+
+    .outline-empty-hint {
+      font-size: 22rpx;
+      color: #94a3b8;
+    }
+  }
+
+  .outline-content {
+    padding: 24rpx;
+  }
+
+  .outline-section {
+    margin-bottom: 24rpx;
+    padding-bottom: 24rpx;
+    border-bottom: 1rpx solid #f0f2f5;
+
+    &:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+
+    .outline-section-title {
+      font-size: 28rpx;
+      font-weight: 600;
+      color: #1e293b;
+      display: block;
+      margin-bottom: 16rpx;
+    }
+
+    .outline-section-text {
+      font-size: 26rpx;
+      color: #64748b;
+      line-height: 1.7;
+      display: block;
+    }
+  }
+
+  .outline-character {
+    display: block;
+    padding: 16rpx;
+    margin-bottom: 12rpx;
+    background: #f8fafc;
+    border-radius: 12rpx;
+
+    .outline-character-name {
+      font-size: 26rpx;
+      font-weight: 600;
+      color: #1e293b;
+      display: block;
+      margin-bottom: 4rpx;
+    }
+
+    .outline-character-role {
+      font-size: 22rpx;
+      color: #7c6af7;
+      display: block;
+      margin-bottom: 8rpx;
+    }
+
+    .outline-character-desc {
+      font-size: 24rpx;
+      color: #64748b;
+      line-height: 1.6;
+      display: block;
+    }
+  }
+
+  .outline-act {
+    display: block;
+    padding: 16rpx;
+    margin-bottom: 12rpx;
+    background: #f8fafc;
+    border-left: 4rpx solid #7c6af7;
+    border-radius: 8rpx;
+
+    .outline-act-title {
+      font-size: 24rpx;
+      font-weight: 600;
+      color: #7c6af7;
+      display: block;
+      margin-bottom: 8rpx;
+    }
+
+    .outline-act-text {
+      font-size: 24rpx;
+      color: #64748b;
+      line-height: 1.6;
+      display: block;
+    }
+  }
+
+  .outline-chapter {
+    display: block;
+    padding: 16rpx;
+    margin-bottom: 12rpx;
+    background: #f8fafc;
+    border-radius: 12rpx;
+
+    .outline-chapter-title {
+      font-size: 26rpx;
+      font-weight: 600;
+      color: #1e293b;
+      display: block;
+      margin-bottom: 8rpx;
+    }
+
+    .outline-chapter-summary {
+      font-size: 24rpx;
+      color: #64748b;
+      line-height: 1.6;
+      display: block;
     }
   }
 }

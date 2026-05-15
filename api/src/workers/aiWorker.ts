@@ -2,7 +2,7 @@ import { Job } from 'bull';
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 import { prisma } from '../db';
-import { aiContinuationQueue, aiPolishQueue, aiIllustrationQueue } from '../utils/queue';
+import { aiContinuationQueue, aiPolishQueue, aiIllustrationQueue, aiProjectBriefQueue, aiOutlineQueue, aiPasticheQueue, aiTemplateQueue } from '../utils/queue';
 import { notifyAiContinuationReady, notifyAiPolishReady, notifyAiIllustrationReady } from '../utils/notification';
 import { deductPoints, AI_COST } from '../utils/points';
 import { wsServer } from '../utils/websocket';
@@ -1727,4 +1727,666 @@ setInterval(checkScheduledTasks, SCHEDULER_INTERVAL);
 // 启动时立即检查一次
 checkScheduledTasks().then(() => {
   console.log('✅ 定时任务调度器已启动，每60秒检查一次');
+});
+// ==================== AI 辅助创作功能 ====================
+
+/**
+ * 处理立项书生成任务
+ */
+async function processProjectBrief(job: Job) {
+  const { taskId, sessionId, userId, storyIdea, genre, targetAudience, writingStyle, feedback, revisionType, previousContent } = job.data;
+
+  console.log(`[AI 创作] 开始处理立项书生成任务：${taskId}, 会话：${sessionId}`);
+
+  try {
+    const startTime = Date.now();
+    let aiResponse: string;
+    let tokensUsed: { input: number; output: number; total: number };
+    let modelName: string;
+
+    // 构建 Prompt
+    let prompt = '';
+
+    if (revisionType === 'project_brief' && feedback) {
+      // 多轮修改模式
+      prompt = `你是一位专业的网文编辑和策划人。用户已经有一个项目立项书，现在提出了修改意见。
+请根据用户的反馈修改立项书。
+
+【用户反馈】
+${feedback}
+
+【原立项书】
+${JSON.stringify(previousContent, null, 2)}
+
+请输出修改后的完整立项书，保持以下 JSON 格式：
+{
+  "title": "故事标题（可选，用户没有要求修改则保持原样）",
+  "synopsis": "故事梗概（200 字左右）",
+  "coreIdea": "核心创意/卖点",
+  "targetAudience": "目标读者群体",
+  "genre": "类型标签",
+  "writingStyle": "文风建议",
+  "chapterStructure": "推荐章节结构",
+  "highlights": ["亮点 1", "亮点 2", "亮点 3"]
+}
+
+注意：只输出 JSON 内容，不要输出其他解释文字。`;
+    } else {
+      // 首次生成模式
+      prompt = `你是一位专业的网文编辑和策划人。用户有一个故事想法，需要整理成规范的项目立项书。
+
+【用户故事想法】
+${storyIdea}
+
+${genre ? `【故事类型】${genre}` : ''}
+${targetAudience ? `【目标读者】${targetAudience}` : ''}
+${writingStyle ? `【期望文风】${writingStyle}` : ''}
+
+请分析用户的想法，生成一份完整的项目立项书。包含以下内容：
+1. 故事梗概（200 字左右，吸引读者的简介）
+2. 核心创意/卖点（这部作品独特在哪里）
+3. 目标读者群体（谁会喜欢看这类故事）
+4. 类型标签（如玄幻、都市、悬疑等）
+5. 文风建议（如轻松幽默、严肃沉重等）
+6. 推荐章节结构（如三幕式、单元剧等）
+7. 作品亮点（3-5 个吸引点）
+
+请输出 JSON 格式：
+{
+  "title": "建议的故事标题",
+  "synopsis": "故事梗概",
+  "coreIdea": "核心创意/卖点",
+  "targetAudience": "目标读者群体",
+  "genre": "类型标签",
+  "writingStyle": "文风建议",
+  "chapterStructure": "推荐章节结构",
+  "highlights": ["亮点 1", "亮点 2", "亮点 3"]
+}
+
+注意：只输出 JSON 内容，不要输出其他解释文字。`;
+    }
+
+    // 调用 AI API
+    if (USE_QWEN) {
+      const qwenResponse = await callQwenAPI(prompt, 2000, 0.8);
+      aiResponse = qwenResponse.text;
+      tokensUsed = {
+        input: qwenResponse.usage.input,
+        output: qwenResponse.usage.output,
+        total: qwenResponse.usage.input + qwenResponse.usage.output
+      };
+      modelName = QWEN_MODEL;
+    } else if (anthropic) {
+      const response = await anthropic.messages.create({
+        model: 'claude-3-haiku-20240307',
+        max_tokens: 2000,
+        temperature: 0.8,
+        messages: [{ role: 'user', content: prompt }]
+      });
+      aiResponse = response.content[0]?.type === 'text' ? response.content[0].text : '';
+      tokensUsed = {
+        input: response.usage.input_tokens || 0,
+        output: response.usage.output_tokens || 0,
+        total: (response.usage.input_tokens || 0) + (response.usage.output_tokens || 0)
+      };
+      modelName = 'claude-3-haiku-20240307';
+    } else {
+      throw new Error('未配置 AI 服务');
+    }
+
+    const responseTime = Date.now() - startTime;
+    const costUsd = (tokensUsed.input * 0.25 / 1000000) + (tokensUsed.output * 1.25 / 1000000);
+
+    // 解析 AI 响应
+    let projectBrief;
+    try {
+      // 尝试提取 JSON 内容
+      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        projectBrief = JSON.parse(jsonMatch[0]);
+      } else {
+        projectBrief = JSON.parse(aiResponse);
+      }
+    } catch (e) {
+      console.warn('[AI 创作] 解析 AI 响应失败，使用原始响应:', e);
+      projectBrief = { raw: aiResponse };
+    }
+
+    // 更新任务状态
+    await prisma.ai_tasks.update({
+      where: { id: taskId },
+      data: {
+        status: 'completed',
+        result_data: JSON.stringify({
+          projectBrief,
+          sessionId,
+          round: revisionType ? (previousContent ? 1 : 0) : 0
+        }),
+        completed_at: new Date()
+      }
+    });
+
+    // 记录使用日志
+    await prisma.ai_usage_logs.create({
+      data: {
+        user_id: userId,
+        action_type: revisionType ? 'revise_project_brief' : 'generate_project_brief',
+        model_name: modelName,
+        prompt_tokens: tokensUsed.input,
+        completion_tokens: tokensUsed.output,
+        total_tokens: tokensUsed.total,
+        cost_usd: costUsd,
+        response_time_ms: responseTime,
+        success: true
+      }
+    });
+
+    console.log(`[AI 创作] 立项书${revisionType ? '修改' : '生成'}完成：${taskId}`);
+
+  } catch (error) {
+    console.error(`[AI 创作] 立项书${revisionType ? '修改' : '生成'}失败:`, error);
+
+    await prisma.ai_tasks.update({
+      where: { id: taskId },
+      data: {
+        status: 'failed',
+        error_message: error instanceof Error ? error.message : '未知错误',
+        completed_at: new Date()
+      }
+    });
+
+    throw error;
+  }
+}
+
+/**
+ * 处理大纲生成任务
+ */
+async function processOutline(job: Job) {
+  const { taskId, sessionId, userId, genre, coreIdea, projectBrief, feedback, revisionType, previousContent } = job.data;
+
+  console.log(`[AI 创作] 开始处理大纲生成任务：${taskId}, 会话：${sessionId}`);
+
+  try {
+    const startTime = Date.now();
+    let aiResponse: string;
+    let tokensUsed: { input: number; output: number; total: number };
+    let modelName: string;
+
+    // 构建 Prompt
+    let prompt = '';
+
+    if (revisionType === 'outline' && feedback) {
+      // 多轮修改模式
+      prompt = `你是一位专业的网文编辑和策划人。用户已经有一个故事大纲，现在提出了修改意见。
+请根据用户的反馈修改大纲。
+
+【用户反馈】
+${feedback}
+
+【原大纲】
+${JSON.stringify(previousContent, null, 2)}
+
+请输出修改后的完整大纲，保持以下 JSON 格式：
+{
+  "worldBuilding": "世界观设定",
+  "characters": [
+    {
+      "name": "角色名",
+      "role": "protagonist|antagonist|supporting",
+      "description": "角色描述",
+      "traits": { "personality": "性格", "appearance": "外貌", "abilities": "能力" },
+      "background": "背景故事"
+    }
+  ],
+  "plotStructure": {
+    "act1": "第一幕：开端",
+    "act2": "第二幕：发展",
+    "act3": "第三幕：高潮/结局"
+  },
+  "chapterOutlines": [
+    { "chapter": 1, "title": "章节名", "summary": "章节梗概（100 字左右）" }
+  ]
+}
+
+注意：只输出 JSON 内容，不要输出其他解释文字。`;
+    } else {
+      // 首次生成模式
+      prompt = `你是一位专业的网文编辑和策划人。用户需要生成一份完整的故事大纲。
+
+【故事类型】${genre || '未指定'}
+【核心想法】
+${coreIdea}
+
+${projectBrief ? `【项目立项书】\n${JSON.stringify(projectBrief, null, 2)}` : ''}
+
+请基于以上信息，生成一份完整的故事大纲。包含以下内容：
+
+1. 世界观设定（故事发生的背景、规则、特殊设定等）
+2. 主要角色设定（3-5 个核心角色，包含姓名、角色定位、性格特点、外貌、能力、背景故事）
+3. 三幕式情节结构（第一幕：开端，第二幕：发展，第三幕：高潮/结局）
+4. 分章大纲（10-20 章，每章包含章节名和 100 字左右的梗概）
+
+请输出 JSON 格式：
+{
+  "worldBuilding": "世界观设定",
+  "characters": [
+    {
+      "name": "角色名",
+      "role": "protagonist|antagonist|supporting",
+      "description": "角色描述",
+      "traits": { "personality": "性格", "appearance": "外貌", "abilities": "能力" },
+      "background": "背景故事"
+    }
+  ],
+  "plotStructure": {
+    "act1": "第一幕：开端",
+    "act2": "第二幕：发展",
+    "act3": "第三幕：高潮/结局"
+  },
+  "chapterOutlines": [
+    { "chapter": 1, "title": "章节名", "summary": "章节梗概（100 字左右）" }
+  ]
+}
+
+注意：只输出 JSON 内容，不要输出其他解释文字。`;
+    }
+
+    // 调用 AI API
+    if (USE_QWEN) {
+      const qwenResponse = await callQwenAPI(prompt, 4000, 0.8);
+      aiResponse = qwenResponse.text;
+      tokensUsed = {
+        input: qwenResponse.usage.input,
+        output: qwenResponse.usage.output,
+        total: qwenResponse.usage.input + qwenResponse.usage.output
+      };
+      modelName = QWEN_MODEL;
+    } else if (anthropic) {
+      const response = await anthropic.messages.create({
+        model: 'claude-3-haiku-20240307',
+        max_tokens: 4000,
+        temperature: 0.8,
+        messages: [{ role: 'user', content: prompt }]
+      });
+      aiResponse = response.content[0]?.type === 'text' ? response.content[0].text : '';
+      tokensUsed = {
+        input: response.usage.input_tokens || 0,
+        output: response.usage.output_tokens || 0,
+        total: (response.usage.input_tokens || 0) + (response.usage.output_tokens || 0)
+      };
+      modelName = 'claude-3-haiku-20240307';
+    } else {
+      throw new Error('未配置 AI 服务');
+    }
+
+    const responseTime = Date.now() - startTime;
+    const costUsd = (tokensUsed.input * 0.25 / 1000000) + (tokensUsed.output * 1.25 / 1000000);
+
+    // 解析 AI 响应
+    let outline;
+    try {
+      // 尝试提取 JSON 内容
+      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        outline = JSON.parse(jsonMatch[0]);
+      } else {
+        outline = JSON.parse(aiResponse);
+      }
+    } catch (e) {
+      console.warn('[AI 创作] 解析 AI 响应失败，使用原始响应:', e);
+      outline = { raw: aiResponse };
+    }
+
+    // 更新任务状态
+    await prisma.ai_tasks.update({
+      where: { id: taskId },
+      data: {
+        status: 'completed',
+        result_data: JSON.stringify({
+          outline,
+          sessionId,
+          round: revisionType ? (previousContent ? 1 : 0) : 0
+        }),
+        completed_at: new Date()
+      }
+    });
+
+    // 记录使用日志
+    await prisma.ai_usage_logs.create({
+      data: {
+        user_id: userId,
+        action_type: revisionType ? 'revise_outline' : 'generate_outline',
+        model_name: modelName,
+        prompt_tokens: tokensUsed.input,
+        completion_tokens: tokensUsed.output,
+        total_tokens: tokensUsed.total,
+        cost_usd: costUsd,
+        response_time_ms: responseTime,
+        success: true
+      }
+    });
+
+    console.log(`[AI 创作] 大纲${revisionType ? '修改' : '生成'}完成：${taskId}`);
+
+  } catch (error) {
+    console.error(`[AI 创作] 大纲${revisionType ? '修改' : '生成'}失败:`, error);
+
+    await prisma.ai_tasks.update({
+      where: { id: taskId },
+      data: {
+        status: 'failed',
+        error_message: error instanceof Error ? error.message : '未知错误',
+        completed_at: new Date()
+      }
+    });
+
+    throw error;
+  }
+}
+
+// 注册队列处理器
+aiProjectBriefQueue.process(async (job: Job) => {
+  return processProjectBrief(job);
+});
+
+aiOutlineQueue.process(async (job: Job) => {
+  return processOutline(job);
+});
+
+/**
+ * 处理仿写任务
+ */
+async function processPastiche(job: Job) {
+  const { taskId, sessionId, userId, bookName, pasticheType, innovation } = job.data;
+
+  console.log(`[AI 创作] 开始处理仿写任务：${taskId}, 会话：${sessionId}`);
+
+  try {
+    const startTime = Date.now();
+    let aiResponse: string;
+    let tokensUsed: { input: number; output: number; total: number };
+    let modelName: string;
+
+    // 构建 Prompt
+    const prompt = `你是一位专业的网文编辑和策划人。用户想基于已有作品进行${pasticheType === 'pastiche' ? '仿写' : pasticheType === 'continuation' ? '续写' : '同人创作'}。
+
+【目标书名】${bookName}
+${innovation ? `【创新点】${innovation}` : ''}
+
+请分析原作（如果了解的话），生成一份${pasticheType === 'pastiche' ? '仿写' : pasticheType === 'continuation' ? '续写' : '同人'}方案。包含以下内容：
+
+1. 原作分析报告（风格、人物、情节结构）
+2. 新作立项书（基于原作分析）
+3. 开篇章节大纲 + 后续发展
+
+请输出 JSON 格式：
+{
+  "analysis": {
+    "style": "原作风格特点",
+    "characters": "主要角色",
+    "plotStructure": "情节结构"
+  },
+  "projectBrief": {
+    "title": "新作标题",
+    "synopsis": "故事梗概",
+    "coreIdea": "核心创意",
+    "genre": "类型标签"
+  },
+  "outline": {
+    "worldBuilding": "世界观设定",
+    "chapterOutlines": [
+      { "chapter": 1, "title": "章节名", "summary": "章节梗概" }
+    ]
+  }
+}
+
+注意：只输出 JSON 内容，不要输出其他解释文字。`;
+
+    // 调用 AI API
+    if (USE_QWEN) {
+      const qwenResponse = await callQwenAPI(prompt, 4000, 0.8);
+      aiResponse = qwenResponse.text;
+      tokensUsed = {
+        input: qwenResponse.usage.input,
+        output: qwenResponse.usage.output,
+        total: qwenResponse.usage.input + qwenResponse.usage.output
+      };
+      modelName = QWEN_MODEL;
+    } else if (anthropic) {
+      const response = await anthropic.messages.create({
+        model: 'claude-3-haiku-20240307',
+        max_tokens: 4000,
+        temperature: 0.8,
+        messages: [{ role: 'user', content: prompt }]
+      });
+      aiResponse = response.content[0]?.type === 'text' ? response.content[0].text : '';
+      tokensUsed = {
+        input: response.usage.input_tokens || 0,
+        output: response.usage.output_tokens || 0,
+        total: (response.usage.input_tokens || 0) + (response.usage.output_tokens || 0)
+      };
+      modelName = 'claude-3-haiku-20240307';
+    } else {
+      throw new Error('未配置 AI 服务');
+    }
+
+    const responseTime = Date.now() - startTime;
+    const costUsd = (tokensUsed.input * 0.25 / 1000000) + (tokensUsed.output * 1.25 / 1000000);
+
+    // 解析 AI 响应
+    let result;
+    try {
+      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        result = JSON.parse(jsonMatch[0]);
+      } else {
+        result = JSON.parse(aiResponse);
+      }
+    } catch (e) {
+      console.warn('[AI 创作] 解析 AI 响应失败，使用原始响应:', e);
+      result = { raw: aiResponse };
+    }
+
+    // 更新任务状态
+    await prisma.ai_tasks.update({
+      where: { id: taskId },
+      data: {
+        status: 'completed',
+        result_data: JSON.stringify({
+          pastiche: result,
+          sessionId,
+          round: 0
+        }),
+        completed_at: new Date()
+      }
+    });
+
+    // 记录使用日志
+    await prisma.ai_usage_logs.create({
+      data: {
+        user_id: userId,
+        action_type: 'generate_pastiche',
+        model_name: modelName,
+        prompt_tokens: tokensUsed.input,
+        completion_tokens: tokensUsed.output,
+        total_tokens: tokensUsed.total,
+        cost_usd: costUsd,
+        response_time_ms: responseTime,
+        success: true
+      }
+    });
+
+    console.log(`[AI 创作] 仿写生成完成：${taskId}`);
+
+  } catch (error) {
+    console.error(`[AI 创作] 仿写生成失败:`, error);
+
+    await prisma.ai_tasks.update({
+      where: { id: taskId },
+      data: {
+        status: 'failed',
+        error_message: error instanceof Error ? error.message : '未知错误',
+        completed_at: new Date()
+      }
+    });
+
+    throw error;
+  }
+}
+
+/**
+ * 处理模板生成任务
+ */
+async function processTemplate(job: Job) {
+  const { taskId, sessionId, userId, template, protagonistName, coreConflict } = job.data;
+
+  console.log(`[AI 创作] 开始处理模板生成任务：${taskId}, 会话：${sessionId}`);
+
+  try {
+    const startTime = Date.now();
+    let aiResponse: string;
+    let tokensUsed: { input: number; output: number; total: number };
+    let modelName: string;
+
+    // 构建 Prompt
+    const prompt = `你是一位专业的网文编辑和策划人。用户想基于预制模板生成故事。
+
+【模板框架】
+${JSON.stringify(template, null, 2)}
+
+【主角姓名】${protagonistName || '未指定'}
+${coreConflict ? `【核心冲突】${coreConflict}` : ''}
+
+请基于模板框架，生成一份完整的故事。包含以下内容：
+
+1. 项目立项书（填充模板预设）
+2. 完整大纲（基于模板框架）
+
+请输出 JSON 格式：
+{
+  "projectBrief": {
+    "title": "故事标题",
+    "synopsis": "故事梗概",
+    "coreIdea": "核心创意",
+    "genre": "类型标签",
+    "highlights": ["亮点 1", "亮点 2"]
+  },
+  "outline": {
+    "worldBuilding": "世界观设定",
+    "characters": [
+      { "name": "角色名", "role": "protagonist", "description": "角色描述" }
+    ],
+    "plotStructure": {
+      "act1": "第一幕",
+      "act2": "第二幕",
+      "act3": "第三幕"
+    },
+    "chapterOutlines": [
+      { "chapter": 1, "title": "章节名", "summary": "章节梗概" }
+    ]
+  }
+}
+
+注意：只输出 JSON 内容，不要输出其他解释文字。`;
+
+    // 调用 AI API
+    if (USE_QWEN) {
+      const qwenResponse = await callQwenAPI(prompt, 4000, 0.8);
+      aiResponse = qwenResponse.text;
+      tokensUsed = {
+        input: qwenResponse.usage.input,
+        output: qwenResponse.usage.output,
+        total: qwenResponse.usage.input + qwenResponse.usage.output
+      };
+      modelName = QWEN_MODEL;
+    } else if (anthropic) {
+      const response = await anthropic.messages.create({
+        model: 'claude-3-haiku-20240307',
+        max_tokens: 4000,
+        temperature: 0.8,
+        messages: [{ role: 'user', content: prompt }]
+      });
+      aiResponse = response.content[0]?.type === 'text' ? response.content[0].text : '';
+      tokensUsed = {
+        input: response.usage.input_tokens || 0,
+        output: response.usage.output_tokens || 0,
+        total: (response.usage.input_tokens || 0) + (response.usage.output_tokens || 0)
+      };
+      modelName = 'claude-3-haiku-20240307';
+    } else {
+      throw new Error('未配置 AI 服务');
+    }
+
+    const responseTime = Date.now() - startTime;
+    const costUsd = (tokensUsed.input * 0.25 / 1000000) + (tokensUsed.output * 1.25 / 1000000);
+
+    // 解析 AI 响应
+    let result;
+    try {
+      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        result = JSON.parse(jsonMatch[0]);
+      } else {
+        result = JSON.parse(aiResponse);
+      }
+    } catch (e) {
+      console.warn('[AI 创作] 解析 AI 响应失败，使用原始响应:', e);
+      result = { raw: aiResponse };
+    }
+
+    // 更新任务状态
+    await prisma.ai_tasks.update({
+      where: { id: taskId },
+      data: {
+        status: 'completed',
+        result_data: JSON.stringify({
+          template: result,
+          sessionId,
+          round: 0
+        }),
+        completed_at: new Date()
+      }
+    });
+
+    // 记录使用日志
+    await prisma.ai_usage_logs.create({
+      data: {
+        user_id: userId,
+        action_type: 'generate_from_template',
+        model_name: modelName,
+        prompt_tokens: tokensUsed.input,
+        completion_tokens: tokensUsed.output,
+        total_tokens: tokensUsed.total,
+        cost_usd: costUsd,
+        response_time_ms: responseTime,
+        success: true
+      }
+    });
+
+    console.log(`[AI 创作] 模板生成完成：${taskId}`);
+
+  } catch (error) {
+    console.error(`[AI 创作] 模板生成失败:`, error);
+
+    await prisma.ai_tasks.update({
+      where: { id: taskId },
+      data: {
+        status: 'failed',
+        error_message: error instanceof Error ? error.message : '未知错误',
+        completed_at: new Date()
+      }
+    });
+
+    throw error;
+  }
+}
+
+// 注册队列处理器
+aiPasticheQueue.process(async (job: Job) => {
+  return processPastiche(job);
+});
+
+aiTemplateQueue.process(async (job: Job) => {
+  return processTemplate(job);
 });

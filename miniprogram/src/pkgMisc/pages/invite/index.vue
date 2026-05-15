@@ -122,7 +122,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { onLoad, onShareAppMessage } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
 import { getMyInvitationCodes } from '@/api/users'
@@ -160,7 +160,18 @@ onShareAppMessage(() => ({
   path: myCode.value ? `/pages/index/index?invite=${myCode.value}` : '/pages/index/index',
 }))
 
+// 监听全局登录事件
+function handleLoggedIn() {
+  console.log('[邀请页] 收到登录事件，重新加载数据')
+  setTimeout(() => {
+    loadData()
+  }, 300)
+}
+
 onMounted(async () => {
+  // 监听登录事件
+  uni.$on('user:logged-in', handleLoggedIn)
+
   if (!userStore.isLoggedIn) {
     uni.showModal({
       title: '提示',
@@ -175,6 +186,10 @@ onMounted(async () => {
     return
   }
   await loadData()
+})
+
+onUnmounted(() => {
+  uni.$off('user:logged-in', handleLoggedIn)
 })
 
 async function loadData() {

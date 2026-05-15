@@ -84,6 +84,8 @@ export const useUserStore = defineStore('user', () => {
   function login(newToken: string, info: UserInfo) {
     setToken(newToken)
     setUserInfo(info)
+    // 触发登录事件，通知其他页面刷新
+    uni.$emit('user:logged-in', info)
   }
 
   function logout() {
@@ -91,6 +93,25 @@ export const useUserStore = defineStore('user', () => {
     userInfo.value = null
     uni.removeStorageSync(TOKEN_KEY)
     uni.removeStorageSync(USER_KEY)
+  }
+
+  // 检查登录状态（用于页面 onShow 时刷新）
+  function checkLoginStatus() {
+    const storedToken = uni.getStorageSync(TOKEN_KEY)
+    const storedUser = uni.getStorageSync(USER_KEY)
+    if (storedToken && storedUser) {
+      try {
+        const parsed = JSON.parse(storedUser)
+        if (parsed && token.value !== storedToken) {
+          token.value = storedToken
+          userInfo.value = parsed
+        } else if (!userInfo.value) {
+          userInfo.value = parsed
+        }
+      } catch {
+        // 解析失败，忽略
+      }
+    }
   }
 
   return {
@@ -103,6 +124,7 @@ export const useUserStore = defineStore('user', () => {
     setToken,
     setUserInfo,
     updateUserInfo,
+    checkLoginStatus,
     login,
     logout,
   }

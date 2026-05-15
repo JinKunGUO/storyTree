@@ -461,8 +461,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { onShow, onLoad } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
 import { getStory, followStory, unfollowStory, applyCollaboration, leaveCollaboration } from '@/api/stories'
 import { formatRelativeTime } from '@/utils/helpers'
@@ -777,6 +777,17 @@ function stopPollTask() {
   }
 }
 
+// 监听全局登录事件
+function handleLoggedIn(userInfo: any) {
+  console.log('[故事详情页] 收到登录事件，刷新故事数据')
+  // 延迟一下确保后端数据同步
+  setTimeout(() => {
+    if (story.value) {
+      loadStory(story.value.id)
+    }
+  }, 300)
+}
+
 onMounted(() => {
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1] as any
@@ -784,9 +795,16 @@ onMounted(() => {
   if (storyId) {
     loadStory(storyId)
   }
-  
+
   // 初始化 WebSocket 连接
   mpWsClient.connect()
+
+  // 监听登录事件
+  uni.$on('user:logged-in', handleLoggedIn)
+})
+
+onUnmounted(() => {
+  uni.$off('user:logged-in', handleLoggedIn)
 })
 
 // 从 write 页面发布新章节后返回时，刷新章节树（不触发全屏 loading）
@@ -796,6 +814,7 @@ onShow(() => {
     if (refreshFlag && story.value && Number(refreshFlag) === story.value.id) {
       uni.removeStorageSync('st_story_refresh')
       refreshTree(story.value.id)
+      return
     }
   } catch {
     // 忽略
@@ -1002,6 +1021,8 @@ function goManage() {
 
 async function applyForCollaboration() {
   if (!userStore.isLoggedIn) {
+    // 保存当前故事 ID，登录后返回时刷新
+    uni.setStorageSync('st_login_return_story_id', story.value?.id)
     uni.navigateTo({ url: '/pkgAuth/pages/auth/login/index' })
     return
   }

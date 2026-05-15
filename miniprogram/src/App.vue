@@ -1,11 +1,8 @@
 <script setup lang="ts">
 import { onLaunch, onShow, onHide } from '@dcloudio/uni-app'
-import { createPinia } from 'pinia'
 import { useAppStore } from '@/store/app'
 import { useUserStore } from '@/store/user'
 import { getMe } from '@/api/auth'
-
-const pinia = createPinia()
 
 onLaunch(() => {
   const appStore = useAppStore()

@@ -119,7 +119,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { onShow, onLoad } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
 import { getMyDrafts, deleteDraftNode } from '@/api/nodes'
@@ -136,6 +136,15 @@ const myStories = ref<Array<Story & { isAuthor: boolean; isCollaborator: boolean
 const draftsLoading = ref(false)
 const storiesLoading = ref(false)
 
+// 监听全局登录事件
+function handleLoggedIn() {
+  console.log('[写作中心] 收到登录事件，加载数据')
+  setTimeout(() => {
+    loadDrafts()
+    loadStories()
+  }, 300)
+}
+
 onLoad(() => {
   try {
     const info = uni.getSystemInfoSync()
@@ -143,6 +152,13 @@ onLoad(() => {
   } catch {
     statusBarHeight.value = 20
   }
+
+  // 监听登录事件
+  uni.$on('user:logged-in', handleLoggedIn)
+})
+
+onUnmounted(() => {
+  uni.$off('user:logged-in', handleLoggedIn)
 })
 
 onShow(async () => {

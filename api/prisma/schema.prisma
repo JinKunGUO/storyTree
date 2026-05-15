@@ -191,6 +191,9 @@ model stories {
   pinned                      Boolean                  @default(false)
   pinned_until                DateTime?
   pinned_at                   DateTime?
+  project_brief               String?                  // AI 生成项目立项书 (JSON string)
+  ai_assisted_created         Boolean                  @default(false)
+  ai_creation_method          String?                  // 'pastiche' | 'project' | 'outline' | 'template' | 'traditional'
   bookmarks                   bookmarks[]
   collaboration_requests      collaboration_requests[]
   nodes                       nodes[]
@@ -198,6 +201,8 @@ model stories {
   author                      users                    @relation("StoryAuthor", fields: [author_id], references: [id])
   collaborators               story_collaborators[]
   followers                   story_followers[]
+  outlines                    story_outlines[]
+  characters                  characters[]
 }
 
 model users {
@@ -582,4 +587,55 @@ model login_logs {
   @@index([created_at])
   @@index([status])
   @@index([ip])
+}
+
+// ========== AI 辅助创作功能新增表 ==========
+
+// 故事大纲版本表 - 支持版本管理
+model story_outlines {
+  id          Int      @id @default(autoincrement())
+  story_id    Int
+  version     Int      // v1, v2, v3...
+  outline     String   // { worldBuilding, characters, plotStructure, chapterOutlines } (JSON string)
+  is_active   Boolean  @default(false)
+  change_note String?
+  created_by  Int
+  created_at  DateTime @default(now())
+  story       stories  @relation(fields: [story_id], references: [id], onDelete: Cascade)
+
+  @@index([story_id])
+  @@index([story_id, is_active])
+}
+
+// 角色设定表
+model characters {
+  id          Int      @id @default(autoincrement())
+  story_id    Int
+  name        String
+  role        String   // 'protagonist' | 'antagonist' | 'supporting'
+  description String
+  traits      String?  // { personality, appearance, abilities } (JSON string)
+  background  String?
+  relations   String?  // { other_character_id: relationship_type } (JSON string)
+  is_active   Boolean  @default(true)
+  sort_order  Int      @default(0)
+  created_by  Int
+  created_at  DateTime @default(now())
+  story       stories  @relation(fields: [story_id], references: [id], onDelete: Cascade)
+
+  @@index([story_id])
+  @@index([story_id, is_active])
+}
+
+// 故事模板表
+model story_templates {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String
+  genre       String
+  framework   String   // { presetCharacters, plotStructure, chapterFramework } (JSON string)
+  is_public   Boolean  @default(false)
+  created_by  Int
+
+  @@index([genre])
 }

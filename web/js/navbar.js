@@ -16,6 +16,7 @@
     // ===== 认证状态显示 =====
     function checkAuthStatus() {
         const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        const userStr = localStorage.getItem('user') || sessionStorage.getItem('user');
         const loginLink = document.getElementById('loginLink');
         const registerLink = document.getElementById('registerLink');
         const profileLink = document.getElementById('profileLink');
@@ -23,7 +24,10 @@
         const myStoriesLink = document.getElementById('myStoriesLink');
         const notificationIcon = document.getElementById('notificationIcon');
 
-        if (token) {
+        // 必须同时有 token 和 user 数据才认为是已登录状态
+        const isLoggedIn = !!(token && userStr);
+
+        if (isLoggedIn) {
             if (loginLink) loginLink.style.display = 'none';
             if (registerLink) registerLink.style.display = 'none';
             if (profileLink) profileLink.style.display = 'flex';
@@ -36,6 +40,11 @@
             // 显示用户名（优先从 localStorage 读取，避免额外请求）
             loadNavUsername(token, profileLink);
         } else {
+            // 未登录状态：清除可能残留的 user 数据
+            if (userStr) {
+                localStorage.removeItem('user');
+                sessionStorage.removeItem('user');
+            }
             if (loginLink) loginLink.style.display = 'flex';
             if (registerLink) registerLink.style.display = 'flex';
             if (profileLink) profileLink.style.display = 'none';
@@ -137,5 +146,22 @@
     } else {
         checkAuthStatus();
     }
+
+    // ===== 监听页面显示事件（处理浏览器缓存/后退按钮）=====
+    // 当用户从浏览器缓存返回页面时，强制刷新认证状态
+    window.addEventListener('pageshow', function(event) {
+        // 如果页面是从 bfcache 恢复的（persisted=true），重新检查认证状态
+        if (event.persisted) {
+            checkAuthStatus();
+        }
+    });
+
+    // ===== 监听 storage 事件（跨标签页同步）=====
+    // 当其他标签页退出登录时，同步更新当前页状态
+    window.addEventListener('storage', function(event) {
+        if (event.key === 'token' || event.key === 'user') {
+            checkAuthStatus();
+        }
+    });
 })();
 

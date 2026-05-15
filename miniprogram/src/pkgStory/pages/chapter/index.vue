@@ -430,8 +430,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, nextTick } from 'vue'
-import { onLoad, onShareAppMessage } from '@dcloudio/uni-app'
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { onLoad, onShow, onShareAppMessage } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
 import { useAppStore } from '@/store/app'
 import { getNode, rateNode, bookmarkNode, unbookmarkNode, incrementReadCount, buildSubTree, getStoryNodes } from '@/api/nodes'
@@ -528,6 +528,16 @@ onShareAppMessage(() => ({
   path: node.value ? `/pkgStory/pages/chapter/index?id=${node.value.id}` : '/pages/index/index',
 }))
 
+// 监听全局登录事件
+function handleLoggedIn() {
+  console.log('[章节详情页] 收到登录事件，刷新章节数据')
+  setTimeout(() => {
+    if (node.value) {
+      loadNode(node.value.id)
+    }
+  }, 300)
+}
+
 onMounted(() => {
   // 动态获取状态栏高度
   try {
@@ -548,6 +558,18 @@ onMounted(() => {
   if (nodeId) {
     loadNode(nodeId)
   }
+
+  // 监听登录事件
+  uni.$on('user:logged-in', handleLoggedIn)
+})
+
+onUnmounted(() => {
+  uni.$off('user:logged-in', handleLoggedIn)
+})
+
+// 从登录页返回时刷新登录状态
+onShow(() => {
+  userStore.checkLoginStatus()
 })
 
 async function loadNode(id: number) {
