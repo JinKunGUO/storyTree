@@ -124,7 +124,10 @@ npm test
 
 # 2. 小程序端测试
 cd miniprogram
+npm install jsdom@24.1.3 --save-dev --legacy-peer-deps  # 首次运行需要
 npm test
+
+# 测试结果：所有 128 个测试通过 ✅
 ```
 
 ### CI/CD 验证

@@ -9,35 +9,26 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-// 模拟 uni-app API
-const mockUni = {
-  navigateTo: vi.fn(),
-  navigateBack: vi.fn(),
-  switchTab: vi.fn(),
-  getStorageSync: vi.fn(),
-  setStorageSync: vi.fn(),
-  removeStorageSync: vi.fn(),
-  showShareMenu: vi.fn(),
-  showToast: vi.fn(),
-  showModal: vi.fn(),
-  getSystemInfoSync: vi.fn(() => ({ statusBarHeight: 20, platform: 'devtools' })),
-  $on: vi.fn(),
-  $off: vi.fn(),
-  $emit: vi.fn(),
+// 声明 uni 全局变量
+declare const uni: {
+  navigateTo: (options: { url: string }) => Promise<void>;
+  navigateBack: (options?: { delta?: number }) => Promise<void>;
+  switchTab: (options: { url: string }) => Promise<void>;
+  getStorageSync: (key: string) => any;
+  setStorageSync: (key: string, value: any) => void;
+  removeStorageSync: (key: string) => void;
+  showShareMenu: (options: any) => void;
+  showToast: (options: any) => void;
+  showModal: (options: any) => void;
+  getSystemInfoSync: () => { statusBarHeight: number; platform: string };
+  $on: (event: string, handler: (data: any) => void) => void;
+  $off: (event: string, handler: (data: any) => void) => void;
+  $emit: (event: string, data: any) => void;
 };
-
-vi.mock('@dcloudio/uni-app', () => ({
-  onLoad: vi.fn((fn) => fn()),
-  onShow: vi.fn(),
-  onMounted: vi.fn(),
-  onUnmounted: vi.fn(),
-}));
 
 describe('小程序认证状态同步', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // 模拟全局 uni 对象
-    Object.defineProperty(global, 'uni', { value: mockUni, writable: true });
   });
 
   afterEach(() => {
@@ -81,7 +72,7 @@ describe('小程序认证状态同步', () => {
   describe('故事详情页登录状态刷新', () => {
     it('用户从详情页跳转登录后返回应刷新故事数据', async () => {
       // 模拟存储了需要返回的故事 ID
-      uni.getStorageSync.mockReturnValue(123);
+      vi.spyOn(uni, 'getStorageSync').mockReturnValue(123);
 
       // 模拟登录成功并返回
       const mockHandler = vi.fn(() => {

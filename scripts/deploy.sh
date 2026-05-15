@@ -135,6 +135,13 @@ update_code() {
     git checkout -- api/prisma/schema.prisma 2>/dev/null || true
     git checkout -- api/prisma/migrations/migration_lock.toml 2>/dev/null || true
 
+    # 记录拉取前的 schema 哈希，用于后续判断是否需要重新生成 Prisma 客户端
+    SCHEMA_HASH_BEFORE=""
+    if [ -f "$API_DIR/prisma/schema.mysql.prisma" ]; then
+        SCHEMA_HASH_BEFORE=$(md5sum "$API_DIR/prisma/schema.mysql.prisma" | cut -d' ' -f1)
+    fi
+    export SCHEMA_HASH_BEFORE
+
     # 再拉取代码
     git pull origin main
     log_success "代码更新完成（$(git log --oneline -1)）"
@@ -193,6 +200,78 @@ run_migrations() {
     # （迁移文件为 SQLite 语法，无法在 MySQL 上执行，故使用 db push）
     npx prisma db push
     log_success "数据库 schema 同步完成"
+}
+
+# ===================================
+# 检查 Prisma 客户端是否需要重新生成
+# ===================================
+check_prisma_client() {
+    log_info "检查 Prisma 客户端一致性..."
+    cd "$API_DIR"
+
+    SCHEMA_FILE="$API_DIR/prisma/schema.prisma"
+    MYSQL_SCHEMA_FILE="$API_DIR/prisma/schema.mysql.prisma"
+
+    NEED_REGENERATE=false
+
+    # 1. 检查 schema.mysql.prisma 是否比当前 schema.prisma 更新
+    #    （部署时 schema.prisma 会被覆盖为 MySQL 版本，这里对比两者内容）
+    if [ -f "$MYSQL_SCHEMA_FILE" ] && [ -f "$SCHEMA_FILE" ]; then
+        SCHEMA_HASH=$(md5sum "$SCHEMA_FILE" | cut -d' ' -f1)
+        MYSQL_HASH=$(md5sum "$MYSQL_SCHEMA_FILE" | cut -d' ' -f1)
+        if [ "$SCHEMA_HASH" != "$MYSQL_HASH" ]; then
+            log_warn "schema.prisma 与 schema.mysql.prisma 不一致，需要重新生成 Prisma 客户端"
+            NEED_REGENERATE=true
+        fi
+    fi
+
+    # 2. 检查 git pull 后 schema 是否有变更
+    if [ -n "$SCHEMA_HASH_BEFORE" ] && [ -f "$MYSQL_SCHEMA_FILE" ]; then
+        SCHEMA_HASH_AFTER=$(md5sum "$MYSQL_SCHEMA_FILE" | cut -d' ' -f1)
+        if [ "$SCHEMA_HASH_BEFORE" != "$SCHEMA_HASH_AFTER" ]; then
+            log_warn "schema.mysql.prisma 在本次更新中有变更，需要重新生成 Prisma 客户端"
+            NEED_REGENERATE=true
+        fi
+    fi
+
+    # 3. 检查 Prisma 客户端是否已生成（node_modules/.prisma/client 是否存在）
+    PRISMA_CLIENT_DIR="$API_DIR/node_modules/.prisma/client"
+    if [ ! -d "$PRISMA_CLIENT_DIR" ] || [ ! -f "$PRISMA_CLIENT_DIR/index.js" ]; then
+        log_warn "Prisma 客户端未生成，需要执行 prisma generate"
+        NEED_REGENERATE=true
+    fi
+
+    # 4. 尝试 TypeScript 编译检查，验证 Prisma 客户端类型是否与 schema 一致
+    #    通过检查 schema 中的 model 数量与生成的类型文件中的 model 数量是否匹配
+    if [ "$NEED_REGENERATE" = false ] && [ -f "$PRISMA_CLIENT_DIR/index.d.ts" ]; then
+        # 统计 schema 中的 model 数量
+        SCHEMA_MODEL_COUNT=$(grep -c "^model " "$SCHEMA_FILE" 2>/dev/null || echo "0")
+        # 统计生成的类型文件中的 model 接口数量
+        CLIENT_MODEL_COUNT=$(grep -c "export type " "$PRISMA_CLIENT_DIR/index.d.ts" 2>/dev/null || echo "0")
+        # 如果 model 数量差异过大（允许少量差异因为有些是内部类型），则标记需要重新生成
+        if [ "$SCHEMA_MODEL_COUNT" -gt 0 ] && [ "$CLIENT_MODEL_COUNT" -lt "$((SCHEMA_MODEL_COUNT * 2))" ]; then
+            log_warn "Prisma 客户端类型数量（$CLIENT_MODEL_COUNT）与 schema model 数量（$SCHEMA_MODEL_COUNT）不匹配"
+            NEED_REGENERATE=true
+        fi
+    fi
+
+    # 5. 如果有 .prisma/client 生成时间早于 schema 文件修改时间
+    if [ "$NEED_REGENERATE" = false ] && [ -f "$PRISMA_CLIENT_DIR/index.js" ] && [ -f "$SCHEMA_FILE" ]; then
+        if [ "$SCHEMA_FILE" -nt "$PRISMA_CLIENT_DIR/index.js" ]; then
+            log_warn "schema.prisma 比 Prisma 客户端更新，需要重新生成"
+            NEED_REGENERATE=true
+        fi
+    fi
+
+    if [ "$NEED_REGENERATE" = true ]; then
+        log_info "重新生成 Prisma 客户端..."
+        # 确保使用 MySQL 版本的 schema
+        cp "$MYSQL_SCHEMA_FILE" "$SCHEMA_FILE"
+        npx prisma generate
+        log_success "Prisma 客户端已重新生成"
+    else
+        log_success "Prisma 客户端一致性检查通过"
+    fi
 }
 
 # ===================================
@@ -279,6 +358,7 @@ main() {
     update_code
     install_deps
     run_migrations
+    check_prisma_client
     build_project
     restart_service
     health_check
