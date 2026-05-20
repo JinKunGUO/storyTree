@@ -658,4 +658,46 @@ function handleLogout() {
 .bottom-placeholder {
   height: 60rpx;
 }
+
+/* ========================================
+   暗夜模式适配
+   ======================================== */
+@media (prefers-color-scheme: dark) {
+  .profile-page {
+    background: var(--st-bg-secondary);
+  }
+
+  /* 未登录区域 */
+  .guest-hero {
+    .guest-title { color: var(--st-text-primary); }
+    .guest-sub { color: var(--st-text-tertiary); }
+  }
+
+  /* 快捷功能区 */
+  .quick-section {
+    background: var(--st-bg-elevated);
+
+    .quick-label { color: var(--st-text-secondary); }
+  }
+
+  /* 菜单区 */
+  .menu-section {
+    background: var(--st-bg-elevated);
+
+    .menu-section-title { color: var(--st-text-tertiary); }
+
+    .menu-item {
+      border-top-color: var(--st-gray-200);
+
+      .menu-label { color: var(--st-text-primary); }
+      .menu-arrow { color: var(--st-gray-300); }
+    }
+  }
+
+  /* 退出按钮 */
+  .logout-section .btn-logout {
+    border-color: var(--st-error-500);
+    color: var(--st-error-500);
+  }
+}
 </style>

@@ -1092,4 +1092,119 @@ function goChapter(id: number) {
 }
 
 .bottom-placeholder { height: 60rpx; }
+
+/* ========================================
+   暗夜模式适配
+   ======================================== */
+@media (prefers-color-scheme: dark) {
+  .index-page {
+    background: var(--st-bg-secondary);
+  }
+
+  /* 特色品牌区 */
+  .feature-section {
+    background: var(--st-bg-elevated);
+
+    .feature-card {
+      &.tree { background: linear-gradient(135deg, #0f2a1a, #163020); }
+      &.collab { background: linear-gradient(135deg, #1a1030, #201640); }
+      &.community { background: linear-gradient(135deg, #2a1a0a, #3a2510); }
+
+      .feature-name { color: var(--st-text-primary); }
+      .feature-desc { color: var(--st-text-secondary); }
+    }
+  }
+
+  /* 推荐区块 */
+  .rec-section {
+    background: var(--st-bg-elevated);
+
+    .rec-title { color: var(--st-text-primary) !important; }
+    .rec-sub { color: var(--st-text-tertiary) !important; }
+    .rec-empty-text { color: var(--st-text-tertiary); }
+  }
+
+  /* 热门故事卡片 */
+  .h-story-card {
+    .h-cover { background: var(--st-bg-tertiary); }
+    .h-title { color: var(--st-text-primary); }
+    .h-stat { color: var(--st-text-tertiary); }
+  }
+
+  /* 协作中故事卡片 */
+  .collab-card {
+    background: var(--st-bg-tertiary);
+
+    .collab-cover { background: var(--st-gray-200); }
+    .collab-title { color: var(--st-text-primary); }
+    .collab-desc { color: var(--st-text-secondary); }
+    .collab-count { color: var(--st-text-tertiary); }
+    .collab-arrow { color: var(--st-gray-300); }
+  }
+
+  /* 最新发布卡片 */
+  .latest-card {
+    border-bottom-color: var(--st-gray-200);
+
+    .latest-cover { background: var(--st-gray-200); }
+    .latest-title { color: var(--st-text-primary); }
+    .latest-stats { color: var(--st-text-tertiary); }
+  }
+
+  /* 追更故事列表 */
+  .story-feed-card {
+    background: var(--st-bg-elevated);
+    box-shadow: var(--st-shadow-md);
+
+    .story-title { color: var(--st-text-primary); }
+    .story-desc { color: var(--st-text-secondary); }
+    .chapter-count { color: var(--st-text-tertiary); }
+    .story-arrow { color: var(--st-gray-300); }
+  }
+
+  /* 关注作者动态 */
+  .author-feed-item {
+    background: var(--st-bg-elevated);
+    box-shadow: var(--st-shadow-md);
+
+    .feed-story { color: var(--st-text-secondary); }
+    .feed-action { color: var(--st-text-tertiary); }
+
+    .feed-chapter {
+      background: var(--st-bg-tertiary);
+
+      .chapter-title { color: var(--st-text-primary); }
+      .chapter-time { color: var(--st-text-tertiary); }
+    }
+  }
+
+  /* 未登录引导墙 */
+  .login-wall {
+    .login-wall-title { color: var(--st-text-primary); }
+    .login-wall-sub { color: var(--st-text-tertiary); }
+  }
+
+  /* 空状态 */
+  .empty-state {
+    .empty-title { color: var(--st-text-primary); }
+    .empty-sub { color: var(--st-text-tertiary); }
+  }
+
+  /* 骨架屏暗夜 */
+  %shimmer-base-dark {
+    background: linear-gradient(90deg, var(--st-gray-100) 25%, var(--st-gray-200) 50%, var(--st-gray-100) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  .skeleton-card,
+  .skeleton-feed {
+    background: var(--st-bg-elevated);
+  }
+
+  /* 底部加载提示 */
+  .loading-more, .no-more {
+    color: var(--st-text-tertiary);
+  }
+}
 </style>

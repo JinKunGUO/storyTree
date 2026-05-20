@@ -230,20 +230,22 @@
   :root {
     /* ----------------------------------------
        1.18.1 背景色 - 深色版本
+       增加层间差异，使卡片/组件在暗夜模式下可区分
        ---------------------------------------- */
     --st-bg-primary: #1a1a2e;
-    --st-bg-secondary: #16162a;
-    --st-bg-tertiary: #202036;
-    --st-bg-elevated: #242440;
+    --st-bg-secondary: #12122a;
+    --st-bg-tertiary: #262648;
+    --st-bg-elevated: #2a2a50;
     --st-bg-overlay: rgba(0, 0, 0, 0.7);
 
     /* ----------------------------------------
        1.18.2 文字色 - 反转
+       提升 tertiary 和 disabled 对比度至 WCAG AA 标准
        ---------------------------------------- */
     --st-text-primary: #f0f0f5;
     --st-text-secondary: #b8b8c8;
-    --st-text-tertiary: #8888a0;
-    --st-text-disabled: #555570;
+    --st-text-tertiary: #9a9ab8;
+    --st-text-disabled: #6a6a88;
     --st-text-inverse: #1a1a2e;
     --st-text-link: #818cf8;
 
@@ -436,5 +438,21 @@ img {
 ::selection {
   background-color: var(--st-primary-200);
   color: var(--st-primary-900);
+}
+
+/* ========================================
+   9. 暗夜模式全局页脚适配
+   针对 HTML 内联样式 footer 的暗夜覆盖
+   ======================================== */
+
+@media (prefers-color-scheme: dark) {
+  footer[style*="border-top"][style*="color"] {
+    border-top-color: var(--st-gray-200) !important;
+    color: var(--st-text-tertiary) !important;
+  }
+
+  footer[style*="border-top"][style*="color"] a {
+    color: var(--st-text-tertiary) !important;
+  }
 }
 

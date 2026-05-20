@@ -1884,5 +1884,136 @@ function flattenReplies(
     padding: 16rpx 16rpx 0;
   }
 }
+
+/* ========================================
+   暗夜模式适配
+   ======================================== */
+@media (prefers-color-scheme: dark) {
+  /* 导航栏 - 暗夜适配 */
+  .navbar-inner {
+    background: rgba(26, 26, 46, 0.95) !important;
+    border-bottom-color: var(--st-gray-200);
+  }
+
+  /* 底部工具栏 - 暗夜适配 */
+  .bottom-bar {
+    background: rgba(26, 26, 46, 0.95) !important;
+    border-top-color: var(--st-gray-200);
+
+    .tool-label { color: var(--st-text-tertiary); }
+  }
+
+  /* 分支区域 */
+  .branches-section {
+    .branches-title { color: var(--st-text-primary); }
+    .branches-count { color: var(--st-text-tertiary); }
+  }
+
+  .branch-card {
+    border-color: var(--st-gray-200);
+
+    .branch-title { color: var(--st-text-primary); }
+    .branch-author, .branch-rating { color: var(--st-text-tertiary); }
+  }
+
+  .no-branch-text { color: var(--st-text-tertiary); }
+  .next-chapter-btn .ncb-title { color: var(--st-text-primary); }
+
+  /* 分支图入口卡 */
+  .branch-chart-trigger {
+    border-color: var(--st-gray-200);
+
+    .bct-title { color: var(--st-text-primary); }
+    .bct-sub { color: var(--st-text-tertiary); }
+  }
+
+  /* 写作操作区 */
+  .write-actions-label { color: var(--st-text-secondary); }
+  .write-action-btn {
+    background: var(--st-bg-elevated);
+    border-color: var(--st-gray-200);
+
+    .write-action-text { color: var(--st-text-primary); }
+  }
+
+  /* 评论区 */
+  .comments-section .comments-title { color: var(--st-text-primary); }
+  .comments-section .comments-count { color: var(--st-text-tertiary); }
+
+  .comment-input-wrap {
+    background: var(--st-bg-tertiary);
+
+    .comment-placeholder { color: var(--st-text-tertiary); }
+  }
+
+  .comment-username { color: var(--st-text-secondary); }
+  .comment-text { color: var(--st-text-primary); }
+  .comment-time, .vote-btn, .reply-btn { color: var(--st-text-tertiary); }
+
+  .replies-wrap {
+    background: var(--st-bg-tertiary);
+
+    .reply-text { color: var(--st-text-secondary); }
+    .reply-time, .reply-vote, .reply-btn-inline { color: var(--st-text-tertiary); }
+  }
+
+  .rating-section {
+    border-top-color: var(--st-gray-200);
+    border-bottom-color: var(--st-gray-200);
+  }
+
+  .rating-cancel { color: var(--st-text-tertiary); }
+
+  /* 设置面板 */
+  .settings-panel {
+    background: var(--st-bg-elevated);
+
+    .settings-title { color: var(--st-text-primary); }
+    .setting-label { color: var(--st-text-secondary); }
+
+    .font-size-controls .size-btn {
+      background: var(--st-bg-tertiary);
+      color: var(--st-text-secondary);
+    }
+
+    .size-value { color: var(--st-text-primary); }
+
+    .line-height-options .lh-option {
+      background: var(--st-bg-tertiary);
+      color: var(--st-text-tertiary);
+    }
+  }
+
+  /* 评论输入面板 */
+  .comment-panel {
+    background: var(--st-bg-elevated);
+
+    .reply-hint-cancel { color: var(--st-text-tertiary); }
+    .comment-textarea { color: var(--st-text-primary); }
+    .char-count { color: var(--st-text-tertiary); }
+  }
+
+  /* 分支图面板 */
+  .branch-chart-panel {
+    background: var(--st-bg-elevated);
+
+    .bcp-handle { background: var(--st-gray-300); }
+
+    .bcp-title-row {
+      border-bottom-color: var(--st-gray-200);
+
+      .bcp-title { color: var(--st-text-primary); }
+
+      .bcp-close {
+        background: var(--st-bg-tertiary);
+
+        .bcp-close-icon { color: var(--st-text-secondary); }
+      }
+    }
+  }
+
+  /* 作者行分隔线 */
+  .author-row { border-bottom-color: var(--st-gray-200); }
+}
 </style>
 

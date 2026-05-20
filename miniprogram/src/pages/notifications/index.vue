@@ -439,4 +439,75 @@ function formatTime(date: string) {
 .bottom-placeholder {
   height: 60rpx;
 }
+
+/* 暗夜模式适配 */
+@media (prefers-color-scheme: dark) {
+  .notifications-page {
+    background: var(--st-bg-secondary);
+  }
+
+  .top-bar {
+    background: var(--st-bg-elevated);
+    border-bottom-color: var(--st-gray-200);
+
+    .top-title {
+      color: var(--st-text-primary);
+    }
+
+    .top-actions .unread-count-badge {
+      color: var(--st-error-500);
+      background: rgba(240, 90, 90, 0.12);
+    }
+
+    .top-actions .read-all-btn {
+      color: var(--st-text-link);
+    }
+  }
+
+  .empty-state .empty-text {
+    color: var(--st-text-tertiary);
+  }
+
+  .notifications-list .notification-item {
+    background: var(--st-bg-elevated);
+
+    &.unread {
+      background: rgba(99, 102, 241, 0.06);
+    }
+
+    .notif-icon-wrap {
+      background: var(--st-bg-tertiary);
+
+      .unread-dot {
+        border-color: var(--st-bg-elevated);
+      }
+    }
+
+    .notif-content .notif-title {
+      color: var(--st-text-primary);
+    }
+
+    .notif-content .notif-body {
+      color: var(--st-text-secondary);
+    }
+
+    .notif-content .notif-time {
+      color: var(--st-text-tertiary);
+    }
+
+    .notif-right .mark-read-btn {
+      color: var(--st-text-link);
+      background: rgba(129, 140, 248, 0.1);
+    }
+
+    .notif-right .notif-arrow {
+      color: var(--st-gray-300);
+    }
+  }
+
+  .loading-more,
+  .no-more {
+    color: var(--st-text-tertiary);
+  }
+}
 </style>

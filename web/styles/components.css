@@ -727,6 +727,189 @@
     background: rgba(26, 26, 46, 0.95);
     border-bottom-color: var(--st-gray-200);
   }
+
+  /* 卡片暗夜适配 */
+  .card {
+    border-color: var(--st-gray-200);
+    box-shadow: var(--st-shadow-md);
+  }
+
+  .card-footer {
+    border-top-color: var(--st-gray-200);
+  }
+
+  .story-card {
+    border-color: var(--st-gray-200);
+  }
+
+  .story-card-badge {
+    background: rgba(26, 26, 46, 0.9);
+    color: var(--st-primary-400);
+  }
+
+  .story-card-meta {
+    border-top-color: var(--st-gray-200);
+  }
+
+  .user-card {
+    box-shadow: var(--st-shadow-sm);
+  }
+
+  /* 徽章暗夜适配 */
+  .badge-primary {
+    background: var(--st-primary-100);
+    color: var(--st-primary-400);
+  }
+
+  .badge-success {
+    background: var(--st-success-100);
+    color: var(--st-success-400, var(--st-success-600));
+  }
+
+  .badge-warning {
+    background: var(--st-warning-100);
+    color: var(--st-warning-400, var(--st-warning-600));
+  }
+
+  .badge-error {
+    background: var(--st-error-100);
+    color: var(--st-error-400, var(--st-error-600));
+  }
+
+  .badge-info {
+    background: var(--st-info-100);
+    color: var(--st-info-400, var(--st-info-600));
+  }
+
+  /* Chip 暗夜适配 */
+  .chip {
+    background: var(--st-gray-100);
+    color: var(--st-text-secondary);
+  }
+
+  .chip:hover {
+    background: var(--st-gray-200);
+    color: var(--st-text-primary);
+  }
+
+  .chip-remove {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .chip-remove:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  /* 骨架屏暗夜适配 */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--st-gray-100) 25%,
+      var(--st-gray-200) 50%,
+      var(--st-gray-100) 75%
+    );
+    background-size: 200% 100%;
+  }
+
+  /* 输入框暗夜适配 */
+  .input {
+    background: var(--st-bg-primary);
+    border-color: var(--st-gray-200);
+  }
+
+  .input:focus {
+    border-color: var(--st-primary-500);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  }
+
+  .input:disabled {
+    background: var(--st-gray-100);
+  }
+
+  /* 次要按钮暗夜适配 */
+  .btn-secondary {
+    background: var(--st-bg-primary);
+    color: var(--st-primary-400);
+    border-color: var(--st-primary-700);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--st-primary-100);
+    border-color: var(--st-primary-500);
+  }
+
+  .btn-ghost {
+    color: var(--st-text-secondary);
+    border-color: var(--st-gray-300);
+  }
+
+  .btn-ghost:hover:not(:disabled) {
+    background: var(--st-gray-100);
+    color: var(--st-text-primary);
+  }
+
+  .btn-text {
+    color: var(--st-primary-400);
+  }
+
+  .btn-text:hover:not(:disabled) {
+    background: var(--st-primary-100);
+  }
+
+  /* 面包屑暗夜适配 */
+  .breadcrumb-separator {
+    color: var(--st-gray-400);
+  }
+
+  /* 标签页暗夜适配 */
+  .tabs {
+    border-bottom-color: var(--st-gray-200);
+  }
+
+  /* 分页暗夜适配 */
+  .page-btn {
+    background: var(--st-bg-primary);
+    border-color: var(--st-gray-200);
+    color: var(--st-text-secondary);
+  }
+
+  .page-btn:hover:not(:disabled) {
+    border-color: var(--st-primary-500);
+  }
+
+  /* 列表暗夜适配 */
+  .list-item {
+    border-bottom-color: var(--st-gray-200);
+  }
+
+  .list-item:hover {
+    background: var(--st-bg-tertiary);
+  }
+
+  /* 空状态暗夜适配 */
+  .empty-state-icon {
+    color: var(--st-gray-400);
+  }
+
+  /* 开关暗夜适配 */
+  .switch-slider {
+    background: var(--st-gray-400);
+  }
+
+  .switch-slider::before {
+    background: var(--st-bg-primary);
+  }
+
+  /* 导航链接暗夜适配 */
+  .navbar-link:hover,
+  .nav-link:hover {
+    background: var(--st-primary-100);
+  }
+
+  .navbar-link.active,
+  .nav-link.active {
+    background: var(--st-primary-100);
+  }
 }
 
 .navbar-content {

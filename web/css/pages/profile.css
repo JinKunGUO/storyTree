@@ -1159,3 +1159,139 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* ========================================
+           暗夜模式适配
+           ======================================== */
+        @media (prefers-color-scheme: dark) {
+            /* 个人资料头部 */
+            .profile-header {
+                box-shadow: var(--st-shadow-lg);
+            }
+
+            /* 等级徽章 - 暗夜模式下使用深色渐变背景 */
+            .level-badge {
+                background: linear-gradient(135deg, #b8860b 0%, #daa520 100%);
+                color: #fff;
+            }
+
+            /* 故事卡片项 */
+            .story-item {
+                border-color: var(--st-gray-200);
+            }
+
+            /* 协作请求状态 - 暗夜色值 */
+            .request-item.approved {
+                background: rgba(34, 197, 94, 0.08);
+            }
+
+            .request-item.rejected {
+                background: rgba(239, 68, 68, 0.08);
+            }
+
+            .status-pending {
+                background: rgba(245, 158, 11, 0.15);
+                color: var(--st-warning-500);
+            }
+
+            .status-approved {
+                background: rgba(34, 197, 94, 0.15);
+                color: var(--st-success-500);
+            }
+
+            .status-rejected {
+                background: rgba(239, 68, 68, 0.15);
+                color: var(--st-error-500);
+            }
+
+            /* 签到区域渐变背景 */
+            .checkin-action {
+                background: var(--st-bg-tertiary);
+            }
+
+            /* 签到消息 - 暗夜色值 */
+            .checkin-message.success,
+            .compact-checkin-message.success {
+                background: rgba(34, 197, 94, 0.12);
+                color: var(--st-success-500);
+            }
+
+            .checkin-message.error,
+            .compact-checkin-message.error {
+                background: rgba(239, 68, 68, 0.12);
+                color: var(--st-error-500);
+            }
+
+            .checkin-message.info,
+            .compact-checkin-message.info {
+                background: rgba(59, 130, 246, 0.12);
+                color: var(--st-info-500);
+            }
+
+            /* 日历组件 - 暗夜色值 */
+            .calendar-day.today,
+            .compact-calendar-day.today {
+                background: rgba(59, 130, 246, 0.15);
+                color: var(--st-info-500);
+                box-shadow: 0 0 0 2px var(--st-info-500);
+            }
+
+            .calendar-day.other-month,
+            .compact-calendar-day.other-month {
+                color: var(--st-gray-500);
+                background: transparent;
+            }
+
+            .calendar-day.can-makeup,
+            .compact-calendar-day.can-makeup {
+                border-color: var(--st-warning-500);
+                color: var(--st-warning-500);
+                background: rgba(245, 158, 11, 0.1);
+            }
+
+            .calendar-day.can-makeup:hover,
+            .compact-calendar-day.can-makeup:hover {
+                background: var(--st-warning-500);
+                color: #fff;
+            }
+
+            /* 滚动条样式 */
+            .compact-list::-webkit-scrollbar-track {
+                background: var(--st-bg-tertiary);
+            }
+
+            .compact-list::-webkit-scrollbar-thumb {
+                background: var(--st-gray-400);
+            }
+
+            /* AI 使用统计卡片 - 暗夜色值 */
+            .ai-usage-card.continuation {
+                background: rgba(59, 130, 246, 0.1);
+                border-color: var(--st-info-500);
+            }
+
+            .ai-usage-card.polish {
+                background: rgba(156, 39, 176, 0.1);
+                border-color: #ab47bc;
+            }
+
+            .ai-usage-card.illustration {
+                background: rgba(245, 158, 11, 0.1);
+                border-color: var(--st-warning-500);
+            }
+
+            .ai-usage-card.points {
+                background: rgba(34, 197, 94, 0.1);
+                border-color: var(--st-success-500);
+            }
+
+            /* AI 历史项 */
+            .ai-history-item:hover {
+                background: rgba(99, 102, 241, 0.08);
+            }
+
+            /* 通知徽章 */
+            .notification-badge {
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+            }
+        }

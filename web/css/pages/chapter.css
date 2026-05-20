@@ -975,7 +975,131 @@
             color: #e0e0f0;
         }
         body.theme-dark .chapter-meta {
-            color: #8888aa;
+            color: #9a9ab8;
+        }
+
+        /* 深色阅读主题 - 扩展覆盖更多元素 */
+        /* 面包屑导航 */
+        body.theme-dark .breadcrumb-bar {
+            background: rgba(26, 26, 46, 0.95);
+            border-bottom-color: var(--st-gray-200);
+        }
+        body.theme-dark .breadcrumb-item,
+        body.theme-dark .breadcrumb-bar a {
+            color: var(--st-text-secondary);
+        }
+        /* 阅读工具栏 */
+        body.theme-dark .reading-toolbar {
+            background: rgba(26, 26, 46, 0.95);
+            border-top-color: var(--st-gray-200);
+        }
+        body.theme-dark .reading-toolbar button,
+        body.theme-dark .toolbar-btn {
+            color: var(--st-text-secondary);
+        }
+        /* 评论区 */
+        body.theme-dark .comments-section {
+            background: #1a1a2e;
+        }
+        body.theme-dark .comment-item {
+            border-bottom-color: var(--st-gray-200);
+        }
+        body.theme-dark .comment-text {
+            color: var(--st-text-secondary);
+        }
+        body.theme-dark .comment-meta {
+            color: var(--st-text-tertiary);
+        }
+        body.theme-dark .comment-author {
+            color: var(--st-text-primary);
+        }
+        /* 评分区域 */
+        body.theme-dark .rating-section {
+            background: #1a1a2e;
+        }
+        /* 目录侧边栏 */
+        body.theme-dark .toc-panel {
+            background: #1a1a2e;
+        }
+        body.theme-dark .toc-header {
+            border-bottom-color: var(--st-gray-200);
+        }
+        body.theme-dark .toc-story-info {
+            background: var(--st-bg-tertiary);
+            border-bottom-color: var(--st-gray-200);
+        }
+        body.theme-dark .toc-item:hover {
+            background: rgba(99, 102, 241, 0.1);
+        }
+        body.theme-dark .toc-item.toc-item-current {
+            background: rgba(99, 102, 241, 0.15);
+        }
+        /* 模态框 */
+        body.theme-dark .edit-modal-content,
+        body.theme-dark .compare-modal-content {
+            background: var(--st-bg-elevated);
+        }
+        body.theme-dark .edit-modal-header,
+        body.theme-dark .edit-modal-footer {
+            border-color: var(--st-gray-200);
+        }
+        body.theme-dark .form-group input,
+        body.theme-dark .form-group textarea,
+        body.theme-dark .form-group select {
+            background: var(--st-bg-primary);
+            border-color: var(--st-gray-200);
+            color: var(--st-text-primary);
+        }
+        body.theme-dark .branch-selector select {
+            background: var(--st-bg-primary);
+            border-color: var(--st-gray-200);
+            color: var(--st-text-primary);
+        }
+        /* 比较面板 */
+        body.theme-dark .compare-panel {
+            background: var(--st-bg-tertiary);
+        }
+        body.theme-dark .compare-panel-header {
+            border-bottom-color: var(--st-gray-200);
+        }
+        body.theme-dark .compare-panel-title {
+            color: var(--st-text-primary);
+        }
+        body.theme-dark .compare-panel-content {
+            color: var(--st-text-secondary);
+        }
+        /* 按钮适配 */
+        body.theme-dark .btn-cancel {
+            background: var(--st-gray-100);
+            color: var(--st-text-secondary);
+        }
+        body.theme-dark .close-btn:hover {
+            background: var(--st-gray-100);
+            color: var(--st-text-primary);
+        }
+
+        /* 系统暗夜模式适配 - 面包屑和工具栏的 rgba(255,255,255,0.95) 背景 */
+        @media (prefers-color-scheme: dark) {
+            .breadcrumb-bar {
+                background: rgba(26, 26, 46, 0.95) !important;
+                border-bottom-color: var(--st-gray-200);
+            }
+            .reading-toolbar {
+                background: rgba(26, 26, 46, 0.95) !important;
+                border-top-color: var(--st-gray-200);
+            }
+            .toolbar-btn,
+            .reading-toolbar button {
+                color: var(--st-text-secondary);
+            }
+            .toolbar-btn:hover,
+            .reading-toolbar button:hover {
+                color: var(--st-text-primary);
+            }
+            /* 消息提示暗夜 */
+            .message {
+                box-shadow: var(--st-shadow-lg);
+            }
         }
 
         /* ===== 阅读进度条 ===== */

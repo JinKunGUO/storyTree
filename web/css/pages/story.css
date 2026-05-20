@@ -1362,3 +1362,99 @@
                 grid-column: auto;
             }
         }
+
+        /* ========================================
+           暗夜模式适配
+           ======================================== */
+        @media (prefers-color-scheme: dark) {
+            /* 用户角色标识 - 暗夜色值 */
+            .user-role-badge.role-author {
+                background: linear-gradient(135deg, #b8860b 0%, #daa520 100%);
+                color: #fff;
+            }
+
+            /* 统计卡片图标背景 - 暗夜色值 */
+            .stat-icon--branches {
+                background: rgba(217, 119, 6, 0.15);
+                color: #f59e0b;
+            }
+
+            .stat-icon--reads {
+                background: rgba(5, 150, 105, 0.15);
+                color: #34d399;
+            }
+
+            .stat-icon--comments {
+                background: rgba(219, 39, 119, 0.15);
+                color: #f472b6;
+            }
+
+            .stat-icon--ai {
+                background: rgba(124, 58, 237, 0.15);
+                color: #a78bfa;
+            }
+
+            .stat-icon--human {
+                background: rgba(37, 99, 235, 0.15);
+                color: #60a5fa;
+            }
+
+            /* 统计卡片组 - 暗夜 */
+            .stat-card-group {
+                border-color: var(--st-gray-200);
+            }
+
+            .stat-card-group-title {
+                border-bottom-color: var(--st-gray-200);
+            }
+
+            .stat-card-row:not(:last-child) {
+                border-bottom-color: var(--st-gray-200);
+            }
+
+            /* 树状图容器边框 */
+            .tree-chart-container {
+                border-color: var(--st-gray-200);
+            }
+
+            /* 节点详情浮层 */
+            .node-detail {
+                border-color: var(--st-gray-200);
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2);
+            }
+
+            /* 故事封面阴影 */
+            .story-cover {
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+            }
+
+            /* 统计图表容器 */
+            .stats-chart-container {
+                border-color: var(--st-gray-200);
+            }
+
+            /* 消息提示 */
+            .message-success {
+                border-left-color: var(--st-success-500);
+            }
+
+            .message-error {
+                border-left-color: var(--st-error-500);
+            }
+
+            /* 工具栏按钮 */
+            .toolbar-btn {
+                border-color: var(--st-gray-200);
+            }
+
+            /* 章节状态标签 */
+            .status-published {
+                background: var(--st-success-100);
+                color: var(--st-success-600);
+            }
+
+            .status-draft {
+                background: var(--st-warning-100);
+                color: var(--st-warning-600);
+            }
+        }

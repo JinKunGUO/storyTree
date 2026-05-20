@@ -198,6 +198,90 @@
                 margin-top: 5px;
             }
         }
+
+        /* 暗夜模式适配 */
+        @media (prefers-color-scheme: dark) {
+            .page-header {
+                background: var(--st-bg-elevated);
+                box-shadow: var(--st-shadow-md);
+            }
+
+            .page-header h1 {
+                color: var(--st-text-primary);
+            }
+
+            .notifications-container {
+                background: var(--st-bg-elevated);
+                box-shadow: var(--st-shadow-md);
+            }
+
+            .notification-item {
+                border-bottom-color: var(--st-gray-200);
+            }
+
+            .notification-item:hover {
+                background: var(--st-bg-tertiary);
+            }
+
+            .notification-item.unread {
+                background: rgba(99, 102, 241, 0.08);
+            }
+
+            .notification-item.unread:hover {
+                background: rgba(99, 102, 241, 0.14);
+            }
+
+            .notification-title {
+                color: var(--st-text-primary);
+            }
+
+            .notification-time {
+                color: var(--st-text-tertiary);
+            }
+
+            .notification-content {
+                color: var(--st-text-secondary);
+            }
+
+            .mark-read-btn {
+                background: var(--st-primary-100);
+                color: var(--st-primary-400);
+            }
+
+            .mark-read-btn:hover {
+                background: var(--st-primary-200);
+            }
+
+            .delete-btn {
+                background: var(--st-error-100);
+                color: var(--st-error-500);
+            }
+
+            .delete-btn:hover {
+                background: var(--st-error-200);
+            }
+
+            .empty-state {
+                color: var(--st-text-tertiary);
+            }
+
+            .empty-state i {
+                color: var(--st-gray-400);
+            }
+
+            .loading {
+                color: var(--st-text-tertiary);
+            }
+
+            footer {
+                border-top-color: var(--st-gray-200);
+                color: var(--st-text-tertiary);
+            }
+
+            footer a {
+                color: var(--st-text-tertiary);
+            }
+        }
     </style>
 </head>
 <body>
