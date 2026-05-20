@@ -1,5 +1,5 @@
 <template>
-  <view class="editor-page" :style="{ '--status-bar-height': statusBarHeight + 'px' }">
+  <view class="editor-page" :style="{ '--status-bar-height': statusBarHeight + 'px', '--menu-right': menuButtonInfo.right + 'px' }">
     <!-- 顶部工具栏 -->
     <view class="toolbar">
       <view class="toolbar-left">
@@ -1346,7 +1346,8 @@ async function createNewOutlineVersion() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: calc(var(--status-bar-height, 20px) + 10px) 24rpx 16rpx 100rpx;
+  padding: calc(var(--status-bar-height, 20px) + 10px) 32rpx 16rpx;
+  padding-right: calc(var(--menu-right, 80px) + 20px);
   background: #ffffff;
   border-bottom: 1rpx solid #f0f2f5;
   position: sticky;
@@ -1381,10 +1382,7 @@ async function createNewOutlineVersion() {
   .toolbar-right {
     display: flex;
     align-items: center;
-    gap: 12rpx;
-    padding-right: 100rpx;  // 避免与微信原生导航按钮重叠（三个点按钮区域）
-    box-sizing: border-box;
-    max-width: 50%;  // 限制最大宽度，防止挤占右侧空间
+    gap: 16rpx;
 
     .sync-status {
       font-size: 22rpx;

@@ -517,80 +517,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
   }
 });
 
-// 追更故事（关注）
-router.post('/:id/follow', authenticateToken, async (req, res) => {
-  const userId = getUserId(req);
-  if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-  const { id } = req.params;
-  try {
-    const story = await prisma.stories.findUnique({ where: { id: parseInt(id) } });
-    if (!story) {
-      return res.status(404).json({ error: 'Story not found' });
-    }
-    await prisma.story_followers.upsert({
-      where: { story_id_user_id: { story_id: parseInt(id), user_id: userId } },
-      create: { story_id: parseInt(id), user_id: userId },
-      update: {}
-    });
-    res.json({ message: '追更成功', isFollowed: true });
-  } catch (error) {
-    console.error('Follow story error:', error);
-    res.status(500).json({ error: '追更失败' });
-  }
-});
-
-// 取消追更故事
-router.delete('/:id/follow', authenticateToken, async (req, res) => {
-  const userId = getUserId(req);
-  if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-  const { id } = req.params;
-  try {
-    await prisma.story_followers.deleteMany({
-      where: { story_id: parseInt(id), user_id: userId }
-    });
-    res.json({ message: '已取消追更' });
-  } catch (error) {
-    console.error('Unfollow story error:', error);
-    res.status(500).json({ error: '取消追更失败' });
-  }
-});
-
-// 用户主动退出共创（取消自己的协作者身份）
-router.delete('/:id/collaborator', authenticateToken, async (req, res) => {
-  const userId = getUserId(req);
-  if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-  const { id } = req.params;
-  try {
-    const story = await prisma.stories.findUnique({ where: { id: parseInt(id) } });
-    if (!story) {
-      return res.status(404).json({ error: 'Story not found' });
-    }
-    // 主创不能退出自己的故事
-    if (story.author_id === userId) {
-      return res.status(400).json({ error: '主创不能退出自己的故事' });
-    }
-    // 将协作者记录标记为已移除
-    await prisma.story_collaborators.updateMany({
-      where: { story_id: parseInt(id), user_id: userId, removed_at: null },
-      data: { removed_at: new Date(), removed_by: userId }
-    });
-    // 同时将协作申请状态重置（方便日后重新申请）
-    await prisma.collaboration_requests.updateMany({
-      where: { story_id: parseInt(id), user_id: userId, status: 'approved' },
-      data: { status: 'rejected', reviewed_at: new Date() }
-    });
-    res.json({ message: '已退出共创' });
-  } catch (error) {
-    console.error('Leave collaboration error:', error);
-    res.status(500).json({ error: '退出共创失败' });
-  }
-});
+// [已移除] 旧版 follow/collaborator 路由已合并到文件末尾的完整版本中
 
 // Update story
 router.put('/:id', authenticateToken, async (req, res) => {
@@ -632,13 +559,49 @@ router.put('/:id', authenticateToken, async (req, res) => {
       }
     });
 
-    res.json({ 
+    res.json({
       story: updatedStory,
       message: 'Story updated successfully'
     });
   } catch (error) {
     console.error('Update story error:', error);
     res.status(500).json({ error: 'Failed to update story' });
+  }
+});
+
+// Delete story (only author can delete)
+router.delete('/:id', authenticateToken, async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { id } = req.params;
+
+  try {
+    // 检查故事是否存在
+    const story = await prisma.stories.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!story) {
+      return res.status(404).json({ error: 'Story not found' });
+    }
+
+    // 检查权限：只有作者可以删除
+    if (story.author_id !== userId) {
+      return res.status(403).json({ error: '只有故事作者可以删除此故事' });
+    }
+
+    // 删除故事（级联删除相关数据：章节、评论、评分、收藏、追更、协作者等）
+    await prisma.stories.delete({
+      where: { id: parseInt(id) }
+    });
+
+    res.json({ message: '故事已删除' });
+  } catch (error) {
+    console.error('Delete story error:', error);
+    res.status(500).json({ error: 'Failed to delete story' });
   }
 });
 

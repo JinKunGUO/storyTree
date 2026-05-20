@@ -150,7 +150,7 @@ export function applyCollaboration(storyId: number, message?: string) {
 
 // 主动退出共创（取消自己的协作者身份）
 export function leaveCollaboration(storyId: number) {
-  return http.delete<{ message: string }>(`/api/stories/${storyId}/collaborator`)
+  return http.post<{ message: string }>(`/api/stories/${storyId}/collaborators/leave`)
 }
 
 // 获取我创建的故事列表（含协作故事）
