@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../db';
 import { canUseAiFeature } from '../utils/points';
 import { JWT_SECRET } from '../utils/auth';
+import { canViewStory, isStoryAuthor, isCollaborator } from '../utils/permissions';
 import { aiProjectBriefQueue, aiOutlineQueue, aiPasticheQueue, aiTemplateQueue } from '../utils/queue';
 
 const router = Router();
@@ -48,6 +49,22 @@ interface GenerationSession {
 
 // 内存存储会话（简化实现，生产环境可用 Redis）
 const sessions: Map<string, GenerationSession> = new Map();
+
+/**
+ * 更新会话的 generations 数组（由 worker 完成回调调用）
+ */
+export function updateSessionGeneration(sessionId: string, content: any, userFeedback?: string, revisionType?: string) {
+  const session = sessions.get(sessionId);
+  if (!session) return;
+  session.generations.push({
+    round: session.generations.length + 1,
+    content,
+    userFeedback,
+    revisionType,
+    timestamp: new Date()
+  });
+  session.updatedAt = new Date();
+}
 
 /**
  * 生成项目立项书
@@ -171,7 +188,8 @@ router.post('/revise-project-brief', async (req, res) => {
         input_data: JSON.stringify({
           sessionId,
           feedback,
-          previousContent: session.generations[session.generations.length - 1]?.content
+          previousContent: session.generations[session.generations.length - 1]?.content,
+          generations: session.generations
         })
       }
     });
@@ -183,7 +201,8 @@ router.post('/revise-project-brief', async (req, res) => {
       userId,
       feedback,
       revisionType: 'project_brief',
-      previousContent: session.generations[session.generations.length - 1]?.content
+      previousContent: session.generations[session.generations.length - 1]?.content,
+      generations: session.generations
     });
 
     res.json({
@@ -316,7 +335,8 @@ router.post('/revise-outline', async (req, res) => {
         input_data: JSON.stringify({
           sessionId,
           feedback,
-          previousContent: session.generations[session.generations.length - 1]?.content
+          previousContent: session.generations[session.generations.length - 1]?.content,
+          generations: session.generations
         })
       }
     });
@@ -328,7 +348,8 @@ router.post('/revise-outline', async (req, res) => {
       userId,
       feedback,
       revisionType: 'outline',
-      previousContent: session.generations[session.generations.length - 1]?.content
+      previousContent: session.generations[session.generations.length - 1]?.content,
+      generations: session.generations
     });
 
     res.json({
@@ -439,11 +460,9 @@ router.get('/stories/:storyId/project-brief', async (req, res) => {
       return res.status(404).json({ error: '故事不存在' });
     }
 
-    // 权限检查
-    const isAuthor = story.author_id === userId;
-    const isPublic = story.visibility === 'public';
-
-    if (!isAuthor && !isPublic) {
+    // 权限检查：使用 canViewStory 统一可见性规则
+    const canView = await canViewStory(userId, parseInt(storyId));
+    if (!canView) {
       return res.status(403).json({ error: '无权查看此故事的立项书' });
     }
 
@@ -494,7 +513,9 @@ router.put('/stories/:storyId/project-brief', async (req, res) => {
       return res.status(404).json({ error: '故事不存在' });
     }
 
-    if (story.author_id !== userId) {
+    // 仅主创可修改立项书
+    const isAuthor = await isStoryAuthor(userId, parseInt(storyId));
+    if (!isAuthor) {
       return res.status(403).json({ error: '只有作者可以修改立项书' });
     }
 
@@ -514,6 +535,7 @@ router.put('/stories/:storyId/project-brief', async (req, res) => {
 
 /**
  * 获取故事大纲版本列表
+ * 支持按 root_node_id 过滤分支大纲（query参数：rootNodeId）
  */
 router.get('/stories/:storyId/outlines', async (req, res) => {
   const userId = getUserId(req);
@@ -522,6 +544,7 @@ router.get('/stories/:storyId/outlines', async (req, res) => {
   }
 
   const { storyId } = req.params;
+  const rootNodeId = req.query.rootNodeId ? parseInt(req.query.rootNodeId as string) : null;
 
   try {
     const story = await prisma.stories.findUnique({
@@ -533,22 +556,24 @@ router.get('/stories/:storyId/outlines', async (req, res) => {
       return res.status(404).json({ error: '故事不存在' });
     }
 
-    // 只有作者和协作者可以查看大纲
-    const isAuthor = story.author_id === userId;
-    const isCollaborator = await prisma.story_collaborators.findFirst({
-      where: {
-        story_id: parseInt(storyId),
-        user_id: userId,
-        removed_at: null
-      }
-    });
-
-    if (!isAuthor && !isCollaborator) {
+    // 主创和协作者可以查看大纲
+    const isAuth = await isStoryAuthor(userId, parseInt(storyId));
+    const isCollab = await isCollaborator(userId, parseInt(storyId));
+    if (!isAuth && !isCollab) {
       return res.status(403).json({ error: '无权查看此故事的大纲' });
     }
 
+    // 构建 where 条件
+    const where: any = { story_id: parseInt(storyId) };
+    if (rootNodeId !== null) {
+      where.root_node_id = rootNodeId;
+    } else {
+      // 不传 rootNodeId 时返回全局大纲（root_node_id 为 null）
+      where.root_node_id = null;
+    }
+
     const outlines = await prisma.story_outlines.findMany({
-      where: { story_id: parseInt(storyId) },
+      where,
       orderBy: { version: 'desc' }
     });
 
@@ -556,6 +581,7 @@ router.get('/stories/:storyId/outlines', async (req, res) => {
       outlines: outlines.map(o => ({
         id: o.id,
         version: o.version,
+        rootNodeId: o.root_node_id,
         isActive: o.is_active,
         changeNote: o.change_note,
         createdAt: o.created_at
@@ -569,6 +595,7 @@ router.get('/stories/:storyId/outlines', async (req, res) => {
 
 /**
  * 获取当前激活的大纲
+ * 支持按 root_node_id 查询分支大纲（query参数：rootNodeId）
  */
 router.get('/stories/:storyId/outlines/active', async (req, res) => {
   const userId = getUserId(req);
@@ -577,6 +604,7 @@ router.get('/stories/:storyId/outlines/active', async (req, res) => {
   }
 
   const { storyId } = req.params;
+  const rootNodeId = req.query.rootNodeId ? parseInt(req.query.rootNodeId as string) : null;
 
   try {
     const story = await prisma.stories.findUnique({
@@ -588,25 +616,25 @@ router.get('/stories/:storyId/outlines/active', async (req, res) => {
       return res.status(404).json({ error: '故事不存在' });
     }
 
-    const isAuthor = story.author_id === userId;
-    const isCollaborator = await prisma.story_collaborators.findFirst({
-      where: {
-        story_id: parseInt(storyId),
-        user_id: userId,
-        removed_at: null
-      }
-    });
-
-    if (!isAuthor && !isCollaborator) {
+    // 主创和协作者可以查看大纲
+    const isAuth = await isStoryAuthor(userId, parseInt(storyId));
+    const isCollab = await isCollaborator(userId, parseInt(storyId));
+    if (!isAuth && !isCollab) {
       return res.status(403).json({ error: '无权查看此故事的大纲' });
     }
 
-    const activeOutline = await prisma.story_outlines.findFirst({
-      where: {
-        story_id: parseInt(storyId),
-        is_active: true
-      }
-    });
+    // 构建 where 条件
+    const where: any = {
+      story_id: parseInt(storyId),
+      is_active: true
+    };
+    if (rootNodeId !== null) {
+      where.root_node_id = rootNodeId;
+    } else {
+      where.root_node_id = null;
+    }
+
+    const activeOutline = await prisma.story_outlines.findFirst({ where });
 
     if (!activeOutline) {
       return res.json({ outline: null });
@@ -624,6 +652,7 @@ router.get('/stories/:storyId/outlines/active', async (req, res) => {
       outline: {
         id: activeOutline.id,
         version: activeOutline.version,
+        rootNodeId: activeOutline.root_node_id,
         ...outline,
         changeNote: activeOutline.change_note,
         createdAt: activeOutline.created_at
@@ -637,6 +666,7 @@ router.get('/stories/:storyId/outlines/active', async (req, res) => {
 
 /**
  * 创建新的大纲版本
+ * 支持 rootNodeId 参数，用于创建分支大纲
  */
 router.post('/stories/:storyId/outlines', async (req, res) => {
   const userId = getUserId(req);
@@ -645,10 +675,20 @@ router.post('/stories/:storyId/outlines', async (req, res) => {
   }
 
   const { storyId } = req.params;
-  const { outline, changeNote } = req.body;
+  const { outline, changeNote, rootNodeId } = req.body;
 
   if (!outline) {
     return res.status(400).json({ error: '大纲内容不能为空' });
+  }
+
+  // 如果指定了 rootNodeId，验证该节点存在且属于该故事
+  if (rootNodeId) {
+    const node = await prisma.nodes.findUnique({
+      where: { id: rootNodeId }
+    });
+    if (!node || node.story_id !== parseInt(storyId)) {
+      return res.status(400).json({ error: '指定的分支节点不存在或不属于该故事' });
+    }
   }
 
   try {
@@ -660,21 +700,31 @@ router.post('/stories/:storyId/outlines', async (req, res) => {
       return res.status(404).json({ error: '故事不存在' });
     }
 
-    if (story.author_id !== userId) {
-      return res.status(403).json({ error: '只有作者可以创建大纲版本' });
+    // 主创和协作者均可创建大纲版本
+    const isAuthor = await isStoryAuthor(userId, parseInt(storyId));
+    const isCollab = await isCollaborator(userId, parseInt(storyId));
+    if (!isAuthor && !isCollab) {
+      return res.status(403).json({ error: '只有作者或协作者可以创建大纲版本' });
     }
 
-    // 获取当前最大版本号
+    // 获取当前同分支（或全局）的最大版本号
+    const versionWhere: any = { story_id: parseInt(storyId) };
+    if (rootNodeId) {
+      versionWhere.root_node_id = rootNodeId;
+    } else {
+      versionWhere.root_node_id = null;
+    }
+
     const maxVersion = await prisma.story_outlines.aggregate({
-      where: { story_id: parseInt(storyId) },
+      where: versionWhere,
       _max: { version: true }
     });
 
     const newVersion = (maxVersion._max.version || 0) + 1;
 
-    //  deactivate 旧版本
+    // deactivate 同分支的同级旧版本
     await prisma.story_outlines.updateMany({
-      where: { story_id: parseInt(storyId) },
+      where: versionWhere,
       data: { is_active: false }
     });
 
@@ -682,6 +732,7 @@ router.post('/stories/:storyId/outlines', async (req, res) => {
     const newOutline = await prisma.story_outlines.create({
       data: {
         story_id: parseInt(storyId),
+        root_node_id: rootNodeId || null,
         version: newVersion,
         outline: typeof outline === 'string' ? outline : JSON.stringify(outline),
         is_active: true,
@@ -692,7 +743,8 @@ router.post('/stories/:storyId/outlines', async (req, res) => {
 
     res.json({
       id: newOutline.id,
-      version: newVersion,
+      version: newOutline.version,
+      rootNodeId: newOutline.root_node_id,
       message: '大纲版本已创建'
     });
   } catch (error) {
@@ -703,6 +755,7 @@ router.post('/stories/:storyId/outlines', async (req, res) => {
 
 /**
  * 激活指定版本的大纲
+ * 支持 rootNodeId 参数，只在同分支范围内切换激活版本
  */
 router.post('/stories/:storyId/outlines/:version/activate', async (req, res) => {
   const userId = getUserId(req);
@@ -711,6 +764,7 @@ router.post('/stories/:storyId/outlines/:version/activate', async (req, res) => 
   }
 
   const { storyId, version } = req.params;
+  const { rootNodeId } = req.body;
 
   try {
     const story = await prisma.stories.findUnique({
@@ -721,35 +775,52 @@ router.post('/stories/:storyId/outlines/:version/activate', async (req, res) => 
       return res.status(404).json({ error: '故事不存在' });
     }
 
-    const isAuthor = story.author_id === userId;
-    const isCollaborator = await prisma.story_collaborators.findFirst({
-      where: {
-        story_id: parseInt(storyId),
-        user_id: userId,
-        removed_at: null
-      }
-    });
-
-    if (!isAuthor && !isCollaborator) {
-      return res.status(403).json({ error: '无权激活大纲版本' });
+    // 权限检查：主创和协作者均可切换激活版本
+    const isAuth = await isStoryAuthor(userId, parseInt(storyId));
+    const isCollab = await isCollaborator(userId, parseInt(storyId));
+    if (!isAuth && !isCollab) {
+      return res.status(403).json({ error: '只有作者或协作者可以切换大纲版本' });
     }
 
-    // deactivate 所有版本
+    // 查找目标版本
+    const findWhere: any = {
+      story_id: parseInt(storyId),
+      version: parseInt(version)
+    };
+    if (rootNodeId) {
+      findWhere.root_node_id = rootNodeId;
+    } else {
+      findWhere.root_node_id = null;
+    }
+
+    const targetOutline = await prisma.story_outlines.findFirst({
+      where: findWhere
+    });
+
+    if (!targetOutline) {
+      return res.status(404).json({ error: '指定的大纲版本不存在' });
+    }
+
+    // deactivate 同分支的所有版本
+    const deactivateWhere: any = { story_id: parseInt(storyId) };
+    if (rootNodeId) {
+      deactivateWhere.root_node_id = rootNodeId;
+    } else {
+      deactivateWhere.root_node_id = null;
+    }
+
     await prisma.story_outlines.updateMany({
-      where: { story_id: parseInt(storyId) },
+      where: deactivateWhere,
       data: { is_active: false }
     });
 
-    // 激活指定版本
-    await prisma.story_outlines.updateMany({
-      where: {
-        story_id: parseInt(storyId),
-        version: parseInt(version)
-      },
+    // activate 目标版本
+    await prisma.story_outlines.update({
+      where: { id: targetOutline.id },
       data: { is_active: true }
     });
 
-    res.json({ message: `大纲版本 v${version} 已激活` });
+    res.json({ message: '大纲版本已激活', version: targetOutline.version });
   } catch (error) {
     console.error('激活大纲版本失败:', error);
     res.status(500).json({ error: '激活失败' });
@@ -1205,6 +1276,165 @@ router.get('/templates', async (req, res) => {
   } catch (error) {
     console.error('获取模板列表失败:', error);
     res.status(500).json({ error: '获取失败' });
+  }
+});
+
+/**
+ * 从某节点创建分支大纲
+ * 用户可以从某个章节节点创建一个独立的大纲分支，用于"分支宇宙"场景
+ * 新大纲会关联到指定的 rootNodeId，与全局大纲分离管理
+ */
+router.post('/stories/:storyId/outlines/branch', async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: '未登录' });
+  }
+
+  const { storyId } = req.params;
+  const { rootNodeId, outline, changeNote } = req.body;
+
+  if (!rootNodeId) {
+    return res.status(400).json({ error: '必须指定分支根节点ID' });
+  }
+
+  if (!outline) {
+    return res.status(400).json({ error: '大纲内容不能为空' });
+  }
+
+  try {
+    // 验证节点存在且属于该故事
+    const node = await prisma.nodes.findUnique({
+      where: { id: parseInt(rootNodeId) }
+    });
+    if (!node || node.story_id !== parseInt(storyId)) {
+      return res.status(400).json({ error: '指定的分支节点不存在或不属于该故事' });
+    }
+
+    const story = await prisma.stories.findUnique({
+      where: { id: parseInt(storyId) }
+    });
+    if (!story) {
+      return res.status(404).json({ error: '故事不存在' });
+    }
+
+    // 权限检查：主创和协作者均可创建分支大纲
+    const isAuth = await isStoryAuthor(userId, parseInt(storyId));
+    const isCollab = await isCollaborator(userId, parseInt(storyId));
+    if (!isAuth && !isCollab) {
+      return res.status(403).json({ error: '只有作者或协作者可以创建分支大纲' });
+    }
+
+    // 检查该分支是否已存在大纲
+    const existingBranchOutlines = await prisma.story_outlines.findMany({
+      where: {
+        story_id: parseInt(storyId),
+        root_node_id: parseInt(rootNodeId)
+      },
+      orderBy: { version: 'desc' }
+    });
+
+    const nextVersion = existingBranchOutlines.length > 0
+      ? existingBranchOutlines[0].version + 1
+      : 1;
+
+    // 将该分支的其他版本设为非激活
+    await prisma.story_outlines.updateMany({
+      where: {
+        story_id: parseInt(storyId),
+        root_node_id: parseInt(rootNodeId)
+      },
+      data: { is_active: false }
+    });
+
+    // 创建新的分支大纲
+    const branchOutline = await prisma.story_outlines.create({
+      data: {
+        story_id: parseInt(storyId),
+        root_node_id: parseInt(rootNodeId),
+        version: nextVersion,
+        outline: typeof outline === 'string' ? outline : JSON.stringify(outline),
+        is_active: true,
+        change_note: changeNote || `从节点"${node.title}"创建分支大纲`,
+        created_by: userId
+      }
+    });
+
+    res.json({
+      id: branchOutline.id,
+      version: branchOutline.version,
+      rootNodeId: branchOutline.root_node_id,
+      message: '分支大纲已创建'
+    });
+  } catch (error) {
+    console.error('创建分支大纲失败:', error);
+    res.status(500).json({ error: '创建失败' });
+  }
+});
+
+/**
+ * 编辑大纲内容（更新现有大纲版本的内容）
+ * 只能编辑激活版本的大纲内容
+ */
+router.put('/stories/:storyId/outlines/:version', async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: '未登录' });
+  }
+
+  const { storyId, version } = req.params;
+  const { outline, changeNote, rootNodeId } = req.body;
+
+  if (!outline) {
+    return res.status(400).json({ error: '大纲内容不能为空' });
+  }
+
+  try {
+    const story = await prisma.stories.findUnique({
+      where: { id: parseInt(storyId) }
+    });
+    if (!story) {
+      return res.status(404).json({ error: '故事不存在' });
+    }
+
+    // 权限检查：主创和协作者均可编辑大纲
+    const isAuth = await isStoryAuthor(userId, parseInt(storyId));
+    const isCollab = await isCollaborator(userId, parseInt(storyId));
+    if (!isAuth && !isCollab) {
+      return res.status(403).json({ error: '只有作者或协作者可以编辑大纲' });
+    }
+
+    // 查找目标版本
+    const findWhere: any = {
+      story_id: parseInt(storyId),
+      version: parseInt(version)
+    };
+    if (rootNodeId) {
+      findWhere.root_node_id = parseInt(rootNodeId);
+    } else {
+      findWhere.root_node_id = null;
+    }
+
+    const targetOutline = await prisma.story_outlines.findFirst({
+      where: findWhere
+    });
+
+    if (!targetOutline) {
+      return res.status(404).json({ error: '指定的大纲版本不存在' });
+    }
+
+    // 更新大纲内容
+    await prisma.story_outlines.update({
+      where: { id: targetOutline.id },
+      data: {
+        outline: typeof outline === 'string' ? outline : JSON.stringify(outline),
+        change_note: changeNote || targetOutline.change_note
+      }
+    });
+
+    res.json({ message: '大纲内容已更新', version: targetOutline.version });
+  } catch (error) {
+    console.error('编辑大纲失败:', error);
+    res.status(500).json({ error: '更新失败' });
   }
 });
 

@@ -699,17 +699,31 @@ async function submitAiCreate(publishImmediately: boolean) {
  */
 function startPollTask(taskId: number, publishImmediately: boolean) {
   stopPollTask()
+  let taskResolved = false
   let attempts = 0
   const maxAttempts = 60  // 最多轮询 60 次（WebSocket 连接时 10 分钟，断开时 5 分钟）
 
-  // 1. WebSocket 监听
-  const unwatch = mpWsClient.watchTask(taskId, async (data: any) => {
+  const onTaskDone = async (data: any, isWsPush = false) => {
+    if (taskResolved) return
+    taskResolved = true
+    stopPollTask()
+
     if (data.status === 'completed') {
-      unwatch()
-      stopPollTask()
+      // WS 推送的 result 可能是简化版，通过 API 获取完整结果
+      let fullResult = data.result
+      if (isWsPush) {
+        try {
+          const res = await getAiTaskStatus(taskId)
+          if (res.status === 'completed') {
+            fullResult = res.result
+          }
+        } catch {
+          // 使用 WS 推送的简化结果
+        }
+      }
       // 刷新章节树
       if (story.value) {
-        const newNodeId = data.result?.acceptedNodeId ?? null
+        const newNodeId = fullResult?.acceptedNodeId ?? null
         await refreshTree(story.value.id)
         if (newNodeId) {
           highlightNodeId.value = newNodeId
@@ -721,15 +735,43 @@ function startPollTask(taskId: number, publishImmediately: boolean) {
       aiTaskBanner.show = true
       setTimeout(() => { aiTaskBanner.show = false }, 8000)
     } else if (data.status === 'failed') {
-      unwatch()
-      stopPollTask()
-      uni.showToast({ title: `AI 创作失败：${data.error || '未知错误'}`, icon: 'none', duration: 3000 })
+      uni.showToast({ title: `AI 创作失败：${data.errorMessage || data.error || '未知错误'}`, icon: 'none', duration: 3000 })
+    }
+  }
+
+  // 0. 首次 API 查询防竞态（任务可能在 WS 监听注册前已完成）
+  ;(async () => {
+    try {
+      const res = await getAiTaskStatus(taskId)
+      if (res.status === 'completed') {
+        console.log(`[Story AI] 任务 ${taskId} 已完成（首次查询命中）`)
+        onTaskDone({ status: 'completed', result: res.result })
+        return
+      } else if (res.status === 'failed') {
+        console.log(`[Story AI] 任务 ${taskId} 已失败（首次查询命中）`)
+        onTaskDone({ status: 'failed', errorMessage: res.errorMessage })
+        return
+      }
+    } catch {
+      // 首次查询失败不中断流程
+    }
+  })()
+
+  // 1. WebSocket 监听
+  const unwatch = mpWsClient.watchTask(taskId, (data: any) => {
+    if (taskResolved) return
+    if (data.status === 'completed') {
+      // WS 推送完成，但 result 可能是简化版，需要获取完整结果
+      onTaskDone(data, true)
+    } else if (data.status === 'failed') {
+      onTaskDone({ status: 'failed', errorMessage: data.errorMessage || data.error })
     }
   })
 
   // 2. 降级轮询兜底（WebSocket 断开时间隔改为 5 秒，避免超时）
   const pollInterval = mpWsClient.isConnected() ? 10000 : 5000
   aiPollTimer = setInterval(async () => {
+    if (taskResolved) return
     attempts++
     if (attempts > maxAttempts) {
       unwatch()
@@ -741,28 +783,11 @@ function startPollTask(taskId: number, publishImmediately: boolean) {
     try {
       const res = await getAiTaskStatus(taskId)
 
+      if (taskResolved) return
       if (res.status === 'completed') {
-        unwatch()
-        stopPollTask()
-        if (story.value) {
-          const newNodeId = res.result?.acceptedNodeId ?? null
-          await refreshTree(story.value.id)
-          if (newNodeId) {
-            highlightNodeId.value = newNodeId
-            setTimeout(() => { highlightNodeId.value = null }, 4000)
-          }
-        }
-        const action = publishImmediately ? '已自动发布' : '已保存为草稿'
-        aiTaskBanner.message = `AI 续写章节${action}，下拉可刷新`
-        aiTaskBanner.show = true
-        setTimeout(() => { aiTaskBanner.show = false }, 8000)
-        return
-      }
-
-      if (res.status === 'failed') {
-        unwatch()
-        stopPollTask()
-        uni.showToast({ title: `AI 创作失败：${res.errorMessage || '未知错误'}`, icon: 'none', duration: 3000 })
+        onTaskDone({ status: 'completed', result: res.result })
+      } else if (res.status === 'failed') {
+        onTaskDone({ status: 'failed', errorMessage: res.errorMessage })
       }
     } catch {
       // 网络错误不中断轮询

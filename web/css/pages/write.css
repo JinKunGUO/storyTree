@@ -743,8 +743,9 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 15px;
+            padding: 12px 15px;
             border-bottom: 1px solid var(--st-gray-200);
+            gap: 8px;
         }
 
         .panel-header h3 {
@@ -752,16 +753,27 @@
             font-weight: 600;
             color: var(--st-text-primary);
             margin: 0;
+            white-space: nowrap;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+
+        .panel-header h3 i {
+            margin-right: 4px;
         }
 
         .btn-icon {
             background: transparent;
             border: none;
             cursor: pointer;
-            padding: 5px 10px;
+            padding: 4px 8px;
             border-radius: 5px;
             color: var(--st-text-tertiary);
             transition: all 0.2s;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .btn-icon:hover {
@@ -769,13 +781,79 @@
             color: var(--st-primary-500);
         }
 
+        .btn-cancel-edit {
+            color: #94a3b8;
+        }
+
+        .btn-cancel-edit:hover {
+            color: #64748b;
+            background: #f1f5f9;
+        }
+
+        .panel-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 1;
+            min-width: 0;
+        }
+
+        /* 立项书编辑模式样式 */
+        .edit-brief-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--st-gray-200);
+            border-radius: 8px;
+            font-size: 14px;
+            color: var(--st-text-primary);
+            background: var(--st-bg-primary);
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+
+        .edit-brief-input:focus {
+            outline: none;
+            border-color: var(--st-primary-500);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .edit-brief-textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--st-gray-200);
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--st-text-primary);
+            background: var(--st-bg-primary);
+            transition: border-color 0.2s;
+            min-height: 80px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+
+        .edit-brief-textarea:focus {
+            outline: none;
+            border-color: var(--st-primary-500);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .version-selector {
+            display: inline-flex;
+            align-items: center;
+        }
+
         .version-selector select {
-            padding: 5px 10px;
+            padding: 3px 6px;
             border: 1px solid var(--st-gray-200);
             border-radius: 5px;
             font-size: 12px;
             color: var(--st-text-secondary);
             background: var(--st-bg-secondary);
+            max-width: 100px;
+            line-height: 1.2;
+            height: auto;
+            vertical-align: middle;
         }
 
         .panel-content {

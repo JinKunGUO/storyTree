@@ -99,16 +99,21 @@ export const useUserStore = defineStore('user', () => {
   function checkLoginStatus() {
     const storedToken = uni.getStorageSync(TOKEN_KEY)
     const storedUser = uni.getStorageSync(USER_KEY)
+    console.log('[checkLoginStatus] storedToken:', !!storedToken, 'storedUser:', !!storedUser)
     if (storedToken && storedUser) {
       try {
         const parsed = JSON.parse(storedUser)
-        if (parsed && token.value !== storedToken) {
-          token.value = storedToken
-          userInfo.value = parsed
-        } else if (!userInfo.value) {
+        console.log('[checkLoginStatus] parsed user:', parsed)
+        if (parsed) {
+          // 始终更新 token（确保一致性）
+          if (token.value !== storedToken) {
+            token.value = storedToken
+          }
+          // 始终更新 userInfo（如果存储中有数据）
           userInfo.value = parsed
         }
-      } catch {
+      } catch (e) {
+        console.log('[checkLoginStatus] 解析失败', e)
         // 解析失败，忽略
       }
     }

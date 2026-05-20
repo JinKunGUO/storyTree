@@ -96,6 +96,11 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
+  // 初始化 WebSocket 连接
+  if (window.StoryTreeWS) {
+    window.StoryTreeWS.connect();
+  }
+
   // 初始化 DOM 引用和事件
   initDOMReferences();
   bindEvents();
@@ -528,8 +533,8 @@ async function handleGenerate() {
     state.sessionId = data.sessionId;
     state.taskId = data.taskId;
 
-    // 轮询任务状态
-    pollTaskStatus(state.taskId);
+    // 监听任务状态（WebSocket 优先，降级轮询兜底）
+    watchCreationTask(state.taskId);
 
   } catch (error) {
     console.error('生成失败:', error);
@@ -539,165 +544,398 @@ async function handleGenerate() {
   }
 }
 
-// 轮询任务状态
-async function pollTaskStatus(taskId) {
+// 监听 AI 创作任务状态（WebSocket 优先，降级轮询兜底）
+function watchCreationTask(taskId, isRevision = false) {
+  // 统一的任务完成回调
+  function onTaskCompleted(data) {
+    loadingContainer.classList.remove('active');
+    resultContainer.classList.add('active');
+    methodContent.classList.remove('show');
+
+    // 解析并显示结果
+    if (state.selectedMethod === 'project') {
+      state.generatedData = data.result?.projectBrief;
+      renderProjectBrief(data.result?.projectBrief);
+    } else if (state.selectedMethod === 'outline') {
+      state.generatedData = data.result?.outline;
+      renderOutline(data.result?.outline);
+    } else if (state.selectedMethod === 'pastiche') {
+      state.generatedData = data.result?.pastiche;
+      renderPasticheResult(data.result?.pastiche);
+    } else if (state.selectedMethod === 'template') {
+      state.generatedData = data.result?.template;
+      renderTemplateResult(data.result?.template);
+    }
+
+    // 添加初始消息
+    if (isRevision) {
+      addChatMessage('assistant', '修改完成！请查看更新后的内容。');
+      btnSend.disabled = false;
+    } else {
+      addChatMessage('assistant', '生成完成！如有不满意的地方，可以提出修改意见。');
+    }
+  }
+
+  function onTaskFailed(errorMessage) {
+    const msg = errorMessage || (isRevision ? '修改失败' : '生成失败');
+    if (isRevision) {
+      addChatMessage('assistant', '修改失败：' + msg);
+      btnSend.disabled = false;
+    } else {
+      alert('获取结果失败：' + msg);
+      loadingContainer.classList.remove('active');
+      methodContent.classList.add('show');
+    }
+  }
+
+  // 立即做一次 API 查询，检查任务是否已完成（防止竞态：任务可能在 WS 监听注册前就已完成）
+  let taskAlreadyResolved = false;
+
+  // 包装回调，防止重复触发
+  function onTaskCompletedOnce(data) {
+    if (taskAlreadyResolved) return;
+    taskAlreadyResolved = true;
+    // 取消 WS 监听
+    if (window.StoryTreeWS) {
+      window.StoryTreeWS.unwatchTask(taskId);
+    }
+    onTaskCompleted(data);
+  }
+
+  function onTaskFailedOnce(errorMessage) {
+    if (taskAlreadyResolved) return;
+    taskAlreadyResolved = true;
+    if (window.StoryTreeWS) {
+      window.StoryTreeWS.unwatchTask(taskId);
+    }
+    onTaskFailed(errorMessage);
+  }
+
+  checkTaskOnce(taskId, onTaskCompletedOnce, onTaskFailedOnce);
+
+  // 使用 WebSocket 客户端的 watchTask（WebSocket 连接时实时推送，断开时自动降级轮询）
+  if (window.StoryTreeWS) {
+    window.StoryTreeWS.watchTask(taskId, (data) => {
+      if (data.status === 'completed') {
+        // WebSocket 推送的 result 可能是简化版，需要通过 API 获取完整结果
+        fetchTaskResult(taskId, onTaskCompletedOnce, onTaskFailedOnce);
+      } else if (data.status === 'failed') {
+        onTaskFailedOnce(data.errorMessage);
+      }
+    });
+    console.log(`[AI 创作] 任务 ${taskId} 已注册 WebSocket 监听`);
+    return;
+  }
+
+  // WebSocket 客户端不可用，回退到独立轮询（已有 checkTaskOnce 做了首次查询，这里做持续轮询）
+  console.log('[AI 创作] WebSocket 不可用，使用轮询');
+  fallbackPoll(taskId, onTaskCompletedOnce, onTaskFailedOnce, true); // skipFirst=true
+}
+
+// 一次性查询任务状态（用于防止竞态条件）
+async function checkTaskOnce(taskId, onSuccess, onFailed) {
   const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  try {
+    const response = await fetch(`/api/ai/v2/tasks/${taskId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+    if (data.status === 'completed') {
+      console.log(`[AI 创作] 任务 ${taskId} 已完成（首次查询命中）`);
+      onSuccess(data);
+      return true;
+    } else if (data.status === 'failed') {
+      console.log(`[AI 创作] 任务 ${taskId} 已失败（首次查询命中）`);
+      onFailed(data.errorMessage || '任务失败');
+      return true;
+    }
+  } catch (error) {
+    console.warn('[AI 创作] 首次任务状态查询失败:', error);
+  }
+  return false;
+}
+
+// 从 API 获取任务完整结果
+async function fetchTaskResult(taskId, onSuccess, onFailed) {
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  try {
+    const response = await fetch(`/api/ai/v2/tasks/${taskId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+    if (data.status === 'completed') {
+      onSuccess(data);
+    } else if (data.status === 'failed') {
+      onFailed(data.errorMessage || '任务失败');
+    }
+    // 其他状态（如 pending/processing）不应出现在已完成推送后，但保险起见继续轮询
+    else {
+      fallbackPoll(taskId, onSuccess, onFailed);
+    }
+  } catch (error) {
+    console.error('获取任务结果失败:', error);
+    onFailed(error.message);
+  }
+}
+
+// 降级轮询
+function fallbackPoll(taskId, onSuccess, onFailed, skipFirst = false) {
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  let pollInterval = 2000; // 初始 2 秒
+  const maxInterval = 10000; // 最大 10 秒
+  let attempts = 0;
+  const maxAttempts = 120; // 最多轮询 120 次（约 10 分钟）
 
   const poll = async () => {
+    attempts++;
+    if (attempts > maxAttempts) {
+      onFailed('生成超时，请稍后在创作台查看结果');
+      return;
+    }
+
     try {
       const response = await fetch(`/api/ai/v2/tasks/${taskId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       const data = await response.json();
 
       if (data.status === 'completed') {
-        // 任务完成
-        loadingContainer.classList.remove('active');
-        resultContainer.classList.add('active');
-        methodContent.classList.remove('show');
-
-        // 解析并显示结果
-        if (state.selectedMethod === 'project') {
-          state.generatedData = data.result?.projectBrief;
-          renderProjectBrief(data.result?.projectBrief);
-        } else if (state.selectedMethod === 'outline') {
-          state.generatedData = data.result?.outline;
-          renderOutline(data.result?.outline);
-        } else if (state.selectedMethod === 'pastiche') {
-          state.generatedData = data.result?.pastiche;
-          renderPasticheResult(data.result?.pastiche);
-        } else if (state.selectedMethod === 'template') {
-          state.generatedData = data.result?.template;
-          renderTemplateResult(data.result?.template);
-        }
-
-        // 添加初始消息
-        addChatMessage('assistant', '生成完成！如有不满意的地方，可以提出修改意见。');
-
+        onSuccess(data);
+        return;
       } else if (data.status === 'failed') {
-        throw new Error(data.errorMessage || '生成失败');
-      } else {
-        // 继续轮询
-        setTimeout(poll, 3000);
+        onFailed(data.errorMessage || '生成失败');
+        return;
       }
+
+      // 继续轮询，逐步增加间隔
+      pollInterval = Math.min(pollInterval * 1.2, maxInterval);
+      setTimeout(poll, pollInterval);
 
     } catch (error) {
       console.error('轮询失败:', error);
-      alert('获取结果失败：' + error.message);
-      loadingContainer.classList.remove('active');
-      methodContent.classList.add('show');
+      // 网络错误时继续轮询
+      setTimeout(poll, pollInterval);
     }
   };
 
-  poll();
+  // 如果 skipFirst 为 true，延迟执行（首次查询已由 checkTaskOnce 完成）
+  if (skipFirst) {
+    setTimeout(poll, pollInterval);
+  } else {
+    poll();
+  }
 }
 
-// 渲染立项书预览
+// 渲染立项书预览（可编辑版本）
 function renderProjectBrief(brief) {
   if (!brief) {
     previewContent.innerHTML = '<p>未获取到立项书内容</p>';
     return;
   }
 
+  // 确保 state.generatedData 同步
+  state.generatedData = brief;
+
   previewContent.innerHTML = `
     <div class="preview-section">
       <h4><i class="fas fa-bookmark"></i> 故事标题</h4>
-      <p>${brief.title || '未指定'}</p>
+      <input type="text" class="editable-field" data-field="title" value="${escapeHtml(brief.title || '')}" placeholder="输入故事标题">
     </div>
 
     <div class="preview-section">
       <h4><i class="fas fa-align-left"></i> 故事梗概</h4>
-      <p>${brief.synopsis || '暂无内容'}</p>
+      <textarea class="editable-field" data-field="synopsis" rows="4" placeholder="输入故事梗概">${escapeHtml(brief.synopsis || '')}</textarea>
     </div>
 
     <div class="preview-section">
       <h4><i class="fas fa-lightbulb"></i> 核心创意/卖点</h4>
-      <p>${brief.coreIdea || '暂无内容'}</p>
+      <textarea class="editable-field" data-field="coreIdea" rows="3" placeholder="输入核心创意">${escapeHtml(brief.coreIdea || '')}</textarea>
     </div>
 
     <div class="preview-section">
       <h4><i class="fas fa-users"></i> 目标读者群体</h4>
-      <p>${brief.targetAudience || '暂无内容'}</p>
+      <input type="text" class="editable-field" data-field="targetAudience" value="${escapeHtml(brief.targetAudience || '')}" placeholder="输入目标读者">
     </div>
 
     <div class="preview-section">
       <h4><i class="fas fa-tags"></i> 类型标签</h4>
-      <p>${brief.genre || '暂无内容'}</p>
+      <input type="text" class="editable-field" data-field="genre" value="${escapeHtml(brief.genre || '')}" placeholder="输入类型标签，如：玄幻、都市">
     </div>
 
-    ${brief.highlights ? `
+    ${brief.highlights && brief.highlights.length > 0 ? `
     <div class="preview-section">
       <h4><i class="fas fa-star"></i> 作品亮点</h4>
-      <ul>
-        ${brief.highlights.map(h => `<li>${h}</li>`).join('')}
-      </ul>
+      <div id="highlightsList">
+        ${brief.highlights.map((h, i) => `
+          <div class="editable-highlight">
+            <input type="text" class="editable-field" data-field="highlights" data-index="${i}" value="${escapeHtml(h)}" placeholder="输入亮点">
+            <button class="btn-remove-item" onclick="removeHighlight(${i})" title="删除"><i class="fas fa-times"></i></button>
+          </div>
+        `).join('')}
+      </div>
+      <button class="btn-add-item" onclick="addHighlight()"><i class="fas fa-plus"></i> 添加亮点</button>
+    </div>
+    ` : ''}
+
+    ${brief.worldBuilding ? `
+    <div class="preview-section">
+      <h4><i class="fas fa-globe"></i> 世界观设定</h4>
+      <textarea class="editable-field" data-field="worldBuilding" rows="4" placeholder="输入世界观设定">${escapeHtml(brief.worldBuilding || '')}</textarea>
+    </div>
+    ` : ''}
+
+    ${brief.characters && brief.characters.length > 0 ? `
+    <div class="preview-section">
+      <h4><i class="fas fa-user-friends"></i> 主要角色</h4>
+      <div id="charactersList">
+        ${brief.characters.map((c, i) => `
+          <div class="editable-character">
+            <div class="editable-character-header">
+              <input type="text" class="editable-field" data-field="characterName" data-index="${i}" value="${escapeHtml(c.name || '')}" placeholder="角色名" style="flex:1;">
+              <select class="editable-field" data-field="characterRole" data-index="${i}" style="flex:0 0 auto; width: 90px; padding: 8px;">
+                <option value="protagonist" ${c.role === 'protagonist' ? 'selected' : ''}>主角</option>
+                <option value="antagonist" ${c.role === 'antagonist' ? 'selected' : ''}>反派</option>
+                <option value="supporting" ${c.role === 'supporting' ? 'selected' : ''}>配角</option>
+                <option value="love_interest" ${c.role === 'love_interest' ? 'selected' : ''}>感情线</option>
+              </select>
+              <button class="btn-remove-item" onclick="removeCharacter(${i})" title="删除角色"><i class="fas fa-times"></i></button>
+            </div>
+            <textarea class="editable-field" data-field="characterDesc" data-index="${i}" rows="2" placeholder="角色描述">${escapeHtml(c.description || '')}</textarea>
+          </div>
+        `).join('')}
+      </div>
+      <button class="btn-add-item" onclick="addCharacter()"><i class="fas fa-plus"></i> 添加角色</button>
+    </div>
+    ` : ''}
+
+    ${brief.plotStructure ? `
+    <div class="preview-section">
+      <h4><i class="fas fa-chart-pie"></i> 情节结构</h4>
+      <div style="margin-bottom: 10px;">
+        <strong>第一幕</strong>
+        <textarea class="editable-field" data-field="plotAct1" rows="3" placeholder="第一幕内容">${escapeHtml(brief.plotStructure.act1 || '')}</textarea>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <strong>第二幕</strong>
+        <textarea class="editable-field" data-field="plotAct2" rows="3" placeholder="第二幕内容">${escapeHtml(brief.plotStructure.act2 || '')}</textarea>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <strong>第三幕</strong>
+        <textarea class="editable-field" data-field="plotAct3" rows="3" placeholder="第三幕内容">${escapeHtml(brief.plotStructure.act3 || '')}</textarea>
+      </div>
+    </div>
+    ` : ''}
+
+    ${brief.chapterOutlines && brief.chapterOutlines.length > 0 ? `
+    <div class="preview-section">
+      <h4><i class="fas fa-list-ol"></i> 分章大纲</h4>
+      <div id="chaptersList" style="max-height: 600px; overflow-y: auto;">
+        ${brief.chapterOutlines.map((c, i) => `
+          <div class="editable-chapter" data-chapter-index="${i}">
+            <div class="editable-chapter-title">
+              第<input type="number" class="editable-field" data-field="chapterNum" data-index="${i}" value="${c.chapter || (i+1)}" min="1" style="width:60px; display:inline-block;">章：
+              <input type="text" class="editable-field" data-field="chapterTitle" data-index="${i}" value="${escapeHtml(c.title || '')}" placeholder="章节标题" style="display:inline-block; width: calc(100% - 160px);">
+              <button class="btn-remove-item" onclick="removeChapter(${i})" title="删除章节" style="vertical-align: middle;"><i class="fas fa-times"></i></button>
+            </div>
+            <textarea class="editable-field" data-field="chapterSummary" data-index="${i}" rows="2" placeholder="章节摘要">${escapeHtml(c.summary || '')}</textarea>
+          </div>
+        `).join('')}
+      </div>
+      <button class="btn-add-item" onclick="addChapter()"><i class="fas fa-plus"></i> 添加章节</button>
     </div>
     ` : ''}
   `;
 }
 
-// 渲染大纲预览
+// 渲染大纲预览（可编辑版本）
 function renderOutline(outline) {
   if (!outline) {
     previewContent.innerHTML = '<p>未获取到大纲内容</p>';
     return;
   }
 
+  // 确保 state.generatedData 同步
+  state.generatedData = outline;
+
   previewContent.innerHTML = `
     <div class="preview-section">
       <h4><i class="fas fa-globe"></i> 世界观设定</h4>
-      <p>${outline.worldBuilding || '暂无内容'}</p>
+      <textarea class="editable-field" data-field="worldBuilding" rows="4" placeholder="输入世界观设定">${escapeHtml(outline.worldBuilding || '')}</textarea>
     </div>
 
     ${outline.characters && outline.characters.length > 0 ? `
     <div class="preview-section">
       <h4><i class="fas fa-users"></i> 主要角色</h4>
-      ${outline.characters.map(c => `
-        <div style="margin-bottom: 15px; padding: 15px; background: var(--st-bg-primary); border-radius: var(--st-radius-lg);">
-          <strong>${c.name}</strong>
-          <span style="margin-left: 10px; padding: 2px 8px; background: var(--st-primary-100); color: var(--st-primary-700); border-radius: var(--st-radius-full); font-size: 12px;">
-            ${c.role === 'protagonist' ? '主角' : c.role === 'antagonist' ? '反派' : '配角'}
-          </span>
-          <p style="margin-top: 8px;">${c.description || ''}</p>
-        </div>
-      `).join('')}
+      <div id="charactersList">
+        ${outline.characters.map((c, i) => `
+          <div class="editable-character">
+            <div class="editable-character-header">
+              <input type="text" class="editable-field" data-field="characterName" data-index="${i}" value="${escapeHtml(c.name || '')}" placeholder="角色名" style="flex:1;">
+              <select class="editable-field" data-field="characterRole" data-index="${i}" style="flex:0 0 auto; width: 90px; padding: 8px;">
+                <option value="protagonist" ${c.role === 'protagonist' ? 'selected' : ''}>主角</option>
+                <option value="antagonist" ${c.role === 'antagonist' ? 'selected' : ''}>反派</option>
+                <option value="supporting" ${c.role === 'supporting' ? 'selected' : ''}>配角</option>
+                <option value="love_interest" ${c.role === 'love_interest' ? 'selected' : ''}>感情线</option>
+              </select>
+              <button class="btn-remove-item" onclick="removeCharacter(${i})" title="删除角色"><i class="fas fa-times"></i></button>
+            </div>
+            <textarea class="editable-field" data-field="characterDesc" data-index="${i}" rows="2" placeholder="角色描述">${escapeHtml(c.description || '')}</textarea>
+          </div>
+        `).join('')}
+      </div>
+      <button class="btn-add-item" onclick="addCharacter()"><i class="fas fa-plus"></i> 添加角色</button>
     </div>
     ` : ''}
 
     ${outline.plotStructure ? `
     <div class="preview-section">
       <h4><i class="fas fa-chart-pie"></i> 情节结构</h4>
-      <p><strong>第一幕：</strong>${outline.plotStructure.act1 || '暂无内容'}</p>
-      <p><strong>第二幕：</strong>${outline.plotStructure.act2 || '暂无内容'}</p>
-      <p><strong>第三幕：</strong>${outline.plotStructure.act3 || '暂无内容'}</p>
+      <div style="margin-bottom: 10px;">
+        <strong>第一幕</strong>
+        <textarea class="editable-field" data-field="plotAct1" rows="3" placeholder="第一幕内容">${escapeHtml(outline.plotStructure.act1 || '')}</textarea>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <strong>第二幕</strong>
+        <textarea class="editable-field" data-field="plotAct2" rows="3" placeholder="第二幕内容">${escapeHtml(outline.plotStructure.act2 || '')}</textarea>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <strong>第三幕</strong>
+        <textarea class="editable-field" data-field="plotAct3" rows="3" placeholder="第三幕内容">${escapeHtml(outline.plotStructure.act3 || '')}</textarea>
+      </div>
     </div>
     ` : ''}
 
     ${outline.chapterOutlines && outline.chapterOutlines.length > 0 ? `
     <div class="preview-section">
-      <h4><i class="fas fa-list-ol"></i> 分章大纲（前 10 章）</h4>
-      <div style="max-height: 400px; overflow-y: auto;">
-        ${outline.chapterOutlines.slice(0, 10).map(c => `
-          <div style="margin-bottom: 10px; padding: 10px; background: var(--st-bg-primary); border-radius: var(--st-radius-lg);">
-            <strong>第${c.chapter}章：${c.title || '无题'}</strong>
-            <p style="margin-top: 5px; font-size: 13px;">${c.summary || '暂无内容'}</p>
+      <h4><i class="fas fa-list-ol"></i> 分章大纲</h4>
+      <div id="chaptersList" style="max-height: 600px; overflow-y: auto;">
+        ${outline.chapterOutlines.map((c, i) => `
+          <div class="editable-chapter" data-chapter-index="${i}">
+            <div class="editable-chapter-title">
+              第<input type="number" class="editable-field" data-field="chapterNum" data-index="${i}" value="${c.chapter || (i+1)}" min="1" style="width:60px; display:inline-block;">章：
+              <input type="text" class="editable-field" data-field="chapterTitle" data-index="${i}" value="${escapeHtml(c.title || '')}" placeholder="章节标题" style="display:inline-block; width: calc(100% - 160px);">
+              <button class="btn-remove-item" onclick="removeChapter(${i})" title="删除章节" style="vertical-align: middle;"><i class="fas fa-times"></i></button>
+            </div>
+            <textarea class="editable-field" data-field="chapterSummary" data-index="${i}" rows="2" placeholder="章节摘要">${escapeHtml(c.summary || '')}</textarea>
           </div>
         `).join('')}
       </div>
+      <button class="btn-add-item" onclick="addChapter()"><i class="fas fa-plus"></i> 添加章节</button>
     </div>
     ` : ''}
   `;
 }
 
-// 渲染经典仿写结果
+// 渲染经典仿写结果（可编辑版本）
 function renderPasticheResult(pastiche) {
   if (!pastiche) {
     previewContent.innerHTML = '<p>未获取到仿写内容</p>';
     return;
   }
+
+  // 确保 state.generatedData 同步
+  state.generatedData = pastiche;
 
   // 后端返回的格式：{ analysis, projectBrief, outline }
   const analysis = pastiche.analysis || pastiche;
@@ -707,41 +945,80 @@ function renderPasticheResult(pastiche) {
   previewContent.innerHTML = `
     <div class="preview-section">
       <h4><i class="fas fa-book-open"></i> 原作分析</h4>
-      <p>${analysis.style || analysis.originalAnalysis || '暂无内容'}</p>
+      <textarea class="editable-field" data-field="analysisStyle" rows="4" placeholder="原作风格分析">${escapeHtml(analysis.style || analysis.originalAnalysis || '')}</textarea>
     </div>
 
     ${projectBrief ? `
     <div class="preview-section">
       <h4><i class="fas fa-file-alt"></i> 新作立项书</h4>
-      <p>${projectBrief.synopsis || projectBrief.title || '暂无内容'}</p>
+      <input type="text" class="editable-field" data-field="pasticheTitle" value="${escapeHtml(projectBrief.title || '')}" placeholder="故事标题" style="margin-bottom:8px;">
+      <textarea class="editable-field" data-field="pasticheSynopsis" rows="3" placeholder="故事梗概">${escapeHtml(projectBrief.synopsis || '')}</textarea>
     </div>
     ` : ''}
 
     ${outline ? `
+    ${outline.worldBuilding ? `
     <div class="preview-section">
-      <h4><i class="fas fa-list-ul"></i> 后续大纲</h4>
-      <div style="max-height: 400px; overflow-y: auto;">
-        ${outline.chapterOutlines && outline.chapterOutlines.length > 0 ?
-          outline.chapterOutlines.map(c => `
-            <div style="margin-bottom: 15px; padding: 15px; background: var(--st-bg-primary); border-radius: var(--st-radius-lg);">
-              <strong>第${c.chapter}章：${c.title || '无题'}</strong>
-              <p style="margin-top: 8px; font-size: 14px; line-height: 1.6;">${c.summary || '暂无内容'}</p>
-            </div>
-          `).join('') :
-          (typeof outline === 'string' ? outline : '暂无内容')
-        }
-      </div>
+      <h4><i class="fas fa-globe"></i> 世界观设定</h4>
+      <textarea class="editable-field" data-field="worldBuilding" rows="3" placeholder="世界观设定">${escapeHtml(outline.worldBuilding || '')}</textarea>
     </div>
+    ` : ''}
+
+    ${outline.characters && outline.characters.length > 0 ? `
+    <div class="preview-section">
+      <h4><i class="fas fa-users"></i> 主要角色</h4>
+      <div id="charactersList">
+        ${outline.characters.map((c, i) => `
+          <div class="editable-character">
+            <div class="editable-character-header">
+              <input type="text" class="editable-field" data-field="characterName" data-index="${i}" value="${escapeHtml(c.name || '')}" placeholder="角色名" style="flex:1;">
+              <select class="editable-field" data-field="characterRole" data-index="${i}" style="flex:0 0 auto; width: 90px; padding: 8px;">
+                <option value="protagonist" ${c.role === 'protagonist' ? 'selected' : ''}>主角</option>
+                <option value="antagonist" ${c.role === 'antagonist' ? 'selected' : ''}>反派</option>
+                <option value="supporting" ${c.role === 'supporting' ? 'selected' : ''}>配角</option>
+                <option value="love_interest" ${c.role === 'love_interest' ? 'selected' : ''}>感情线</option>
+              </select>
+              <button class="btn-remove-item" onclick="removeCharacter(${i})" title="删除角色"><i class="fas fa-times"></i></button>
+            </div>
+            <textarea class="editable-field" data-field="characterDesc" data-index="${i}" rows="2" placeholder="角色描述">${escapeHtml(c.description || '')}</textarea>
+          </div>
+        `).join('')}
+      </div>
+      <button class="btn-add-item" onclick="addCharacter()"><i class="fas fa-plus"></i> 添加角色</button>
+    </div>
+    ` : ''}
+
+    ${outline.chapterOutlines && outline.chapterOutlines.length > 0 ? `
+    <div class="preview-section">
+      <h4><i class="fas fa-list-ul"></i> 分章大纲</h4>
+      <div id="chaptersList" style="max-height: 600px; overflow-y: auto;">
+        ${outline.chapterOutlines.map((c, i) => `
+          <div class="editable-chapter" data-chapter-index="${i}">
+            <div class="editable-chapter-title">
+              第<input type="number" class="editable-field" data-field="chapterNum" data-index="${i}" value="${c.chapter || (i+1)}" min="1" style="width:60px; display:inline-block;">章：
+              <input type="text" class="editable-field" data-field="chapterTitle" data-index="${i}" value="${escapeHtml(c.title || '')}" placeholder="章节标题" style="display:inline-block; width: calc(100% - 160px);">
+              <button class="btn-remove-item" onclick="removeChapter(${i})" title="删除章节" style="vertical-align: middle;"><i class="fas fa-times"></i></button>
+            </div>
+            <textarea class="editable-field" data-field="chapterSummary" data-index="${i}" rows="2" placeholder="章节摘要">${escapeHtml(c.summary || '')}</textarea>
+          </div>
+        `).join('')}
+      </div>
+      <button class="btn-add-item" onclick="addChapter()"><i class="fas fa-plus"></i> 添加章节</button>
+    </div>
+    ` : ''}
     ` : ''}
   `;
 }
 
-// 渲染模板结果
+// 渲染模板结果（可编辑版本）
 function renderTemplateResult(template) {
   if (!template) {
     previewContent.innerHTML = '<p>未获取到模板内容</p>';
     return;
   }
+
+  // 确保 state.generatedData 同步
+  state.generatedData = template;
 
   // 后端返回的格式：{ projectBrief, outline: { worldBuilding, characters, plotStructure, chapterOutlines } }
   const projectBrief = template.projectBrief || template;
@@ -751,52 +1028,76 @@ function renderTemplateResult(template) {
     ${projectBrief ? `
     <div class="preview-section">
       <h4><i class="fas fa-file-alt"></i> 项目立项书</h4>
-      <p>${projectBrief.synopsis || projectBrief.title || '暂无内容'}</p>
+      <input type="text" class="editable-field" data-field="templateTitle" value="${escapeHtml(projectBrief.title || '')}" placeholder="故事标题" style="margin-bottom:8px;">
+      <textarea class="editable-field" data-field="templateSynopsis" rows="3" placeholder="故事梗概">${escapeHtml(projectBrief.synopsis || '')}</textarea>
     </div>
     ` : ''}
 
     ${outline.worldBuilding ? `
     <div class="preview-section">
       <h4><i class="fas fa-globe"></i> 世界观设定</h4>
-      <p>${outline.worldBuilding}</p>
+      <textarea class="editable-field" data-field="worldBuilding" rows="4" placeholder="输入世界观设定">${escapeHtml(outline.worldBuilding || '')}</textarea>
     </div>
     ` : ''}
 
     ${outline.characters && outline.characters.length > 0 ? `
     <div class="preview-section">
       <h4><i class="fas fa-users"></i> 角色设定</h4>
-      ${outline.characters.map(c => `
-        <div style="margin-bottom: 15px; padding: 15px; background: var(--st-bg-primary); border-radius: var(--st-radius-lg);">
-          <strong>${c.name}</strong>
-          <span style="margin-left: 10px; padding: 2px 8px; background: var(--st-primary-100); color: var(--st-primary-700); border-radius: var(--st-radius-full); font-size: 12px;">
-            ${c.role === 'protagonist' ? '主角' : c.role === 'antagonist' ? '反派' : '配角'}
-          </span>
-          <p style="margin-top: 8px;">${c.description || ''}</p>
-        </div>
-      `).join('')}
+      <div id="charactersList">
+        ${outline.characters.map((c, i) => `
+          <div class="editable-character">
+            <div class="editable-character-header">
+              <input type="text" class="editable-field" data-field="characterName" data-index="${i}" value="${escapeHtml(c.name || '')}" placeholder="角色名" style="flex:1;">
+              <select class="editable-field" data-field="characterRole" data-index="${i}" style="flex:0 0 auto; width: 90px; padding: 8px;">
+                <option value="protagonist" ${c.role === 'protagonist' ? 'selected' : ''}>主角</option>
+                <option value="antagonist" ${c.role === 'antagonist' ? 'selected' : ''}>反派</option>
+                <option value="supporting" ${c.role === 'supporting' ? 'selected' : ''}>配角</option>
+                <option value="love_interest" ${c.role === 'love_interest' ? 'selected' : ''}>感情线</option>
+              </select>
+              <button class="btn-remove-item" onclick="removeCharacter(${i})" title="删除角色"><i class="fas fa-times"></i></button>
+            </div>
+            <textarea class="editable-field" data-field="characterDesc" data-index="${i}" rows="2" placeholder="角色描述">${escapeHtml(c.description || '')}</textarea>
+          </div>
+        `).join('')}
+      </div>
+      <button class="btn-add-item" onclick="addCharacter()"><i class="fas fa-plus"></i> 添加角色</button>
     </div>
     ` : ''}
 
     ${outline.plotStructure ? `
     <div class="preview-section">
       <h4><i class="fas fa-chart-pie"></i> 情节结构</h4>
-      <p><strong>第一幕：</strong>${outline.plotStructure.act1 || '暂无内容'}</p>
-      <p><strong>第二幕：</strong>${outline.plotStructure.act2 || '暂无内容'}</p>
-      <p><strong>第三幕：</strong>${outline.plotStructure.act3 || '暂无内容'}</p>
+      <div style="margin-bottom: 10px;">
+        <strong>第一幕</strong>
+        <textarea class="editable-field" data-field="plotAct1" rows="3" placeholder="第一幕内容">${escapeHtml(outline.plotStructure.act1 || '')}</textarea>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <strong>第二幕</strong>
+        <textarea class="editable-field" data-field="plotAct2" rows="3" placeholder="第二幕内容">${escapeHtml(outline.plotStructure.act2 || '')}</textarea>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <strong>第三幕</strong>
+        <textarea class="editable-field" data-field="plotAct3" rows="3" placeholder="第三幕内容">${escapeHtml(outline.plotStructure.act3 || '')}</textarea>
+      </div>
     </div>
     ` : ''}
 
     ${outline.chapterOutlines && outline.chapterOutlines.length > 0 ? `
     <div class="preview-section">
-      <h4><i class="fas fa-list-ol"></i> 分章大纲（前 10 章）</h4>
-      <div style="max-height: 400px; overflow-y: auto;">
-        ${outline.chapterOutlines.slice(0, 10).map(c => `
-          <div style="margin-bottom: 10px; padding: 10px; background: var(--st-bg-primary); border-radius: var(--st-radius-lg);">
-            <strong>第${c.chapter}章：${c.title || '无题'}</strong>
-            <p style="margin-top: 5px; font-size: 13px;">${c.summary || '暂无内容'}</p>
+      <h4><i class="fas fa-list-ol"></i> 分章大纲</h4>
+      <div id="chaptersList" style="max-height: 600px; overflow-y: auto;">
+        ${outline.chapterOutlines.map((c, i) => `
+          <div class="editable-chapter" data-chapter-index="${i}">
+            <div class="editable-chapter-title">
+              第<input type="number" class="editable-field" data-field="chapterNum" data-index="${i}" value="${c.chapter || (i+1)}" min="1" style="width:60px; display:inline-block;">章：
+              <input type="text" class="editable-field" data-field="chapterTitle" data-index="${i}" value="${escapeHtml(c.title || '')}" placeholder="章节标题" style="display:inline-block; width: calc(100% - 160px);">
+              <button class="btn-remove-item" onclick="removeChapter(${i})" title="删除章节" style="vertical-align: middle;"><i class="fas fa-times"></i></button>
+            </div>
+            <textarea class="editable-field" data-field="chapterSummary" data-index="${i}" rows="2" placeholder="章节摘要">${escapeHtml(c.summary || '')}</textarea>
           </div>
         `).join('')}
       </div>
+      <button class="btn-add-item" onclick="addChapter()"><i class="fas fa-plus"></i> 添加章节</button>
     </div>
     ` : ''}
   `;
@@ -876,48 +1177,10 @@ async function handleSendFeedback() {
   }
 }
 
-// 轮询修改状态
+// 轮询修改状态（改为 WebSocket 优先）
 async function pollRevisionStatus(taskId) {
-  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-
-  const poll = async () => {
-    try {
-      const response = await fetch(`/api/ai/v2/tasks/${taskId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const data = await response.json();
-
-      if (data.status === 'completed') {
-        // 修改完成
-        if (state.selectedMethod === 'project') {
-          state.generatedData = data.result?.projectBrief;
-          renderProjectBrief(data.result?.projectBrief);
-        } else if (state.selectedMethod === 'outline') {
-          state.generatedData = data.result?.outline;
-          renderOutline(data.result?.outline);
-        }
-
-        addChatMessage('assistant', '修改完成！请查看更新后的内容。');
-        btnSend.disabled = false;
-
-      } else if (data.status === 'failed') {
-        throw new Error(data.errorMessage || '修改失败');
-      } else {
-        // 继续轮询
-        setTimeout(poll, 3000);
-      }
-
-    } catch (error) {
-      console.error('轮询失败:', error);
-      addChatMessage('assistant', '获取结果失败：' + error.message);
-      btnSend.disabled = false;
-    }
-  };
-
-  poll();
+  // 复用 watchCreationTask，标记为修改模式
+  watchCreationTask(taskId, true);
 }
 
 // 处理返回
@@ -953,14 +1216,108 @@ async function handleConfirm() {
       'Authorization': `Bearer ${token}`
     };
 
-    // 首先创建故事
+    // 从可编辑表单收集用户最新修改的数据
+    const edited = collectEditedData();
+
+    // 根据不同方式归一化数据结构，提取 projectBrief 和 outline
+    let projectBriefData = null;
+    let outlineData = null;
+    let storyTitle = '新故事';
+    let storySynopsis = '';
+
+    switch (state.selectedMethod) {
+      case 'project':
+        // 智能导入立项：从编辑表单收集数据，合并 AI 原始数据
+        projectBriefData = {
+          title: edited.title || state.generatedData.title,
+          synopsis: edited.synopsis || state.generatedData.synopsis,
+          coreIdea: edited.coreIdea || state.generatedData.coreIdea,
+          targetAudience: edited.targetAudience || state.generatedData.targetAudience,
+          genre: edited.genre || state.generatedData.genre,
+          writingStyle: state.generatedData.writingStyle,
+          chapterStructure: state.generatedData.chapterStructure,
+          highlights: edited.highlights || state.generatedData.highlights
+        };
+        outlineData = (edited.worldBuilding || edited.characters || edited.chapterOutlines || state.generatedData.worldBuilding || state.generatedData.characters || state.generatedData.chapterOutlines)
+          ? {
+              worldBuilding: edited.worldBuilding || state.generatedData.worldBuilding,
+              characters: edited.characters || state.generatedData.characters,
+              plotStructure: edited.plotStructure || state.generatedData.plotStructure,
+              chapterOutlines: edited.chapterOutlines || state.generatedData.chapterOutlines
+            }
+          : null;
+        storyTitle = projectBriefData.title || '新故事';
+        storySynopsis = projectBriefData.synopsis || '';
+        break;
+
+      case 'outline':
+        // AI 辅助大纲：从编辑表单收集数据
+        outlineData = {
+          worldBuilding: edited.worldBuilding || state.generatedData.worldBuilding,
+          characters: edited.characters || state.generatedData.characters,
+          plotStructure: edited.plotStructure || state.generatedData.plotStructure,
+          chapterOutlines: edited.chapterOutlines || state.generatedData.chapterOutlines
+        };
+        projectBriefData = {
+          title: state.formData.coreIdea ? state.formData.coreIdea.substring(0, 30) : '新故事',
+          synopsis: outlineData.plotStructure
+            ? `${outlineData.plotStructure.act1 || ''} ${outlineData.plotStructure.act2 || ''}`.substring(0, 200)
+            : '',
+          coreIdea: state.formData.coreIdea || '',
+          genre: state.formData.outlineGenre || '',
+          highlights: []
+        };
+        storyTitle = projectBriefData.title;
+        storySynopsis = projectBriefData.synopsis;
+        break;
+
+      case 'pastiche':
+        // 经典仿写：从编辑表单收集数据
+        projectBriefData = {
+          title: edited.pasticheTitle || state.generatedData.projectBrief?.title || (state.formData.bookName ? `${state.formData.bookName}·仿写` : '仿写作品'),
+          synopsis: edited.pasticheSynopsis || state.generatedData.projectBrief?.synopsis || state.generatedData.analysis?.style || '',
+          coreIdea: '',
+          genre: '',
+          highlights: []
+        };
+        outlineData = {
+          worldBuilding: edited.worldBuilding || state.generatedData.outline?.worldBuilding,
+          characters: edited.characters || state.generatedData.outline?.characters,
+          plotStructure: edited.plotStructure || state.generatedData.outline?.plotStructure,
+          chapterOutlines: edited.chapterOutlines || state.generatedData.outline?.chapterOutlines
+        };
+        storyTitle = projectBriefData.title || '仿写作品';
+        storySynopsis = projectBriefData.synopsis || '';
+        break;
+
+      case 'template':
+        // 故事模板：从编辑表单收集数据
+        projectBriefData = {
+          title: edited.templateTitle || state.generatedData.projectBrief?.title || '模板故事',
+          synopsis: edited.templateSynopsis || state.generatedData.projectBrief?.synopsis || '',
+          coreIdea: '',
+          genre: '',
+          highlights: []
+        };
+        outlineData = {
+          worldBuilding: edited.worldBuilding || state.generatedData.outline?.worldBuilding,
+          characters: edited.characters || state.generatedData.outline?.characters,
+          plotStructure: edited.plotStructure || state.generatedData.outline?.plotStructure,
+          chapterOutlines: edited.chapterOutlines || state.generatedData.outline?.chapterOutlines
+        };
+        storyTitle = projectBriefData.title || '模板故事';
+        storySynopsis = projectBriefData.synopsis || '';
+        break;
+    }
+
+    // 首先创建故事（含立项书）
     const storyResponse = await fetch('/api/stories', {
       method: 'POST',
       headers,
       body: JSON.stringify({
-        title: state.generatedData.title || '新故事',
-        description: state.generatedData.synopsis || '',
-        project_brief: JSON.stringify(state.generatedData),
+        title: storyTitle,
+        description: storySynopsis,
+        project_brief: JSON.stringify(projectBriefData),
         ai_assisted_created: true,
         ai_creation_method: state.selectedMethod
       })
@@ -972,27 +1329,227 @@ async function handleConfirm() {
       throw new Error(storyData.error || '创建故事失败');
     }
 
-    const storyId = storyData.id || storyData.story?.id;
+    const storyId = storyData.story?.id || storyData.id;
+    if (!storyId) {
+      throw new Error('创建故事成功但未获取到故事ID');
+    }
+    console.log('故事创建成功, storyId:', storyId);
 
-    // 如果有大纲，创建大纲记录
-    if (state.generatedData.chapterOutlines && state.selectedMethod === 'outline') {
-      await fetch(`/api/stories/${storyId}/outlines`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          outline: state.generatedData,
-          changeNote: 'AI 生成初始版本'
-        })
-      });
+    // 如果有大纲数据，创建大纲记录
+    if (outlineData && (outlineData.chapterOutlines || outlineData.worldBuilding || outlineData.characters)) {
+      try {
+        const outlineResponse = await fetch(`/api/ai/creation/stories/${storyId}/outlines`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            outline: outlineData,
+            changeNote: 'AI 生成初始版本'
+          })
+        });
+        if (!outlineResponse.ok) {
+          const errData = await outlineResponse.json().catch(() => ({}));
+          console.warn('创建大纲失败:', errData.error || outlineResponse.status);
+        } else {
+          console.log('大纲创建成功');
+        }
+      } catch (outlineErr) {
+        console.warn('创建大纲请求异常:', outlineErr);
+      }
     }
 
-    // 跳转到创作台
-    window.location.href = `/write.html?storyId=${storyId}`;
+    // 如果大纲中有第一章信息，自动创建第一章节点
+    let firstNodeId = null;
+    if (outlineData && outlineData.chapterOutlines && outlineData.chapterOutlines.length > 0) {
+      const firstChapter = outlineData.chapterOutlines[0];
+      try {
+        const nodeResponse = await fetch('/api/nodes', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            storyId: parseInt(storyId),
+            title: firstChapter.title || '第一章',
+            content: firstChapter.summary || '',
+            parentId: null,
+            path: '1',
+            isPublished: false
+          })
+        });
+        if (nodeResponse.ok) {
+          const nodeData = await nodeResponse.json();
+          firstNodeId = nodeData.node?.id || nodeData.id;
+          console.log('已自动创建第一章节点，ID:', firstNodeId);
+        } else {
+          const errData = await nodeResponse.json().catch(() => ({}));
+          console.warn('创建第一章节点失败:', errData.error || nodeResponse.status);
+        }
+      } catch (e) {
+        console.warn('自动创建第一章失败，用户可手动创建:', e);
+      }
+    }
+
+    // 跳转到创作台：如果有第一章节点则进入编辑模式
+    if (firstNodeId) {
+      window.location.href = `/write.html?storyId=${storyId}&editMode=true&nodeId=${firstNodeId}`;
+    } else {
+      window.location.href = `/write.html?storyId=${storyId}`;
+    }
 
   } catch (error) {
     console.error('创建失败:', error);
     alert('创建失败：' + error.message);
   }
+}
+
+// HTML 转义（防止 XSS）
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// 从可编辑字段收集当前表单数据
+function collectEditedData() {
+  const data = {};
+
+  // 收集简单文本字段
+  document.querySelectorAll('.editable-field[data-field]').forEach(el => {
+    const field = el.dataset.field;
+    const index = el.dataset.index !== undefined ? parseInt(el.dataset.index) : null;
+
+    // 只处理非数组字段（数组字段在下面单独处理）
+    if (index === null) {
+      data[field] = el.value || '';
+    }
+  });
+
+  // 收集角色数组
+  const characters = [];
+  document.querySelectorAll('[data-field="characterName"]').forEach((el, i) => {
+    const idx = parseInt(el.dataset.index);
+    const name = el.value || '';
+    const roleEl = document.querySelector(`[data-field="characterRole"][data-index="${idx}"]`);
+    const descEl = document.querySelector(`[data-field="characterDesc"][data-index="${idx}"]`);
+    characters.push({
+      name,
+      role: roleEl ? roleEl.value : 'supporting',
+      description: descEl ? descEl.value : ''
+    });
+  });
+  if (characters.length > 0) data.characters = characters;
+
+  // 收集亮点数组
+  const highlights = [];
+  document.querySelectorAll('[data-field="highlights"]').forEach(el => {
+    const val = el.value || '';
+    if (val.trim()) highlights.push(val);
+  });
+  if (highlights.length > 0) data.highlights = highlights;
+
+  // 收集章节大纲
+  const chapters = [];
+  document.querySelectorAll('[data-field="chapterTitle"]').forEach((el, i) => {
+    const idx = parseInt(el.dataset.index);
+    const numEl = document.querySelector(`[data-field="chapterNum"][data-index="${idx}"]`);
+    const summaryEl = document.querySelector(`[data-field="chapterSummary"][data-index="${idx}"]`);
+    chapters.push({
+      chapter: numEl ? parseInt(numEl.value) || (i + 1) : (i + 1),
+      title: el.value || '',
+      summary: summaryEl ? summaryEl.value || '' : ''
+    });
+  });
+  if (chapters.length > 0) data.chapterOutlines = chapters;
+
+  // 收集情节结构
+  const act1 = data.plotAct1;
+  const act2 = data.plotAct2;
+  const act3 = data.plotAct3;
+  if (act1 !== undefined || act2 !== undefined || act3 !== undefined) {
+    data.plotStructure = {
+      act1: act1 || '',
+      act2: act2 || '',
+      act3: act3 || ''
+    };
+  }
+  delete data.plotAct1;
+  delete data.plotAct2;
+  delete data.plotAct3;
+
+  return data;
+}
+
+// 删除亮点
+function removeHighlight(index) {
+  const items = document.querySelectorAll('#highlightsList .editable-highlight');
+  if (items[index]) items[index].remove();
+}
+
+// 添加亮点
+function addHighlight() {
+  const list = document.getElementById('highlightsList');
+  if (!list) return;
+  const index = list.children.length;
+  const div = document.createElement('div');
+  div.className = 'editable-highlight';
+  div.innerHTML = `
+    <input type="text" class="editable-field" data-field="highlights" data-index="${index}" value="" placeholder="输入亮点">
+    <button class="btn-remove-item" onclick="this.parentElement.remove()" title="删除"><i class="fas fa-times"></i></button>
+  `;
+  list.appendChild(div);
+}
+
+// 删除角色
+function removeCharacter(index) {
+  const items = document.querySelectorAll('#charactersList .editable-character');
+  if (items[index]) items[index].remove();
+}
+
+// 添加角色
+function addCharacter() {
+  const list = document.getElementById('charactersList');
+  if (!list) return;
+  const index = list.children.length;
+  const div = document.createElement('div');
+  div.className = 'editable-character';
+  div.innerHTML = `
+    <div class="editable-character-header">
+      <input type="text" class="editable-field" data-field="characterName" data-index="${index}" value="" placeholder="角色名" style="flex:1;">
+      <select class="editable-field" data-field="characterRole" data-index="${index}" style="flex:0 0 auto; width: 90px; padding: 8px;">
+        <option value="protagonist">主角</option>
+        <option value="antagonist">反派</option>
+        <option value="supporting" selected>配角</option>
+        <option value="love_interest">感情线</option>
+      </select>
+      <button class="btn-remove-item" onclick="this.closest('.editable-character').remove()" title="删除角色"><i class="fas fa-times"></i></button>
+    </div>
+    <textarea class="editable-field" data-field="characterDesc" data-index="${index}" rows="2" placeholder="角色描述"></textarea>
+  `;
+  list.appendChild(div);
+}
+
+// 删除章节
+function removeChapter(index) {
+  const items = document.querySelectorAll('#chaptersList .editable-chapter');
+  if (items[index]) items[index].remove();
+}
+
+// 添加章节
+function addChapter() {
+  const list = document.getElementById('chaptersList');
+  if (!list) return;
+  const index = list.children.length;
+  const div = document.createElement('div');
+  div.className = 'editable-chapter';
+  div.setAttribute('data-chapter-index', index);
+  div.innerHTML = `
+    <div class="editable-chapter-title">
+      第<input type="number" class="editable-field" data-field="chapterNum" data-index="${index}" value="${index + 1}" min="1" style="width:60px; display:inline-block;">章：
+      <input type="text" class="editable-field" data-field="chapterTitle" data-index="${index}" value="" placeholder="章节标题" style="display:inline-block; width: calc(100% - 160px);">
+      <button class="btn-remove-item" onclick="this.closest('.editable-chapter').remove()" title="删除章节" style="vertical-align: middle;"><i class="fas fa-times"></i></button>
+    </div>
+    <textarea class="editable-field" data-field="chapterSummary" data-index="${index}" rows="2" placeholder="章节摘要"></textarea>
+  `;
+  list.appendChild(div);
 }
 
 // 验证表单

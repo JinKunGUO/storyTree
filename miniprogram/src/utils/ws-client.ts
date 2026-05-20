@@ -6,26 +6,31 @@
  *   - 自动重连（指数退避）
  *   - 心跳保活（30 秒 ping/pong）
  *   - 事件监听（on / off / once）
- *   - 降级兜底：WebSocket 断开后由调用方自行回退轮询
+ *   - 降级兜底：WebSocket 断开后自动回退到短轮询
+ *   - 恢复切换：重连成功后自动切回 WebSocket
  * 
  * 使用方式：
  *   import { mpWsClient } from '@/utils/ws-client'
  *   
  *   mpWsClient.connect()
- *   mpWsClient.on('task:status', (data) => { ... })
+ *   mpWsClient.watchTask(taskId, (data) => { ... })
+ *   mpWsClient.unwatchTask(taskId)
  *   mpWsClient.isConnected()
  *   mpWsClient.disconnect()
  */
 
 import { useUserStore } from '@/store/user'
+import http from '@/utils/request'
 
 // ==================== 配置 ====================
 const CONFIG = {
-  RECONNECT_BASE_DELAY: 2000,   // 初始重连延迟 2 秒
-  RECONNECT_MAX_DELAY: 30000,   // 最大重连延迟 30 秒
-  RECONNECT_MAX_ATTEMPTS: 10,   // 最大重连次数
-  HEARTBEAT_INTERVAL: 30000,    // 心跳间隔 30 秒
-  HEARTBEAT_TIMEOUT: 10000,     // 心跳超时 10 秒
+  RECONNECT_BASE_DELAY: 2000,          // 初始重连延迟 2 秒
+  RECONNECT_MAX_DELAY: 30000,          // 最大重连延迟 30 秒
+  RECONNECT_MAX_ATTEMPTS: 10,          // 最大重连次数
+  HEARTBEAT_INTERVAL: 30000,           // 心跳间隔 30 秒
+  HEARTBEAT_TIMEOUT: 10000,            // 心跳超时 10 秒
+  FALLBACK_POLL_INTERVAL: 5000,        // 降级轮询初始间隔 5 秒
+  FALLBACK_POLL_MAX_INTERVAL: 30000,   // 降级轮询最大间隔 30 秒
 }
 
 // ==================== 类型定义 ====================
@@ -53,6 +58,13 @@ let heartbeatTimeoutTimer: ReturnType<typeof setTimeout> | null = null
 
 // 事件监听器
 const listeners = new Map<string, Set<EventCallback>>()
+
+// 降级轮询
+let fallbackPollingActive = false
+let fallbackPollTimer: ReturnType<typeof setTimeout> | null = null
+let fallbackPollInterval = CONFIG.FALLBACK_POLL_INTERVAL
+/** 降级轮询时需要监控的任务 { taskId: callback } */
+const pendingTasks = new Map<number, EventCallback>()
 
 // ==================== 核心方法 ====================
 
@@ -103,6 +115,8 @@ function connect(): void {
     connecting = false
     reconnectAttempts = 0
     startHeartbeat()
+    // 如果之前在降级轮询，停止轮询（恢复到 WebSocket 推送模式）
+    stopFallbackPolling()
     emit('_connected', {})
   })
 
@@ -131,6 +145,8 @@ function connect(): void {
     cleanup()
     if (!manualClose) {
       scheduleReconnect()
+      // 启动降级轮询
+      startFallbackPolling()
     }
   })
 
@@ -139,6 +155,8 @@ function connect(): void {
     cleanup()
     if (!manualClose) {
       scheduleReconnect()
+      // 启动降级轮询
+      startFallbackPolling()
     }
   })
 }
@@ -148,6 +166,8 @@ function connect(): void {
  */
 function disconnect(): void {
   manualClose = true
+  stopHeartbeat()
+  stopFallbackPolling()
   cleanup()
   if (socketTask) {
     try {
@@ -287,22 +307,144 @@ function emit(type: string, data: any): void {
       }
     })
   }
+
+  // task:status 事件特殊处理：通知 pendingTasks 中的回调
+  if (type === 'task:status' && data && data.taskId) {
+    const taskCallback = pendingTasks.get(data.taskId)
+    if (taskCallback) {
+      try {
+        taskCallback(data)
+      } catch (err) {
+        console.error('[WS] 任务回调错误:', err)
+      }
+      // 任务完成或失败后自动移除监控
+      if (data.status === 'completed' || data.status === 'failed') {
+        pendingTasks.delete(data.taskId)
+        // 如果没有待监控任务，停止降级轮询
+        if (pendingTasks.size === 0) {
+          stopFallbackPolling()
+        }
+      }
+    }
+  }
 }
 
 // ==================== 便捷方法 ====================
 
 /**
- * 监听指定任务的状态变更
- * 返回取消监听的函数
+ * 注册一个需要监控的 AI 任务（用于降级轮询）
+ * - WebSocket 连接时，通过 task:status 事件实时推送
+ * - WebSocket 断开时，自动启动降级轮询
+ * 
+ * @param taskId 任务 ID
+ * @param callback 状态变更回调 (data) => void
+ * @returns 取消监听的函数
  */
 function watchTask(taskId: number, callback: (data: any) => void): () => void {
+  // 注册到 pendingTasks，降级轮询时会使用
+  pendingTasks.set(taskId, callback)
+  // 同时注册事件监听（WS 推送时触发）
   const handler: EventCallback = (data) => {
     if (data.taskId === taskId) {
       callback(data)
     }
   }
   on('task:status', handler)
-  return () => off('task:status', handler)
+  // 如果 WebSocket 未连接，立即启动降级轮询
+  if (!connected) {
+    startFallbackPolling()
+  }
+  // 返回取消函数（同时移除事件监听和 pendingTasks）
+  return () => {
+    off('task:status', handler)
+    pendingTasks.delete(taskId)
+    // 如果没有待监控任务，停止降级轮询
+    if (pendingTasks.size === 0) {
+      stopFallbackPolling()
+    }
+  }
+}
+
+/**
+ * 取消监控任务
+ */
+function unwatchTask(taskId: number): void {
+  pendingTasks.delete(taskId)
+  // 如果没有待监控任务，停止降级轮询
+  if (pendingTasks.size === 0) {
+    stopFallbackPolling()
+  }
+}
+
+// ==================== 降级轮询 ====================
+
+/** 启动降级轮询 */
+function startFallbackPolling(): void {
+  if (fallbackPollingActive) return
+  if (pendingTasks.size === 0) return
+
+  fallbackPollingActive = true
+  fallbackPollInterval = CONFIG.FALLBACK_POLL_INTERVAL
+  console.log('[WS] 降级：启动短轮询')
+
+  pollOnce()
+}
+
+/** 停止降级轮询 */
+function stopFallbackPolling(): void {
+  fallbackPollingActive = false
+  if (fallbackPollTimer) {
+    clearTimeout(fallbackPollTimer)
+    fallbackPollTimer = null
+  }
+  fallbackPollInterval = CONFIG.FALLBACK_POLL_INTERVAL
+}
+
+/** 执行一次轮询 */
+async function pollOnce(): Promise<void> {
+  if (!fallbackPollingActive || pendingTasks.size === 0) {
+    stopFallbackPolling()
+    return
+  }
+
+  // 如果 WebSocket 已重连成功，停止轮询
+  if (connected) {
+    stopFallbackPolling()
+    return
+  }
+
+  // 逐个轮询任务状态
+  for (const [taskId, callback] of pendingTasks) {
+    try {
+      const data = await http.get<{
+        status: string
+        taskId?: number
+        result?: any
+        errorMessage?: string
+      }>(`/api/ai/v2/tasks/${taskId}`, undefined, { showError: false })
+
+      if (data.status === 'completed' || data.status === 'failed') {
+        // 通过 emit 分发，让所有监听者都能收到
+        emit('task:status', {
+          taskId: data.taskId || taskId,
+          status: data.status,
+          result: data.result,
+          errorMessage: data.errorMessage,
+        })
+        // pendingTasks 的删除由 emit 中的 task:status 处理完成
+      }
+    } catch (err) {
+      console.warn(`[WS] 降级轮询任务 ${taskId} 失败:`, err)
+    }
+  }
+
+  // 如果还有待监控任务，继续轮询（递增间隔）
+  if (pendingTasks.size > 0 && fallbackPollingActive) {
+    fallbackPollInterval = Math.min(fallbackPollInterval * 1.5, CONFIG.FALLBACK_POLL_MAX_INTERVAL)
+    fallbackPollTimer = setTimeout(pollOnce, fallbackPollInterval)
+  } else {
+    stopFallbackPolling()
+  }
 }
 
 // ==================== 导出 ====================
@@ -315,6 +457,7 @@ export const mpWsClient = {
   off,
   once,
   watchTask,
+  unwatchTask,
 }
 
 export default mpWsClient

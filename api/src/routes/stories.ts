@@ -96,7 +96,7 @@ router.post('/', authenticateToken, async (req, res) => {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
-  const { title, description, cover_image, firstNodeTitle, firstNodeContent } = req.body;
+  const { title, description, cover_image, firstNodeTitle, firstNodeContent, project_brief, ai_assisted_created, ai_creation_method } = req.body;
 
   try {
     // 如果提供了第一章内容，则创建故事和第一章
@@ -116,6 +116,9 @@ router.post('/', authenticateToken, async (req, res) => {
           cover_image: cover_image || '/assets/default-cover.jpg',
           author_id: userId,
           updated_at: new Date(),
+          project_brief: project_brief || null,
+          ai_assisted_created: ai_assisted_created || false,
+          ai_creation_method: ai_creation_method || null,
           nodes: {
             create: {
               title: firstNodeTitle || '第一章',
@@ -154,7 +157,10 @@ router.post('/', authenticateToken, async (req, res) => {
           description,
           cover_image: cover_image || '/assets/default-cover.jpg',
           author_id: userId,
-          updated_at: new Date()
+          updated_at: new Date(),
+          project_brief: project_brief || null,
+          ai_assisted_created: ai_assisted_created || false,
+          ai_creation_method: ai_creation_method || null
         },
         include: {
           author: {

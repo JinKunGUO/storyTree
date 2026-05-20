@@ -35,6 +35,12 @@
                 <a href="/discover.html" class="nav-link" role="menuitem">
                     <i class="fas fa-compass" aria-hidden="true"></i> 发现故事
                 </a>
+                <a href="/membership.html" class="nav-link" role="menuitem">
+                    <i class="fas fa-crown" aria-hidden="true"></i> 会员中心
+                </a>
+                <a href="/points-mall.html" class="nav-link" role="menuitem">
+                    <i class="fas fa-shopping-cart" aria-hidden="true"></i> 积分商城
+                </a>
                 <a href="#" class="nav-link active" id="storyLink" role="menuitem">
                     <i class="fas fa-pen" aria-hidden="true"></i> 撰写中
                 </a>
@@ -42,8 +48,13 @@
                     <i class="fas fa-bell" aria-hidden="true"></i> 消息
                     <span class="notification-badge" id="notificationBadge" style="display: none;" aria-live="polite">0</span>
                 </a>
-                <a href="/profile.html" class="nav-link" id="profileLink" role="menuitem">
+                <a href="/login.html" class="nav-link" id="loginLink" role="menuitem">登录</a>
+                <a href="/register.html" class="nav-link nav-link-primary" id="registerLink" role="menuitem">注册</a>
+                <a href="/profile.html" class="nav-link" id="profileLink" style="display: none;" role="menuitem">
                     <i class="fas fa-user" aria-hidden="true"></i> 个人中心
+                </a>
+                <a href="/login.html" class="nav-link" id="logoutLink" style="display: none;" onclick="logout(); return false;" role="menuitem">
+                    <i class="fas fa-sign-out-alt" aria-hidden="true"></i> 退出
                 </a>
             </div>
         </div>
@@ -78,6 +89,9 @@
                     <button class="btn-icon" id="editProjectBtn" title="编辑立项书">
                         <i class="fas fa-edit"></i>
                     </button>
+                    <button class="btn-icon btn-cancel-edit" id="cancelProjectBriefBtn" title="取消编辑" style="display: none;">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
                 <div class="panel-content" id="projectBriefContent">
                     <div class="loading-placeholder">
@@ -91,10 +105,21 @@
             <div class="sidebar-panel" id="panelOutline">
                 <div class="panel-header">
                     <h3><i class="fas fa-list-ol"></i> 故事大纲</h3>
-                    <div class="version-selector">
-                        <select id="outlineVersionSelect">
-                            <option value="current">当前版本</option>
-                        </select>
+                    <div class="panel-header-actions">
+                        <button id="editOutlineBtn" class="btn-icon" title="编辑大纲" style="display: none;">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button id="cancelOutlineEditBtn" class="btn-icon btn-cancel-edit" title="取消编辑" style="display: none;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        <button id="newOutlineVersionBtn" class="btn-icon" title="新建版本" style="display: none;">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <div class="version-selector">
+                            <select id="outlineVersionSelect">
+                                <option value="current">当前版本</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
                 <div class="panel-content" id="outlineContent">

@@ -7,8 +7,6 @@ import { notifyLevelUp, notifyPointsEarned } from './notification';
  * 配额设计原则：
  * - Lv4 作为会员配额计算的基准（会员配额 = Lv4配额 × 会员倍数）
  * - 等级之间有明显的递进关系
- * - 插图成本高，配额相对保守
- * - 润色成本低，高等级可以较多使用
  */
 export const LEVEL_CONFIG = {
   1: {
@@ -288,7 +286,6 @@ export async function getUserMonthlyQuota(userId: number): Promise<{
     const { getMembershipQuota } = await import('./membership');
     try {
       const membershipQuota = await getMembershipQuota(userId);
-      // 确保返回正确的格式
       return {
         continuation: {
           used: membershipQuota.continuation.used,
@@ -331,7 +328,7 @@ export async function getUserMonthlyQuota(userId: number): Promise<{
 
   // 获取用户等级配额
   const levelInfo = getUserLevel(user.points);
-  let quotas = levelInfo.quotas;
+  const quotas = levelInfo.quotas;
 
   // 获取本月使用量
   const now = new Date();

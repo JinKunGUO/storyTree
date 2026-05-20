@@ -591,20 +591,23 @@ model login_logs {
 
 // ========== AI 辅助创作功能新增表 ==========
 
-// 故事大纲版本表 - 支持版本管理
+// 故事大纲版本表 - 支持版本管理和分支大纲
 model story_outlines {
-  id          Int      @id @default(autoincrement())
-  story_id    Int
-  version     Int      // v1, v2, v3...
-  outline     String   // { worldBuilding, characters, plotStructure, chapterOutlines } (JSON string)
-  is_active   Boolean  @default(false)
-  change_note String?
-  created_by  Int
-  created_at  DateTime @default(now())
-  story       stories  @relation(fields: [story_id], references: [id], onDelete: Cascade)
+  id           Int      @id @default(autoincrement())
+  story_id     Int
+  root_node_id Int?     // 关联的分支根节点ID，null表示故事全局大纲
+  version      Int      // v1, v2, v3...
+  outline      String   // { worldBuilding, characters, plotStructure, chapterOutlines } (JSON string)
+  is_active    Boolean  @default(false)
+  change_note  String?
+  created_by   Int
+  created_at   DateTime @default(now())
+  story        stories  @relation(fields: [story_id], references: [id], onDelete: Cascade)
 
   @@index([story_id])
   @@index([story_id, is_active])
+  @@index([story_id, root_node_id])
+  @@index([story_id, root_node_id, is_active])
 }
 
 // 角色设定表

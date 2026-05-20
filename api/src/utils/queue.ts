@@ -107,38 +107,21 @@ export const aiTemplateQueue = new Queue('ai-template', {
   }
 });
 
-// 队列事件监听
-aiPasticheQueue.on('completed', (job, result) => {
-  console.log(`✅ AI 仿写任务完成：${job.id}`);
-});
-
+// 队列事件监听（完成日志统一由 aiWorker.ts 输出，此处仅输出失败日志）
 aiPasticheQueue.on('failed', (job, err) => {
-  console.error(`❌ AI 仿写任务失败：${job?.id}`, err);
-});
-
-aiTemplateQueue.on('completed', (job, result) => {
-  console.log(`✅ AI 模板任务完成：${job.id}`);
+  console.error(`❌ AI 仿写任务失败 (job=${job?.id}):`, err.message);
 });
 
 aiTemplateQueue.on('failed', (job, err) => {
-  console.error(`❌ AI 模板任务失败：${job?.id}`, err);
-});
-
-// 队列事件监听
-aiProjectBriefQueue.on('completed', (job, result) => {
-  console.log(`✅ AI 立项书任务完成：${job.id}`);
+  console.error(`❌ AI 模板任务失败 (job=${job?.id}):`, err.message);
 });
 
 aiProjectBriefQueue.on('failed', (job, err) => {
-  console.error(`❌ AI 立项书任务失败：${job?.id}`, err);
-});
-
-aiOutlineQueue.on('completed', (job, result) => {
-  console.log(`✅ AI 大纲任务完成：${job.id}`);
+  console.error(`❌ AI 立项书任务失败 (job=${job?.id}):`, err.message);
 });
 
 aiOutlineQueue.on('failed', (job, err) => {
-  console.error(`❌ AI 大纲任务失败：${job?.id}`, err);
+  console.error(`❌ AI 大纲任务失败 (job=${job?.id}):`, err.message);
 });
 
 // 队列事件监听

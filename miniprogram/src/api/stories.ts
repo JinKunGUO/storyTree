@@ -80,6 +80,11 @@ export function createStory(data: {
   tags?: string
   allow_branch?: boolean
   allow_comment?: boolean
+  project_brief?: string
+  ai_assisted_created?: boolean
+  ai_creation_method?: string
+  firstNodeTitle?: string
+  firstNodeContent?: string
 }) {
   return http.post<{ story: Story }>('/api/stories', data)
 }

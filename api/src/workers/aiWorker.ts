@@ -11,6 +11,62 @@ import { wsServer } from '../utils/websocket';
 const USE_QWEN = !!process.env.QWEN_API_KEY;
 const QWEN_MODEL = process.env.QWEN_MODEL || 'qwen-plus';
 
+/**
+ * 安全解析 AI 返回的 JSON 字符串
+ * AI 模型经常返回包含未转义控制字符（如 \n, \t, \r 等）的 JSON，
+ * 这些控制字符在字符串字面量中不合法，会导致 JSON.parse 报错。
+ * 此函数在解析前清理这些控制字符，并尝试多种修复策略。
+ */
+function safeParseAIJson(text: string): any {
+  // 1. 先提取 JSON 部分（去掉 markdown 代码块标记等）
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  const jsonStr = jsonMatch ? jsonMatch[0] : text;
+
+  // 2. 第一次尝试：直接解析
+  try {
+    return JSON.parse(jsonStr);
+  } catch (_) {
+    // 继续修复
+  }
+
+  // 3. 第二次尝试：清理字符串值中的控制字符
+  try {
+    // 移除 JSON 字符串值中的控制字符（ASCII 0-31，除了已合法转义的）
+    // 策略：遍历 JSON，在字符串值内将裸控制字符替换为转义序列
+    const cleaned = jsonStr
+      .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '') // 移除不可见控制字符（保留 \t \n \r）
+      .replace(/\t/g, '\\t')   // 裸制表符 -> \t
+      .replace(/\r\n/g, '\\n') // Windows换行 -> \n
+      .replace(/\r/g, '\\n')   // 裸回车 -> \n
+      .replace(/(?<!\\)\n/g, '\\n'); // 未转义的换行 -> \n
+    return JSON.parse(cleaned);
+  } catch (_) {
+    // 继续修复
+  }
+
+  // 4. 第三次尝试：更激进的清理 - 递归处理
+  try {
+    let cleaned = jsonStr;
+    // 反复替换直到没有变化（处理嵌套字符串中的问题）
+    let prev = '';
+    while (prev !== cleaned) {
+      prev = cleaned;
+      cleaned = cleaned
+        .replace(/[\x00-\x1f]/g, (ch) => {
+          const code = ch.charCodeAt(0);
+          const escMap: Record<number, string> = {
+            8: '\\b', 9: '\\t', 10: '\\n', 12: '\\f', 13: '\\r'
+          };
+          return escMap[code] || '';
+        });
+    }
+    return JSON.parse(cleaned);
+  } catch (e) {
+    // 所有尝试都失败，抛出原始错误
+    throw e;
+  }
+}
+
 // ==================== API 限流保护 ====================
 /**
  * 令牌桶限流器（防止触发 AI API 供应商的 QPS/RPM 限制）
@@ -197,13 +253,18 @@ interface QwenImageAPIResponse {
 async function callQwenAPI(prompt: string, maxTokens: number = 2000, temperature: number = 0.8, timeoutMs: number = 30000): Promise<{ text: string; usage: { input: number; output: number } }> {
   // 1. 限流：等待令牌
   await qwenLimiter.acquire();
-  
+
   // 2. 熔断器包裹实际调用
   return qwenCircuitBreaker.execute(async () => {
-    // 3. 超时控制：流式模式下超时时间可以更长（因为服务器持续推送数据）
+    // 3. 超时控制：
+    // - connectTimeout: 仅用于等待首次响应（TTFB），超时则中止连接
+    // - 流式传输期间使用 STREAM_IDLE_TIMEOUT 检测连接中断
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-    
+    let connectTimeoutId: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+      console.warn(`⏱️ 千问API连接超时（${timeoutMs / 1000}秒未收到首字节），中止请求`);
+      controller.abort();
+    }, timeoutMs);
+
     try {
       const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation', {
         method: 'POST',
@@ -262,6 +323,12 @@ async function callQwenAPI(prompt: string, maxTokens: number = 2000, temperature
         const { done, value } = await Promise.race([readPromise, idleTimeoutPromise]);
         if (done) break;
 
+        // 收到首字节后，清除连接超时，后续由 STREAM_IDLE_TIMEOUT 接管
+        if (connectTimeoutId) {
+          clearTimeout(connectTimeoutId);
+          connectTimeoutId = null;
+        }
+
         lastActivityTime = Date.now();
         const chunk = decoder.decode(value, { stream: true });
         
@@ -290,9 +357,11 @@ async function callQwenAPI(prompt: string, maxTokens: number = 2000, temperature
               outputTokens = data.usage.output_tokens || 0;
             }
 
-            // 检查是否完成
-            if (data.output?.finish_reason) {
-              console.log(`✅ 千问流式生成完成，finish_reason: ${data.output.finish_reason}`);
+            // 检查是否完成（finish_reason 有值如 'stop'/'length' 时表示生成结束）
+            // 注意：千问增量模式中，中间消息的 finish_reason 为 null，只有最后一条消息才有值
+            const finishReason = data.output?.finish_reason;
+            if (finishReason && finishReason !== 'null') {
+              console.log(`✅ 千问流式生成完成，finish_reason: ${finishReason}，累计 ${fullText.length} 字`);
               break;
             }
           } catch (parseError) {
@@ -310,11 +379,11 @@ async function callQwenAPI(prompt: string, maxTokens: number = 2000, temperature
       };
     } catch (error: any) {
       if (error.name === 'AbortError') {
-        throw new Error(`千问API调用超时（${timeoutMs / 1000}秒），请稍后重试`);
+        throw new Error(`千问API连接超时（${timeoutMs / 1000}秒未收到响应），请稍后重试`);
       }
       throw error;
     } finally {
-      clearTimeout(timeoutId);
+      if (connectTimeoutId) clearTimeout(connectTimeoutId);
     }
   });
 }
@@ -1734,7 +1803,7 @@ checkScheduledTasks().then(() => {
  * 处理立项书生成任务
  */
 async function processProjectBrief(job: Job) {
-  const { taskId, sessionId, userId, storyIdea, genre, targetAudience, writingStyle, feedback, revisionType, previousContent } = job.data;
+  const { taskId, sessionId, userId, storyIdea, genre, targetAudience, writingStyle, feedback, revisionType, previousContent, generations } = job.data;
 
   console.log(`[AI 创作] 开始处理立项书生成任务：${taskId}, 会话：${sessionId}`);
 
@@ -1748,32 +1817,68 @@ async function processProjectBrief(job: Job) {
     let prompt = '';
 
     if (revisionType === 'project_brief' && feedback) {
-      // 多轮修改模式
+      // 多轮修改模式 - 构建完整对话历史
+      let historySection = '';
+
+      if (generations && generations.length > 0) {
+        // 有完整历史记录，构建对话上下文
+        historySection = `【对话历史】\n以下是本次创作会话的完整历史记录：\n\n`;
+        for (const gen of generations) {
+          if (gen.userFeedback) {
+            historySection += `--- 用户修改意见（第${gen.round}轮前）---\n${gen.userFeedback}\n\n`;
+          }
+          historySection += `--- AI 生成结果（第${gen.round}轮）---\n${JSON.stringify(gen.content, null, 2)}\n\n`;
+        }
+        historySection += `--- 用户最新修改意见 ---\n${feedback}\n\n`;
+        historySection += `请基于以上完整对话历史，根据用户最新的修改意见，对最近一版的立项书进行修改。保持与之前内容的一致性，只修改用户要求调整的部分，未提及的部分保持原样。`;
+      } else if (previousContent) {
+        // 兼容旧逻辑：只有上一轮内容
+        historySection = `【用户反馈】\n${feedback}\n\n【原立项书】\n${JSON.stringify(previousContent, null, 2)}\n\n请根据用户的反馈修改立项书。只修改用户要求调整的部分，未提及的部分保持原样。`;
+      } else {
+        // 没有任何上下文，只能根据反馈从零生成
+        historySection = `【用户反馈】\n${feedback}\n\n注意：没有找到之前的立项书内容，请根据用户反馈尽可能生成符合要求的立项书。`;
+      }
+
       prompt = `你是一位专业的网文编辑和策划人。用户已经有一个项目立项书，现在提出了修改意见。
-请根据用户的反馈修改立项书。
+${historySection}
 
-【用户反馈】
-${feedback}
-
-【原立项书】
-${JSON.stringify(previousContent, null, 2)}
-
-请输出修改后的完整立项书，保持以下 JSON 格式：
+请输出修改后的完整立项书和大纲，保持以下 JSON 格式：
 {
-  "title": "故事标题（可选，用户没有要求修改则保持原样）",
+  "title": "故事标题（用户没有要求修改则保持原样）",
   "synopsis": "故事梗概（200 字左右）",
   "coreIdea": "核心创意/卖点",
   "targetAudience": "目标读者群体",
   "genre": "类型标签",
   "writingStyle": "文风建议",
   "chapterStructure": "推荐章节结构",
-  "highlights": ["亮点 1", "亮点 2", "亮点 3"]
+  "highlights": ["亮点 1", "亮点 2", "亮点 3"],
+  "worldBuilding": "世界观设定",
+  "characters": [
+    {
+      "name": "角色名",
+      "role": "protagonist|antagonist|supporting",
+      "description": "角色描述",
+      "traits": { "personality": "性格", "appearance": "外貌", "abilities": "能力" },
+      "background": "背景故事"
+    }
+  ],
+  "plotStructure": {
+    "act1": "第一幕：开端",
+    "act2": "第二幕：发展",
+    "act3": "第三幕：高潮/结局"
+  },
+  "chapterOutlines": [
+    { "chapter": 1, "title": "章节名", "summary": "章节梗概（100 字左右）" }
+  ]
 }
 
-注意：只输出 JSON 内容，不要输出其他解释文字。`;
+重要规则：
+1. 必须基于最近一版立项书进行修改，不要凭空重新生成
+2. 用户未提及修改的部分必须保持原样
+3. 只输出 JSON 内容，不要输出其他解释文字`;
     } else {
       // 首次生成模式
-      prompt = `你是一位专业的网文编辑和策划人。用户有一个故事想法，需要整理成规范的项目立项书。
+      prompt = `你是一位专业的网文编辑和策划人。用户有一个故事想法，需要整理成规范的项目立项书，并基于立项书推导生成故事大纲。
 
 【用户故事想法】
 ${storyIdea}
@@ -1782,7 +1887,9 @@ ${genre ? `【故事类型】${genre}` : ''}
 ${targetAudience ? `【目标读者】${targetAudience}` : ''}
 ${writingStyle ? `【期望文风】${writingStyle}` : ''}
 
-请分析用户的想法，生成一份完整的项目立项书。包含以下内容：
+请分析用户的想法，生成一份完整的项目立项书和故事大纲。包含以下内容：
+
+立项书部分：
 1. 故事梗概（200 字左右，吸引读者的简介）
 2. 核心创意/卖点（这部作品独特在哪里）
 3. 目标读者群体（谁会喜欢看这类故事）
@@ -1790,6 +1897,12 @@ ${writingStyle ? `【期望文风】${writingStyle}` : ''}
 5. 文风建议（如轻松幽默、严肃沉重等）
 6. 推荐章节结构（如三幕式、单元剧等）
 7. 作品亮点（3-5 个吸引点）
+
+大纲部分（基于立项书推导）：
+8. 世界观设定（故事发生的背景、规则、特殊设定等）
+9. 主要角色设定（3-5 个核心角色，包含姓名、角色定位、性格、外貌、能力、背景）
+10. 三幕式情节结构（第一幕：开端，第二幕：发展，第三幕：高潮/结局）
+11. 分章大纲（10-15 章，每章包含章节名和 100 字左右的梗概）
 
 请输出 JSON 格式：
 {
@@ -1800,15 +1913,36 @@ ${writingStyle ? `【期望文风】${writingStyle}` : ''}
   "genre": "类型标签",
   "writingStyle": "文风建议",
   "chapterStructure": "推荐章节结构",
-  "highlights": ["亮点 1", "亮点 2", "亮点 3"]
+  "highlights": ["亮点 1", "亮点 2", "亮点 3"],
+  "worldBuilding": "世界观设定",
+  "characters": [
+    {
+      "name": "角色名",
+      "role": "protagonist|antagonist|supporting",
+      "description": "角色描述",
+      "traits": { "personality": "性格", "appearance": "外貌", "abilities": "能力" },
+      "background": "背景故事"
+    }
+  ],
+  "plotStructure": {
+    "act1": "第一幕：开端",
+    "act2": "第二幕：发展",
+    "act3": "第三幕：高潮/结局"
+  },
+  "chapterOutlines": [
+    { "chapter": 1, "title": "章节名", "summary": "章节梗概（100 字左右）" }
+  ]
 }
 
 注意：只输出 JSON 内容，不要输出其他解释文字。`;
     }
 
     // 调用 AI API
+    const projectBriefMaxTokens = 4000;
     if (USE_QWEN) {
-      const qwenResponse = await callQwenAPI(prompt, 2000, 0.8);
+      const apiTimeout = Math.max(60000, Math.ceil(projectBriefMaxTokens / 1000) * 15000 + 30000);
+      console.log(`⏱️ [立项书] API超时设置: ${apiTimeout / 1000}秒`);
+      const qwenResponse = await callQwenAPI(prompt, projectBriefMaxTokens, 0.8, apiTimeout);
       aiResponse = qwenResponse.text;
       tokensUsed = {
         input: qwenResponse.usage.input,
@@ -1819,7 +1953,7 @@ ${writingStyle ? `【期望文风】${writingStyle}` : ''}
     } else if (anthropic) {
       const response = await anthropic.messages.create({
         model: 'claude-3-haiku-20240307',
-        max_tokens: 2000,
+        max_tokens: projectBriefMaxTokens,
         temperature: 0.8,
         messages: [{ role: 'user', content: prompt }]
       });
@@ -1837,16 +1971,10 @@ ${writingStyle ? `【期望文风】${writingStyle}` : ''}
     const responseTime = Date.now() - startTime;
     const costUsd = (tokensUsed.input * 0.25 / 1000000) + (tokensUsed.output * 1.25 / 1000000);
 
-    // 解析 AI 响应
+    // 解析 AI 响应（使用安全解析函数处理控制字符）
     let projectBrief;
     try {
-      // 尝试提取 JSON 内容
-      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        projectBrief = JSON.parse(jsonMatch[0]);
-      } else {
-        projectBrief = JSON.parse(aiResponse);
-      }
+      projectBrief = safeParseAIJson(aiResponse);
     } catch (e) {
       console.warn('[AI 创作] 解析 AI 响应失败，使用原始响应:', e);
       projectBrief = { raw: aiResponse };
@@ -1860,11 +1988,20 @@ ${writingStyle ? `【期望文风】${writingStyle}` : ''}
         result_data: JSON.stringify({
           projectBrief,
           sessionId,
-          round: revisionType ? (previousContent ? 1 : 0) : 0
+          round: (generations?.length || 0) + 1
         }),
         completed_at: new Date()
       }
     });
+
+    // 更新会话的 generations 数组
+    try {
+      const { updateSessionGeneration } = await import('../routes/ai-creation');
+      updateSessionGeneration(sessionId, projectBrief, feedback, revisionType || undefined);
+    } catch (e) {
+      // 会话更新失败不影响主流程
+      console.warn('[AI 创作] 更新会话 generations 失败:', e);
+    }
 
     // 记录使用日志
     await prisma.ai_usage_logs.create({
@@ -1881,7 +2018,10 @@ ${writingStyle ? `【期望文风】${writingStyle}` : ''}
       }
     });
 
-    console.log(`[AI 创作] 立项书${revisionType ? '修改' : '生成'}完成：${taskId}`);
+    console.log(`[AI 创作] 立项书${revisionType ? '修改' : '生成'}完成，taskId=${taskId}`);
+
+    // WebSocket 实时推送任务完成
+    wsServer.sendTaskStatus(userId, taskId, 'completed', { projectBrief });
 
   } catch (error) {
     console.error(`[AI 创作] 立项书${revisionType ? '修改' : '生成'}失败:`, error);
@@ -1895,6 +2035,9 @@ ${writingStyle ? `【期望文风】${writingStyle}` : ''}
       }
     });
 
+    // WebSocket 实时推送任务失败
+    wsServer.sendTaskStatus(userId, taskId, 'failed', null, error instanceof Error ? error.message : '未知错误');
+
     throw error;
   }
 }
@@ -1903,7 +2046,7 @@ ${writingStyle ? `【期望文风】${writingStyle}` : ''}
  * 处理大纲生成任务
  */
 async function processOutline(job: Job) {
-  const { taskId, sessionId, userId, genre, coreIdea, projectBrief, feedback, revisionType, previousContent } = job.data;
+  const { taskId, sessionId, userId, genre, coreIdea, projectBrief, feedback, revisionType, previousContent, generations } = job.data;
 
   console.log(`[AI 创作] 开始处理大纲生成任务：${taskId}, 会话：${sessionId}`);
 
@@ -1917,15 +2060,30 @@ async function processOutline(job: Job) {
     let prompt = '';
 
     if (revisionType === 'outline' && feedback) {
-      // 多轮修改模式
+      // 多轮修改模式 - 构建完整对话历史
+      let historySection = '';
+
+      if (generations && generations.length > 0) {
+        // 有完整历史记录，构建对话上下文
+        historySection = `【对话历史】\n以下是本次创作会话的完整历史记录：\n\n`;
+        for (const gen of generations) {
+          if (gen.userFeedback) {
+            historySection += `--- 用户修改意见（第${gen.round}轮前）---\n${gen.userFeedback}\n\n`;
+          }
+          historySection += `--- AI 生成结果（第${gen.round}轮）---\n${JSON.stringify(gen.content, null, 2)}\n\n`;
+        }
+        historySection += `--- 用户最新修改意见 ---\n${feedback}\n\n`;
+        historySection += `请基于以上完整对话历史，根据用户最新的修改意见，对最近一版的大纲进行修改。保持与之前内容的一致性，只修改用户要求调整的部分，未提及的部分保持原样。`;
+      } else if (previousContent) {
+        // 兼容旧逻辑：只有上一轮内容
+        historySection = `【用户反馈】\n${feedback}\n\n【原大纲】\n${JSON.stringify(previousContent, null, 2)}\n\n请根据用户的反馈修改大纲。只修改用户要求调整的部分，未提及的部分保持原样。`;
+      } else {
+        // 没有任何上下文，只能根据反馈从零生成
+        historySection = `【用户反馈】\n${feedback}\n\n注意：没有找到之前的大纲内容，请根据用户反馈尽可能生成符合要求的大纲。`;
+      }
+
       prompt = `你是一位专业的网文编辑和策划人。用户已经有一个故事大纲，现在提出了修改意见。
-请根据用户的反馈修改大纲。
-
-【用户反馈】
-${feedback}
-
-【原大纲】
-${JSON.stringify(previousContent, null, 2)}
+${historySection}
 
 请输出修改后的完整大纲，保持以下 JSON 格式：
 {
@@ -1949,7 +2107,10 @@ ${JSON.stringify(previousContent, null, 2)}
   ]
 }
 
-注意：只输出 JSON 内容，不要输出其他解释文字。`;
+重要规则：
+1. 必须基于最近一版大纲进行修改，不要凭空重新生成
+2. 用户未提及修改的部分必须保持原样
+3. 只输出 JSON 内容，不要输出其他解释文字`;
     } else {
       // 首次生成模式
       prompt = `你是一位专业的网文编辑和策划人。用户需要生成一份完整的故事大纲。
@@ -1993,8 +2154,11 @@ ${projectBrief ? `【项目立项书】\n${JSON.stringify(projectBrief, null, 2)
     }
 
     // 调用 AI API
+    const outlineMaxTokens = 4000;
     if (USE_QWEN) {
-      const qwenResponse = await callQwenAPI(prompt, 4000, 0.8);
+      const apiTimeout = Math.max(60000, Math.ceil(outlineMaxTokens / 1000) * 15000 + 30000);
+      console.log(`⏱️ [大纲] API超时设置: ${apiTimeout / 1000}秒`);
+      const qwenResponse = await callQwenAPI(prompt, outlineMaxTokens, 0.8, apiTimeout);
       aiResponse = qwenResponse.text;
       tokensUsed = {
         input: qwenResponse.usage.input,
@@ -2005,7 +2169,7 @@ ${projectBrief ? `【项目立项书】\n${JSON.stringify(projectBrief, null, 2)
     } else if (anthropic) {
       const response = await anthropic.messages.create({
         model: 'claude-3-haiku-20240307',
-        max_tokens: 4000,
+        max_tokens: outlineMaxTokens,
         temperature: 0.8,
         messages: [{ role: 'user', content: prompt }]
       });
@@ -2023,16 +2187,10 @@ ${projectBrief ? `【项目立项书】\n${JSON.stringify(projectBrief, null, 2)
     const responseTime = Date.now() - startTime;
     const costUsd = (tokensUsed.input * 0.25 / 1000000) + (tokensUsed.output * 1.25 / 1000000);
 
-    // 解析 AI 响应
+    // 解析 AI 响应（使用安全解析函数处理控制字符）
     let outline;
     try {
-      // 尝试提取 JSON 内容
-      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        outline = JSON.parse(jsonMatch[0]);
-      } else {
-        outline = JSON.parse(aiResponse);
-      }
+      outline = safeParseAIJson(aiResponse);
     } catch (e) {
       console.warn('[AI 创作] 解析 AI 响应失败，使用原始响应:', e);
       outline = { raw: aiResponse };
@@ -2046,11 +2204,20 @@ ${projectBrief ? `【项目立项书】\n${JSON.stringify(projectBrief, null, 2)
         result_data: JSON.stringify({
           outline,
           sessionId,
-          round: revisionType ? (previousContent ? 1 : 0) : 0
+          round: (generations?.length || 0) + 1
         }),
         completed_at: new Date()
       }
     });
+
+    // 更新会话的 generations 数组
+    try {
+      const { updateSessionGeneration } = await import('../routes/ai-creation');
+      updateSessionGeneration(sessionId, outline, feedback, revisionType || undefined);
+    } catch (e) {
+      // 会话更新失败不影响主流程
+      console.warn('[AI 创作] 更新会话 generations 失败:', e);
+    }
 
     // 记录使用日志
     await prisma.ai_usage_logs.create({
@@ -2067,7 +2234,10 @@ ${projectBrief ? `【项目立项书】\n${JSON.stringify(projectBrief, null, 2)
       }
     });
 
-    console.log(`[AI 创作] 大纲${revisionType ? '修改' : '生成'}完成：${taskId}`);
+    console.log(`[AI 创作] 大纲${revisionType ? '修改' : '生成'}完成，taskId=${taskId}`);
+
+    // WebSocket 实时推送任务完成
+    wsServer.sendTaskStatus(userId, taskId, 'completed', { outline });
 
   } catch (error) {
     console.error(`[AI 创作] 大纲${revisionType ? '修改' : '生成'}失败:`, error);
@@ -2080,6 +2250,9 @@ ${projectBrief ? `【项目立项书】\n${JSON.stringify(projectBrief, null, 2)
         completed_at: new Date()
       }
     });
+
+    // WebSocket 实时推送任务失败
+    wsServer.sendTaskStatus(userId, taskId, 'failed', null, error instanceof Error ? error.message : '未知错误');
 
     throw error;
   }
@@ -2144,8 +2317,11 @@ ${innovation ? `【创新点】${innovation}` : ''}
 注意：只输出 JSON 内容，不要输出其他解释文字。`;
 
     // 调用 AI API
+    const pasticheMaxTokens = 4000;
     if (USE_QWEN) {
-      const qwenResponse = await callQwenAPI(prompt, 4000, 0.8);
+      const apiTimeout = Math.max(60000, Math.ceil(pasticheMaxTokens / 1000) * 15000 + 30000);
+      console.log(`⏱️ [仿写] API超时设置: ${apiTimeout / 1000}秒`);
+      const qwenResponse = await callQwenAPI(prompt, pasticheMaxTokens, 0.8, apiTimeout);
       aiResponse = qwenResponse.text;
       tokensUsed = {
         input: qwenResponse.usage.input,
@@ -2156,7 +2332,7 @@ ${innovation ? `【创新点】${innovation}` : ''}
     } else if (anthropic) {
       const response = await anthropic.messages.create({
         model: 'claude-3-haiku-20240307',
-        max_tokens: 4000,
+        max_tokens: pasticheMaxTokens,
         temperature: 0.8,
         messages: [{ role: 'user', content: prompt }]
       });
@@ -2174,15 +2350,10 @@ ${innovation ? `【创新点】${innovation}` : ''}
     const responseTime = Date.now() - startTime;
     const costUsd = (tokensUsed.input * 0.25 / 1000000) + (tokensUsed.output * 1.25 / 1000000);
 
-    // 解析 AI 响应
+    // 解析 AI 响应（使用安全解析函数处理控制字符）
     let result;
     try {
-      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        result = JSON.parse(jsonMatch[0]);
-      } else {
-        result = JSON.parse(aiResponse);
-      }
+      result = safeParseAIJson(aiResponse);
     } catch (e) {
       console.warn('[AI 创作] 解析 AI 响应失败，使用原始响应:', e);
       result = { raw: aiResponse };
@@ -2196,11 +2367,19 @@ ${innovation ? `【创新点】${innovation}` : ''}
         result_data: JSON.stringify({
           pastiche: result,
           sessionId,
-          round: 0
+          round: 1
         }),
         completed_at: new Date()
       }
     });
+
+    // 更新会话的 generations 数组
+    try {
+      const { updateSessionGeneration } = await import('../routes/ai-creation');
+      updateSessionGeneration(sessionId, result);
+    } catch (e) {
+      console.warn('[AI 创作] 更新会话 generations 失败:', e);
+    }
 
     // 记录使用日志
     await prisma.ai_usage_logs.create({
@@ -2217,7 +2396,10 @@ ${innovation ? `【创新点】${innovation}` : ''}
       }
     });
 
-    console.log(`[AI 创作] 仿写生成完成：${taskId}`);
+    console.log(`[AI 创作] 仿写生成完成，taskId=${taskId}`);
+
+    // WebSocket 实时推送任务完成
+    wsServer.sendTaskStatus(userId, taskId, 'completed', { pastiche: result });
 
   } catch (error) {
     console.error(`[AI 创作] 仿写生成失败:`, error);
@@ -2230,6 +2412,9 @@ ${innovation ? `【创新点】${innovation}` : ''}
         completed_at: new Date()
       }
     });
+
+    // WebSocket 实时推送任务失败
+    wsServer.sendTaskStatus(userId, taskId, 'failed', null, error instanceof Error ? error.message : '未知错误');
 
     throw error;
   }
@@ -2291,8 +2476,11 @@ ${coreConflict ? `【核心冲突】${coreConflict}` : ''}
 注意：只输出 JSON 内容，不要输出其他解释文字。`;
 
     // 调用 AI API
+    const templateMaxTokens = 4000;
     if (USE_QWEN) {
-      const qwenResponse = await callQwenAPI(prompt, 4000, 0.8);
+      const apiTimeout = Math.max(60000, Math.ceil(templateMaxTokens / 1000) * 15000 + 30000);
+      console.log(`⏱️ [模板] API超时设置: ${apiTimeout / 1000}秒`);
+      const qwenResponse = await callQwenAPI(prompt, templateMaxTokens, 0.8, apiTimeout);
       aiResponse = qwenResponse.text;
       tokensUsed = {
         input: qwenResponse.usage.input,
@@ -2303,7 +2491,7 @@ ${coreConflict ? `【核心冲突】${coreConflict}` : ''}
     } else if (anthropic) {
       const response = await anthropic.messages.create({
         model: 'claude-3-haiku-20240307',
-        max_tokens: 4000,
+        max_tokens: templateMaxTokens,
         temperature: 0.8,
         messages: [{ role: 'user', content: prompt }]
       });
@@ -2321,15 +2509,10 @@ ${coreConflict ? `【核心冲突】${coreConflict}` : ''}
     const responseTime = Date.now() - startTime;
     const costUsd = (tokensUsed.input * 0.25 / 1000000) + (tokensUsed.output * 1.25 / 1000000);
 
-    // 解析 AI 响应
+    // 解析 AI 响应（使用安全解析函数处理控制字符）
     let result;
     try {
-      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        result = JSON.parse(jsonMatch[0]);
-      } else {
-        result = JSON.parse(aiResponse);
-      }
+      result = safeParseAIJson(aiResponse);
     } catch (e) {
       console.warn('[AI 创作] 解析 AI 响应失败，使用原始响应:', e);
       result = { raw: aiResponse };
@@ -2343,11 +2526,19 @@ ${coreConflict ? `【核心冲突】${coreConflict}` : ''}
         result_data: JSON.stringify({
           template: result,
           sessionId,
-          round: 0
+          round: 1
         }),
         completed_at: new Date()
       }
     });
+
+    // 更新会话的 generations 数组
+    try {
+      const { updateSessionGeneration } = await import('../routes/ai-creation');
+      updateSessionGeneration(sessionId, result);
+    } catch (e) {
+      console.warn('[AI 创作] 更新会话 generations 失败:', e);
+    }
 
     // 记录使用日志
     await prisma.ai_usage_logs.create({
@@ -2364,7 +2555,10 @@ ${coreConflict ? `【核心冲突】${coreConflict}` : ''}
       }
     });
 
-    console.log(`[AI 创作] 模板生成完成：${taskId}`);
+    console.log(`[AI 创作] 模板生成完成，taskId=${taskId}`);
+
+    // WebSocket 实时推送任务完成
+    wsServer.sendTaskStatus(userId, taskId, 'completed', { template: result });
 
   } catch (error) {
     console.error(`[AI 创作] 模板生成失败:`, error);
@@ -2377,6 +2571,9 @@ ${coreConflict ? `【核心冲突】${coreConflict}` : ''}
         completed_at: new Date()
       }
     });
+
+    // WebSocket 实时推送任务失败
+    wsServer.sendTaskStatus(userId, taskId, 'failed', null, error instanceof Error ? error.message : '未知错误');
 
     throw error;
   }

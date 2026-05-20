@@ -94,6 +94,7 @@ export function createNode(data: {
   title: string
   content: string
   image?: string
+  isPublished?: boolean
 }) {
   return http.post<{ node: Node }>('/api/nodes', {
     storyId: data.story_id,
@@ -101,6 +102,7 @@ export function createNode(data: {
     title: data.title,
     content: data.content,
     image: data.image,
+    isPublished: data.isPublished,
   })
 }
 

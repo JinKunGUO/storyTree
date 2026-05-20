@@ -455,22 +455,31 @@ function waitForTaskResult(taskId: number): Promise<TaskResult> {
       }
     }
 
-    // 1. WebSocket 监听
+    // 防止竞态：任务可能在 WS 监听注册前已完成
+    // 先做一次 API 查询，如果任务已完成则直接返回
+    const wrappedResolve = (result: TaskResult) => {
+      if (resolved) return
+      cleanup()
+      resolve(result)
+    }
+
+    // 1. 首次 API 查询防竞态
+    checkTaskOnce(taskId, wrappedResolve)
+
+    // 2. WebSocket 监听（WS 客户端内置了降级轮询，WS 断开时自动轮询 pendingTasks）
     const unwatch = mpWsClient.watchTask(taskId, (data: any) => {
       if (resolved) return
-      if (data.status === 'completed' || data.status === 'failed') {
-        cleanup()
-        resolve({
-          status: data.status,
-          result: data.result,
-          errorMessage: data.error,
-        })
+      if (data.status === 'completed') {
+        // WS 推送的 result 可能是简化版，通过 API 获取完整结果
+        fetchTaskResult(taskId, wrappedResolve)
+      } else if (data.status === 'failed') {
+        wrappedResolve({ status: 'failed', errorMessage: data.errorMessage || data.error || 'AI 生成失败' })
       }
     })
     activeUnwatch = unwatch
 
-    // 2. 降级轮询兜底（无论 WebSocket 是否连接都启动，双保险）
-    const pollInterval = mpWsClient.isConnected() ? 5000 : 2000
+    // 3. 独立轮询兜底（双保险，防止 WS 和内置降级轮询都出问题）
+    const pollInterval = mpWsClient.isConnected() ? 8000 : 3000
     pollTimer = setInterval(async () => {
       if (resolved) return
       try {
@@ -482,24 +491,73 @@ function waitForTaskResult(taskId: number): Promise<TaskResult> {
 
         if (resolved) return
         if (taskRes.status === 'completed') {
-          cleanup()
-          resolve({ status: 'completed', result: taskRes.result })
+          wrappedResolve({ status: 'completed', result: taskRes.result })
         } else if (taskRes.status === 'failed') {
-          cleanup()
-          resolve({ status: 'failed', errorMessage: taskRes.errorMessage })
+          wrappedResolve({ status: 'failed', errorMessage: taskRes.errorMessage })
         }
       } catch {
         // 网络错误不中断，等下一个 interval
       }
     }, pollInterval)
 
-    // 3. 总超时：2 分钟
+    // 4. 总超时：2 分钟
     timeoutTimer = setTimeout(() => {
       if (resolved) return
       cleanup()
       resolve({ status: 'timeout' })
     }, 120000)
   })
+}
+
+/** 首次查询任务状态（防止竞态：任务在 WS 监听注册前已完成） */
+async function checkTaskOnce(
+  taskId: number,
+  onDone: (result: TaskResult) => void
+): Promise<void> {
+  try {
+    const data = await http.get<{
+      status: string
+      result?: { options?: Array<{ content: string; title?: string; style?: string }> }
+      errorMessage?: string
+    }>(`/api/ai/v2/tasks/${taskId}`, undefined, { showError: false })
+
+    if (data.status === 'completed') {
+      console.log(`[AI Panel] 任务 ${taskId} 已完成（首次查询命中）`)
+      onDone({ status: 'completed', result: data.result })
+    } else if (data.status === 'failed') {
+      console.log(`[AI Panel] 任务 ${taskId} 已失败（首次查询命中）`)
+      onDone({ status: 'failed', errorMessage: data.errorMessage || 'AI 生成失败' })
+    }
+    // 其他状态（pending/processing）不做处理，等待 WS 或轮询
+  } catch (err) {
+    console.warn('[AI Panel] 首次任务状态查询失败:', err)
+  }
+}
+
+/** 从 API 获取任务完整结果（WS 推送的结果可能是简化版） */
+async function fetchTaskResult(
+  taskId: number,
+  onDone: (result: TaskResult) => void
+): Promise<void> {
+  try {
+    const data = await http.get<{
+      status: string
+      result?: { options?: Array<{ content: string; title?: string; style?: string }> }
+      errorMessage?: string
+    }>(`/api/ai/v2/tasks/${taskId}`, undefined, { showError: false })
+
+    if (data.status === 'completed') {
+      onDone({ status: 'completed', result: data.result })
+    } else if (data.status === 'failed') {
+      onDone({ status: 'failed', errorMessage: data.errorMessage || 'AI 生成失败' })
+    } else {
+      // 其他状态（pending/processing），不应出现在 WS 推送完成后，但保险起见继续等待
+      console.warn('[AI Panel] WS 推送已完成但 API 返回非完成状态，继续等待')
+    }
+  } catch (err) {
+    console.error('[AI Panel] 获取任务结果失败:', err)
+    onDone({ status: 'failed', errorMessage: err instanceof Error ? err.message : '获取任务结果失败' })
+  }
 }
 
 // 组件销毁时清理 WebSocket 监听

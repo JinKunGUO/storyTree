@@ -268,9 +268,18 @@
                 return;
             }
 
+            // storyId 已获取，加载立项书和大纲
+            loadProjectBrief();
+            loadOutline();
+
             try {
                 console.log('请求API: /api/stories/' + storyId);
-                const response = await fetch(`/api/stories/${storyId}`);
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                const headers = {};
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+                const response = await fetch(`/api/stories/${storyId}`, { headers });
                 console.log('API响应状态:', response.status);
                 
                 if (!response.ok) {
@@ -282,6 +291,21 @@
                 
                 story = data.story || data;
                 const nodes = data.nodes || [];
+                
+                // 判断当前用户是否是故事作者
+                const currentUserStr = localStorage.getItem('user') || sessionStorage.getItem('user');
+                if (currentUserStr && story) {
+                    try {
+                        const currentUser = JSON.parse(currentUserStr);
+                        isStoryAuthor = currentUser.id === story.author_id;
+                    } catch(e) { /* 忽略解析错误 */ }
+                }
+                
+                // 根据权限控制立项书编辑按钮的显示
+                const editProjectBtn = document.getElementById('editProjectBtn');
+                if (editProjectBtn) {
+                    editProjectBtn.style.display = isStoryAuthor ? '' : 'none';
+                }
                 
                 console.log('解析后的story:', story);
                 console.log('故事的章节数:', nodes.length);
@@ -409,7 +433,6 @@
                 
                 // 更新按钮文字
                 document.getElementById('saveDraftBtn').innerHTML = '<i class="fas fa-save"></i> 保存修改';
-                document.getElementById('publishBtn').innerHTML = '<i class="fas fa-check"></i> 完成编辑';
                 
                 // 重置未保存标记
                 hasUnsavedChanges = false;
@@ -646,8 +669,52 @@
 
             if (response.ok) {
                 if (shouldPublishAndRedirect) {
-                    // 完成编辑：显示成功消息并跳转回章节页面
-                    showSuccess('章节更新成功！即将返回...');
+                    // 如果章节是草稿状态，需要调用发布接口将其发布
+                    const isDraft = editNodeData && editNodeData.is_published === false;
+                    if (isDraft) {
+                        console.log('章节为草稿，调用发布接口...');
+                        try {
+                            const publishResponse = await fetch(`/api/nodes/${editNodeId}/publish`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${token}`
+                                }
+                            });
+                            
+                            if (!publishResponse.ok) {
+                                const publishData = await publishResponse.json().catch(() => ({}));
+                                console.warn('发布接口返回非成功状态:', publishResponse);
+                                // 发布失败不影响主流程，章节内容已更新成功
+                                showSuccess('章节内容已更新，但发布失败：' + (publishData.error || '未知错误'));
+                                hasUnsavedChanges = false;
+                                setTimeout(() => {
+                                    window.location.href = `/chapter.html?id=${editNodeId}`;
+                                }, 2000);
+                                return;
+                            }
+                            
+                            const publishData = await publishResponse.json();
+                            console.log('发布结果:', publishData);
+                            
+                            // 如果内容需要审核
+                            if (publishData.reviewStatus === 'pending') {
+                                showSuccess('章节已发布，内容需要审核');
+                            } else {
+                                showSuccess('章节发布成功！即将返回...');
+                            }
+                        } catch (publishError) {
+                            console.error('发布接口调用失败:', publishError);
+                            showSuccess('章节内容已更新，但发布失败：' + publishError.message);
+                            hasUnsavedChanges = false;
+                            setTimeout(() => {
+                                window.location.href = `/chapter.html?id=${editNodeId}`;
+                            }, 2000);
+                            return;
+                        }
+                    } else {
+                        showSuccess('章节更新成功！即将返回...');
+                    }
                     
                     // 清除未保存标记
                     hasUnsavedChanges = false;
@@ -2425,6 +2492,16 @@
 
 // ==================== 侧边栏功能（立项书/大纲） ====================
 
+// 全局变量：权限和编辑状态
+let isStoryAuthor = false;  // 当前用户是否是故事作者
+let outlineVersions = [];    // 大纲版本列表
+let currentOutlineVersion = null; // 当前激活的大纲版本号
+let isEditingProjectBrief = false; // 是否在编辑立项书模式
+let isEditingOutline = false;      // 是否在编辑大纲模式
+let currentOutlineData = null;     // 当前大纲原始数据
+let isNewOutlineVersion = false;   // 是否在新建大纲版本模式
+let newOutlineChangeNote = '';     // 新建大纲版本的版本说明
+
 // 侧边栏初始化
 function initSidebar() {
     // 标签页切换
@@ -2441,9 +2518,55 @@ function initSidebar() {
         toggleBtn.addEventListener('click', toggleSidebar);
     }
 
-    // 加载立项书和大纲
-    loadProjectBrief();
-    loadOutline();
+    // 立项书编辑按钮
+    const editProjectBtn = document.getElementById('editProjectBtn');
+    if (editProjectBtn) {
+        editProjectBtn.addEventListener('click', toggleProjectBriefEdit);
+    }
+
+    // 立项书取消编辑按钮
+    const cancelProjectBriefBtn = document.getElementById('cancelProjectBriefBtn');
+    if (cancelProjectBriefBtn) {
+        cancelProjectBriefBtn.addEventListener('click', cancelProjectBriefEdit);
+    }
+
+    // 大纲版本切换
+    const versionSelect = document.getElementById('outlineVersionSelect');
+    if (versionSelect) {
+        versionSelect.addEventListener('change', function() {
+            const version = parseInt(this.value);
+            // 编辑模式下不允许切换版本；忽略临时"新版本"选项
+            if (isEditingOutline || this.value === 'new') {
+                this.value = isNewOutlineVersion ? 'new' : currentOutlineVersion;
+                if (isEditingOutline) {
+                    if (window.toast) toast.warning('请先保存或取消编辑后再切换版本');
+                    else alert('请先保存或取消编辑后再切换版本');
+                }
+                return;
+            }
+            if (version && version !== currentOutlineVersion) {
+                activateOutlineVersion(version);
+            }
+        });
+    }
+
+    // 大纲编辑按钮
+    const editOutlineBtn = document.getElementById('editOutlineBtn');
+    if (editOutlineBtn) {
+        editOutlineBtn.addEventListener('click', toggleOutlineEdit);
+    }
+
+    // 大纲取消编辑按钮
+    const cancelOutlineEditBtn = document.getElementById('cancelOutlineEditBtn');
+    if (cancelOutlineEditBtn) {
+        cancelOutlineEditBtn.addEventListener('click', cancelOutlineEdit);
+    }
+
+    // 新建大纲版本按钮
+    const newOutlineVersionBtn = document.getElementById('newOutlineVersionBtn');
+    if (newOutlineVersionBtn) {
+        newOutlineVersionBtn.addEventListener('click', createNewOutlineVersion);
+    }
 }
 
 // 切换侧边栏标签页
@@ -2476,8 +2599,8 @@ async function loadProjectBrief() {
     if (!contentEl || !storyId) return;
 
     try {
-        const token = localStorage.getItem('authToken');
-        const response = await fetch(`/api/stories/${storyId}/project-brief`, {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        const response = await fetch(`/api/ai/creation/stories/${storyId}/project-brief`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -2528,6 +2651,12 @@ async function loadProjectBrief() {
                 <div class="panel-section-content">${brief.genre}</div>
             </div>
             ` : ''}
+            ${brief.writingStyle ? `
+            <div class="panel-section">
+                <div class="panel-section-title">期望文风</div>
+                <div class="panel-section-content">${brief.writingStyle}</div>
+            </div>
+            ` : ''}
             ${brief.highlights && brief.highlights.length > 0 ? `
             <div class="panel-section">
                 <div class="panel-section-title">作品亮点</div>
@@ -2556,10 +2685,10 @@ async function loadOutline() {
     if (!contentEl || !storyId) return;
 
     try {
-        const token = localStorage.getItem('authToken');
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
 
         // 获取当前大纲
-        const response = await fetch(`/api/stories/${storyId}/outlines/active`, {
+        const response = await fetch(`/api/ai/creation/stories/${storyId}/outlines/active`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -2585,39 +2714,32 @@ async function loadOutline() {
         }
 
         const outline = data.outline;
-        contentEl.innerHTML = `
-            ${outline.worldBuilding ? `
-            <div class="panel-section">
-                <div class="panel-section-title">世界观设定</div>
-                <div class="panel-section-content">${outline.worldBuilding}</div>
-            </div>
-            ` : ''}
-            ${outline.characters && outline.characters.length > 0 ? `
-            <div class="panel-section">
-                <div class="panel-section-title">主要角色</div>
-                ${outline.characters.map(c => `
-                    <div style="margin-bottom: 15px; padding: 10px; background: var(--st-bg-secondary); border-radius: 8px;">
-                        <strong>${c.name}</strong>
-                        <span style="margin-left: 10px; padding: 2px 6px; background: var(--st-primary-100); color: var(--st-primary-700); border-radius: 4px; font-size: 11px;">
-                            ${c.role === 'protagonist' ? '主角' : c.role === 'antagonist' ? '反派' : '配角'}
-                        </span>
-                        <p style="margin-top: 5px; font-size: 13px; color: var(--st-text-secondary);">${c.description || ''}</p>
-                    </div>
-                `).join('')}
-            </div>
-            ` : ''}
-            ${outline.chapterOutlines && outline.chapterOutlines.length > 0 ? `
-            <div class="panel-section">
-                <div class="panel-section-title">章节大纲（前 10 章）</div>
-                ${outline.chapterOutlines.slice(0, 10).map(c => `
-                    <div style="margin-bottom: 10px; padding: 10px; background: var(--st-bg-secondary); border-radius: 8px;">
-                        <strong>第${c.chapter}章：${c.title || '无题'}</strong>
-                        <p style="margin-top: 5px; font-size: 13px; color: var(--st-text-secondary);">${c.summary || '暂无内容'}</p>
-                    </div>
-                `).join('')}
-            </div>
-            ` : ''}
-        `;
+        currentOutlineVersion = outline.version || 1;
+        currentOutlineData = outline; // 保存原始数据用于编辑
+        renderOutline(outline);
+
+        // 显示编辑和新建版本按钮（仅主创和协作者可编辑）
+        const editOutlineBtn = document.getElementById('editOutlineBtn');
+        const newOutlineVersionBtn = document.getElementById('newOutlineVersionBtn');
+        if (editOutlineBtn) editOutlineBtn.style.display = isStoryAuthor ? 'inline-flex' : 'none';
+        if (newOutlineVersionBtn) newOutlineVersionBtn.style.display = isStoryAuthor ? 'inline-flex' : 'none';
+
+        // 检查协作者身份，协作者也可以编辑大纲
+        try {
+            const roleResponse = await fetch(`/api/stories/${storyId}/role`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (roleResponse.ok) {
+                const roleData = await roleResponse.json();
+                if (roleData.is_collaborator) {
+                    if (editOutlineBtn) editOutlineBtn.style.display = 'inline-flex';
+                    if (newOutlineVersionBtn) newOutlineVersionBtn.style.display = 'inline-flex';
+                }
+            }
+        } catch (e) { /* 忽略权限检查失败 */ }
+
+        // 加载版本列表
+        loadOutlineVersions();
     } catch (error) {
         console.error('加载大纲失败:', error);
         contentEl.innerHTML = `
@@ -2627,4 +2749,589 @@ async function loadOutline() {
             </div>
         `;
     }
+}
+
+// 渲染大纲内容
+function renderOutline(outline) {
+    const contentEl = document.getElementById('outlineContent');
+    if (!contentEl) return;
+
+    contentEl.innerHTML = `
+        ${outline.worldBuilding ? `
+        <div class="panel-section">
+            <div class="panel-section-title">世界观设定</div>
+            <div class="panel-section-content">${outline.worldBuilding}</div>
+        </div>
+        ` : ''}
+        ${outline.characters && outline.characters.length > 0 ? `
+        <div class="panel-section">
+            <div class="panel-section-title">主要角色</div>
+            ${outline.characters.map(c => `
+                <div style="margin-bottom: 15px; padding: 10px; background: var(--st-bg-secondary); border-radius: 8px;">
+                    <strong>${escapeHtml(c.name)}</strong>
+                    <span style="margin-left: 10px; padding: 2px 6px; background: var(--st-primary-100); color: var(--st-primary-700); border-radius: 4px; font-size: 11px;">
+                        ${c.role === 'protagonist' ? '主角' : c.role === 'antagonist' ? '反派' : c.role === 'love_interest' ? '感情线' : '配角'}
+                    </span>
+                    <p style="margin-top: 5px; font-size: 13px; color: var(--st-text-secondary);">${escapeHtml(c.description || '')}</p>
+                </div>
+            `).join('')}
+        </div>
+        ` : ''}
+        ${outline.plotStructure ? `
+        <div class="panel-section">
+            <div class="panel-section-title">故事结构</div>
+            ${outline.plotStructure.act1 ? `<div style="margin-bottom: 10px;"><strong style="font-size: 12px; color: var(--st-primary-600);">第一幕</strong><p style="font-size: 13px; color: var(--st-text-secondary); margin-top: 4px;">${escapeHtml(outline.plotStructure.act1)}</p></div>` : ''}
+            ${outline.plotStructure.act2 ? `<div style="margin-bottom: 10px;"><strong style="font-size: 12px; color: var(--st-primary-600);">第二幕</strong><p style="font-size: 13px; color: var(--st-text-secondary); margin-top: 4px;">${escapeHtml(outline.plotStructure.act2)}</p></div>` : ''}
+            ${outline.plotStructure.act3 ? `<div style="margin-bottom: 10px;"><strong style="font-size: 12px; color: var(--st-primary-600);">第三幕</strong><p style="font-size: 13px; color: var(--st-text-secondary); margin-top: 4px;">${escapeHtml(outline.plotStructure.act3)}</p></div>` : ''}
+        </div>
+        ` : ''}
+        ${outline.chapterOutlines && outline.chapterOutlines.length > 0 ? `
+        <div class="panel-section">
+            <div class="panel-section-title">章节大纲（${outline.chapterOutlines.length} 章）</div>
+            ${outline.chapterOutlines.map(c => `
+                <div style="margin-bottom: 10px; padding: 10px; background: var(--st-bg-secondary); border-radius: 8px;">
+                    <strong>第${c.chapter || '0'}章：${escapeHtml(c.title || '无题')}</strong>
+                    <p style="margin-top: 5px; font-size: 13px; color: var(--st-text-secondary);">${escapeHtml(c.summary || '暂无内容')}</p>
+                </div>
+            `).join('')}
+        </div>
+        ` : ''}
+        ${outline.changeNote ? `
+        <div style="margin-top: 12px; padding: 8px 12px; background: var(--st-bg-secondary); border-radius: 6px; font-size: 12px; color: var(--st-text-tertiary);">
+            <i class="fas fa-info-circle"></i> 版本说明：${escapeHtml(outline.changeNote)}
+        </div>
+        ` : ''}
+    `;
+}
+
+// 加载大纲版本列表
+async function loadOutlineVersions() {
+    if (!storyId) return;
+    const versionSelect = document.getElementById('outlineVersionSelect');
+    if (!versionSelect) return;
+
+    try {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        const response = await fetch(`/api/ai/creation/stories/${storyId}/outlines`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        outlineVersions = data.outlines || [];
+
+        // 更新下拉选项
+        versionSelect.innerHTML = '';
+        if (outlineVersions.length === 0) {
+            versionSelect.innerHTML = '<option value="current">当前版本</option>';
+            return;
+        }
+
+        outlineVersions.forEach(v => {
+            const option = document.createElement('option');
+            option.value = v.version;
+            const date = new Date(v.createdAt).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+            option.textContent = `v${v.version}${v.isActive ? ' (当前)' : ''} - ${v.changeNote || date}`;
+            if (v.isActive) option.selected = true;
+            versionSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('加载大纲版本列表失败:', error);
+    }
+}
+
+// 激活指定版本的大纲
+async function activateOutlineVersion(version) {
+    if (!storyId) return;
+    const contentEl = document.getElementById('outlineContent');
+    
+    try {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        
+        // 调用激活 API（仅作者可以激活，协作者也可以）
+        const response = await fetch(`/api/ai/creation/stories/${storyId}/outlines/${version}/activate`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || '激活版本失败');
+        }
+
+        // 重新加载大纲
+        if (contentEl) {
+            contentEl.innerHTML = '<div class="loading-placeholder"><i class="fas fa-spinner fa-spin"></i><span>切换版本中...</span></div>';
+        }
+        await loadOutline();
+
+        if (window.toast) {
+            toast.success('已切换到 v' + version);
+        }
+    } catch (error) {
+        console.error('激活大纲版本失败:', error);
+        if (window.toast) {
+            toast.error(error.message || '切换版本失败');
+        } else {
+            alert(error.message || '切换版本失败');
+        }
+        // 恢复下拉选项
+        const versionSelect = document.getElementById('outlineVersionSelect');
+        if (versionSelect) {
+            versionSelect.value = currentOutlineVersion;
+        }
+    }
+}
+
+// 切换立项书编辑/查看模式
+function toggleProjectBriefEdit() {
+    if (!isStoryAuthor) {
+        alert('只有故事作者可以编辑立项书');
+        return;
+    }
+
+    isEditingProjectBrief = !isEditingProjectBrief;
+    const editBtn = document.getElementById('editProjectBtn');
+    const cancelBtn = document.getElementById('cancelProjectBriefBtn');
+
+    if (isEditingProjectBrief) {
+        // 进入编辑模式
+        if (editBtn) editBtn.innerHTML = '<i class="fas fa-check"></i>';
+        if (editBtn) editBtn.title = '保存立项书';
+        if (cancelBtn) cancelBtn.style.display = '';
+        renderEditableProjectBrief();
+    } else {
+        // 保存并退出编辑模式
+        if (editBtn) editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+        if (editBtn) editBtn.title = '编辑立项书';
+        if (cancelBtn) cancelBtn.style.display = 'none';
+        saveProjectBrief();
+    }
+}
+
+// 取消立项书编辑
+function cancelProjectBriefEdit() {
+    isEditingProjectBrief = false;
+    const editBtn = document.getElementById('editProjectBtn');
+    const cancelBtn = document.getElementById('cancelProjectBriefBtn');
+    if (editBtn) editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+    if (editBtn) editBtn.title = '编辑立项书';
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    // 重新加载显示模式（丢弃修改）
+    loadProjectBrief();
+}
+
+// 渲染可编辑的立项书
+async function renderEditableProjectBrief() {
+    const contentEl = document.getElementById('projectBriefContent');
+    if (!contentEl || !storyId) return;
+
+    try {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        const response = await fetch(`/api/ai/creation/stories/${storyId}/project-brief`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) throw new Error('获取立项书失败');
+        const data = await response.json();
+
+        if (!data.projectBrief) {
+            contentEl.innerHTML = '<div class="loading-placeholder"><i class="fas fa-file-alt"></i><p>暂无立项书</p></div>';
+            isEditingProjectBrief = false;
+            return;
+        }
+
+        const brief = data.projectBrief;
+        contentEl.innerHTML = `
+            <div class="panel-section">
+                <div class="panel-section-title">故事标题</div>
+                <input type="text" id="editBriefTitle" class="edit-brief-input" value="${escapeHtml(brief.title || '')}" placeholder="输入故事标题" />
+            </div>
+            <div class="panel-section">
+                <div class="panel-section-title">故事梗概</div>
+                <textarea id="editBriefSynopsis" class="edit-brief-textarea" placeholder="输入故事梗概">${escapeHtml(brief.synopsis || '')}</textarea>
+            </div>
+            <div class="panel-section">
+                <div class="panel-section-title">核心创意</div>
+                <textarea id="editBriefCoreIdea" class="edit-brief-textarea" placeholder="输入核心创意">${escapeHtml(brief.coreIdea || '')}</textarea>
+            </div>
+            <div class="panel-section">
+                <div class="panel-section-title">目标读者</div>
+                <input type="text" id="editBriefTargetAudience" class="edit-brief-input" value="${escapeHtml(brief.targetAudience || '')}" placeholder="目标读者（可选）" />
+            </div>
+            <div class="panel-section">
+                <div class="panel-section-title">类型标签</div>
+                <input type="text" id="editBriefGenre" class="edit-brief-input" value="${escapeHtml(brief.genre || '')}" placeholder="类型标签（可选）" />
+            </div>
+            <div class="panel-section">
+                <div class="panel-section-title">期望文风</div>
+                <input type="text" id="editBriefWritingStyle" class="edit-brief-input" value="${escapeHtml(brief.writingStyle || '')}" placeholder="期望文风（可选）" />
+            </div>
+            <div style="margin-top: 12px; padding: 8px 12px; background: var(--st-primary-50); border-radius: 6px; font-size: 12px; color: var(--st-primary-700);">
+                <i class="fas fa-info-circle"></i> 点击右上角 ✓ 保存修改
+            </div>
+        `;
+    } catch (error) {
+        console.error('加载立项书失败:', error);
+        contentEl.innerHTML = '<div class="loading-placeholder"><i class="fas fa-exclamation-circle"></i><p>加载失败</p></div>';
+        isEditingProjectBrief = false;
+    }
+}
+
+// 保存立项书修改
+async function saveProjectBrief() {
+    if (!storyId) return;
+
+    const title = document.getElementById('editBriefTitle')?.value?.trim();
+    const synopsis = document.getElementById('editBriefSynopsis')?.value?.trim();
+    const coreIdea = document.getElementById('editBriefCoreIdea')?.value?.trim();
+    const targetAudience = document.getElementById('editBriefTargetAudience')?.value?.trim();
+    const genre = document.getElementById('editBriefGenre')?.value?.trim();
+    const writingStyle = document.getElementById('editBriefWritingStyle')?.value?.trim();
+
+    const projectBrief = { title, synopsis, coreIdea, targetAudience, genre, writingStyle };
+
+    try {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        const response = await fetch(`/api/ai/creation/stories/${storyId}/project-brief`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ projectBrief })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || '保存失败');
+        }
+
+        if (window.toast) {
+            toast.success('立项书已保存');
+        }
+    } catch (error) {
+        console.error('保存立项书失败:', error);
+        if (window.toast) {
+            toast.error(error.message || '保存立项书失败');
+        } else {
+            alert(error.message || '保存立项书失败');
+        }
+    }
+
+    // 重新加载显示模式
+    await loadProjectBrief();
+}
+
+// HTML 转义工具函数
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// 切换大纲编辑/查看模式
+function toggleOutlineEdit() {
+    isEditingOutline = !isEditingOutline;
+    const editBtn = document.getElementById('editOutlineBtn');
+    const cancelBtn = document.getElementById('cancelOutlineEditBtn');
+    const newVersionBtn = document.getElementById('newOutlineVersionBtn');
+
+    if (isEditingOutline) {
+        // 进入编辑模式（编辑当前版本）
+        isNewOutlineVersion = false;
+        newOutlineChangeNote = '';
+        if (editBtn) editBtn.innerHTML = '<i class="fas fa-check"></i>';
+        if (editBtn) editBtn.title = '保存大纲';
+        if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+        if (newVersionBtn) newVersionBtn.style.display = 'none';
+        renderEditableOutline();
+    } else {
+        if (editBtn) editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+        if (editBtn) editBtn.title = '编辑大纲';
+        if (cancelBtn) cancelBtn.style.display = 'none';
+        if (newVersionBtn) newVersionBtn.style.display = '';
+        saveOutlineEdit();
+    }
+}
+
+// 取消大纲编辑（丢弃修改，恢复原始数据）
+function cancelOutlineEdit() {
+    isEditingOutline = false;
+    isNewOutlineVersion = false;
+    newOutlineChangeNote = '';
+    const editBtn = document.getElementById('editOutlineBtn');
+    const cancelBtn = document.getElementById('cancelOutlineEditBtn');
+    const newVersionBtn = document.getElementById('newOutlineVersionBtn');
+    if (editBtn) editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+    if (editBtn) editBtn.title = '编辑大纲';
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    if (newVersionBtn) newVersionBtn.style.display = '';
+    // 移除临时"新版本"选项
+    const versionSelect = document.getElementById('outlineVersionSelect');
+    if (versionSelect) {
+        const newOption = versionSelect.querySelector('option[value="new"]');
+        if (newOption) newOption.remove();
+    }
+    // 恢复原始数据显示
+    if (currentOutlineData) {
+        renderOutline(currentOutlineData);
+    }
+}
+
+// 渲染可编辑的大纲
+function renderEditableOutline() {
+    const contentEl = document.getElementById('outlineContent');
+    if (!contentEl || !currentOutlineData) return;
+
+    const outline = currentOutlineData;
+
+    contentEl.innerHTML = `
+        ${outline.worldBuilding !== undefined ? `
+        <div class="panel-section">
+            <div class="panel-section-title">世界观设定</div>
+            <textarea id="editOutlineWorldBuilding" class="edit-brief-textarea" placeholder="描述世界观设定">${escapeHtml(outline.worldBuilding || '')}</textarea>
+        </div>
+        ` : ''}
+        ${outline.characters && outline.characters.length > 0 ? `
+        <div class="panel-section">
+            <div class="panel-section-title">主要角色</div>
+            ${outline.characters.map((c, i) => `
+                <div style="margin-bottom: 12px; padding: 10px; background: var(--st-bg-secondary); border-radius: 8px;">
+                    <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+                        <input type="text" id="editCharName_${i}" class="edit-brief-input" value="${escapeHtml(c.name || '')}" placeholder="角色名" style="flex: 1;" />
+                        <select id="editCharRole_${i}" class="edit-brief-input" style="width: 100px;">
+                            <option value="protagonist" ${c.role === 'protagonist' ? 'selected' : ''}>主角</option>
+                            <option value="antagonist" ${c.role === 'antagonist' ? 'selected' : ''}>反派</option>
+                            <option value="love_interest" ${c.role === 'love_interest' ? 'selected' : ''}>感情线</option>
+                            <option value="supporting" ${c.role === 'supporting' ? 'selected' : ''}>配角</option>
+                        </select>
+                    </div>
+                    <textarea id="editCharDesc_${i}" class="edit-brief-textarea" placeholder="角色描述" style="min-height: 60px;">${escapeHtml(c.description || '')}</textarea>
+                </div>
+            `).join('')}
+        </div>
+        ` : ''}
+        ${outline.plotStructure ? `
+        <div class="panel-section">
+            <div class="panel-section-title">故事结构</div>
+            ${outline.plotStructure.act1 !== undefined ? `
+            <div style="margin-bottom: 10px;">
+                <strong style="font-size: 12px; color: var(--st-primary-600);">第一幕</strong>
+                <textarea id="editPlotAct1" class="edit-brief-textarea" style="min-height: 60px; margin-top: 4px;">${escapeHtml(outline.plotStructure.act1 || '')}</textarea>
+            </div>` : ''}
+            ${outline.plotStructure.act2 !== undefined ? `
+            <div style="margin-bottom: 10px;">
+                <strong style="font-size: 12px; color: var(--st-primary-600);">第二幕</strong>
+                <textarea id="editPlotAct2" class="edit-brief-textarea" style="min-height: 60px; margin-top: 4px;">${escapeHtml(outline.plotStructure.act2 || '')}</textarea>
+            </div>` : ''}
+            ${outline.plotStructure.act3 !== undefined ? `
+            <div style="margin-bottom: 10px;">
+                <strong style="font-size: 12px; color: var(--st-primary-600);">第三幕</strong>
+                <textarea id="editPlotAct3" class="edit-brief-textarea" style="min-height: 60px; margin-top: 4px;">${escapeHtml(outline.plotStructure.act3 || '')}</textarea>
+            </div>` : ''}
+        </div>
+        ` : ''}
+        ${outline.chapterOutlines && outline.chapterOutlines.length > 0 ? `
+        <div class="panel-section">
+            <div class="panel-section-title">章节大纲（${outline.chapterOutlines.length} 章）</div>
+            ${outline.chapterOutlines.map((c, i) => `
+                <div style="margin-bottom: 10px; padding: 10px; background: var(--st-bg-secondary); border-radius: 8px;">
+                    <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px;">
+                        <span style="font-size: 12px; color: var(--st-text-tertiary); white-space: nowrap;">第${c.chapter || (i+1)}章</span>
+                        <input type="text" id="editChapterTitle_${i}" class="edit-brief-input" value="${escapeHtml(c.title || '')}" placeholder="章节标题" style="flex: 1;" />
+                    </div>
+                    <textarea id="editChapterSummary_${i}" class="edit-brief-textarea" placeholder="章节摘要" style="min-height: 50px;">${escapeHtml(c.summary || '')}</textarea>
+                </div>
+            `).join('')}
+        </div>
+        ` : ''}
+        <div style="margin-top: 12px; padding: 8px 12px; background: var(--st-primary-50); border-radius: 6px; font-size: 12px; color: var(--st-primary-700);">
+            <i class="fas fa-info-circle"></i> ${isNewOutlineVersion ? '修改内容后点击右上角 ✓ 保存为新版本（' + escapeHtml(newOutlineChangeNote) + '）' : '点击右上角 ✓ 保存修改'}
+        </div>
+    `;
+}
+
+// 保存大纲编辑
+async function saveOutlineEdit() {
+    if (!storyId || !currentOutlineData) return;
+
+    const outline = { ...currentOutlineData };
+
+    // 收集编辑后的值
+    const worldBuildingEl = document.getElementById('editOutlineWorldBuilding');
+    if (worldBuildingEl) outline.worldBuilding = worldBuildingEl.value.trim();
+
+    const act1El = document.getElementById('editPlotAct1');
+    if (act1El && outline.plotStructure) outline.plotStructure.act1 = act1El.value.trim();
+    const act2El = document.getElementById('editPlotAct2');
+    if (act2El && outline.plotStructure) outline.plotStructure.act2 = act2El.value.trim();
+    const act3El = document.getElementById('editPlotAct3');
+    if (act3El && outline.plotStructure) outline.plotStructure.act3 = act3El.value.trim();
+
+    // 收集角色编辑
+    if (outline.characters) {
+        outline.characters = outline.characters.map((c, i) => {
+            const nameEl = document.getElementById(`editCharName_${i}`);
+            const roleEl = document.getElementById(`editCharRole_${i}`);
+            const descEl = document.getElementById(`editCharDesc_${i}`);
+            return {
+                ...c,
+                name: nameEl ? nameEl.value.trim() : c.name,
+                role: roleEl ? roleEl.value : c.role,
+                description: descEl ? descEl.value.trim() : c.description
+            };
+        });
+    }
+
+    // 收集章节编辑
+    if (outline.chapterOutlines) {
+        outline.chapterOutlines = outline.chapterOutlines.map((c, i) => {
+            const titleEl = document.getElementById(`editChapterTitle_${i}`);
+            const summaryEl = document.getElementById(`editChapterSummary_${i}`);
+            return {
+                ...c,
+                title: titleEl ? titleEl.value.trim() : c.title,
+                summary: summaryEl ? summaryEl.value.trim() : c.summary
+            };
+        });
+    }
+
+    // 重置新建版本状态（在异步操作前保存，避免后续状态混乱）
+    const wasNewVersion = isNewOutlineVersion;
+    const savedChangeNote = newOutlineChangeNote;
+    isNewOutlineVersion = false;
+    newOutlineChangeNote = '';
+
+    try {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+
+        if (wasNewVersion) {
+            // 新建版本模式：POST 创建新版本
+            const response = await fetch(`/api/ai/creation/stories/${storyId}/outlines`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    outline,
+                    changeNote: savedChangeNote || '手动创建新版本'
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || '创建新版本失败');
+            }
+
+            const data = await response.json();
+
+            if (window.toast) {
+                toast.success('新版本 v' + (data.version || '?') + ' 已创建');
+            }
+
+            // 重新加载大纲和版本列表
+            await loadOutline();
+        } else {
+            // 编辑当前版本模式：PUT 更新当前版本
+            const version = currentOutlineVersion || 1;
+            const response = await fetch(`/api/ai/creation/stories/${storyId}/outlines/${version}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    outline,
+                    changeNote: '手动编辑'
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || '保存失败');
+            }
+
+            if (window.toast) {
+                toast.success('大纲已保存');
+            }
+
+            // 重新渲染当前大纲
+            currentOutlineData = outline;
+            renderOutline(outline);
+        }
+    } catch (error) {
+        console.error('保存大纲失败:', error);
+        if (window.toast) {
+            toast.error(error.message || '保存大纲失败');
+        } else {
+            alert(error.message || '保存大纲失败');
+        }
+        // 保存失败时恢复编辑模式数据
+        if (wasNewVersion) {
+            currentOutlineData = outline;
+            renderOutline(outline);
+        }
+    }
+
+    // 恢复编辑按钮状态
+    const editBtn = document.getElementById('editOutlineBtn');
+    const cancelBtn = document.getElementById('cancelOutlineEditBtn');
+    const newVersionBtn = document.getElementById('newOutlineVersionBtn');
+    if (editBtn) editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+    if (editBtn) editBtn.title = '编辑大纲';
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    if (newVersionBtn) newVersionBtn.style.display = '';
+}
+
+// 创建新的大纲版本
+async function createNewOutlineVersion() {
+    if (!storyId) return;
+    if (!currentOutlineData) {
+        if (window.toast) {
+            toast.error('没有可编辑的大纲内容');
+        } else {
+            alert('没有可编辑的大纲内容');
+        }
+        return;
+    }
+
+    const changeNote = prompt('请输入新版本的说明（可选）：', '');
+    if (changeNote === null) return; // 用户取消
+
+    // 记录新建版本信息和版本说明，进入编辑模式
+    isNewOutlineVersion = true;
+    newOutlineChangeNote = changeNote || '手动创建新版本';
+
+    // 如果已在编辑模式，先退出（不保存），再重新进入
+    if (isEditingOutline) {
+        isEditingOutline = false;
+    }
+
+    // 进入编辑模式
+    isEditingOutline = true;
+    const editBtn = document.getElementById('editOutlineBtn');
+    const cancelBtn = document.getElementById('cancelOutlineEditBtn');
+    const newVersionBtn = document.getElementById('newOutlineVersionBtn');
+    if (editBtn) editBtn.innerHTML = '<i class="fas fa-check"></i>';
+    if (editBtn) editBtn.title = '保存新版本';
+    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+    if (newVersionBtn) newVersionBtn.style.display = 'none';
+
+    // 更新下拉栏：添加临时新版本选项并选中
+    const versionSelect = document.getElementById('outlineVersionSelect');
+    if (versionSelect) {
+        const newOption = document.createElement('option');
+        newOption.value = 'new';
+        newOption.textContent = '新版本 - ' + (changeNote || '手动创建新版本');
+        newOption.selected = true;
+        // 取消其他选项的选中状态
+        Array.from(versionSelect.options).forEach(opt => opt.selected = false);
+        versionSelect.appendChild(newOption);
+    }
+
+    renderEditableOutline();
 }

@@ -498,6 +498,144 @@
             }
         }
 
+        /* 可编辑字段样式 */
+        .editable-field {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1.5px solid var(--st-gray-200);
+            border-radius: var(--st-radius-md);
+            font-size: 14px;
+            font-family: inherit;
+            color: var(--st-text-primary);
+            background: var(--st-bg-primary);
+            line-height: 1.6;
+            transition: all 0.2s ease;
+            margin-top: 6px;
+            box-sizing: border-box;
+        }
+
+        .editable-field:focus {
+            outline: none;
+            border-color: var(--st-primary-500);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+            background: var(--st-bg-primary);
+        }
+
+        .editable-field:hover {
+            border-color: var(--st-gray-300);
+        }
+
+        .editable-field[contenteditable] {
+            min-height: 40px;
+            cursor: text;
+        }
+
+        textarea.editable-field {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .editable-tag {
+            display: inline-block;
+            padding: 4px 12px;
+            background: var(--st-primary-100);
+            color: var(--st-primary-700);
+            border-radius: var(--st-radius-full);
+            font-size: 12px;
+            margin: 4px 4px 4px 0;
+        }
+
+        .editable-chapter {
+            margin-bottom: 12px;
+            padding: 15px;
+            background: var(--st-bg-primary);
+            border-radius: var(--st-radius-lg);
+            border: 1.5px solid var(--st-gray-200);
+            transition: border-color 0.2s ease;
+        }
+
+        .editable-chapter:hover {
+            border-color: var(--st-gray-300);
+        }
+
+        .editable-chapter-title {
+            font-weight: 600;
+            color: var(--st-text-primary);
+            margin-bottom: 8px;
+        }
+
+        .editable-highlight {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 6px 0;
+        }
+
+        .editable-highlight input {
+            flex: 1;
+        }
+
+        .btn-remove-item {
+            background: none;
+            border: none;
+            color: var(--st-danger-500);
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .btn-remove-item:hover {
+            background: var(--st-danger-100);
+        }
+
+        .btn-add-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 14px;
+            background: var(--st-gray-100);
+            border: 1.5px dashed var(--st-gray-300);
+            border-radius: var(--st-radius-md);
+            color: var(--st-text-secondary);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+
+        .btn-add-item:hover {
+            background: var(--st-primary-100);
+            border-color: var(--st-primary-300);
+            color: var(--st-primary-600);
+        }
+
+        .editable-character {
+            margin-bottom: 12px;
+            padding: 15px;
+            background: var(--st-bg-primary);
+            border-radius: var(--st-radius-lg);
+            border: 1.5px solid var(--st-gray-200);
+            transition: border-color 0.2s ease;
+        }
+
+        .editable-character:hover {
+            border-color: var(--st-gray-300);
+        }
+
+        .editable-character-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .editable-character-header input {
+            flex: 1;
+        }
+
         @media (min-width: 769px) and (max-width: 1024px) {
             .method-cards {
                 gap: 16px;
@@ -625,6 +763,8 @@
             }
         }
     </script>
+    <script src="auth.js?v=2"></script>
+    <script src="js/ws-client.js?v=2"></script>
     <script src="js/pages/create-ai.js"></script>
 </body>
 </html>
