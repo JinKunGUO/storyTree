@@ -1,9 +1,9 @@
 {
   "name": "storytree",
-  "version": "1.0.237",
+  "version": "1.0.238",
   "codename": "M4-BranchCompare",
   "stage": "MVP+",
-  "buildDate": "2026-05-20T11:53:37.428Z",
+  "buildDate": "2026-05-20T12:55:31.709Z",
   "commitHash": "a850863",
   "branch": "main",
   "repository": "storytree",
@@ -1583,6 +1583,12 @@
       ]
     },
     "1.0.237": {
+      "date": "2026-05-20",
+      "changes": [
+        "版本更新"
+      ]
+    },
+    "1.0.238": {
       "date": "2026-05-20",
       "changes": [
         "版本更新"
