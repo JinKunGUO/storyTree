@@ -87,6 +87,7 @@ model nodes {
   content         String            @db.LongText
   image           String?           @db.VarChar(1000)
   path            String            @db.VarChar(500)
+  sort_order      Int               @default(0)
   ai_generated    Boolean           @default(false)
   is_published    Boolean           @default(false)
   rating_avg      Float             @default(0)
@@ -118,6 +119,7 @@ model nodes {
   @@index([story_id, is_published, path])
   @@index([author_id, created_at])
   @@index([parent_id, is_published])
+  @@index([sort_order])
 }
 
 model notifications {
@@ -246,6 +248,7 @@ model users {
   active_token               String?                   @db.VarChar(500)
   isAdmin                    Boolean                   @default(false) @map("is_admin")
   isBanned                   Boolean                   @default(false) @map("is_banned")
+  is_virtual                 Boolean                   @default(false) @map("is_virtual")
   bannedAt                   DateTime?                 @map("banned_at")
   bannedReason               String?                   @map("banned_reason") @db.Text
   bannedBy                   Int?                      @map("banned_by")

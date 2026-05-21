@@ -149,7 +149,7 @@ router.post('/continuation/submit', async (req, res) => {
       where: { id: parseInt(storyId) },
       include: {
         nodes: {
-          orderBy: { path: 'asc' }
+          orderBy: { sort_order: 'asc' }
         }
       }
     });
@@ -801,8 +801,8 @@ router.post('/continuation/accept', async (req, res) => {
           is_published: true // 只考虑已发布的章节
         },
         orderBy: [
-          { path: 'desc' }, // 按路径降序，获取最后一章
-          { created_at: 'desc' } // 如果路径相同，按创建时间降序
+          { sort_order: 'desc' }, // 按排序号降序，获取最后一章
+          { created_at: 'desc' } // 如果排序号相同，按创建时间降序
         ]
       });
       
@@ -840,6 +840,14 @@ router.post('/continuation/accept', async (req, res) => {
       }
     }
 
+    // 计算 sort_order：同一故事内按最大值+1
+    const maxSortOrderV2 = await prisma.nodes.findFirst({
+      where: { story_id: task.story_id! },
+      orderBy: { sort_order: 'desc' },
+      select: { sort_order: true }
+    });
+    const nextSortOrderV2 = (maxSortOrderV2?.sort_order ?? 0) + 1;
+
     const node = await prisma.nodes.create({
       data: {
         story_id: task.story_id!,
@@ -848,6 +856,7 @@ router.post('/continuation/accept', async (req, res) => {
         title: selectedOption.title,
         content: selectedOption.content,
         path: newPath,
+        sort_order: nextSortOrderV2,
         ai_generated: true,
         is_published: publishImmediately, // 根据参数决定发布状态
         updated_at: new Date()

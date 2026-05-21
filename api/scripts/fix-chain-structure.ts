@@ -62,8 +62,8 @@ async function fixStory(storyId: number) {
     console.log(`    [${node.id}] parent=${node.parent_id} path="${node.path}" - ${node.title}`);
   }
 
-  // 计算新的 parent_id 和 path
-  const updates: { id: number; parent_id: number | null; path: string }[] = [];
+  // 计算新的 parent_id 和 path 和 sort_order
+  const updates: { id: number; parent_id: number | null; path: string; sort_order: number }[] = [];
   let currentPath = '';
 
   for (let i = 0; i < nodes.length; i++) {
@@ -79,9 +79,11 @@ async function fixStory(storyId: number) {
     }
     currentPath = newPath;
 
+    const newSortOrder = i + 1;
+
     // 只更新需要变化的
     if (nodes[i].parent_id !== newParentId || nodes[i].path !== newPath) {
-      updates.push({ id: nodes[i].id, parent_id: newParentId, path: newPath });
+      updates.push({ id: nodes[i].id, parent_id: newParentId, path: newPath, sort_order: newSortOrder });
     }
   }
 
@@ -106,7 +108,7 @@ async function fixStory(storyId: number) {
     updates.map(u =>
       prisma.nodes.update({
         where: { id: u.id },
-        data: { parent_id: u.parent_id, path: u.path }
+        data: { parent_id: u.parent_id, path: u.path, sort_order: u.sort_order }
       })
     )
   );

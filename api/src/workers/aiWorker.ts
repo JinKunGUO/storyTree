@@ -819,7 +819,7 @@ async function saveAllOptionsAsDraft(task: any, options: any[]) {
           is_published: true
         },
         orderBy: [
-          { path: 'desc' },
+          { sort_order: 'desc' },
           { created_at: 'desc' }
         ]
       });
@@ -860,6 +860,14 @@ async function saveAllOptionsAsDraft(task: any, options: any[]) {
 
     // 创建所有选项为草稿（作为分支）
     const createdNodes = [];
+    // 计算 sort_order 起始值
+    const maxSortOrderDraft = await prisma.nodes.findFirst({
+      where: { story_id: task.story_id! },
+      orderBy: { sort_order: 'desc' },
+      select: { sort_order: true }
+    });
+    let nextSortOrderDraft = (maxSortOrderDraft?.sort_order ?? 0) + 1;
+
     for (let i = 0; i < options.length; i++) {
       const option = options[i];
       const nodePath = i === 0 ? basePath : `${basePath}.${i + 1}`;
@@ -872,6 +880,7 @@ async function saveAllOptionsAsDraft(task: any, options: any[]) {
           title: `${option.title} (草稿${i + 1})`,
           content: option.content,
           path: nodePath,
+          sort_order: nextSortOrderDraft++,
           ai_generated: true,
           is_published: false, // 保存为草稿
           updated_at: new Date()
@@ -948,7 +957,7 @@ async function autoAcceptAiChapter(task: any, firstOption: any, publishImmediate
           is_published: true
         },
         orderBy: [
-          { path: 'desc' },
+          { sort_order: 'desc' },
           { created_at: 'desc' }
         ]
       });
@@ -988,6 +997,14 @@ async function autoAcceptAiChapter(task: any, firstOption: any, publishImmediate
     }
 
     // 创建节点
+    // 计算 sort_order：同一故事内按最大值+1
+    const maxSortOrderAuto = await prisma.nodes.findFirst({
+      where: { story_id: task.story_id! },
+      orderBy: { sort_order: 'desc' },
+      select: { sort_order: true }
+    });
+    const nextSortOrderAuto = (maxSortOrderAuto?.sort_order ?? 0) + 1;
+
     const node = await prisma.nodes.create({
       data: {
         story_id: task.story_id!,
@@ -996,6 +1013,7 @@ async function autoAcceptAiChapter(task: any, firstOption: any, publishImmediate
         title: firstOption.title,
         content: firstOption.content,
         path: newPath,
+        sort_order: nextSortOrderAuto,
         ai_generated: true,
         is_published: publishImmediately, // 根据参数决定发布状态
         updated_at: new Date()

@@ -94,7 +94,7 @@ router.post('/generate', async (req, res) => {
         const pathParts = node.path.split('.');
         const allNodes = await prisma.nodes.findMany({
           where: { story_id: node.story_id },
-          orderBy: { path: 'asc' }
+          orderBy: { sort_order: 'asc' }
         });
 
         // Find nodes in the current path
@@ -115,7 +115,7 @@ router.post('/generate', async (req, res) => {
         where: { id: parseInt(storyId) },
         include: {
           nodes: {
-            orderBy: { path: 'asc' },
+            orderBy: { sort_order: 'asc' },
             take: 5  // 获取最近5个章节作为上下文
           }
         }
@@ -361,6 +361,14 @@ router.post('/accept', async (req, res) => {
     });
     const newPath = `${parentNode.path}.${siblingCount + 1}`;
 
+    // 计算 sort_order：同一故事内按最大值+1
+    const maxSortOrderV1 = await prisma.nodes.findFirst({
+      where: { story_id: parentNode.story_id },
+      orderBy: { sort_order: 'desc' },
+      select: { sort_order: true }
+    });
+    const nextSortOrderV1 = (maxSortOrderV1?.sort_order ?? 0) + 1;
+
     // Create the AI-generated node
     const node = await prisma.nodes.create({
       data: {
@@ -370,6 +378,7 @@ router.post('/accept', async (req, res) => {
         title,
         content,
         path: newPath,
+        sort_order: nextSortOrderV1,
         ai_generated: true,
         updated_at: new Date()
       },

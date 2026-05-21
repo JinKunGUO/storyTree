@@ -449,7 +449,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
           select: { other_nodes: true, comments: true }
         }
       },
-      orderBy: { path: 'asc' }
+      orderBy: { sort_order: 'asc' }
     });
 
     // 计算统计数据

@@ -82,6 +82,14 @@ router.post('/', authenticateToken, async (req, res) => {
       }
 
       // 创建第一个节点
+      // 计算 sort_order：同一故事内按最大值+1
+      const maxSortOrder = await prisma.nodes.findFirst({
+        where: { story_id: parseInt(storyId) },
+        orderBy: { sort_order: 'desc' },
+        select: { sort_order: true }
+      });
+      const nextSortOrder = (maxSortOrder?.sort_order ?? 0) + 1;
+
       const node = await prisma.nodes.create({
         data: {
           story_id: parseInt(storyId),
@@ -91,6 +99,7 @@ router.post('/', authenticateToken, async (req, res) => {
           content,
           image: image || null,
           path: path || '1',
+          sort_order: nextSortOrder,
           is_published: shouldPublish, // 根据参数设置发布状态
           review_status: reviewCheck.needReview ? 'PENDING' : 'APPROVED',
           updated_at: new Date()
@@ -205,6 +214,14 @@ router.post('/', authenticateToken, async (req, res) => {
     });
     const newPath = path || `${parentNode.path}.${siblingCount + 1}`;
 
+    // 计算 sort_order：同一故事内按最大值+1
+    const maxSortOrder2 = await prisma.nodes.findFirst({
+      where: { story_id: parseInt(storyId) },
+      orderBy: { sort_order: 'desc' },
+      select: { sort_order: true }
+    });
+    const nextSortOrder2 = (maxSortOrder2?.sort_order ?? 0) + 1;
+
     const node = await prisma.nodes.create({
       data: {
         story_id: parseInt(storyId),
@@ -214,6 +231,7 @@ router.post('/', authenticateToken, async (req, res) => {
         content,
         image: image || null,
         path: newPath,
+        sort_order: nextSortOrder2,
         is_published: shouldPublish, // 根据参数设置发布状态
         review_status: reviewCheck.needReview ? 'PENDING' : 'APPROVED',
           updated_at: new Date()
@@ -1007,6 +1025,14 @@ router.post('/:id/branches', authenticateToken, async (req, res) => {
     });
     const newPath = `${parentNode.path}.${siblingCount + 1}`;
 
+    // 计算 sort_order：同一故事内按最大值+1
+    const maxSortOrder3 = await prisma.nodes.findFirst({
+      where: { story_id: parentNode.story_id },
+      orderBy: { sort_order: 'desc' },
+      select: { sort_order: true }
+    });
+    const nextSortOrder3 = (maxSortOrder3?.sort_order ?? 0) + 1;
+
     const node = await prisma.nodes.create({
       data: {
         story_id: parentNode.story_id,
@@ -1016,6 +1042,7 @@ router.post('/:id/branches', authenticateToken, async (req, res) => {
         content,
         image,
         path: newPath,
+        sort_order: nextSortOrder3,
         is_published: shouldPublish, // 根据参数设置发布状态
         review_status: reviewCheck.needReview ? 'PENDING' : 'APPROVED',
           updated_at: new Date()

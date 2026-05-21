@@ -16,6 +16,7 @@ const prisma = new PrismaClient();
  *   {
  *     "title": "故事标题",
  *     "description": "故事简介",
+ *     "author_name": "吴承恩",       // 可选：公版书原著作者，不填则使用管理员
  *     "tags": "标签1,标签2",
  *     "chapters": [
  *       { "title": "第一回 ...", "content": "正文内容..." },
@@ -32,6 +33,7 @@ interface ChapterData {
 interface StoryData {
   title: string;
   description?: string;
+  author_name?: string;  // 公版书原著作者，如"吴承恩"、"巴金"；不填则使用管理员
   tags?: string;
   cover_image?: string;
   chapters: ChapterData[];
@@ -65,13 +67,72 @@ async function getAdminUser() {
   return admin;
 }
 
-async function importStory(storyData: StoryData, authorId: number): Promise<{ storyId: number; nodeCount: number; wordCount: number }> {
-  // 检查是否已存在同名故事（断点续传）
-  const existing = await prisma.stories.findFirst({
-    where: { title: storyData.title, author_id: authorId }
+/**
+ * 获取或创建虚拟用户（公版书原著作者）
+ * - username 直接使用中文原名（如"吴承恩"），保持原语言
+ * - 虚拟用户不可登录，仅用于前端展示
+ * - 如已存在则复用
+ * - 权限管理仍由管理员控制
+ */
+async function getOrCreateVirtualUser(authorName: string, adminId: number): Promise<number> {
+  // 查找是否已存在同名虚拟用户
+  const existing = await prisma.users.findFirst({
+    where: { username: authorName, is_virtual: true }
   });
   if (existing) {
-    console.log(`  ⏭️  跳过已存在的故事: "${storyData.title}" (ID: ${existing.id})`);
+    console.log(`  🔁 复用虚拟用户: ${authorName} (ID: ${existing.id})`);
+    return existing.id;
+  }
+
+  // 生成随机强密码（虚拟用户不可登录）
+  const crypto = await import('crypto');
+  const randomPassword = crypto.randomBytes(32).toString('base64');
+
+  const virtualUser = await prisma.users.create({
+    data: {
+      username: authorName,             // 中文原名，如"吴承恩"
+      password: randomPassword,          // 不可登录的随机密码
+      is_virtual: true,
+      isAdmin: false,
+      email: null,
+      updatedAt: new Date(),
+    }
+  });
+
+  console.log(`  ✨ 创建虚拟用户: ${authorName} (ID: ${virtualUser.id})`);
+  return virtualUser.id;
+}
+
+async function importStory(storyData: StoryData, adminId: number): Promise<{ storyId: number; nodeCount: number; wordCount: number }> {
+  // 确定作者：有 author_name 则创建/复用虚拟用户，否则使用管理员
+  let authorId = adminId;
+  if (storyData.author_name?.trim()) {
+    authorId = await getOrCreateVirtualUser(storyData.author_name.trim(), adminId);
+    console.log(`  📝 作者: ${storyData.author_name.trim()} (虚拟用户 ID: ${authorId})`);
+  }
+
+  // 检查是否已存在同名故事（断点续传）
+  // 注意：按标题查找，不限制 author_id，因为已有故事可能以管理员身份导入
+  const existing = await prisma.stories.findFirst({
+    where: { title: storyData.title }
+  });
+  if (existing) {
+    // 如果故事已存在但 author_id 需要更新（之前以管理员身份导入，现在需要改为虚拟用户）
+    if (storyData.author_name?.trim() && existing.author_id === adminId) {
+      console.log(`  🔄 迁移作者: "${storyData.title}" 从管理员 → ${storyData.author_name.trim()}`);
+      await prisma.stories.update({
+        where: { id: existing.id },
+        data: { author_id: authorId }
+      });
+      // 同时更新该故事下所有节点的 author_id
+      const nodeResult = await prisma.nodes.updateMany({
+        where: { story_id: existing.id, author_id: adminId },
+        data: { author_id: authorId }
+      });
+      console.log(`  ✅ 已更新 (故事 + ${nodeResult.count} 个章节的作者)`);
+    } else {
+      console.log(`  ⏭️  跳过已存在的故事: "${storyData.title}" (ID: ${existing.id})`);
+    }
     return { storyId: existing.id, nodeCount: 0, wordCount: 0 };
   }
 
@@ -120,6 +181,7 @@ async function importStory(storyData: StoryData, authorId: number): Promise<{ st
           title: chapterTitle,
           content: chapter.content,
           path: nodePath,
+          sort_order: i + 1, // 使用整数排序，避免字符串字典序问题
           is_published: true,
           review_status: 'APPROVED',
           updated_at: new Date()
