@@ -2,6 +2,8 @@ import { PrismaClient } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
 
+const BATCH_SIZE = 50; // 每批导入的章节数，避免大事务超时
+
 const prisma = new PrismaClient();
 
 /**
@@ -112,10 +114,10 @@ async function importStory(storyData: StoryData, adminId: number): Promise<{ sto
   }
 
   // 检查是否已存在同名故事（断点续传）
-  // 注意：按标题查找，不限制 author_id，因为已有故事可能以管理员身份导入
   const existing = await prisma.stories.findFirst({
     where: { title: storyData.title }
   });
+
   if (existing) {
     // 如果故事已存在但 author_id 需要更新（之前以管理员身份导入，现在需要改为虚拟用户）
     if (storyData.author_name?.trim() && existing.author_id === adminId) {
@@ -124,7 +126,6 @@ async function importStory(storyData: StoryData, adminId: number): Promise<{ sto
         where: { id: existing.id },
         data: { author_id: authorId }
       });
-      // 同时更新该故事下所有节点的 author_id
       const nodeResult = await prisma.nodes.updateMany({
         where: { story_id: existing.id, author_id: adminId },
         data: { author_id: authorId }
@@ -140,9 +141,14 @@ async function importStory(storyData: StoryData, adminId: number): Promise<{ sto
     throw new Error(`故事 "${storyData.title}" 没有章节数据`);
   }
 
-  // 使用事务批量创建
-  const result = await prisma.$transaction(async (tx) => {
-    // 1. 创建故事
+  const chapters = storyData.chapters;
+  let storyId: number;
+  let rootNodeId: number | null = null;
+  let totalWords = 0;
+  let importedCount = 0;
+
+  // 第一步：创建故事记录（单独事务，含超时保护）
+  storyId = (await prisma.$transaction(async (tx) => {
     const story = await tx.stories.create({
       data: {
         title: storyData.title,
@@ -153,59 +159,78 @@ async function importStory(storyData: StoryData, adminId: number): Promise<{ sto
         visibility: 'public',
         allow_branch: true,
         allow_comment: true,
-        auto_approve_collaborators: true,  // 自动批准协作申请（允许任何人协作）
-        require_collaborator_review: false, // 协作者内容无需审核
+        auto_approve_collaborators: true,
+        require_collaborator_review: false,
         updated_at: new Date()
       }
     });
+    return story.id;
+  }, { maxWait: 10000, timeout: 30000 }));
 
-    // 2. 逐章创建节点（平级结构：所有章节都是 root 的直接子节点）
-    //    结构示意: root -> [第1章, 第2章, 第3章, ...]（平级，无嵌套）
+  console.log(`  📖 故事已创建 (ID: ${storyId})，开始分批导入 ${chapters.length} 章...`);
+
+  // 第二步：分批导入章节，每批 BATCH_SIZE 章
+  for (let batchStart = 0; batchStart < chapters.length; batchStart += BATCH_SIZE) {
+    const batchEnd = Math.min(batchStart + BATCH_SIZE, chapters.length);
+    const batchChapters = chapters.slice(batchStart, batchEnd);
+    const batchNum = Math.floor(batchStart / BATCH_SIZE) + 1;
+    const totalBatches = Math.ceil(chapters.length / BATCH_SIZE);
+
+    // 查询当前故事最后一个节点，作为本批首章的 parent
     let prevNodeId: number | null = null;
-    let rootNodeId: number | null = null;
-    let totalWords = 0;
-
-    for (let i = 0; i < storyData.chapters.length; i++) {
-      const chapter = storyData.chapters[i];
-      // path 计算：平级结构 "1", "2", "3", ...（避免深度嵌套）
-      const nodePath = `${i + 1}`;
-      
-      // 章节标题为空时自动生成
-      const chapterTitle = chapter.title?.trim() || `第 ${i + 1} 章`;
-
-      const createdNode: { id: number } = await tx.nodes.create({
-        data: {
-          story_id: story.id,
-          parent_id: prevNodeId, // 每章挂在上一章下面，形成链式结构
-          author_id: authorId,
-          title: chapterTitle,
-          content: chapter.content,
-          path: nodePath,
-          sort_order: i + 1, // 使用整数排序，避免字符串字典序问题
-          is_published: true,
-          review_status: 'APPROVED',
-          updated_at: new Date()
-        }
+    if (batchStart > 0) {
+      const lastNode = await prisma.nodes.findFirst({
+        where: { story_id: storyId },
+        orderBy: { sort_order: 'desc' },
+        select: { id: true }
       });
-
-      totalWords += chapter.content.length;
-
-      if (i === 0) {
-        rootNodeId = createdNode.id;
-      }
-      prevNodeId = createdNode.id;
+      prevNodeId = lastNode?.id ?? null;
     }
 
-    // 3. 更新故事的 root_node_id
-    await tx.stories.update({
-      where: { id: story.id },
+    await prisma.$transaction(async (tx) => {
+      for (let i = 0; i < batchChapters.length; i++) {
+        const globalIndex = batchStart + i;
+        const chapter = batchChapters[i];
+        const nodePath = `${globalIndex + 1}`;
+        const chapterTitle = chapter.title?.trim() || `第 ${globalIndex + 1} 章`;
+
+        const createdNode: { id: number } = await tx.nodes.create({
+          data: {
+            story_id: storyId,
+            parent_id: prevNodeId,
+            author_id: authorId,
+            title: chapterTitle,
+            content: chapter.content,
+            path: nodePath,
+            sort_order: globalIndex + 1,
+            is_published: true,
+            review_status: 'APPROVED',
+            updated_at: new Date()
+          }
+        });
+
+        totalWords += chapter.content.length;
+        prevNodeId = createdNode.id;
+
+        if (globalIndex === 0) {
+          rootNodeId = createdNode.id;
+        }
+      }
+    }, { maxWait: 10000, timeout: 30000 });
+
+    importedCount += batchChapters.length;
+    console.log(`  📦 批次 ${batchNum}/${totalBatches} 完成 (${importedCount}/${chapters.length} 章)`);
+  }
+
+  // 第三步：更新故事的 root_node_id
+  if (rootNodeId) {
+    await prisma.stories.update({
+      where: { id: storyId },
       data: { root_node_id: rootNodeId }
     });
+  }
 
-    return { storyId: story.id, nodeCount: storyData.chapters.length, wordCount: totalWords };
-  });
-
-  return result;
+  return { storyId, nodeCount: chapters.length, wordCount: totalWords };
 }
 
 async function main() {
@@ -297,13 +322,25 @@ async function main() {
       }
     } catch (error: any) {
       failed++;
-      // 显示更详细的错误信息
       const errorMsg = error.message || String(error);
       const errorCode = error.code || '';
       console.log(`  ❌ 导入失败: ${errorMsg}`);
       if (errorCode) console.log(`     错误代码: ${errorCode}`);
-      // 如果是 Prisma 错误，显示更多信息
       if (error.meta) console.log(`     详情: ${JSON.stringify(error.meta)}`);
+
+      // 如果是连接断开错误，尝试重连后继续处理后续文件
+      if (errorCode === 'P1017' || errorMsg.includes('closed the connection') || errorMsg.includes('Connection')) {
+        console.log('  🔄 检测到数据库连接断开，等待 2 秒后重连...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        try {
+          await prisma.$queryRaw`SELECT 1`;
+          console.log('  ✅ 数据库连接已恢复');
+        } catch {
+          // 如果查不到，重新连接
+          await prisma.$connect();
+          console.log('  ✅ 数据库重新连接成功');
+        }
+      }
     }
   }
 
