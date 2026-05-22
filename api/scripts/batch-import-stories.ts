@@ -261,7 +261,7 @@ async function main() {
       return;
     }
     files = fs.readdirSync(SEED_DATA_DIR)
-      .filter(f => f.endsWith('.json'))
+      .filter(f => f.endsWith('.json') && !f.startsWith('._'))
       .map(f => path.join(SEED_DATA_DIR, f));
   }
 

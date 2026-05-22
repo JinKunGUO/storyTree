@@ -194,6 +194,62 @@
     .badge-quarterly { background: #a8d5ba; color: #1e5c3a; }
     .badge-yearly { background: #ffd700; color: #8b6900; }
     .badge-enterprise { background: #b9f2ff; color: #006a7f; }
+
+    /* 子选项卡（内容管理内部切换） */
+    .tab-inner {
+      padding: 6px 16px;
+      background: none;
+      border: 1px solid var(--st-gray-300, #D1D5DB);
+      border-radius: var(--st-radius-md, 6px);
+      cursor: pointer;
+      font-size: var(--st-text-sm, 14px);
+      color: var(--st-text-secondary, #6B7280);
+      transition: all 0.15s;
+    }
+    .tab-inner:hover { background: var(--st-gray-100, #F3F4F6); }
+    .tab-inner.active {
+      background: var(--st-primary-500, #6366F1);
+      color: white;
+      border-color: var(--st-primary-500, #6366F1);
+    }
+
+    /* 表格样式 */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .data-table th {
+      text-align: left;
+      padding: 10px 12px;
+      background: var(--st-gray-50, #F9FAFB);
+      border-bottom: 2px solid var(--st-gray-200, #E5E7EB);
+      color: var(--st-text-secondary, #6B7280);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .data-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--st-gray-100, #F3F4F6);
+      color: var(--st-text-primary, #111827);
+    }
+    .data-table tr:hover td { background: var(--st-gray-50, #F9FAFB); }
+
+    /* 简易趋势表格 */
+    .trend-table td:nth-child(2), .trend-table td:nth-child(3) { text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* 小标签 */
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .tag-active { background: #d1fae5; color: #065f46; }
+    .tag-inactive { background: #fee2e2; color: #991b1b; }
+    .tag-admin { background: #ede9fe; color: #5b21b6; }
+    .tag-user { background: #e0f2fe; color: #075985; }
   </style>
 </head>
 <body>
@@ -210,11 +266,15 @@
     <div class="stats" id="stats"></div>
 
     <!-- 选项卡导航 -->
-    <div class="tabs">
+    <div class="tabs" style="flex-wrap: wrap;">
       <button class="tab active" onclick="switchTab('content')">📝 内容审核</button>
       <button class="tab" onclick="switchTab('withdrawal')">💰 提现审核</button>
       <button class="tab" onclick="switchTab('membership')">👑 会员管理</button>
       <button class="tab" onclick="switchTab('users')">👥 用户管理</button>
+      <button class="tab" onclick="switchTab('contentMgmt')">📚 内容管理</button>
+      <button class="tab" onclick="switchTab('points')">💎 积分管理</button>
+      <button class="tab" onclick="switchTab('dashboard')">📊 数据仪表盘</button>
+      <button class="tab" onclick="switchTab('invitations')">🎫 邀请码管理</button>
     </div>
 
     <!-- 内容审核 -->
@@ -280,6 +340,194 @@
       <!-- 分页 -->
       <div id="usersPagination" style="margin-top: 20px; text-align: center;"></div>
     </div>
+
+    <!-- 内容管理 -->
+    <div id="contentMgmtTab" class="tab-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0;">📚 内容管理</h2>
+        <div style="display: flex; gap: 10px;">
+          <button class="tab-inner active" onclick="switchContentSubTab('stories')">故事管理</button>
+          <button class="tab-inner" onclick="switchContentSubTab('comments')">评论管理</button>
+        </div>
+      </div>
+
+      <!-- 故事管理 -->
+      <div id="storiesSubTab">
+        <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+          <input type="text" id="storySearchInput" placeholder="搜索故事标题或简介" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd; flex: 1;">
+          <select id="storyVisibilityFilter" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+            <option value="">全部可见性</option>
+            <option value="public">公开</option>
+            <option value="private">私密</option>
+            <option value="password">密码保护</option>
+          </select>
+          <button class="btn btn-success" onclick="loadStories()">🔍 搜索</button>
+        </div>
+        <div id="storiesList"></div>
+        <div id="storiesPagination" style="margin-top: 20px; text-align: center;"></div>
+      </div>
+
+      <!-- 评论管理 -->
+      <div id="commentsSubTab" style="display: none;">
+        <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+          <input type="text" id="commentSearchInput" placeholder="搜索评论内容" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd; flex: 1;">
+          <select id="commentDeletedFilter" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+            <option value="">全部评论</option>
+            <option value="false">未删除</option>
+            <option value="true">已删除</option>
+          </select>
+          <button class="btn btn-success" onclick="loadComments()">🔍 搜索</button>
+        </div>
+        <div id="commentsList"></div>
+        <div id="commentsPagination" style="margin-top: 20px; text-align: center;"></div>
+      </div>
+    </div>
+
+    <!-- 积分管理 -->
+    <div id="pointsTab" class="tab-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0;">💎 积分管理</h2>
+      </div>
+
+      <!-- 积分调整 -->
+      <div class="review-item" style="margin-bottom: 20px;">
+        <h3 style="margin-bottom: 15px;">手动调整积分</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div>
+            <label style="display: block; margin-bottom: 4px; font-size: 14px; color: var(--st-text-secondary);">用户 ID</label>
+            <input type="number" id="pointsUserId" placeholder="输入用户 ID" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd;">
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 4px; font-size: 14px; color: var(--st-text-secondary);">调整数量（正数增加，负数扣除）</label>
+            <input type="number" id="pointsAmount" placeholder="如：100 或 -50" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd;">
+          </div>
+          <div style="grid-column: 1 / -1;">
+            <label style="display: block; margin-bottom: 4px; font-size: 14px; color: var(--st-text-secondary);">调整原因</label>
+            <input type="text" id="pointsReason" placeholder="请填写调整原因" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd;">
+          </div>
+        </div>
+        <div style="margin-top: 12px;">
+          <button class="btn btn-success" onclick="adjustPoints()">✅ 执行调整</button>
+        </div>
+      </div>
+
+      <!-- 积分交易记录 -->
+      <h3 style="margin-bottom: 15px;">积分交易记录</h3>
+      <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+        <input type="number" id="pointsTxUserId" placeholder="按用户 ID 筛选" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd; width: 150px;">
+        <select id="pointsTxType" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+          <option value="">全部类型</option>
+          <option value="admin_add">管理员增加</option>
+          <option value="admin_deduct">管理员扣除</option>
+          <option value="ai_usage">AI 使用</option>
+          <option value="checkin">签到</option>
+          <option value="invite_reward">邀请奖励</option>
+          <option value="content_reward">创作奖励</option>
+        </select>
+        <button class="btn btn-success" onclick="loadPointTransactions()">🔍 查询</button>
+      </div>
+      <div id="pointsTransactionsList"></div>
+      <div id="pointsTransactionsPagination" style="margin-top: 20px; text-align: center;"></div>
+    </div>
+
+    <!-- 数据仪表盘 -->
+    <div id="dashboardTab" class="tab-content">
+      <h2 style="margin-bottom: 20px;">📊 数据仪表盘</h2>
+
+      <!-- 总览数据 -->
+      <div class="stats" id="dashboardOverview" style="margin-bottom: 30px;"></div>
+
+      <!-- 用户增长趋势 -->
+      <div class="review-item" style="margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h3>用户增长趋势</h3>
+          <select id="userGrowthDays" style="padding: 6px; border-radius: 6px; border: 1px solid #ddd;" onchange="loadUserGrowth()">
+            <option value="7">近 7 天</option>
+            <option value="30" selected>近 30 天</option>
+            <option value="90">近 90 天</option>
+          </select>
+        </div>
+        <div id="userGrowthChart" style="max-height: 300px; overflow-y: auto;"></div>
+      </div>
+
+      <!-- 内容统计趋势 -->
+      <div class="review-item" style="margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h3>内容创建趋势</h3>
+          <select id="contentStatsDays" style="padding: 6px; border-radius: 6px; border: 1px solid #ddd;" onchange="loadContentStats()">
+            <option value="7">近 7 天</option>
+            <option value="30" selected>近 30 天</option>
+            <option value="90">近 90 天</option>
+          </select>
+        </div>
+        <div id="contentStatsChart" style="max-height: 300px; overflow-y: auto;"></div>
+      </div>
+
+      <!-- 活跃用户 -->
+      <div class="review-item">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h3>活跃用户排行</h3>
+          <select id="activeUsersDays" style="padding: 6px; border-radius: 6px; border: 1px solid #ddd;" onchange="loadActiveUsers()">
+            <option value="7" selected>近 7 天</option>
+            <option value="30">近 30 天</option>
+          </select>
+        </div>
+        <div id="activeUsersList"></div>
+      </div>
+    </div>
+
+    <!-- 邀请码管理 -->
+    <div id="invitationsTab" class="tab-content">
+      <h2 style="margin-bottom: 20px;">🎫 邀请码管理</h2>
+
+      <!-- 统计数据 -->
+      <div class="stats" id="invitationStats" style="margin-bottom: 20px;"></div>
+
+      <!-- 批量生成 -->
+      <div class="review-item" style="margin-bottom: 20px;">
+        <h3 style="margin-bottom: 15px;">批量生成邀请码</h3>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+          <div>
+            <label style="display: block; margin-bottom: 4px; font-size: 14px; color: var(--st-text-secondary);">生成数量</label>
+            <input type="number" id="inviteCount" value="10" min="1" max="100" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 4px; font-size: 14px; color: var(--st-text-secondary);">奖励积分</label>
+            <input type="number" id="inviteBonusPoints" value="100" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 4px; font-size: 14px; color: var(--st-text-secondary);">最大使用次数</label>
+            <input type="number" id="inviteMaxUses" value="1" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 4px; font-size: 14px; color: var(--st-text-secondary);">有效天数</label>
+            <input type="number" id="inviteExpiresDays" value="30" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+          </div>
+        </div>
+        <div style="margin-top: 12px; display: flex; gap: 10px; align-items: center;">
+          <button class="btn btn-success" onclick="generateInviteCodes()">🎯 批量生成</button>
+          <div id="generatedCodesArea" style="display: none;"></div>
+        </div>
+      </div>
+
+      <!-- 邀请码列表 -->
+      <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+        <select id="inviteTypeFilter" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+          <option value="">全部类型</option>
+          <option value="admin">管理员生成</option>
+          <option value="user">用户生成</option>
+        </select>
+        <select id="inviteStatusFilter" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+          <option value="">全部状态</option>
+          <option value="active">启用</option>
+          <option value="inactive">禁用</option>
+        </select>
+        <button class="btn btn-success" onclick="loadInviteCodes()">🔍 筛选</button>
+      </div>
+      <div id="inviteCodesList"></div>
+      <div id="inviteCodesPagination" style="margin-top: 20px; text-align: center;"></div>
+    </div>
+  </div>
   </div>
 
   <script>
@@ -512,17 +760,37 @@
 
       // 显示对应内容
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      if (tab === 'content') {
-        document.getElementById('contentTab').classList.add('active');
-      } else if (tab === 'withdrawal') {
-        document.getElementById('withdrawalTab').classList.add('active');
-      } else if (tab === 'membership') {
-        document.getElementById('membershipTab').classList.add('active');
+      const tabMap = {
+        content: 'contentTab',
+        withdrawal: 'withdrawalTab',
+        membership: 'membershipTab',
+        users: 'usersTab',
+        contentMgmt: 'contentMgmtTab',
+        points: 'pointsTab',
+        dashboard: 'dashboardTab',
+        invitations: 'invitationsTab'
+      };
+      const targetTab = document.getElementById(tabMap[tab]);
+      if (targetTab) targetTab.classList.add('active');
+
+      // 懒加载：首次切换到该选项卡时加载数据
+      if (tab === 'membership') {
         loadMembershipStats();
         loadMembers();
       } else if (tab === 'users') {
-        document.getElementById('usersTab').classList.add('active');
         loadUsers();
+      } else if (tab === 'contentMgmt') {
+        loadStories();
+      } else if (tab === 'points') {
+        loadPointTransactions();
+      } else if (tab === 'dashboard') {
+        loadDashboardOverview();
+        loadUserGrowth();
+        loadContentStats();
+        loadActiveUsers();
+      } else if (tab === 'invitations') {
+        loadInvitationStats();
+        loadInviteCodes();
       }
     }
 
@@ -845,7 +1113,117 @@
 
     // 查看会员详情
     function viewMemberDetail(memberId) {
-      window.toast ? toast.info('会员详情功能开发中，会员 ID: ' + memberId) : alert('会员详情功能开发中...\n会员 ID: ' + memberId);
+      // 加载会员详情并支持调整
+      const adjustMember = async (userId) => {
+        const tier = document.getElementById(`memberTier_${userId}`)?.value;
+        const expiresAt = document.getElementById(`memberExpires_${userId}`)?.value;
+        const reason = document.getElementById(`memberReason_${userId}`)?.value;
+
+        if (!tier || !expiresAt) {
+          window.toast ? toast.warning('请填写等级和到期时间') : alert('请填写等级和到期时间');
+          return;
+        }
+
+        try {
+          const data = await apiRequest('POST', `/admin/membership/members/${userId}/adjust`, { tier, expiresAt, reason });
+          window.toast ? toast.success(data.message || '会员状态已调整') : alert('✅ 会员状态已调整');
+          loadMembers();
+        } catch (e) {
+          window.toast ? toast.error('调整失败: ' + e.message) : alert('调整失败: ' + e.message);
+        }
+      };
+
+      // 加载会员订单
+      const loadMemberOrders = async (userId) => {
+        try {
+          const data = await apiRequest('GET', `/admin/membership/orders?page=1&limit=10`);
+          const orders = (data.orders || []).filter(o => o.user_id === userId);
+          let ordersHtml = '';
+          if (orders.length === 0) {
+            ordersHtml = '<p style="color: var(--st-text-tertiary);">暂无订单记录</p>';
+          } else {
+            ordersHtml = '<div style="max-height:200px;overflow-y:auto;"><table class="data-table"><thead><tr><th>订单号</th><th>类型</th><th>金额</th><th>状态</th><th>时间</th></tr></thead><tbody>';
+            orders.forEach(o => {
+              const statusMap = { pending: '待支付', paid: '已支付', failed: '失败', refunded: '已退款' };
+              ordersHtml += `<tr><td>${o.id}</td><td>${o.type || '-'}</td><td>¥${o.amount || 0}</td><td>${statusMap[o.status] || o.status}</td><td>${new Date(o.created_at).toLocaleString('zh-CN')}</td></tr>`;
+            });
+            ordersHtml += '</tbody></table></div>';
+          }
+          document.getElementById(`memberOrders_${userId}`).innerHTML = ordersHtml;
+        } catch (e) {
+          console.error('加载订单失败:', e);
+        }
+      };
+
+      // 先获取会员信息
+      apiRequest('GET', `/admin/membership/members?page=1&limit=100`).then(data => {
+        const member = (data.members || []).find(m => m.id === memberId);
+        if (!member) {
+          window.toast ? toast.error('未找到会员信息') : alert('未找到会员信息');
+          return;
+        }
+
+        const tierOptions = [
+          { value: 'trial', label: '体验会员' },
+          { value: 'monthly', label: '月度会员' },
+          { value: 'quarterly', label: '季度会员' },
+          { value: 'yearly', label: '年度会员' },
+          { value: 'enterprise', label: '企业版' }
+        ];
+
+        const currentExpires = member.membership_expires_at
+          ? new Date(member.membership_expires_at).toISOString().split('T')[0]
+          : new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().split('T')[0];
+
+        const html = `
+          <div style="line-height: 1.8;">
+            <div style="margin-bottom: 16px;">
+              <strong>用户：</strong>${escapeHtml(member.username)}（ID: ${member.id}）<br>
+              <strong>当前等级：</strong><span class="tag ${getBadgeClass(member.membership_tier)}">${tierOptions.find(t => t.value === member.membership_tier)?.label || member.membership_tier}</span><br>
+              <strong>到期时间：</strong>${member.membership_expires_at ? new Date(member.membership_expires_at).toLocaleDateString('zh-CN') : '未设置'}
+            </div>
+            <hr style="margin: 12px 0; border: none; border-top: 1px solid #e5e7eb;">
+            <h4 style="margin-bottom: 10px;">调整会员状态</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+              <div>
+                <label style="display:block;font-size:13px;color:var(--st-text-secondary);margin-bottom:4px;">会员等级</label>
+                <select id="memberTier_${member.id}" style="width:100%;padding:6px;border-radius:6px;border:1px solid #ddd;">
+                  ${tierOptions.map(t => `<option value="${t.value}" ${t.value === member.membership_tier ? 'selected' : ''}>${t.label}</option>`).join('')}
+                </select>
+              </div>
+              <div>
+                <label style="display:block;font-size:13px;color:var(--st-text-secondary);margin-bottom:4px;">到期时间</label>
+                <input type="date" id="memberExpires_${member.id}" value="${currentExpires}" style="width:100%;padding:6px;border-radius:6px;border:1px solid #ddd;">
+              </div>
+            </div>
+            <div style="margin-bottom: 10px;">
+              <label style="display:block;font-size:13px;color:var(--st-text-secondary);margin-bottom:4px;">调整原因</label>
+              <input type="text" id="memberReason_${member.id}" placeholder="如：补偿、活动赠送等" style="width:100%;padding:6px;border-radius:6px;border:1px solid #ddd;">
+            </div>
+            <button class="btn btn-success" onclick="window._adjustMember(${member.id})">✅ 调整会员</button>
+            <hr style="margin: 16px 0; border: none; border-top: 1px solid #e5e7eb;">
+            <h4 style="margin-bottom: 10px;">订单记录</h4>
+            <div id="memberOrders_${member.id}"><div class="loading"></div></div>
+          </div>
+        `;
+
+        // 暴露调整函数到全局
+        window._adjustMember = adjustMember;
+
+        if (window.showModal) {
+          showModal({ title: '会员详情', content: html, showCancel: false, confirmText: '关闭' });
+        } else {
+          // fallback
+          const div = document.createElement('div');
+          div.innerHTML = html;
+          document.body.appendChild(div);
+        }
+
+        // 加载订单
+        loadMemberOrders(member.id);
+      }).catch(e => {
+        window.toast ? toast.error('加载会员详情失败: ' + e.message) : alert('加载会员详情失败: ' + e.message);
+      });
     }
 
     // ========== 用户管理功能 ==========
@@ -1170,6 +1548,383 @@
 
     // 启动
     document.addEventListener('DOMContentLoaded', init);
+
+    // ========== 内容管理功能 ==========
+
+    let currentStoryPage = 1;
+    let currentCommentPage = 1;
+
+    function switchContentSubTab(subTab) {
+      document.querySelectorAll('.tab-inner').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById('storiesSubTab').style.display = subTab === 'stories' ? 'block' : 'none';
+      document.getElementById('commentsSubTab').style.display = subTab === 'comments' ? 'block' : 'none';
+      if (subTab === 'stories') loadStories();
+      else loadComments();
+    }
+
+    async function loadStories(page = 1) {
+      currentStoryPage = page;
+      const listDiv = document.getElementById('storiesList');
+      listDiv.innerHTML = '<div class="loading"></div>';
+      try {
+        const search = document.getElementById('storySearchInput').value;
+        const visibility = document.getElementById('storyVisibilityFilter').value;
+        let url = `/admin/content/stories?page=${page}&limit=10`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (visibility) url += `&visibility=${visibility}`;
+        const data = await apiRequest('GET', url);
+        const stories = data.stories || [];
+        const pagination = data.pagination || {};
+        if (stories.length === 0) { listDiv.innerHTML = '<div class="empty">暂无故事数据</div>'; document.getElementById('storiesPagination').innerHTML = ''; return; }
+        listDiv.innerHTML = stories.map(s => `
+          <div class="review-item">
+            <div class="header">
+              <div>
+                <h3>${escapeHtml(s.title)}</h3>
+                <div class="meta">作者：${escapeHtml(s.author?.username || '-')} | 可见性：${s.visibility} | 创建：${new Date(s.created_at).toLocaleString('zh-CN')}</div>
+              </div>
+              <div style="text-align:right;">
+                <span style="font-size:13px;color:var(--st-text-secondary);">章节 ${s._count?.nodes || 0} | 收藏 ${s._count?.bookmarks || 0} | 关注 ${s._count?.followers || 0}</span>
+              </div>
+            </div>
+            <div style="color:var(--st-text-secondary);font-size:14px;margin-bottom:12px;">${escapeHtml(s.description?.substring(0, 150) || '（无简介）')}${s.description?.length > 150 ? '...' : ''}</div>
+            <div class="actions">
+              <a href="/story.html?id=${s.id}" target="_blank" class="btn" style="background:var(--st-primary-500);color:white;text-decoration:none;">📖 查看</a>
+              <button class="btn btn-danger" onclick="deleteStory(${s.id}, '${escapeHtml(s.title)}')">🗑️ 删除</button>
+            </div>
+          </div>
+        `).join('');
+        renderPagination('storiesPagination', pagination, loadStories);
+      } catch (e) { listDiv.innerHTML = `<p style="color:red;">加载失败: ${e.message}</p>`; }
+    }
+
+    async function deleteStory(storyId, title) {
+      const doDelete = async () => {
+        try {
+          const data = await apiRequest('DELETE', `/admin/content/stories/${storyId}`);
+          window.toast ? toast.success(data.message) : alert('✅ ' + data.message);
+          loadStories(currentStoryPage);
+        } catch (e) { window.toast ? toast.error('删除失败: ' + e.message) : alert('删除失败: ' + e.message); }
+      };
+      if (window.showDangerConfirm) {
+        showDangerConfirm(`确定要删除故事「${title}」吗？\n此操作将级联删除所有章节和评论，不可恢复！`, doDelete, { title: '删除故事', confirmText: '确认删除' });
+      } else if (confirm(`确定要删除故事「${title}」吗？\n此操作将级联删除所有章节和评论，不可恢复！`)) {
+        await doDelete();
+      }
+    }
+
+    async function loadComments(page = 1) {
+      currentCommentPage = page;
+      const listDiv = document.getElementById('commentsList');
+      listDiv.innerHTML = '<div class="loading"></div>';
+      try {
+        const search = document.getElementById('commentSearchInput').value;
+        const deleted = document.getElementById('commentDeletedFilter').value;
+        let url = `/admin/content/comments?page=${page}&limit=15`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (deleted) url += `&deleted=${deleted}`;
+        const data = await apiRequest('GET', url);
+        const comments = data.comments || [];
+        const pagination = data.pagination || {};
+        if (comments.length === 0) { listDiv.innerHTML = '<div class="empty">暂无评论数据</div>'; document.getElementById('commentsPagination').innerHTML = ''; return; }
+        listDiv.innerHTML = comments.map(c => `
+          <div class="review-item" style="${c.is_deleted ? 'opacity:0.6;' : ''}">
+            <div class="header">
+              <div>
+                <div class="meta">
+                  用户：${escapeHtml(c.user?.username || '-')} |
+                  章节：<a href="/chapter.html?id=${c.node?.id}" target="_blank" style="color:var(--st-primary-500);">${escapeHtml(c.node?.title || '-')}</a> |
+                  ${c.is_deleted ? '<span style="color:var(--st-error-500);">已删除</span>' : '正常'} |
+                  ${new Date(c.created_at).toLocaleString('zh-CN')}
+                </div>
+              </div>
+            </div>
+            <div class="content">${escapeHtml(c.content)}</div>
+            <div class="actions">
+              ${!c.is_deleted ? `<button class="btn btn-danger" onclick="deleteComment(${c.id})">🗑️ 删除评论</button>` : '<span style="color:var(--st-text-tertiary);font-size:13px;">已软删除</span>'}
+              ${c.node ? `<button class="btn" style="background:var(--st-gray-400);color:white;" onclick="hideNode(${c.node.id}, '${escapeHtml(c.node.title?.substring(0, 30) || '')}')">🚫 隐藏章节</button>` : ''}
+            </div>
+          </div>
+        `).join('');
+        renderPagination('commentsPagination', pagination, loadComments);
+      } catch (e) { listDiv.innerHTML = `<p style="color:red;">加载失败: ${e.message}</p>`; }
+    }
+
+    async function deleteComment(commentId) {
+      const doDelete = async () => {
+        try {
+          const data = await apiRequest('DELETE', `/admin/content/comments/${commentId}`);
+          window.toast ? toast.success(data.message) : alert('✅ ' + data.message);
+          loadComments(currentCommentPage);
+        } catch (e) { window.toast ? toast.error('删除失败: ' + e.message) : alert('删除失败: ' + e.message); }
+      };
+      if (window.showDangerConfirm) {
+        showDangerConfirm('确定要删除这条评论吗？（软删除）', doDelete, { title: '删除评论', confirmText: '确认删除' });
+      } else if (confirm('确定要删除这条评论吗？（软删除）')) { await doDelete(); }
+    }
+
+    async function hideNode(nodeId, nodeTitle) {
+      const reason = prompt(`隐藏章节「${nodeTitle}」的原因（可选）：`);
+      if (reason === null) return;
+      try {
+        const data = await apiRequest('POST', `/admin/content/nodes/${nodeId}/hide`, { reason: reason || '违反社区规范' });
+        window.toast ? toast.success(data.message) : alert('✅ ' + data.message);
+      } catch (e) { window.toast ? toast.error('隐藏失败: ' + e.message) : alert('隐藏失败: ' + e.message); }
+    }
+
+    // ========== 积分管理功能 ==========
+
+    let currentPointsTxPage = 1;
+
+    async function adjustPoints() {
+      const userId = parseInt(document.getElementById('pointsUserId').value);
+      const amount = parseInt(document.getElementById('pointsAmount').value);
+      const reason = document.getElementById('pointsReason').value.trim();
+
+      if (!userId || isNaN(userId)) { window.toast ? toast.warning('请输入有效的用户 ID') : alert('请输入有效的用户 ID'); return; }
+      if (!amount || amount === 0 || isNaN(amount)) { window.toast ? toast.warning('请输入有效的调整数量（正数增加，负数扣除）') : alert('请输入有效的调整数量'); return; }
+      if (!reason) { window.toast ? toast.warning('请填写调整原因') : alert('请填写调整原因'); return; }
+
+      const doAdjust = async () => {
+        try {
+          const data = await apiRequest('POST', `/admin/points/users/${userId}/adjust`, { amount, reason });
+          window.toast ? toast.success(data.message) : alert('✅ ' + data.message);
+          document.getElementById('pointsUserId').value = '';
+          document.getElementById('pointsAmount').value = '';
+          document.getElementById('pointsReason').value = '';
+          loadPointTransactions();
+        } catch (e) { window.toast ? toast.error('调整失败: ' + e.message) : alert('调整失败: ' + e.message); }
+      };
+
+      const actionText = amount > 0 ? `增加 ${amount} 积分` : `扣除 ${Math.abs(amount)} 积分`;
+      if (window.showConfirm) {
+        showConfirm(`确定为用户 ID ${userId} ${actionText}吗？\n原因：${reason}`, doAdjust, { title: '积分调整', confirmText: '确认调整' });
+      } else if (confirm(`确定为用户 ID ${userId} ${actionText}吗？\n原因：${reason}`)) { await doAdjust(); }
+    }
+
+    async function loadPointTransactions(page = 1) {
+      currentPointsTxPage = page;
+      const listDiv = document.getElementById('pointsTransactionsList');
+      listDiv.innerHTML = '<div class="loading"></div>';
+      try {
+        const userId = document.getElementById('pointsTxUserId').value;
+        const type = document.getElementById('pointsTxType').value;
+        let url = `/admin/points/transactions?page=${page}&limit=20`;
+        if (userId) url += `&userId=${userId}`;
+        if (type) url += `&type=${type}`;
+        const data = await apiRequest('GET', url);
+        const txs = data.transactions || [];
+        const pagination = data.pagination || {};
+        if (txs.length === 0) { listDiv.innerHTML = '<div class="empty">暂无积分交易记录</div>'; document.getElementById('pointsTransactionsPagination').innerHTML = ''; return; }
+        const typeMap = { admin_add: '管理员增加', admin_deduct: '管理员扣除', ai_usage: 'AI 使用', checkin: '签到', invite_reward: '邀请奖励', content_reward: '创作奖励', purchase: '购买', unlock: '解锁' };
+        listDiv.innerHTML = `<table class="data-table"><thead><tr><th>用户</th><th>金额</th><th>类型</th><th>描述</th><th>时间</th></tr></thead><tbody>${
+          txs.map(t => `<tr>
+            <td>${escapeHtml(t.user?.username || '-')} <span style="color:var(--st-text-tertiary);font-size:12px;">(ID:${t.user_id})</span></td>
+            <td style="color:${t.amount > 0 ? 'var(--st-success-500)' : 'var(--st-error-500)'};font-weight:600;">${t.amount > 0 ? '+' : ''}${t.amount}</td>
+            <td><span class="tag ${t.type.startsWith('admin') ? 'tag-admin' : 'tag-user'}">${typeMap[t.type] || t.type}</span></td>
+            <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(t.description || '')}">${escapeHtml(t.description || '-')}</td>
+            <td style="white-space:nowrap;">${new Date(t.created_at).toLocaleString('zh-CN')}</td>
+          </tr>`).join('')
+        }</tbody></table>`;
+        renderPagination('pointsTransactionsPagination', pagination, loadPointTransactions);
+      } catch (e) { listDiv.innerHTML = `<p style="color:red;">加载失败: ${e.message}</p>`; }
+    }
+
+    // ========== 数据仪表盘功能 ==========
+
+    async function loadDashboardOverview() {
+      try {
+        const data = await apiRequest('GET', '/admin/dashboard/overview');
+        const ov = data.overview || {};
+        const today = data.today || {};
+        document.getElementById('dashboardOverview').innerHTML = `
+          <div class="stat-card"><div class="label">总用户</div><div class="value">${ov.totalUsers || 0}</div></div>
+          <div class="stat-card"><div class="label">今日新用户</div><div class="value" style="color:var(--st-success-600);">${today.newUsers || 0}</div></div>
+          <div class="stat-card"><div class="label">总故事</div><div class="value">${ov.totalStories || 0}</div></div>
+          <div class="stat-card"><div class="label">今日新故事</div><div class="value" style="color:var(--st-success-600);">${today.newStories || 0}</div></div>
+          <div class="stat-card"><div class="label">总章节</div><div class="value">${ov.totalNodes || 0}</div></div>
+          <div class="stat-card"><div class="label">总评论</div><div class="value">${ov.totalComments || 0}</div></div>
+          <div class="stat-card"><div class="label">会员数</div><div class="value" style="color:var(--st-primary-500);">${ov.totalMembers || 0}</div></div>
+          <div class="stat-card"><div class="label">待处理举报</div><div class="value" style="color:${ov.pendingReports > 0 ? 'var(--st-error-500)' : 'var(--st-success-500)'};">${ov.pendingReports || 0}</div></div>
+        `;
+      } catch (e) { console.error('加载总览数据失败:', e); }
+    }
+
+    async function loadUserGrowth() {
+      const chartDiv = document.getElementById('userGrowthChart');
+      chartDiv.innerHTML = '<div class="loading"></div>';
+      try {
+        const days = document.getElementById('userGrowthDays').value || '30';
+        const data = await apiRequest('GET', `/admin/dashboard/user-growth?days=${days}`);
+        const growth = data.growth || [];
+        if (growth.length === 0) { chartDiv.innerHTML = '<div class="empty">暂无数据</div>'; return; }
+        chartDiv.innerHTML = `<table class="data-table trend-table"><thead><tr><th>日期</th><th>新增用户</th><th>累计用户</th></tr></thead><tbody>${
+          growth.slice().reverse().map(g => `<tr><td>${g.date}</td><td>${g.count}</td><td>${g.cumulative}</td></tr>`).join('')
+        }</tbody></table>`;
+      } catch (e) { chartDiv.innerHTML = `<p style="color:red;">加载失败: ${e.message}</p>`; }
+    }
+
+    async function loadContentStats() {
+      const chartDiv = document.getElementById('contentStatsChart');
+      chartDiv.innerHTML = '<div class="loading"></div>';
+      try {
+        const days = document.getElementById('contentStatsDays').value || '30';
+        const data = await apiRequest('GET', `/admin/dashboard/content-stats?days=${days}`);
+        const stats = data.contentStats || [];
+        if (stats.length === 0) { chartDiv.innerHTML = '<div class="empty">暂无数据</div>'; return; }
+        chartDiv.innerHTML = `<table class="data-table trend-table"><thead><tr><th>日期</th><th>新增故事</th><th>新增章节</th></tr></thead><tbody>${
+          stats.slice().reverse().map(s => `<tr><td>${s.date}</td><td>${s.stories}</td><td>${s.nodes}</td></tr>`).join('')
+        }</tbody></table>`;
+      } catch (e) { chartDiv.innerHTML = `<p style="color:red;">加载失败: ${e.message}</p>`; }
+    }
+
+    async function loadActiveUsers() {
+      const listDiv = document.getElementById('activeUsersList');
+      listDiv.innerHTML = '<div class="loading"></div>';
+      try {
+        const days = document.getElementById('activeUsersDays').value || '7';
+        const data = await apiRequest('GET', `/admin/dashboard/active-users?days=${days}`);
+        const breakdown = data.breakdown || {};
+        const topUsers = data.topActiveUsers || [];
+        let html = `
+          <div class="stats" style="margin-bottom:15px;">
+            <div class="stat-card"><div class="label">活跃用户总数</div><div class="value">${data.totalActiveUsers || 0}</div></div>
+            <div class="stat-card"><div class="label">发布章节</div><div class="value" style="color:var(--st-primary-500);">${breakdown.authors || 0}</div></div>
+            <div class="stat-card"><div class="label">发表评论</div><div class="value" style="color:var(--st-success-500);">${breakdown.commenters || 0}</div></div>
+            <div class="stat-card"><div class="label">签到</div><div class="value" style="color:var(--st-warning-500);">${breakdown.checkins || 0}</div></div>
+          </div>
+        `;
+        if (topUsers.length > 0) {
+          html += '<table class="data-table"><thead><tr><th>用户</th><th>等级</th><th>章节数</th><th>评论数</th></tr></thead><tbody>';
+          topUsers.forEach(u => {
+            html += `<tr><td>${escapeHtml(u.username)}</td><td>Lv.${u.level}</td><td>${u._count?.authored_nodes || 0}</td><td>${u._count?.comments || 0}</td></tr>`;
+          });
+          html += '</tbody></table>';
+        } else { html += '<div class="empty">暂无活跃用户</div>'; }
+        listDiv.innerHTML = html;
+      } catch (e) { listDiv.innerHTML = `<p style="color:red;">加载失败: ${e.message}</p>`; }
+    }
+
+    // ========== 邀请码管理功能 ==========
+
+    let currentInvitePage = 1;
+
+    async function loadInvitationStats() {
+      try {
+        const data = await apiRequest('GET', '/invitations/admin/stats');
+        document.getElementById('invitationStats').innerHTML = `
+          <div class="stat-card"><div class="label">邀请码总数</div><div class="value">${data.totalCodes || 0}</div></div>
+          <div class="stat-card"><div class="label">活跃邀请码</div><div class="value" style="color:var(--st-success-500);">${data.activeCodes || 0}</div></div>
+          <div class="stat-card"><div class="label">总邀请人数</div><div class="value" style="color:var(--st-primary-500);">${data.totalInvites || 0}</div></div>
+          <div class="stat-card"><div class="label">近30天邀请</div><div class="value" style="color:var(--st-warning-500);">${data.recentInvites || 0}</div></div>
+        `;
+      } catch (e) { console.error('加载邀请统计失败:', e); }
+    }
+
+    async function generateInviteCodes() {
+      const count = parseInt(document.getElementById('inviteCount').value) || 10;
+      const bonusPoints = parseInt(document.getElementById('inviteBonusPoints').value) || 100;
+      const maxUses = parseInt(document.getElementById('inviteMaxUses').value) || 1;
+      const expiresInDays = parseInt(document.getElementById('inviteExpiresDays').value) || 30;
+
+      if (count < 1 || count > 100) { window.toast ? toast.warning('数量必须在 1-100 之间') : alert('数量必须在 1-100 之间'); return; }
+
+      try {
+        const data = await apiRequest('POST', '/invitations/admin/generate', { count, bonusPoints, maxUses, expiresInDays });
+        const codesArea = document.getElementById('generatedCodesArea');
+        codesArea.style.display = 'block';
+        codesArea.innerHTML = `
+          <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;margin-top:8px;">
+            <strong>✅ 已生成 ${data.count} 个邀请码</strong>
+            <div style="margin-top:8px;max-height:200px;overflow-y:auto;font-family:monospace;font-size:13px;line-height:1.8;">
+              ${data.codes.map(c => `<div>${c.code} <span style="color:var(--st-text-tertiary);">(${c.bonusPoints}积分, 可用${c.maxUses}次, 到期:${c.expiresAt ? new Date(c.expiresAt).toLocaleDateString('zh-CN') : '永不过期'})</span></div>`).join('')}
+            </div>
+            <button class="btn" style="margin-top:8px;background:var(--st-gray-500);color:white;font-size:12px;" onclick="copyInviteCodes(this)">📋 复制全部邀请码</button>
+          </div>
+        `;
+        window._lastGeneratedCodes = data.codes.map(c => c.code);
+        loadInvitationStats();
+        loadInviteCodes();
+      } catch (e) { window.toast ? toast.error('生成失败: ' + e.message) : alert('生成失败: ' + e.message); }
+    }
+
+    function copyInviteCodes(btn) {
+      const codes = window._lastGeneratedCodes || [];
+      if (codes.length === 0) return;
+      navigator.clipboard.writeText(codes.join('\n')).then(() => {
+        btn.textContent = '✅ 已复制';
+        setTimeout(() => { btn.textContent = '📋 复制全部邀请码'; }, 2000);
+      }).catch(() => {
+        // fallback
+        const ta = document.createElement('textarea');
+        ta.value = codes.join('\n');
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        btn.textContent = '✅ 已复制';
+        setTimeout(() => { btn.textContent = '📋 复制全部邀请码'; }, 2000);
+      });
+    }
+
+    async function loadInviteCodes(page = 1) {
+      currentInvitePage = page;
+      const listDiv = document.getElementById('inviteCodesList');
+      listDiv.innerHTML = '<div class="loading"></div>';
+      try {
+        const type = document.getElementById('inviteTypeFilter').value;
+        const status = document.getElementById('inviteStatusFilter').value;
+        let url = `/invitations/admin/codes?page=${page}&limit=15`;
+        if (type) url += `&type=${type}`;
+        if (status) url += `&status=${status}`;
+        const data = await apiRequest('GET', url);
+        const codes = data.codes || [];
+        const pagination = data.pagination || {};
+        if (codes.length === 0) { listDiv.innerHTML = '<div class="empty">暂无邀请码</div>'; document.getElementById('inviteCodesPagination').innerHTML = ''; return; }
+        listDiv.innerHTML = `<table class="data-table"><thead><tr><th>邀请码</th><th>类型</th><th>奖励积分</th><th>已用/上限</th><th>状态</th><th>创建者</th><th>到期时间</th><th>操作</th></tr></thead><tbody>${
+          codes.map(c => `<tr>
+            <td style="font-family:monospace;font-weight:600;">${c.code}</td>
+            <td><span class="tag ${c.type === 'admin' ? 'tag-admin' : 'tag-user'}">${c.type === 'admin' ? '管理员' : '用户'}</span></td>
+            <td>${c.bonus_points}</td>
+            <td>${c.used_count} / ${c.max_uses === -1 ? '∞' : c.max_uses}</td>
+            <td><span class="tag ${c.is_active ? 'tag-active' : 'tag-inactive'}">${c.is_active ? '启用' : '禁用'}</span>${c.expires_at && new Date(c.expires_at) < new Date() ? ' <span style="color:var(--st-error-500);font-size:11px;">已过期</span>' : ''}</td>
+            <td>${escapeHtml(c.created_by?.username || '-')}</td>
+            <td style="white-space:nowrap;">${c.expires_at ? new Date(c.expires_at).toLocaleDateString('zh-CN') : '永不过期'}</td>
+            <td><button class="btn" style="padding:4px 8px;font-size:12px;background:${c.is_active ? 'var(--st-error-500)' : 'var(--st-success-500)'};color:white;" onclick="toggleInviteCode('${c.code}', ${c.is_active})">${c.is_active ? '禁用' : '启用'}</button></td>
+          </tr>`).join('')
+        }</tbody></table>`;
+        renderPagination('inviteCodesPagination', pagination, loadInviteCodes);
+      } catch (e) { listDiv.innerHTML = `<p style="color:red;">加载失败: ${e.message}</p>`; }
+    }
+
+    async function toggleInviteCode(code, isActive) {
+      try {
+        const data = await apiRequest('PATCH', `/invitations/admin/codes/${code}/toggle`);
+        window.toast ? toast.success(data.isActive ? '邀请码已启用' : '邀请码已禁用') : alert('✅ 操作成功');
+        loadInviteCodes(currentInvitePage);
+        loadInvitationStats();
+      } catch (e) { window.toast ? toast.error('操作失败: ' + e.message) : alert('操作失败: ' + e.message); }
+    }
+
+    // ========== 通用分页渲染 ==========
+
+    function renderPagination(containerId, pagination, loadFn) {
+      const { page, totalPages, total } = pagination;
+      const container = document.getElementById(containerId);
+      if (!container || totalPages <= 1) { if (container) container.innerHTML = ''; return; }
+      let html = `<span style="margin-right:15px;color:var(--st-text-secondary);">共 ${total} 条</span>`;
+      if (page > 1) html += `<button class="btn" style="margin:0 4px;" onclick="${loadFn.name}(${page - 1})">上一页</button>`;
+      for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) {
+          html += `<button class="btn" style="margin:0 4px;${i === page ? 'background:var(--st-primary-500);color:white;' : ''}" onclick="${loadFn.name}(${i})">${i}</button>`;
+        } else if (i === page - 3 || i === page + 3) {
+          html += '<span style="margin:0 4px;">...</span>';
+        }
+      }
+      if (page < totalPages) html += `<button class="btn" style="margin:0 4px;" onclick="${loadFn.name}(${page + 1})">下一页</button>`;
+      container.innerHTML = html;
+    }
   </script>
     <script src="js/loading.js"></script>
     <script src="js/toast.js"></script>
