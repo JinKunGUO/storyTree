@@ -849,6 +849,8 @@ router.post('/wx-login', async (req, res) => {
             level: true,
             membership_tier: true,
             membership_expires_at: true,
+            isBanned: true,
+            bannedReason: true,
             createdAt: true,
           }
         });
@@ -1184,6 +1186,7 @@ router.post('/wx-web-login', async (req, res) => {
           id: true, username: true, email: true, avatar: true, bio: true,
           emailVerified: true, points: true, level: true,
           membership_tier: true, membership_expires_at: true, createdAt: true,
+          isBanned: true, bannedReason: true,
         }
       });
 
