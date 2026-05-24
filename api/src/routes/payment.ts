@@ -156,9 +156,7 @@ router.post('/membership/create', async (req, res) => {
     let finalPrice = originalPrice;
 
     if (discountCode) {
-      // TODO: 实现优惠码逻辑
-      discountAmount = originalPrice * 0.1;
-      finalPrice = originalPrice - discountAmount;
+      // 折扣码功能暂未上线，忽略无效折扣码
     }
 
     // 创建订单

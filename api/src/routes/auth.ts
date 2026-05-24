@@ -780,6 +780,8 @@ router.post('/wx-login', async (req, res) => {
         membership_tier: true,
         membership_expires_at: true,
         createdAt: true,
+        isBanned: true,
+        bannedReason: true,
       }
     });
 
@@ -886,7 +888,15 @@ router.post('/wx-login', async (req, res) => {
 
       user = newUser;
     } else {
-      // 4. 老用户：更新 unionid（如果之前没有）
+      // 4. 老用户：检查封禁状态
+      if ((user as any).isBanned) {
+        return res.status(403).json({
+          error: '账号已被封禁',
+          reason: (user as any).bannedReason || '违反社区规范'
+        });
+      }
+
+      // 5. 老用户：更新 unionid（如果之前没有）
       if (unionid && !await prisma.users.findUnique({ where: { wx_unionid: unionid } })) {
         await prisma.users.update({
           where: { id: user.id },
@@ -1111,15 +1121,18 @@ router.post('/wx-web-login', async (req, res) => {
     }
 
     // 3. 优先通过 unionid 查找用户（打通小程序与网页端）
+    const wxWebSelectFields = {
+      id: true, username: true, email: true, avatar: true, bio: true,
+      emailVerified: true, points: true, level: true,
+      membership_tier: true, membership_expires_at: true, createdAt: true,
+      isBanned: true, bannedReason: true,
+    };
+
     let user = null;
     if (unionid) {
       user = await prisma.users.findUnique({
         where: { wx_unionid: unionid },
-        select: {
-          id: true, username: true, email: true, avatar: true, bio: true,
-          emailVerified: true, points: true, level: true,
-          membership_tier: true, membership_expires_at: true, createdAt: true,
-        }
+        select: wxWebSelectFields
       });
     }
 
@@ -1127,11 +1140,7 @@ router.post('/wx-web-login', async (req, res) => {
     if (!user) {
       user = await prisma.users.findUnique({
         where: { wx_openid: openid },
-        select: {
-          id: true, username: true, email: true, avatar: true, bio: true,
-          emailVerified: true, points: true, level: true,
-          membership_tier: true, membership_expires_at: true, createdAt: true,
-        }
+        select: wxWebSelectFields
       });
     }
 
@@ -1180,7 +1189,15 @@ router.post('/wx-web-login', async (req, res) => {
 
       user = newUser;
     } else {
-      // 6. 老用户：更新 openid/unionid/昵称/头像（如有变化）
+      // 6. 老用户：检查封禁状态
+      if ((user as any).isBanned) {
+        return res.status(403).json({
+          error: '账号已被封禁',
+          reason: (user as any).bannedReason || '违反社区规范'
+        });
+      }
+
+      // 7. 老用户：更新 openid/unionid/昵称/头像（如有变化）
       await prisma.users.update({
         where: { id: user.id },
         data: {

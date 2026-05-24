@@ -43,7 +43,9 @@ describe('addPoints', () => {
   it('成功添加积分并返回新积分和等级信息', async () => {
     const user = makeUser({ points: 100, level: 2 });
     mockPrisma.users.findUnique.mockResolvedValue(user);
-    mockPrisma.users.update.mockResolvedValue({ ...user, points: 150 });
+    mockPrisma.users.update
+      .mockResolvedValueOnce({ points: 150 })  // atomic increment result
+      .mockResolvedValueOnce({});               // level update
     mockPrisma.point_transactions.create.mockResolvedValue({ id: 1 });
 
     const result = await addPoints(1, 50, 'PUBLISH_STORY', '发布故事奖励');
@@ -53,7 +55,7 @@ describe('addPoints', () => {
     expect(mockPrisma.users.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          points: 150,
+          points: { increment: 50 },
         }),
       })
     );
@@ -62,7 +64,9 @@ describe('addPoints', () => {
   it('添加积分后升级', async () => {
     const user = makeUser({ points: 99, level: 1 });
     mockPrisma.users.findUnique.mockResolvedValue(user);
-    mockPrisma.users.update.mockResolvedValue({ ...user, points: 100, level: 2 });
+    mockPrisma.users.update
+      .mockResolvedValueOnce({ points: 100 })  // atomic increment
+      .mockResolvedValueOnce({});               // level update
     mockPrisma.point_transactions.create.mockResolvedValue({ id: 1 });
 
     const result = await addPoints(1, 1, 'PUBLISH_STORY', '发布故事奖励');
@@ -81,7 +85,9 @@ describe('addPoints', () => {
   it('记录积分交易流水', async () => {
     const user = makeUser({ points: 100 });
     mockPrisma.users.findUnique.mockResolvedValue(user);
-    mockPrisma.users.update.mockResolvedValue({ ...user, points: 150 });
+    mockPrisma.users.update
+      .mockResolvedValueOnce({ points: 150 })
+      .mockResolvedValueOnce({});
     mockPrisma.point_transactions.create.mockResolvedValue({ id: 1 });
 
     await addPoints(1, 50, 'PUBLISH_STORY', '发布故事奖励');
@@ -109,8 +115,11 @@ describe('deductPoints', () => {
 
   it('成功扣除积分', async () => {
     const user = makeUser({ points: 100 });
-    mockPrisma.users.findUnique.mockResolvedValue(user);
-    mockPrisma.users.update.mockResolvedValue({ ...user, points: 50 });
+    mockPrisma.users.findUnique
+      .mockResolvedValueOnce(user)              // initial check
+      .mockResolvedValueOnce({ points: 50 });   // post-decrement read
+    mockPrisma.users.updateMany.mockResolvedValue({ count: 1 });
+    mockPrisma.users.update.mockResolvedValue({});
     mockPrisma.point_transactions.create.mockResolvedValue({ id: 1 });
 
     const result = await deductPoints(1, 50, 'AI_CONTINUATION', 'AI 续写');
@@ -148,8 +157,11 @@ describe('deductPoints', () => {
 
   it('记录积分交易流水（负数）', async () => {
     const user = makeUser({ points: 100 });
-    mockPrisma.users.findUnique.mockResolvedValue(user);
-    mockPrisma.users.update.mockResolvedValue({ ...user, points: 50 });
+    mockPrisma.users.findUnique
+      .mockResolvedValueOnce(user)
+      .mockResolvedValueOnce({ points: 50 });
+    mockPrisma.users.updateMany.mockResolvedValue({ count: 1 });
+    mockPrisma.users.update.mockResolvedValue({});
     mockPrisma.point_transactions.create.mockResolvedValue({ id: 1 });
 
     await deductPoints(1, 50, 'AI_CONTINUATION', 'AI 续写');

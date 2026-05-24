@@ -200,10 +200,7 @@ router.post('/upgrade/create', async (req, res) => {
     let finalPrice = originalPrice;
 
     if (discountCode) {
-      // TODO: 实现优惠码逻辑
-      // 这里简单示例：使用优惠码打 9 折
-      discountAmount = originalPrice * 0.1;
-      finalPrice = originalPrice - discountAmount;
+      // 折扣码功能暂未上线，忽略无效折扣码
     }
 
     // 创建订单

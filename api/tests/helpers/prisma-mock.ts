@@ -1,7 +1,7 @@
 import { prisma } from '../../src/db'
 
 export const mockPrisma = prisma as unknown as {
-  users: { findUnique: ReturnType<typeof import('vitest').vi.fn>; findFirst: ReturnType<typeof import('vitest').vi.fn>; findMany: ReturnType<typeof import('vitest').vi.fn>; create: ReturnType<typeof import('vitest').vi.fn>; update: ReturnType<typeof import('vitest').vi.fn>; delete: ReturnType<typeof import('vitest').vi.fn>; count: ReturnType<typeof import('vitest').vi.fn> }
+  users: { findUnique: ReturnType<typeof import('vitest').vi.fn>; findFirst: ReturnType<typeof import('vitest').vi.fn>; findMany: ReturnType<typeof import('vitest').vi.fn>; create: ReturnType<typeof import('vitest').vi.fn>; update: ReturnType<typeof import('vitest').vi.fn>; updateMany: ReturnType<typeof import('vitest').vi.fn>; delete: ReturnType<typeof import('vitest').vi.fn>; count: ReturnType<typeof import('vitest').vi.fn> }
   stories: { findUnique: ReturnType<typeof import('vitest').vi.fn>; findMany: ReturnType<typeof import('vitest').vi.fn>; create: ReturnType<typeof import('vitest').vi.fn>; update: ReturnType<typeof import('vitest').vi.fn>; delete: ReturnType<typeof import('vitest').vi.fn>; count: ReturnType<typeof import('vitest').vi.fn> }
   nodes: { findUnique: ReturnType<typeof import('vitest').vi.fn>; findMany: ReturnType<typeof import('vitest').vi.fn>; create: ReturnType<typeof import('vitest').vi.fn>; update: ReturnType<typeof import('vitest').vi.fn>; delete: ReturnType<typeof import('vitest').vi.fn>; count: ReturnType<typeof import('vitest').vi.fn> }
   story_collaborators: { findFirst: ReturnType<typeof import('vitest').vi.fn>; findMany: ReturnType<typeof import('vitest').vi.fn>; create: ReturnType<typeof import('vitest').vi.fn>; delete: ReturnType<typeof import('vitest').vi.fn> }
@@ -15,6 +15,8 @@ export const mockPrisma = prisma as unknown as {
   ai_tasks: { create: ReturnType<typeof import('vitest').vi.fn>; findUnique: ReturnType<typeof import('vitest').vi.fn>; findMany: ReturnType<typeof import('vitest').vi.fn>; update: ReturnType<typeof import('vitest').vi.fn>; groupBy: ReturnType<typeof import('vitest').vi.fn> }
   bookmarks: { findUnique: ReturnType<typeof import('vitest').vi.fn>; findMany: ReturnType<typeof import('vitest').vi.fn>; create: ReturnType<typeof import('vitest').vi.fn>; delete: ReturnType<typeof import('vitest').vi.fn> }
   checkins: { findUnique: ReturnType<typeof import('vitest').vi.fn>; findMany: ReturnType<typeof import('vitest').vi.fn>; create: ReturnType<typeof import('vitest').vi.fn>; count: ReturnType<typeof import('vitest').vi.fn> }
+  orders: { findUnique: ReturnType<typeof import('vitest').vi.fn>; findMany: ReturnType<typeof import('vitest').vi.fn>; create: ReturnType<typeof import('vitest').vi.fn>; update: ReturnType<typeof import('vitest').vi.fn> }
+  user_subscriptions: { findFirst: ReturnType<typeof import('vitest').vi.fn>; create: ReturnType<typeof import('vitest').vi.fn>; update: ReturnType<typeof import('vitest').vi.fn> }
   $transaction: ReturnType<typeof import('vitest').vi.fn>
 }
 

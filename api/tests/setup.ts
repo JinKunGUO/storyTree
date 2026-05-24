@@ -24,6 +24,7 @@ vi.mock('../src/db', () => {
       findMany: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
       delete: vi.fn(),
       count: vi.fn(),
     },
@@ -116,6 +117,17 @@ vi.mock('../src/db', () => {
     },
     memberships: {
       findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+    },
+    orders: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+    },
+    user_subscriptions: {
+      findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
     },

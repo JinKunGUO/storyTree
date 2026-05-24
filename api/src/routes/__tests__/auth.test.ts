@@ -1,21 +1,37 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 import express from 'express';
 import request from 'supertest';
+
+// Mock jsonwebtoken before any route module imports it (works around EPERM on macOS)
+vi.mock('jsonwebtoken', () => {
+  const jwt = {
+    sign: (payload: any, _secret: string, _opts?: any) => {
+      const base64 = Buffer.from(JSON.stringify(payload)).toString('base64');
+      return `mock.${base64}.sig`;
+    },
+    verify: (token: string, _secret: string) => {
+      const parts = token.split('.');
+      if (parts.length !== 3) throw new Error('jwt malformed');
+      return JSON.parse(Buffer.from(parts[1], 'base64').toString());
+    },
+    decode: (token: string) => {
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+      return JSON.parse(Buffer.from(parts[1], 'base64').toString());
+    },
+  };
+  return { default: jwt, ...jwt };
+});
+
 import authRoutes from '../../routes/auth';
 import { mockPrisma, resetPrismaMocks } from '../../../tests/helpers/prisma-mock';
 import { hashPassword } from '../../utils/auth';
 
-// The global setup.ts mocks ../src/index with { prisma: vi.fn() } — just a placeholder
-// function with no .stories/.users etc. Source modules (like auth routes) import
-// { prisma } from '../index', so we override that mock here to re-export the real
-// prisma mock from ../db which has the full set of model methods.
 vi.mock('../../index', async () => {
   const db = await import('../../db');
   return { prisma: db.prisma };
 });
 
-// Mock express-rate-limit so all rate limiters become no-op pass-through middleware.
-// Without this, the 5-request-per-hour register limiter would block tests.
 vi.mock('express-rate-limit', () => ({
   default: () => (_req: any, _res: any, next: any) => next(),
 }));
@@ -251,5 +267,132 @@ describe('POST /api/auth/login', () => {
     expect(res.status).toBe(200);
     expect(res.body.token).toBeDefined();
     expect(res.body.user.username).toBe('testuser');
+  });
+});
+
+// Shared fetch mock for WeChat API tests (single stubGlobal to avoid conflicts)
+const mockFetch = vi.fn();
+vi.stubGlobal('fetch', mockFetch);
+
+// ===========================================================================
+// POST /api/auth/wx-login — ban check
+// ===========================================================================
+describe('POST /api/auth/wx-login', () => {
+  const app = createApp();
+
+  beforeEach(() => {
+    resetPrismaMocks();
+    mockFetch.mockReset();
+    mockPrisma.users.update.mockResolvedValue({});
+    mockPrisma.login_logs.create.mockResolvedValue({});
+  });
+
+  function mockWxCodeSuccess() {
+    mockFetch.mockResolvedValue({
+      json: () => Promise.resolve({ openid: 'test_openid_123', session_key: 'sk' }),
+    });
+  }
+
+  it('returns 403 when existing user is banned via wx-login', async () => {
+    // Set WX env vars
+    process.env.WX_APPID = 'test_appid';
+    process.env.WX_APP_SECRET = 'test_secret';
+
+    mockWxCodeSuccess();
+
+    // Existing user found by openid — banned
+    mockPrisma.users.findUnique.mockResolvedValue({
+      id: 1, username: 'banned_wx_user', email: null, avatar: null, bio: null,
+      emailVerified: true, points: 0, level: 1,
+      membership_tier: 'free', membership_expires_at: null, createdAt: new Date(),
+      isBanned: true, bannedReason: '发布违规内容',
+    });
+
+    const res = await request(app)
+      .post('/api/auth/wx-login')
+      .send({ code: 'valid_wx_code' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toContain('封禁');
+    expect(res.body.reason).toBe('发布违规内容');
+  });
+
+  it('allows wx-login for non-banned existing user', async () => {
+    process.env.WX_APPID = 'test_appid';
+    process.env.WX_APP_SECRET = 'test_secret';
+
+    mockWxCodeSuccess();
+
+    mockPrisma.users.findUnique.mockResolvedValue({
+      id: 2, username: 'normal_wx_user', email: null, avatar: null, bio: null,
+      emailVerified: true, points: 50, level: 1,
+      membership_tier: 'free', membership_expires_at: null, createdAt: new Date(),
+      isBanned: false, bannedReason: null,
+    });
+
+    const res = await request(app)
+      .post('/api/auth/wx-login')
+      .send({ code: 'valid_wx_code' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.token).toBeDefined();
+    expect(res.body.user.username).toBe('normal_wx_user');
+  });
+
+  it('returns 400 when code is missing', async () => {
+    const res = await request(app)
+      .post('/api/auth/wx-login')
+      .send({});
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('code');
+  });
+});
+
+// ===========================================================================
+// POST /api/auth/wx-web-login — ban check
+// ===========================================================================
+describe('POST /api/auth/wx-web-login', () => {
+  const app = createApp();
+
+  beforeEach(() => {
+    resetPrismaMocks();
+    mockFetch.mockReset();
+    mockPrisma.users.update.mockResolvedValue({});
+    mockPrisma.login_logs.create.mockResolvedValue({});
+  });
+
+  function mockWxWebCodeSuccess() {
+    mockFetch
+      // First call: token exchange
+      .mockResolvedValueOnce({
+        json: () => Promise.resolve({ openid: 'web_openid', unionid: 'web_unionid', access_token: 'at' }),
+      })
+      // Second call: userinfo
+      .mockResolvedValueOnce({
+        json: () => Promise.resolve({ nickname: 'wxuser', headimgurl: 'http://img.com/a.jpg' }),
+      });
+  }
+
+  it('returns 403 when existing user is banned via wx-web-login', async () => {
+    process.env.WX_WEB_APPID = 'test_web_appid';
+    process.env.WX_WEB_APP_SECRET = 'test_web_secret';
+
+    mockWxWebCodeSuccess();
+
+    // Found by unionid
+    mockPrisma.users.findUnique.mockResolvedValue({
+      id: 1, username: 'banned_web_user', email: null, avatar: null, bio: null,
+      emailVerified: true, points: 0, level: 1,
+      membership_tier: 'free', membership_expires_at: null, createdAt: new Date(),
+      isBanned: true, bannedReason: '刷积分',
+    });
+
+    const res = await request(app)
+      .post('/api/auth/wx-web-login')
+      .send({ code: 'valid_code' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toContain('封禁');
   });
 });

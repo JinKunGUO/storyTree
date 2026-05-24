@@ -130,7 +130,7 @@ export function getUserLevel(points: number): {
 }
 
 /**
- * 增加用户积分
+ * 增加用户积分（原子操作）
  */
 export async function addPoints(
   userId: number,
@@ -149,49 +149,55 @@ export async function addPoints(
   }
 
   const oldLevel = user.level;
-  const newPoints = user.points + amount;
-  const levelInfo = getUserLevel(newPoints);
 
-  // 更新用户积分和等级
-  await prisma.users.update({
-    where: { id: userId },
-    data: {
-      points: newPoints,
-      level: levelInfo.level
-    }
+  // 使用事务 + 原子 increment 防止并发丢失更新
+  const result = await prisma.$transaction(async (tx) => {
+    const updatedUser = await tx.users.update({
+      where: { id: userId },
+      data: { points: { increment: amount } },
+      select: { points: true }
+    });
+
+    const newPoints = updatedUser.points;
+    const levelInfo = getUserLevel(newPoints);
+
+    await tx.users.update({
+      where: { id: userId },
+      data: { level: levelInfo.level }
+    });
+
+    await tx.point_transactions.create({
+      data: {
+        user_id: userId,
+        amount,
+        type,
+        description,
+        reference_id: referenceId
+      }
+    });
+
+    return { newPoints, levelInfo };
   });
 
-  // 记录积分交易
-  await prisma.point_transactions.create({
-    data: {
-      user_id: userId,
-      amount,
-      type,
-      description,
-      reference_id: referenceId
-    }
-  });
-
-  // 发送通知
+  // 通知放在事务外（非关键路径，失败不影响积分变更）
   if (amount > 0) {
-    await notifyPointsEarned(userId, amount, description);
+    await notifyPointsEarned(userId, amount, description).catch(() => {});
   }
 
-  // 检查是否升级
-  const levelUp = levelInfo.level > oldLevel;
+  const levelUp = result.levelInfo.level > oldLevel;
   if (levelUp) {
-    await notifyLevelUp(userId, levelInfo.level, levelInfo.name);
+    await notifyLevelUp(userId, result.levelInfo.level, result.levelInfo.name).catch(() => {});
   }
 
   return {
-    newPoints,
+    newPoints: result.newPoints,
     levelUp,
-    newLevel: levelUp ? levelInfo.level : undefined
+    newLevel: levelUp ? result.levelInfo.level : undefined
   };
 }
 
 /**
- * 扣除用户积分
+ * 扣除用户积分（原子操作，防止并发双花）
  */
 export async function deductPoints(
   userId: number,
@@ -211,7 +217,6 @@ export async function deductPoints(
 
   // 管理员用户不扣除积分
   if (user.isAdmin) {
-    console.log(`🔑 管理员用户 ${userId} 使用AI功能，不扣除积分`);
     return { newPoints: user.points, success: true };
   }
 
@@ -219,28 +224,47 @@ export async function deductPoints(
     return { newPoints: user.points, success: false };
   }
 
-  const newPoints = user.points - amount;
-  const levelInfo = getUserLevel(newPoints);
+  // 使用事务 + 条件更新，确保原子性防止并发双花
+  const result = await prisma.$transaction(async (tx) => {
+    // 原子扣减：仅在积分充足时更新，利用 WHERE 条件防止竞态
+    const updated = await tx.users.updateMany({
+      where: { id: userId, points: { gte: amount } },
+      data: { points: { decrement: amount } }
+    });
 
-  await prisma.users.update({
-    where: { id: userId },
-    data: {
-      points: newPoints,
-      level: levelInfo.level
+    if (updated.count === 0) {
+      return { newPoints: user.points, success: false };
     }
+
+    // 读取更新后的积分和等级
+    const updatedUser = await tx.users.findUnique({
+      where: { id: userId },
+      select: { points: true }
+    });
+    const newPoints = updatedUser!.points;
+    const levelInfo = getUserLevel(newPoints);
+
+    // 同步等级
+    await tx.users.update({
+      where: { id: userId },
+      data: { level: levelInfo.level }
+    });
+
+    // 记录积分交易
+    await tx.point_transactions.create({
+      data: {
+        user_id: userId,
+        amount: -amount,
+        type,
+        description,
+        reference_id: referenceId
+      }
+    });
+
+    return { newPoints, success: true };
   });
 
-  await prisma.point_transactions.create({
-    data: {
-      user_id: userId,
-      amount: -amount,
-      type,
-      description,
-      reference_id: referenceId
-    }
-  });
-
-  return { newPoints, success: true };
+  return result;
 }
 
 /**
