@@ -291,12 +291,11 @@ export function isValidPassword(password: string): { valid: boolean; message?: s
   if (password.length > 128) {
     return { valid: false, message: '密码长度不能超过128位' };
   }
-  if (!/[A-Z]/.test(password)) {
-    return { valid: false, message: '密码需包含至少一个大写字母' };
+  // 必须包含字母（不区分大小写）
+  if (!/[a-zA-Z]/.test(password)) {
+    return { valid: false, message: '密码需包含至少一个字母' };
   }
-  if (!/[a-z]/.test(password)) {
-    return { valid: false, message: '密码需包含至少一个小写字母' };
-  }
+  // 必须包含数字
   if (!/[0-9]/.test(password)) {
     return { valid: false, message: '密码需包含至少一个数字' };
   }

@@ -113,26 +113,53 @@ function togglePassword(inputId) {
 
 // 密码强度检测
 function checkPasswordStrength(password) {
-    let strength = 0;
-    let feedback = '';
-    
-    if (password.length >= 8) strength += 1;
-    if (/[a-z]/.test(password)) strength += 1;
-    if (/[A-Z]/.test(password)) strength += 1;
-    if (/[0-9]/.test(password)) strength += 1;
-    if (/[^A-Za-z0-9]/.test(password)) strength += 1;
-    
     const strengthFill = document.getElementById('strengthFill');
     const strengthText = document.getElementById('strengthText');
+    const reqLength = document.getElementById('req-length');
+    const reqLetter = document.getElementById('req-letter');
+    const reqNumber = document.getElementById('req-number');
     
     if (!strengthFill || !strengthText) return;
+    
+    // 检查各项要求
+    const hasLength = password.length >= 8;
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    
+    // 更新要求提示状态
+    if (reqLength) {
+        reqLength.classList.toggle('met', hasLength);
+    }
+    if (reqLetter) {
+        reqLetter.classList.toggle('met', hasLetter);
+    }
+    if (reqNumber) {
+        reqNumber.classList.toggle('met', hasNumber);
+    }
+    
+    // 计算强度（基础要求 + 额外加分项）
+    let strength = 0;
+    if (hasLength) strength += 1;
+    if (hasLetter) strength += 1;
+    if (hasNumber) strength += 1;
+    
+    // 额外加分项
+    if (password.length >= 12) strength += 1; // 长度加分
+    if (/[^A-Za-z0-9]/.test(password)) strength += 1; // 特殊字符加分
     
     const colors = ['#e74c3c', '#f39c12', '#f39c12', '#27ae60', '#27ae60'];
     const texts = ['太弱', '较弱', '一般', '良好', '很强'];
     
-    strengthFill.style.width = (strength * 20) + '%';
-    strengthFill.style.backgroundColor = colors[strength - 1] || '#e74c3c';
-    strengthText.textContent = '密码强度: ' + (texts[strength - 1] || '太弱');
+    if (password.length === 0) {
+        strengthFill.style.width = '0%';
+        strengthText.textContent = '请输入密码';
+        strengthText.style.color = 'var(--text-muted)';
+    } else {
+        strengthFill.style.width = (strength * 20) + '%';
+        strengthFill.style.backgroundColor = colors[strength - 1] || '#e74c3c';
+        strengthText.textContent = '密码强度: ' + (texts[strength - 1] || '太弱');
+        strengthText.style.color = colors[strength - 1] || '#e74c3c';
+    }
 }
 
 // 表单验证
@@ -146,7 +173,7 @@ function validateUsername(username) {
 }
 
 function validatePassword(password) {
-    return password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password);
+    return password.length >= 8 && /[a-zA-Z]/.test(password) && /[0-9]/.test(password);
 }
 
 // 显示错误信息
@@ -200,7 +227,7 @@ function handleRegister() {
         
         // 验证密码
         if (!validatePassword(password)) {
-            showError('passwordError', '密码至少8位，需包含大写字母、小写字母和数字');
+            showError('passwordError', '密码至少8位，需包含字母和数字');
             isValid = false;
         }
         
