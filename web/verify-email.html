@@ -186,13 +186,13 @@
         <div id="successState" style="display: none;">
             <i class="fas fa-check-circle verify-icon success"></i>
             <h1 class="verify-title">验证成功！</h1>
-            <p class="verify-message">您的邮箱已成功验证，已自动登录。<br><span id="countdownText">3 秒后自动跳转到首页...</span></p>
+            <p class="verify-message">您的邮箱已成功验证。<br>请返回浏览器登录您的账号。</p>
             <div class="verify-actions">
-                <a href="/index.html" class="btn btn-primary">
-                    <i class="fas fa-home"></i> 立即进入首页
+                <a href="/login.html" class="btn btn-primary">
+                    <i class="fas fa-sign-in-alt"></i> 前往登录
                 </a>
-                <a href="/profile.html" class="btn btn-secondary">
-                    <i class="fas fa-user"></i> 个人中心
+                <a href="/index.html" class="btn btn-secondary">
+                    <i class="fas fa-home"></i> 返回首页
                 </a>
             </div>
         </div>
@@ -249,41 +249,13 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    // 保存 token 和用户信息到 localStorage
-                    if (data.token) {
-                        localStorage.setItem('token', data.token);
-                    }
-                    if (data.user) {
-                        localStorage.setItem('user', JSON.stringify(data.user));
-                    }
-                    
                     showSuccess();
-                    
-                    // 3秒后自动跳转到首页（已登录状态）
-                    setTimeout(() => {
-                        window.location.href = '/index.html';
-                    }, 3000);
                 } else {
                     showError(data.error || '验证失败');
                 }
             } catch (error) {
                 console.error('验证错误:', error);
-                // 改进错误提示，帮助用户诊断问题
-                let errorMessage = '网络错误，请稍后重试';
-                if (error instanceof TypeError && error.message.includes('fetch')) {
-                    errorMessage = '无法连接到服务器，请检查网络连接';
-                } else if (error.name === 'AbortError') {
-                    errorMessage = '请求超时，请重试';
-                }
-                showError(errorMessage);
-                
-                // 在控制台输出详细错误信息，便于调试
-                console.error('详细错误信息:', {
-                    error,
-                    token: token ? '存在' : '缺失',
-                    url: window.location.href,
-                    userAgent: navigator.userAgent
-                });
+                showError('网络错误，请稍后重试');
             }
         });
 
@@ -292,19 +264,6 @@
             document.getElementById('loadingState').style.display = 'none';
             document.getElementById('errorState').style.display = 'none';
             document.getElementById('successState').style.display = 'block';
-            
-            // 倒计时效果
-            let countdown = 3;
-            const countdownEl = document.getElementById('countdownText');
-            const timer = setInterval(() => {
-                countdown--;
-                if (countdown > 0) {
-                    countdownEl.textContent = `${countdown} 秒后自动跳转到首页...`;
-                } else {
-                    countdownEl.textContent = '正在跳转...';
-                    clearInterval(timer);
-                }
-            }, 1000);
         }
 
         // 显示错误状态

@@ -435,7 +435,7 @@ router.post('/login', loginLimiter, async (req, res) => {
       });
 
       return res.status(403).json({
-        error: '邮箱尚未验证，请查收验证邮件后再登录',
+        error: '邮箱尚未验证。请查收验证邮件，点击邮件中的链接完成验证后再登录。',
         code: 'EMAIL_NOT_VERIFIED',
         email: user.email,
       });
@@ -631,15 +631,7 @@ router.post('/verify-email', async (req, res) => {
         id: true,
         username: true,
         email: true,
-        avatar: true,
-        bio: true,
         emailVerified: true,
-        isAdmin: true,
-        points: true,
-        level: true,
-        membership_tier: true,
-        membership_expires_at: true,
-        createdAt: true,
       }
     });
 
@@ -647,9 +639,8 @@ router.post('/verify-email', async (req, res) => {
       return res.status(400).json({ error: '验证链接无效或已过期' });
     }
 
-    // 如果已经验证过，也生成 token 让用户直接登录
+    // 更新用户邮箱验证状态
     if (!user.emailVerified) {
-      // 更新用户邮箱验证状态
       await prisma.users.update({
         where: { id: user.id },
         data: {
@@ -660,29 +651,13 @@ router.post('/verify-email', async (req, res) => {
       });
     }
 
-    // 生成 JWT token，让用户验证邮箱后直接以已登录状态进入
-    const jwtToken = generateJWT(user.id, user.username, user.isAdmin, 'web');
-    await prisma.users.update({
-      where: { id: user.id },
-      data: { active_token: jwtToken }
-    });
-
+    // 只返回验证成功信息，不返回 JWT token
+    // 用户需要回到主浏览器手动登录（兼容跨浏览器场景）
     res.json({
       message: '邮箱验证成功',
-      token: jwtToken,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        avatar: user.avatar,
-        bio: user.bio,
-        emailVerified: true,
-        points: user.points,
-        level: user.level,
-        membership_tier: user.membership_tier,
-        membership_expires_at: user.membership_expires_at,
-        createdAt: user.createdAt,
-      }
+      verified: true,
+      email: user.email,
+      username: user.username,
     });
   } catch (error) {
     console.error('邮箱验证错误:', error);
