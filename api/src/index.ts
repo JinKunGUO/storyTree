@@ -67,6 +67,36 @@ if (!jwtSecret || DEFAULT_JWT_SECRETS.includes(jwtSecret)) {
   }
 }
 
+// ============================================================
+// 环境变量检查：FRONTEND_URL 在生产环境必须配置
+// ============================================================
+if (process.env.NODE_ENV === 'production') {
+  const frontendUrl = process.env.FRONTEND_URL;
+  if (!frontendUrl) {
+    console.error('❌ 配置错误：生产环境必须设置 FRONTEND_URL 环境变量！');
+    console.error('   FRONTEND_URL 用于生成邮箱验证链接、密码重置链接等。');
+    console.error('   示例：FRONTEND_URL=https://storytree.online');
+    process.exit(1);
+  }
+  
+  // 验证 URL 格式
+  try {
+    const url = new URL(frontendUrl);
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+      throw new Error('协议必须是 http 或 https');
+    }
+    console.log(`✅ FRONTEND_URL 已配置: ${frontendUrl}`);
+  } catch (error) {
+    console.error('❌ 配置错误：FRONTEND_URL 格式无效！');
+    console.error(`   当前值: ${frontendUrl}`);
+    console.error(`   错误: ${error instanceof Error ? error.message : String(error)}`);
+    process.exit(1);
+  }
+} else {
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+  console.log(`ℹ️  开发环境 FRONTEND_URL: ${frontendUrl}`);
+}
+
 // 启动 AI Worker
 import './workers/aiWorker';
 

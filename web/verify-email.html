@@ -268,7 +268,22 @@
                 }
             } catch (error) {
                 console.error('验证错误:', error);
-                showError('网络错误，请稍后重试');
+                // 改进错误提示，帮助用户诊断问题
+                let errorMessage = '网络错误，请稍后重试';
+                if (error instanceof TypeError && error.message.includes('fetch')) {
+                    errorMessage = '无法连接到服务器，请检查网络连接';
+                } else if (error.name === 'AbortError') {
+                    errorMessage = '请求超时，请重试';
+                }
+                showError(errorMessage);
+                
+                // 在控制台输出详细错误信息，便于调试
+                console.error('详细错误信息:', {
+                    error,
+                    token: token ? '存在' : '缺失',
+                    url: window.location.href,
+                    userAgent: navigator.userAgent
+                });
             }
         });
 
