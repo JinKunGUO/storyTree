@@ -85,6 +85,13 @@ test.describe('注册页面密码提示', () => {
 });
 
 test.describe('完整注册验证流程', () => {
+  // 生产环境不运行注册流程测试（会创建真实用户）
+  // 仅在开发/staging 环境中运行
+  const baseURL = process.env.E2E_BASE_URL || '';
+  const isProduction = baseURL.includes('storytree.online') && !baseURL.includes('staging');
+
+  test.skip(isProduction, '生产环境跳过注册流程测试，避免创建真实用户');
+
   const timestamp = Date.now();
   const testEmail = `e2etest${timestamp}@example.com`;
   const testUsername = `e2euser${timestamp}`;

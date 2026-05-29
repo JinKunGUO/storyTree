@@ -29,15 +29,20 @@ fi
 # --- 2. Express SPA fallback ---
 echo ""
 echo "[2/5] 检查 Express SPA fallback..."
-if [ -f "api/src/index.ts" ]; then
-    if grep -q "verify-email" api/src/index.ts; then
+# SPA fallback 逻辑在 app.ts 中（Phase 2 重构后从 index.ts 移出）
+EXPRESS_SPA_FILE="api/src/app.ts"
+if [ ! -f "$EXPRESS_SPA_FILE" ]; then
+    EXPRESS_SPA_FILE="api/src/index.ts"
+fi
+if [ -f "$EXPRESS_SPA_FILE" ]; then
+    if grep -q "verify-email" "$EXPRESS_SPA_FILE"; then
         echo "  OK  Express possiblePages 包含 verify-email"
     else
         echo "  FAIL  Express 缺少 verify-email 页面路由"
         ERRORS=$((ERRORS + 1))
     fi
 else
-    echo "  FAIL  api/src/index.ts 不存在"
+    echo "  FAIL  api/src/app.ts 和 api/src/index.ts 均不存在"
     ERRORS=$((ERRORS + 1))
 fi
 
