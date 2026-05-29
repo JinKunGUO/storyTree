@@ -1,0 +1,28 @@
+{
+  "name": "storytree",
+  "version": "1.0.0",
+  "main": "ecosystem.config.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:staging": "E2E_BASE_URL=https://staging.storytree.online playwright test",
+    "test:smoke": "bash scripts/smoke-test-production.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JinKunGUO/storyTree.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/JinKunGUO/storyTree/issues"
+  },
+  "homepage": "https://github.com/JinKunGUO/storyTree#readme",
+  "description": "",
+  "devDependencies": {
+    "@playwright/test": "^1.52.0"
+  }
+}

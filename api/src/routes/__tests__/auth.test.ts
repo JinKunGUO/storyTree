@@ -396,3 +396,111 @@ describe('POST /api/auth/wx-web-login', () => {
     expect(res.body.error).toContain('封禁');
   });
 });
+
+// ===========================================================================
+// POST /api/auth/verify-email
+// ===========================================================================
+describe('POST /api/auth/verify-email', () => {
+  const app = createApp();
+
+  beforeEach(() => {
+    resetPrismaMocks();
+  });
+
+  it('returns 400 when token is missing', async () => {
+    const res = await request(app)
+      .post('/api/auth/verify-email')
+      .send({});
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('验证令牌');
+  });
+
+  it('returns 400 when token is invalid or expired', async () => {
+    mockPrisma.users.findFirst.mockResolvedValue(null);
+
+    const res = await request(app)
+      .post('/api/auth/verify-email')
+      .send({ token: 'invalid-token' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('无效或已过期');
+  });
+
+  it('returns 200 and sets emailVerified to true on success', async () => {
+    const mockUser = {
+      id: 1,
+      username: 'testuser',
+      email: 'test@test.com',
+      emailVerified: false,
+    };
+
+    mockPrisma.users.findFirst.mockResolvedValue(mockUser);
+    mockPrisma.users.update.mockResolvedValue({
+      ...mockUser,
+      emailVerified: true,
+      emailVerificationToken: null,
+      emailVerificationExpires: null,
+    });
+
+    const res = await request(app)
+      .post('/api/auth/verify-email')
+      .send({ token: 'valid-token' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toContain('验证成功');
+    expect(res.body.verified).toBe(true);
+    expect(res.body.email).toBe('test@test.com');
+    expect(res.body.username).toBe('testuser');
+
+    // 验证数据库更新调用
+    expect(mockPrisma.users.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: {
+        emailVerified: true,
+        emailVerificationToken: null,
+        emailVerificationExpires: null,
+      },
+    });
+  });
+
+  it('does not return JWT token after verification', async () => {
+    const mockUser = {
+      id: 1,
+      username: 'testuser',
+      email: 'test@test.com',
+      emailVerified: false,
+    };
+
+    mockPrisma.users.findFirst.mockResolvedValue(mockUser);
+    mockPrisma.users.update.mockResolvedValue({});
+
+    const res = await request(app)
+      .post('/api/auth/verify-email')
+      .send({ token: 'valid-token' });
+
+    expect(res.status).toBe(200);
+    // 简化流程：验证不返回 JWT token，用户需手动登录
+    expect(res.body.token).toBeUndefined();
+    expect(res.body.user).toBeUndefined();
+  });
+
+  it('skips database update when email is already verified', async () => {
+    const mockUser = {
+      id: 1,
+      username: 'testuser',
+      email: 'test@test.com',
+      emailVerified: true, // 已验证
+    };
+
+    mockPrisma.users.findFirst.mockResolvedValue(mockUser);
+
+    const res = await request(app)
+      .post('/api/auth/verify-email')
+      .send({ token: 'valid-token' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.verified).toBe(true);
+    // 已验证的用户不应触发 update
+    expect(mockPrisma.users.update).not.toHaveBeenCalled();
+  });
+});

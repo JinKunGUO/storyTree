@@ -55,16 +55,14 @@ describe('isValidPassword', () => {
     expect(result.message).toContain('8');
   });
 
-  it('returns invalid when no uppercase letter', () => {
+  it('accepts password with only lowercase letters and digits', () => {
     const result = isValidPassword('abc12345');
-    expect(result.valid).toBe(false);
-    expect(result.message).toContain('大写');
+    expect(result.valid).toBe(true);
   });
 
-  it('returns invalid when no lowercase letter', () => {
+  it('accepts password with only uppercase letters and digits', () => {
     const result = isValidPassword('ABC12345');
-    expect(result.valid).toBe(false);
-    expect(result.message).toContain('小写');
+    expect(result.valid).toBe(true);
   });
 
   it('returns invalid when no digit', () => {

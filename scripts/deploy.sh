@@ -329,6 +329,25 @@ health_check() {
 }
 
 # ===================================
+# 生产环境冒烟测试
+# ===================================
+smoke_test() {
+    log_info "运行生产环境冒烟测试..."
+
+    SMOKE_SCRIPT="$APP_DIR/scripts/smoke-test-production.sh"
+    if [ ! -f "$SMOKE_SCRIPT" ]; then
+        log_warn "冒烟测试脚本不存在：$SMOKE_SCRIPT，跳过"
+        return 0
+    fi
+
+    if bash "$SMOKE_SCRIPT" "https://storytree.online"; then
+        log_success "生产环境冒烟测试全部通过"
+    else
+        log_warn "冒烟测试有失败项，请检查上方输出（部署本身已完成，服务正在运行）"
+    fi
+}
+
+# ===================================
 # 主流程
 # ===================================
 main() {
@@ -362,6 +381,7 @@ main() {
     build_project
     restart_service
     health_check
+    smoke_test
 
     echo ""
     echo "====================================="
