@@ -2685,7 +2685,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
 
             // 点击事件 - 传入鼠标坐标，用于定位浮层
             treeChart.on('click', function(params) {
-                if (params.data && params.data.id) {
+                if (params.data && (params.data.id || params.data.isVirtualRoot)) {
                     showNodeDetail(params.data, params.event?.offsetX, params.event?.offsetY);
                 }
             });
@@ -2942,7 +2942,15 @@ function getTreeOption(treeData, layout) {
                                 <div style="color:${colors.tooltipMuted};font-size:12px;">点击展开更多章节</div>
                             </div>`;
                         }
-                        if (data.isVirtualRoot || !data.id) return '';
+                        if (data.isVirtualRoot || !data.id) {
+                            if (!data.children || data.children.length === 0) {
+                                return `<div style="min-width:120px;font-family:${FONT_FAMILY}">
+                                    <div style="font-weight:600;color:#6366F1;margin-bottom:4px;">${data.name}</div>
+                                    <div style="color:${colors.tooltipMuted};font-size:12px;">点击开始撰写第一章</div>
+                                </div>`;
+                            }
+                            return '';
+                        }
                         const draftBadge = data.isPublished === false
                             ? `<div style="display:inline-block;background:${colors.badgeBg};color:${colors.badgeText};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-bottom:6px;">草稿</div>`
                             : '';
@@ -3578,8 +3586,16 @@ function getTreeOption(treeData, layout) {
                 return;
             }
             
-            // 如果是虚拟根节点（故事标题），不处理
+            // 如果是虚拟根节点（故事标题）或无ID节点
             if (nodeData.isVirtualRoot || !nodeData.id) {
+                // 检查是否是没有章节的故事（children 为空），引导用户去写第一章
+                const storyId = window.currentStory?.id;
+                if (storyId && (!nodeData.children || nodeData.children.length === 0)) {
+                    const goWrite = confirm('这个故事还没有章节，是否前往撰写第一章？');
+                    if (goWrite) {
+                        window.location.href = `/write.html?storyId=${storyId}`;
+                    }
+                }
                 return;
             }
             

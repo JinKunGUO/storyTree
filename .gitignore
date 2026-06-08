@@ -9,6 +9,8 @@ node_modules/
 
 # Database
 *.db
+*.db.bak
+*.db-journal
 *.sqlite
 *.sqlite3
 *.rdb
