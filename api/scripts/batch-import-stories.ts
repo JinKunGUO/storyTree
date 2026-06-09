@@ -67,15 +67,28 @@ const DRY_RUN = args.includes('--dry-run');
 const UPDATE_MODE = args.includes('--update');
 
 async function getAdminUser() {
-  const admin = await prisma.users.findUnique({
-    where: { username: ADMIN_USERNAME },
+  // 如果指定了用户名，精确查找
+  if (getArg('admin-username')) {
+    const admin = await prisma.users.findUnique({
+      where: { username: ADMIN_USERNAME },
+      select: { id: true, username: true, isAdmin: true }
+    });
+    if (!admin) {
+      throw new Error(`管理员用户 "${ADMIN_USERNAME}" 不存在，请先运行 create-admin.ts`);
+    }
+    if (!admin.isAdmin) {
+      throw new Error(`用户 "${ADMIN_USERNAME}" 不是管理员`);
+    }
+    return admin;
+  }
+
+  // 未指定时，自动查找第一个管理员用户
+  const admin = await prisma.users.findFirst({
+    where: { isAdmin: true },
     select: { id: true, username: true, isAdmin: true }
   });
   if (!admin) {
-    throw new Error(`管理员用户 "${ADMIN_USERNAME}" 不存在，请先运行 create-admin.ts`);
-  }
-  if (!admin.isAdmin) {
-    throw new Error(`用户 "${ADMIN_USERNAME}" 不是管理员`);
+    throw new Error('数据库中没有管理员用户，请先运行 create-admin.ts');
   }
   return admin;
 }
