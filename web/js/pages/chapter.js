@@ -1316,15 +1316,17 @@
 
         // 显示消息
         function showMessage(message, type = 'info') {
+            const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             const messageEl = document.createElement('div');
             messageEl.style.cssText = `
                 position: fixed;
                 top: 80px;
                 right: 20px;
-                background: white;
+                background: ${isDark ? '#1f2937' : 'white'};
+                color: ${isDark ? '#f3f4f6' : '#333'};
                 padding: 15px 25px;
                 border-radius: 10px;
-                box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+                box-shadow: 0 5px 15px rgba(0,0,0,${isDark ? '0.4' : '0.2'});
                 display: flex;
                 align-items: center;
                 gap: 10px;

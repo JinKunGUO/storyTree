@@ -254,7 +254,7 @@ class ShareManager {
             <div class="qrcode-placeholder">
                 <i class="fab fa-weixin" style="font-size: 80px; color: #07c160;"></i>
                 <p>请在微信中打开以下链接：</p>
-                <input type="text" value="${url}" readonly style="width: 100%; padding: 8px; margin-top: 10px;">
+                <input type="text" value="${url}" readonly style="width: 100%; padding: 8px; margin-top: 10px; border-radius: 4px;">
             </div>
         `;
 
@@ -651,6 +651,79 @@ class ShareManager {
 
                     .copy-link-btn {
                         width: 100%;
+                    }
+                }
+
+                /* 暗黑模式 */
+                @media (prefers-color-scheme: dark) {
+                    .share-modal-content {
+                        background: #1f2937;
+                    }
+
+                    .share-modal-header {
+                        border-bottom-color: #374151;
+                    }
+
+                    .share-modal-header h3 {
+                        color: #f3f4f6;
+                    }
+
+                    .share-modal-header .close-btn {
+                        color: #9ca3af;
+                    }
+
+                    .share-modal-header .close-btn:hover {
+                        color: #f3f4f6;
+                    }
+
+                    .share-title {
+                        color: #f3f4f6;
+                    }
+
+                    .share-description {
+                        color: #9ca3af;
+                    }
+
+                    .share-platform-btn {
+                        background: #374151;
+                        border-color: #4b5563;
+                    }
+
+                    .share-platform-btn:hover {
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                    }
+
+                    .share-platform-btn span {
+                        color: #d1d5db;
+                    }
+
+                    .share-link-input {
+                        background: #374151;
+                        border-color: #4b5563;
+                        color: #f3f4f6;
+                    }
+
+                    .share-toast {
+                        background: #1f2937;
+                        color: #f3f4f6;
+                    }
+
+                    .qrcode-content {
+                        background: #1f2937;
+                    }
+
+                    .qrcode-content h3 {
+                        color: #f3f4f6;
+                    }
+
+                    .qrcode-content p {
+                        color: #9ca3af;
+                    }
+
+                    .qrcode-placeholder input {
+                        background: #374151;
+                        border: 1px solid #4b5563;
+                        color: #f3f4f6;
                     }
                 }
             </style>

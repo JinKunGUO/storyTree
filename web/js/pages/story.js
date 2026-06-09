@@ -1472,9 +1472,10 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                     padding: 20px;
                 `;
 
+                const _dk = window.matchMedia('(prefers-color-scheme: dark)').matches;
                 overlay.innerHTML = `
                     <div style="
-                        background: white;
+                        background: ${_dk ? '#1f2937' : 'white'};
                         border-radius: 20px;
                         max-width: 450px;
                         padding: 30px;
@@ -1495,7 +1496,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                         </div>
                         <h3 style="
                             text-align: center;
-                            color: #333;
+                            color: ${_dk ? '#f3f4f6' : '#333'};
                             margin: 0 0 15px 0;
                             font-size: 22px;
                         ">
@@ -1503,7 +1504,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                         </h3>
                         <p style="
                             text-align: center;
-                            color: #666;
+                            color: ${_dk ? '#9ca3af' : '#666'};
                             margin: 0 0 10px 0;
                             font-size: 16px;
                         ">
@@ -1511,7 +1512,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                         </p>
                         <p style="
                             text-align: center;
-                            color: #333;
+                            color: ${_dk ? '#f3f4f6' : '#333'};
                             margin: 0 0 25px 0;
                             font-size: 18px;
                             font-weight: 600;
@@ -1521,10 +1522,10 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                         ${description ? `
                             <p style="
                                 text-align: center;
-                                color: #999;
+                                color: ${_dk ? '#9ca3af' : '#999'};
                                 margin: 0 0 25px 0;
                                 font-size: 14px;
-                                background: #f8f9fa;
+                                background: ${_dk ? '#374151' : '#f8f9fa'};
                                 padding: 12px;
                                 border-radius: 8px;
                             ">
@@ -1539,8 +1540,8 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                             <button id="cancelPointsBtn" style="
                                 flex: 1;
                                 padding: 14px 20px;
-                                background: #f1f3f5;
-                                color: #333;
+                                background: ${_dk ? '#374151' : '#f1f3f5'};
+                                color: ${_dk ? '#f3f4f6' : '#333'};
                                 border: none;
                                 border-radius: 12px;
                                 font-size: 16px;
@@ -2381,20 +2382,21 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                 padding: 20px;
             `;
             
+            const _dk2 = window.matchMedia('(prefers-color-scheme: dark)').matches;
             preview.innerHTML = `
                 <div style="
-                    background: white;
+                    background: ${_dk2 ? '#1f2937' : 'white'};
                     border-radius: 20px;
                     max-width: 800px;
                     max-height: 80vh;
                     overflow-y: auto;
                     padding: 40px;
                 ">
-                    <h2 style="margin-top: 0; color: #333;">
+                    <h2 style="margin-top: 0; color: ${_dk2 ? '#f3f4f6' : '#333'};">
                         ${option.title}
                     </h2>
                     <div style="
-                        color: #666;
+                        color: ${_dk2 ? '#d1d5db' : '#666'};
                         line-height: 1.8;
                         font-size: 16px;
                         white-space: pre-wrap;
