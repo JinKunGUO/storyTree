@@ -53,12 +53,22 @@ router.get('/', optionalAuth, async (req, res) => {
       orderBy = { created_at: 'desc' };
     }
 
+    // 搜索关键词
+    const search = (req.query.search as string || '').trim();
+
     // tag 过滤：tags 字段是逗号分隔的字符串，用 contains 匹配
     const where: any = {
       nodes: { some: { parent_id: null } },
     };
     if (tag) {
       where.tags = { contains: tag };
+    }
+    if (search) {
+      where.OR = [
+        { title: { contains: search } },
+        { description: { contains: search } },
+        { tags: { contains: search } },
+      ];
     }
 
     // 并行查询：故事列表 + 总数

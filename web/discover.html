@@ -854,8 +854,8 @@
                         <i class="fas fa-magic" style="color: var(--st-accent-500);" aria-hidden="true"></i>
                         猜你喜欢
                     </h2>
-                    <button class="filter-tab" onclick="refreshRecommend()" style="font-size: var(--st-text-xs);">
-                        <i class="fas fa-sync-alt"></i> 换一批
+                    <button class="filter-tab" onclick="refreshRecommend()" style="font-size: var(--st-text-xs);" id="recommendRefreshBtn">
+                        <i class="fas fa-sync-alt"></i> 换一批 <span id="recommendPageInfo" style="opacity:0.7;"></span>
                     </button>
                 </div>
                 <div class="recommend-scroll" id="recommendList"></div>
@@ -1103,6 +1103,13 @@
                 const list = document.getElementById('recommendList');
                 section.style.display = 'block';
 
+                // 更新批次显示
+                const pageInfo = document.getElementById('recommendPageInfo');
+                if (pageInfo && data.totalPages > 1) {
+                    const currentBatch = (data.page % data.totalPages) + 1;
+                    pageInfo.textContent = `(${currentBatch}/${data.totalPages})`;
+                }
+
                 list.innerHTML = data.stories.map(story => `
                     <div class="recommend-card" onclick="location.href='story.html?id=${story.id}'">
                         <img class="recommend-card-cover" src="${story.cover_image || '/assets/default-cover.jpg'}" alt="${story.title}" loading="lazy" onerror="this.src='/assets/default-cover.jpg'">
@@ -1253,16 +1260,32 @@
         }
 
         // ===== 搜索 =====
-        function searchStories() {
-            const term = document.getElementById('searchInput').value.trim().toLowerCase();
+        async function searchStories() {
+            const term = document.getElementById('searchInput').value.trim();
             if (!term) { applyFilter(currentFilter); return; }
-            const filtered = allStories.filter(s =>
-                s.title?.toLowerCase().includes(term) ||
-                s.description?.toLowerCase().includes(term) ||
-                s.author?.username?.toLowerCase().includes(term)
-            );
-            displayStories(filtered);
-            document.getElementById('hotStoriesSection').style.display = 'none';
+
+            // 调用后端 API 搜索（支持全量搜索，不受前端分页限制）
+            try {
+                const res = await fetch(`/api/stories?search=${encodeURIComponent(term)}&pageSize=50`);
+                const data = await res.json();
+                if (data.stories) {
+                    displayStories(data.stories);
+                    document.getElementById('hotStoriesSection').style.display = 'none';
+                    // 隐藏加载更多按钮
+                    const loadMoreContainer = document.getElementById('loadMoreContainer');
+                    if (loadMoreContainer) loadMoreContainer.style.display = 'none';
+                }
+            } catch (e) {
+                // 降级到前端过滤
+                const lowerTerm = term.toLowerCase();
+                const filtered = allStories.filter(s =>
+                    s.title?.toLowerCase().includes(lowerTerm) ||
+                    s.description?.toLowerCase().includes(lowerTerm) ||
+                    s.author?.username?.toLowerCase().includes(lowerTerm)
+                );
+                displayStories(filtered);
+                document.getElementById('hotStoriesSection').style.display = 'none';
+            }
         }
 
         // ===== 筛选 =====
