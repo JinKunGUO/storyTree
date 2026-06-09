@@ -311,6 +311,74 @@
         .back-link:hover {
             background: rgba(255,255,255,0.3);
         }
+
+        /* === 响应式适配 === */
+        @media (max-width: 640px) {
+            body {
+                padding: 12px;
+            }
+            .payment-card {
+                padding: 24px 16px;
+                border-radius: 14px;
+            }
+            .payment-title {
+                font-size: 22px;
+            }
+            .order-info {
+                padding: 14px;
+            }
+            .order-row {
+                flex-direction: column;
+                gap: 4px;
+                padding: 8px 0;
+            }
+            .payment-option {
+                padding: 14px;
+                gap: 12px;
+            }
+            .payment-option-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 22px;
+            }
+            .qr-code {
+                width: 200px;
+                height: 200px;
+            }
+            .btn {
+                padding: 14px 24px;
+                font-size: 15px;
+                width: 100%;
+                text-align: center;
+                margin: 5px 0;
+            }
+            .status-icon {
+                font-size: 48px;
+            }
+            .status-title {
+                font-size: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .payment-card {
+                padding: 16px 12px;
+                border-radius: 12px;
+            }
+            .payment-title {
+                font-size: 20px;
+            }
+            .order-amount {
+                font-size: 20px;
+            }
+            .qr-code {
+                width: 180px;
+                height: 180px;
+            }
+            .payment-timer-countdown {
+                font-size: 20px;
+            }
+        }
     </style>
 </head>
 <body>

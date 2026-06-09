@@ -251,6 +251,97 @@
     .tag-inactive { background: #fee2e2; color: #991b1b; }
     .tag-admin { background: #ede9fe; color: #5b21b6; }
     .tag-user { background: #e0f2fe; color: #075985; }
+
+    /* === 响应式适配 === */
+    @media (max-width: 768px) {
+      .container {
+        padding: 16px 12px;
+      }
+      .stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+      .tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        flex-wrap: nowrap;
+        gap: 4px;
+        padding-bottom: 2px;
+      }
+      .tabs::-webkit-scrollbar { display: none; }
+      .tab {
+        padding: 10px 14px;
+        font-size: 14px;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .data-table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        white-space: nowrap;
+      }
+      .review-item .header {
+        flex-direction: column;
+        gap: 8px;
+      }
+      .review-item .actions {
+        flex-wrap: wrap;
+      }
+      .withdrawal-item .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      .withdrawal-item .info {
+        grid-template-columns: 1fr;
+      }
+      .withdrawal-item .amount {
+        font-size: 22px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .navbar {
+        padding: 0 12px;
+        height: 52px;
+        font-size: 14px;
+      }
+      .nav-brand {
+        font-size: 16px;
+      }
+      .container {
+        padding: 12px 8px;
+      }
+      .stats {
+        grid-template-columns: 1fr;
+      }
+      .stat-card {
+        padding: 14px;
+      }
+      .stat-card .value {
+        font-size: 24px;
+      }
+      .tab {
+        padding: 8px 12px;
+        font-size: 13px;
+      }
+      .review-item {
+        padding: 14px;
+      }
+      .review-item .content {
+        padding: 12px;
+        max-height: 150px;
+      }
+      .btn {
+        padding: 10px 14px;
+        min-height: 40px;
+      }
+      .withdrawal-item {
+        padding: 14px;
+      }
+    }
   </style>
 </head>
 <body>

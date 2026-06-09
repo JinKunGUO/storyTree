@@ -365,6 +365,97 @@
                 width: 100%;
             }
         }
+
+        @media (max-width: 640px) {
+            .mall-container {
+                padding: 20px 12px;
+            }
+            .mall-header {
+                padding: 24px 16px;
+                border-radius: 14px;
+            }
+            .mall-title {
+                font-size: 24px;
+                gap: 10px;
+            }
+            .mall-subtitle {
+                font-size: 14px;
+            }
+            .user-points-card {
+                padding: 18px;
+            }
+            .user-points-value {
+                font-size: 32px;
+            }
+            .package-card {
+                padding: 20px;
+                border-radius: 14px;
+            }
+            .package-card:hover {
+                transform: none;
+            }
+            .package-icon {
+                width: 60px;
+                height: 60px;
+                font-size: 28px;
+            }
+            .package-name {
+                font-size: 20px;
+            }
+            .package-points {
+                font-size: 28px;
+            }
+            .package-price {
+                font-size: 24px;
+            }
+            .payment-methods {
+                padding: 24px 16px;
+                border-radius: 14px;
+            }
+            .payment-options {
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+            }
+            .payment-option {
+                padding: 14px;
+                border-radius: 10px;
+            }
+            .payment-option i {
+                font-size: 32px;
+                margin-bottom: 8px;
+            }
+            .exchange-code-section {
+                padding: 24px 16px;
+                border-radius: 14px;
+            }
+            .exchange-title {
+                font-size: 20px;
+            }
+            .btn-buy {
+                min-height: 48px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding-top: 56px;
+            }
+            .mall-title {
+                font-size: 20px;
+                flex-direction: column;
+                gap: 6px;
+            }
+            .user-points-value {
+                font-size: 28px;
+            }
+            .payment-options {
+                grid-template-columns: 1fr;
+            }
+            .exchange-rules {
+                padding: 14px;
+                font-size: 13px;
+            }
+        }
     </style>
 </head>
 <body>
