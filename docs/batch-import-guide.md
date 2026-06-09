@@ -1,422 +1,209 @@
-# StoryTree 批量导入公版书指南
+# StoryTree 批量导入指南
 
-本文档详细介绍如何使用 StoryTree 的批量导入工具将公版小说/文章导入系统。
+本文档介绍如何使用 StoryTree 的导入工具链将小说/公版书导入系统。
 
 ## 目录
 
-- [概述](#概述)
-- [工具链说明](#工具链说明)
+- [工具链概览](#工具链概览)
 - [快速开始](#快速开始)
 - [详细使用方法](#详细使用方法)
-  - [步骤一：准备 TXT 文件](#步骤一准备-txt-文件)
-  - [步骤二：TXT 转 JSON](#步骤二txt-转-json)
-  - [步骤三：导入数据库](#步骤三导入数据库)
+  - [步骤一：TXT → JSON（预处理）](#步骤一txt--json预处理)
+  - [步骤二：JSON → 数据库](#步骤二json--数据库)
 - [JSON 数据格式](#json-数据格式)
-- [章节识别规则](#章节识别规则)
-- [自动标签分配](#自动标签分配)
 - [命令行参数](#命令行参数)
+- [元数据提供方式](#元数据提供方式)
+- [标签分类体系](#标签分类体系)
+- [定时/批量导入方案](#定时批量导入方案)
 - [删除已导入的故事](#删除已导入的故事)
 - [常见问题](#常见问题)
 
 ---
 
-## 概述
-
-StoryTree 提供了三个脚本用于管理公版书：
+## 工具链概览
 
 | 脚本 | 功能 | 位置 |
 |------|------|------|
-| `text-to-json.ts` | 将 TXT 文本按章节分割，转换为 JSON 格式 | `api/scripts/text-to-json.ts` |
-| `batch-import-stories.ts` | 将 JSON 数据批量导入数据库 | `api/scripts/batch-import-stories.ts` |
+| `fetch-webnovels.ts` | TXT → JSON：分章、打标签、生成 JSON | `api/scripts/fetch-webnovels.ts` |
+| `batch-import-stories.ts` | JSON → 数据库：创建故事和章节 | `api/scripts/batch-import-stories.ts` |
+| `split-chapters.ts` | 核心分章算法（被上面两个脚本复用） | `api/scripts/split-chapters.ts` |
+| `reassign-tags.ts` | 对已有 seed-data 重新分配标签 | `api/scripts/reassign-tags.ts` |
+| `resplit-seed-data.ts` | 对已有 seed-data 重新分章 | `api/scripts/resplit-seed-data.ts` |
 | `delete-story.ts` | 删除已导入的故事 | `api/scripts/delete-story.ts` |
 
-**工作流程**：
+**完整工作流**：
 
 ```
-TXT 文件 → [text-to-json.ts] → JSON 文件 → [batch-import-stories.ts] → 数据库
-                                                                          ↓
-                                              [delete-story.ts] ← 如需删除
+TXT 文件 (.txt)
+    ↓  fetch-webnovels.ts（智能分章 + 自动标签 + 生成简介）
+JSON 文件 (seed-data/*.json)
+    ↓  batch-import-stories.ts（写入数据库 + 创建虚拟作者）
+PostgreSQL 数据库
+    ↓  API 提供给前端
+用户在 web/小程序 看到新书
 ```
 
-### 新增功能（v2.0）
+**两个脚本的分工**：
 
-- ✅ **支持外部目录直接导入**：无需复制文件，直接指定源目录
-- ✅ **递归扫描子目录**：支持 `--recursive` 参数
-- ✅ **自动标签分配**：根据文件名/目录名自动分配标签（四大名著、先秦、秦汉等）
-- ✅ **进度条显示**：大批量处理时显示进度
-- ✅ **更多章节格式**：支持【第一章】、(一)、卷一 等格式
-- ✅ **删除故事脚本**：支持按 ID、标题、作者删除
-
----
-
-## 工具链说明
-
-### 1. text-to-json.ts（TXT 转 JSON）
-
-**功能**：
-- 自动识别章节标题（支持多种格式）
-- 提取文件前几行的元数据（描述、标签）
-- 将纯文本分割为结构化的 JSON
-
-**代码位置**：`api/scripts/text-to-json.ts`
-
-### 2. batch-import-stories.ts（批量导入）
-
-**功能**：
-- 读取 JSON 文件，创建故事和章节
-- 支持断点续传（跳过已存在的故事）
-- 支持 dry-run 模式预览
-- 自动设置审核状态为 `APPROVED`
-
-**代码位置**：`api/scripts/batch-import-stories.ts`
+| | `fetch-webnovels.ts` | `batch-import-stories.ts` |
+|---|---|---|
+| **输入** | `.txt` 文件 | `seed-data/*.json` 文件 |
+| **输出** | `seed-data/` 目录下的 JSON | 数据库记录 |
+| **依赖** | 无需数据库 | 需要数据库 + admin 用户 |
+| **核心能力** | 智能分章、标签推断、编码检测 | 创建虚拟作者、分批写入、断点续传 |
 
 ---
 
 ## 快速开始
 
-假设你的公版书存放在 `/Users/jinkun/shu/books` 目录下。
-
-### 方法一：直接从外部目录导入（推荐）
-
 ```bash
 cd /Users/jinkun/storytree/api
 
-# 1. TXT 转 JSON（直接指定源目录，递归扫描子目录）
-npx ts-node scripts/text-to-json.ts --source /Users/jinkun/shu/books --recursive
+# 1. TXT → JSON（从目录批量导入，递归子目录）
+npx ts-node scripts/fetch-webnovels.ts --source local-dir --path /path/to/novels/ --recursive
 
 # 2. 预览导入（不写入数据库）
 npx ts-node scripts/batch-import-stories.ts --dry-run
 
 # 3. 正式导入
 npx ts-node scripts/batch-import-stories.ts
-```
 
-### 方法二：复制文件到 raw 目录
-
-```bash
-# 1. 将 TXT 文件复制到 raw 目录
-cp /Users/jinkun/shu/books/*.txt /Users/jinkun/storytree/api/scripts/seed-data/raw/
-
-# 2. 进入 api 目录
-cd /Users/jinkun/storytree/api
-
-# 3. TXT 转 JSON
-npx ts-node scripts/text-to-json.ts
-
-# 4. 预览导入（不写入数据库）
-npx ts-node scripts/batch-import-stories.ts --dry-run
-
-# 5. 正式导入
-npx ts-node scripts/batch-import-stories.ts
-```
-
-### 方法三：直接准备 JSON 文件
-
-如果你已经有结构化的 JSON 数据，可以跳过转换步骤：
-
-```bash
-# 1. 将 JSON 文件放入 seed-data 目录
-cp your-book.json /Users/jinkun/storytree/api/scripts/seed-data/
-
-# 2. 导入
-cd /Users/jinkun/storytree/api
-npx ts-node scripts/batch-import-stories.ts
+# 4. 更新用户统计（可选）
+npx ts-node scripts/recalculate-user-stats.ts
 ```
 
 ---
 
 ## 详细使用方法
 
-### 步骤一：准备 TXT 文件
+### 步骤一：TXT → JSON（预处理）
 
-#### 文件存放位置
+`fetch-webnovels.ts` 负责将原始 TXT 文件转换为标准 JSON 格式。
 
-将 TXT 文件放入：`api/scripts/seed-data/raw/`
-
-```bash
-# 创建 raw 目录（如果不存在）
-mkdir -p /Users/jinkun/storytree/api/scripts/seed-data/raw
-
-# 从公版书目录复制
-cp /Users/jinkun/shu/books/西游记.txt /Users/jinkun/storytree/api/scripts/seed-data/raw/
-cp /Users/jinkun/shu/books/三国演义.txt /Users/jinkun/storytree/api/scripts/seed-data/raw/
-```
-
-#### 文件命名规则
-
-**文件名即故事标题**，例如：
-- `西游记.txt` → 故事标题为"西游记"
-- `三国演义.txt` → 故事标题为"三国演义"
-
-#### TXT 文件格式要求
-
-1. **编码**：UTF-8（必须）
-2. **章节标题**：独占一行
-3. **元数据**（可选）：在文件开头添加描述和标签
-
-**示例 TXT 文件**：
-
-```
-[描述] 中国古典四大名著之一，描写唐僧师徒西天取经的故事。
-[标签] 古典文学,神话,冒险,四大名著
-
-第一回 灵根育孕源流出 心性修持大道生
-
-诗曰：
-混沌未分天地乱，茫茫渺渺无人见。
-自从盘古破鸿蒙，开辟从兹清浊辨。
-......（正文内容）
-
-第二回 悟彻菩提真妙理 断魔归本合元神
-
-......（正文内容）
-```
-
-### 步骤二：TXT 转 JSON
+#### 单文件导入
 
 ```bash
-cd /Users/jinkun/storytree/api
-
-# 转换所有 raw 目录下的 TXT 文件
-npx ts-node scripts/text-to-json.ts
-
-# 或只转换指定文件
-npx ts-node scripts/text-to-json.ts 西游记.txt
+npx ts-node scripts/fetch-webnovels.ts \
+  --source local-txt \
+  --path ./novels/斗破苍穹.txt \
+  --author "天蚕土豆" \
+  --tags "玄幻,冒险"
 ```
 
-**输出示例**：
-
-```
-📝 TXT -> JSON 转换工具
-
-📖 找到 2 个 TXT 文件:
-
-📥 处理: 西游记.txt
-  ✅ -> 西游记.json
-     100 章, 856,432 字
-     描述: 中国古典四大名著之一...
-     标签: 古典文学,神话,冒险,四大名著
-
-📥 处理: 三国演义.txt
-  ✅ -> 三国演义.json
-     120 章, 732,156 字
-
-==================================================
-📊 转换完成: 2 个成功, 0 个跳过
-==================================================
-```
-
-**生成的 JSON 文件位置**：`api/scripts/seed-data/`
-
-### 步骤三：导入数据库
+#### 批量导入目录
 
 ```bash
-cd /Users/jinkun/storytree/api
+# 扫描目录下所有 .txt 文件
+npx ts-node scripts/fetch-webnovels.ts --source local-dir --path ./novels/
 
-# 1. 先预览（推荐）
-npx ts-node scripts/batch-import-stories.ts --dry-run
+# 递归扫描子目录
+npx ts-node scripts/fetch-webnovels.ts --source local-dir --path ./novels/ --recursive
 
-# 2. 正式导入
+# 预览模式（不写入文件）
+npx ts-node scripts/fetch-webnovels.ts --source local-dir --path ./novels/ --dry-run
+
+# 强制覆盖已存在的 JSON
+npx ts-node scripts/fetch-webnovels.ts --source local-dir --path ./novels/ --force
+```
+
+#### 自动能力
+
+- **智能分章**：三级策略 — 正则章节标记 → 空行分段 → 固定长度切割
+- **编码检测**：自动识别 UTF-8 和 GBK 编码
+- **标签推断**：13 条关键词规则（武侠/仙侠/玄幻/言情/悬疑等）+ 体裁/受众推断
+- **简介生成**：自动提取正文前 200 字作为简介
+
+#### TXT 文件要求
+
+1. **文件名即书名**：`斗破苍穹.txt` → 标题为"斗破苍穹"
+2. **编码**：UTF-8 或 GBK（自动检测）
+3. **章节标记**（可选）：
+   - `第一章 xxx` / `第1回 xxx`
+   - `Chapter 1` / `CHAPTER 1`
+   - `卷一 xxx` / `【第一章】xxx`
+   - 无标记时自动按空行或固定字数切割
+4. **内嵌元数据**（可选）：在文件开头添加
+   ```
+   [作者] 天蚕土豆
+   [描述] 一部经典玄幻小说
+   [标签] 玄幻,冒险,热血
+   
+   第一章 陨落的天才
+   ...
+   ```
+
+### 步骤二：JSON → 数据库
+
+```bash
+# 全量导入 seed-data/ 下所有 JSON
 npx ts-node scripts/batch-import-stories.ts
 
-# 3. 更新用户统计（可选）
-npx ts-node scripts/recalculate-user-stats.ts
+# 只导入一本
+npx ts-node scripts/batch-import-stories.ts --file 斗破苍穹.json
+
+# 预览模式
+npx ts-node scripts/batch-import-stories.ts --dry-run
 ```
 
-**输出示例**：
-
-```
-📚 StoryTree 批量导入工具
-
-✅ 管理员用户: admin (ID: 1)
-
-📖 找到 2 个数据文件:
-
-   - 西游记.json
-   - 三国演义.json
-
-📥 导入: 西游记.json
-  📖 "西游记" - 100 章
-  ✅ 导入成功 (ID: 5, 100 章, 856,432 字)
-
-📥 导入: 三国演义.json
-  📖 "三国演义" - 120 章
-  ✅ 导入成功 (ID: 6, 120 章, 732,156 字)
-
-==================================================
-📊 导入完成汇总:
-   成功导入: 2 部故事
-   总章节数: 220
-   总字数:   1,588,588
-==================================================
-```
+**特性**：
+- **断点续传**：同名故事自动跳过，不会重复导入
+- **虚拟作者**：JSON 中有 `author_name` 字段时，自动创建不可登录的虚拟用户
+- **分批写入**：每 50 章一个事务，避免超时
 
 ---
 
 ## JSON 数据格式
 
-如果你想手动创建或编辑 JSON 文件，格式如下：
+`fetch-webnovels.ts` 输出的 JSON 格式（也是 `batch-import-stories.ts` 的输入格式）：
 
 ```json
 {
   "title": "故事标题",
-  "description": "故事简介（可选）",
-  "tags": "标签1,标签2,标签3（可选）",
+  "description": "故事简介",
+  "author_name": "原著作者（可选）",
+  "tags": "标签1,标签2,标签3",
   "cover_image": "封面图片URL（可选）",
   "chapters": [
-    {
-      "title": "第一回 章节标题",
-      "content": "章节正文内容..."
-    },
-    {
-      "title": "第二回 章节标题",
-      "content": "章节正文内容..."
-    }
+    { "title": "第一章 标题", "content": "正文内容..." },
+    { "title": "第二章 标题", "content": "正文内容..." }
   ]
 }
 ```
 
-**字段说明**：
-
 | 字段 | 必填 | 说明 |
 |------|------|------|
 | `title` | ✅ | 故事标题 |
-| `description` | ❌ | 故事简介 |
-| `tags` | ❌ | 标签，逗号分隔 |
+| `description` | ❌ | 故事简介（不填则自动生成） |
+| `author_name` | ❌ | 原著作者（会创建虚拟用户） |
+| `tags` | ❌ | 标签，逗号分隔（不填则自动推断） |
 | `cover_image` | ❌ | 封面图片 URL |
 | `chapters` | ✅ | 章节数组 |
-| `chapters[].title` | ✅ | 章节标题（为空时自动生成"第 N 章"） |
+| `chapters[].title` | ✅ | 章节标题 |
 | `chapters[].content` | ✅ | 章节正文 |
-
-**示例**：参考 `api/scripts/seed-data/伊索寓言精选.json`
-
----
-
-## 章节识别规则
-
-`text-to-json.ts` 支持以下章节标题格式：
-
-| 格式 | 示例 |
-|------|------|
-| 中文"回" | 第一回 xxx、第二回 xxx |
-| 中文"章" | 第一章 xxx、第二章 xxx |
-| 中文"篇" | 第一篇 xxx、第二篇 xxx |
-| 中文"节" | 第一节 xxx、第二节 xxx |
-| 中文"卷" | 第一卷 xxx、第二卷 xxx |
-| 阿拉伯数字 | 第1回 xxx、第2章 xxx |
-| 英文 | Chapter 1、CHAPTER 2 |
-| 序号 | 一、xxx、二、xxx、1、xxx |
-| 【】格式 | 【第一章】xxx |
-| 括号格式 | (一) xxx、（一）xxx |
-| 卷格式 | 卷一 xxx、上卷 xxx、中卷 xxx |
-| Part 格式 | Part 1、PART ONE |
-
-**代码位置**：`api/scripts/text-to-json.ts:76-95`
-
----
-
-## 自动标签分配
-
-脚本会根据文件名和目录名自动分配标签，无需手动添加。
-
-### 支持的标签映射
-
-#### 朝代分类（根据目录名）
-
-| 目录名 | 自动分配的标签 |
-|--------|----------------|
-| 先秦 | 先秦,古典文学,哲学 |
-| 秦汉 | 秦汉,古典文学,历史 |
-| 魏晋 | 魏晋,古典文学,历史 |
-| 隋唐 | 隋唐,古典文学,历史 |
-| 宋元 | 宋元,古典文学,历史 |
-| 明清 | 明清,古典文学,历史 |
-| 近代 | 近代,文学 |
-
-#### 经典著作（根据文件名）
-
-| 文件名 | 自动分配的标签 |
-|--------|----------------|
-| 论语 | 儒家,经典,哲学,先秦 |
-| 道德经 | 道家,经典,哲学,先秦 |
-| 庄子 | 道家,经典,哲学,先秦 |
-| 孙子兵法 | 兵法,经典,军事,先秦 |
-| 史记 | 历史,经典,秦汉 |
-| 三国演义 | 四大名著,古典文学,历史演义,明清 |
-| 水浒传 | 四大名著,古典文学,侠义小说,明清 |
-| 西游记 | 四大名著,古典文学,神魔小说,明清 |
-| 红楼梦 | 四大名著,古典文学,言情小说,明清 |
-| 本草纲目 | 医学,科技,明清 |
-| 天工开物 | 科技,工艺,明清 |
-
-### 示例
-
-```
-/Users/jinkun/shu/books/
-├── 先秦/
-│   ├── 论语.txt      → 标签: 儒家,经典,哲学,先秦,古典文学
-│   └── 道德经.txt    → 标签: 道家,经典,哲学,先秦,古典文学
-├── 秦汉/
-│   └── 史记.txt      → 标签: 历史,经典,秦汉,古典文学
-└── 三国演义.txt      → 标签: 四大名著,古典文学,历史演义,明清
-```
-
-### 自定义标签
-
-如果需要自定义标签，可以在 TXT 文件开头添加：
-
-```
-[标签] 自定义标签1,自定义标签2
-```
-
-自定义标签会与自动分配的标签合并。
 
 ---
 
 ## 命令行参数
 
-### text-to-json.ts
+### fetch-webnovels.ts
 
 | 参数 | 说明 | 示例 |
 |------|------|------|
-| `--source <path>` | 指定源目录（默认为 raw 目录） | `--source /Users/jinkun/shu/books` |
+| `--source <type>` | 数据源类型：`local-txt` 或 `local-dir` | `--source local-dir` |
+| `--path <path>` | 输入路径（文件或目录） | `--path ./novels/` |
 | `--recursive` | 递归扫描子目录 | `--recursive` |
-| `--force` | 强制覆盖已存在的 JSON 文件 | `--force` |
-| `<filename>` | 只转换指定文件 | `西游记.txt` |
-
-**示例**：
-
-```bash
-# 从外部目录导入，递归扫描子目录
-npx ts-node scripts/text-to-json.ts --source /Users/jinkun/shu/books --recursive
-
-# 强制重新转换所有文件
-npx ts-node scripts/text-to-json.ts --source /Users/jinkun/shu/books --recursive --force
-
-# 只转换指定文件
-npx ts-node scripts/text-to-json.ts 西游记.txt
-```
+| `--author <name>` | 指定作者 | `--author "天蚕土豆"` |
+| `--tags <tags>` | 指定标签（逗号分隔） | `--tags "玄幻,冒险"` |
+| `--description <desc>` | 指定简介 | `--description "..."` |
+| `--dry-run` | 预览模式，不写入文件 | `--dry-run` |
+| `--force` | 强制覆盖已存在的 JSON | `--force` |
 
 ### batch-import-stories.ts
 
 | 参数 | 说明 | 示例 |
 |------|------|------|
-| `--file <path>` | 只导入指定 JSON 文件 | `--file seed-data/西游记.json` |
-| `--admin-username <name>` | 指定作者（管理员用户名） | `--admin-username admin` |
+| `--file <path>` | 只导入指定 JSON 文件 | `--file 西游记.json` |
+| `--admin-username <name>` | 指定管理员用户名 | `--admin-username admin` |
 | `--dry-run` | 预览模式，不写入数据库 | `--dry-run` |
-
-**示例**：
-
-```bash
-# 只导入一本书
-npx ts-node scripts/batch-import-stories.ts --file seed-data/西游记.json
-
-# 使用指定管理员账号
-npx ts-node scripts/batch-import-stories.ts --admin-username guojinkun1
-
-# 预览模式
-npx ts-node scripts/batch-import-stories.ts --dry-run
-```
 
 ### delete-story.ts
 
@@ -425,13 +212,132 @@ npx ts-node scripts/batch-import-stories.ts --dry-run
 | `--id <id>` | 按故事 ID 删除 | `--id 5` |
 | `--title <title>` | 按标题删除（模糊匹配） | `--title "西游记"` |
 | `--author <username>` | 删除某用户的所有故事 | `--author admin` |
-| `--dry-run` | 预览模式，不实际删除 | `--dry-run` |
+| `--dry-run` | 预览模式 | `--dry-run` |
 | `--force` | 确认删除多个故事 | `--force` |
 
-**示例**：
+---
+
+## 元数据提供方式
+
+三种方式提供书籍元数据（优先级从高到低）：
+
+### 1. 命令行参数
 
 ```bash
-# 预览要删除的故事
+npx ts-node scripts/fetch-webnovels.ts --source local-txt \
+  --path ./novels/斗破苍穹.txt \
+  --author "天蚕土豆" \
+  --tags "玄幻,冒险" \
+  --description "天才少年萧炎的修炼之路"
+```
+
+### 2. 同名 .meta.json 文件
+
+在 TXT 文件同目录下放置同名的 `.meta.json`：
+
+```
+novels/
+├── 斗破苍穹.txt
+└── 斗破苍穹.meta.json
+```
+
+`斗破苍穹.meta.json` 内容：
+```json
+{
+  "author_name": "天蚕土豆",
+  "tags": "玄幻,冒险,热血",
+  "description": "天才少年萧炎的修炼之路"
+}
+```
+
+### 3. TXT 文件内嵌
+
+在 TXT 文件开头写入元数据行：
+
+```
+[作者] 天蚕土豆
+[描述] 天才少年萧炎的修炼之路
+[标签] 玄幻,冒险,热血
+
+第一章 陨落的天才
+...正文...
+```
+
+如果三种方式都不提供，脚本会：
+- 用文件名作为标题
+- 自动推断标签（基于内容关键词）
+- 自动生成简介（取正文前 200 字）
+
+---
+
+## 标签分类体系
+
+标签配置文件：`api/config/tag-taxonomy.json`
+
+当前支持 7 个维度：
+
+| 维度 | 说明 | 示例标签 |
+|------|------|----------|
+| era | 时代 | 先秦、秦汉、明清、近代、当代 |
+| genre | 类型 | 武侠、仙侠、玄幻、言情、悬疑推理 |
+| form | 体裁 | 长篇小说、短篇小说、散文、诗歌 |
+| theme | 题材 | 爱情、冒险、成长、穿越、末世 |
+| audience | 受众 | 男频、女频、通用、儿童 |
+| source | 来源 | 公版书、原创、网文、经典名著 |
+| status | 状态 | 已完结、连载中 |
+
+**添加新标签**：只需编辑 `api/config/tag-taxonomy.json`，前端会自动从 `/api/stories/tags/taxonomy` 获取最新配置。
+
+**重新分配标签**：
+```bash
+# 对所有 seed-data 重新打标签
+npx ts-node scripts/reassign-tags.ts
+
+# 预览模式
+npx ts-node scripts/reassign-tags.ts --dry-run
+```
+
+---
+
+## 定时/批量导入方案
+
+### 方式 1：手动批量
+
+```bash
+cd api
+# 把 TXT 放到 novels/ 后一次性处理
+npx ts-node scripts/fetch-webnovels.ts --source local-dir --path ./novels/ --recursive
+npx ts-node scripts/batch-import-stories.ts
+```
+
+### 方式 2：crontab 定时
+
+```bash
+# 每天凌晨 3 点检查并导入新书
+0 3 * * * cd /path/to/storytree/api && \
+  npx ts-node scripts/fetch-webnovels.ts --source local-dir --path ./novels/ --recursive && \
+  npx ts-node scripts/batch-import-stories.ts \
+  >> /var/log/storytree-import.log 2>&1
+```
+
+### 方式 3：监听目录变化
+
+```bash
+# macOS 使用 fswatch
+fswatch -0 ./novels/ | while read -d "" file; do
+  if [[ "$file" == *.txt ]]; then
+    npx ts-node scripts/fetch-webnovels.ts --source local-txt --path "$file"
+    npx ts-node scripts/batch-import-stories.ts --file "$(basename "$file" .txt).json"
+  fi
+done
+```
+
+---
+
+## 删除已导入的故事
+
+```bash
+# 预览
 npx ts-node scripts/delete-story.ts --id 5 --dry-run
 
 # 按 ID 删除
@@ -440,49 +346,11 @@ npx ts-node scripts/delete-story.ts --id 5
 # 按标题删除
 npx ts-node scripts/delete-story.ts --title "西游记"
 
-# 删除某用户的所有故事（需要 --force）
+# 批量删除某用户的所有故事（需 --force）
 npx ts-node scripts/delete-story.ts --author admin --force
 ```
 
----
-
-## 删除已导入的故事
-
-如果导入有误，可以使用 `delete-story.ts` 脚本删除故事。
-
-### 删除单个故事
-
-```bash
-cd /Users/jinkun/storytree/api
-
-# 1. 先预览（推荐）
-npx ts-node scripts/delete-story.ts --id 5 --dry-run
-
-# 2. 确认后删除
-npx ts-node scripts/delete-story.ts --id 5
-```
-
-### 按标题删除
-
-```bash
-# 模糊匹配标题
-npx ts-node scripts/delete-story.ts --title "西游记" --dry-run
-npx ts-node scripts/delete-story.ts --title "西游记"
-```
-
-### 批量删除某用户的故事
-
-```bash
-# 删除 admin 用户的所有故事（危险操作，需要 --force）
-npx ts-node scripts/delete-story.ts --author admin --dry-run
-npx ts-node scripts/delete-story.ts --author admin --force
-```
-
-### 注意事项
-
-- ⚠️ **删除操作不可逆**，请务必先使用 `--dry-run` 预览
-- ⚠️ 删除故事会同时删除所有章节（nodes）、评论、书签等关联数据
-- ⚠️ 删除多个故事时必须添加 `--force` 参数确认
+⚠️ 删除操作不可逆，务必先用 `--dry-run` 预览。
 
 ---
 
@@ -490,79 +358,52 @@ npx ts-node scripts/delete-story.ts --author admin --force
 
 ### Q1: 导入失败提示"管理员用户不存在"
 
-**原因**：需要先创建管理员用户
-
-**解决**：
 ```bash
 npx ts-node scripts/create-admin.ts
 ```
 
 ### Q2: TXT 文件没有被正确分章
 
-**原因**：章节标题格式不在支持列表中
+分章算法按优先级尝试：
+1. 正则匹配章节标记（`第X章`、`Chapter X` 等）
+2. 按连续空行分段（段落长度 > 1500 字）
+3. 固定字数切割（每 5000-8000 字一章）
 
-**解决**：
-1. 检查 TXT 文件的章节标题格式
-2. 确保章节标题独占一行
-3. 如有特殊格式，可修改 `text-to-json.ts` 中的 `CHAPTER_PATTERNS`
+如果效果不理想，可以手动在 TXT 中添加明确的章节标记。
 
 ### Q3: 中文乱码
 
-**原因**：TXT 文件编码不是 UTF-8
-
-**解决**：
+脚本自动检测 GBK 编码。如果仍有问题：
 ```bash
-# macOS 转换编码
+# 手动转换编码
 iconv -f GBK -t UTF-8 原文件.txt > 新文件.txt
 ```
 
-### Q4: 导入后故事作者不对
+### Q4: 重复导入会怎样
 
-**原因**：默认使用 `admin` 用户作为作者
+- `fetch-webnovels.ts`：已存在同名 JSON 时跳过（除非 `--force`）
+- `batch-import-stories.ts`：已存在同名故事时跳过（断点续传）
 
-**解决**：
-```bash
-npx ts-node scripts/batch-import-stories.ts --admin-username 你的用户名
-```
-
-### Q5: 重复导入会怎样
-
-**答**：脚本会自动跳过已存在的同名故事（断点续传功能）
-
-### Q6: 如何删除导入错误的故事
-
-**答**：使用 `delete-story.ts` 脚本：
-```bash
-npx ts-node scripts/delete-story.ts --id 5 --dry-run  # 先预览
-npx ts-node scripts/delete-story.ts --id 5            # 确认删除
-```
-
----
-
-## 完整工作流示例
-
-以导入 `/Users/jinkun/shu/books` 目录下的公版书为例：
+### Q5: 如何只重新处理某本书
 
 ```bash
-# 1. 进入 api 目录
-cd /Users/jinkun/storytree/api
+# 重新生成 JSON（覆盖）
+npx ts-node scripts/fetch-webnovels.ts --source local-txt --path ./novels/西游记.txt --force
 
-# 2. TXT 转 JSON（直接从外部目录，递归扫描）
-npx ts-node scripts/text-to-json.ts --source /Users/jinkun/shu/books --recursive
-
-# 3. 预览导入
-npx ts-node scripts/batch-import-stories.ts --dry-run
-
-# 4. 正式导入
-npx ts-node scripts/batch-import-stories.ts
-
-# 5. 更新用户统计（可选）
-npx ts-node scripts/recalculate-user-stats.ts
-
-# 6. 如果需要删除某个故事
-npx ts-node scripts/delete-story.ts --title "西游记" --dry-run
+# 先删除数据库中的旧数据
 npx ts-node scripts/delete-story.ts --title "西游记"
+
+# 重新导入
+npx ts-node scripts/batch-import-stories.ts --file 西游记.json
 ```
+
+### Q6: 标签推断不准确
+
+可以通过以下方式覆盖：
+1. 命令行指定 `--tags "正确标签"`
+2. 创建 `.meta.json` 文件
+3. 在 TXT 开头添加 `[标签] 正确标签`
+4. 导入后运行 `reassign-tags.ts` 重新分配
 
 ---
 
@@ -570,12 +411,13 @@ npx ts-node scripts/delete-story.ts --title "西游记"
 
 | 文件 | 说明 |
 |------|------|
-| `api/scripts/text-to-json.ts` | TXT 转 JSON 工具（增强版） |
-| `api/scripts/batch-import-stories.ts` | 批量导入工具 |
+| `api/scripts/fetch-webnovels.ts` | TXT → JSON 导入工具（统一入口） |
+| `api/scripts/split-chapters.ts` | 智能分章算法 |
+| `api/scripts/batch-import-stories.ts` | JSON → 数据库导入工具 |
+| `api/scripts/reassign-tags.ts` | 标签重新分配工具 |
+| `api/scripts/resplit-seed-data.ts` | 章节重新分割工具 |
 | `api/scripts/delete-story.ts` | 删除故事工具 |
-| `api/scripts/seed-data/` | JSON 数据文件目录 |
-| `api/scripts/seed-data/raw/` | TXT 源文件目录 |
-| `api/scripts/seed-data/伊索寓言精选.json` | 示例数据文件 |
 | `api/scripts/create-admin.ts` | 创建管理员用户 |
 | `api/scripts/recalculate-user-stats.ts` | 重新计算用户统计 |
-
+| `api/config/tag-taxonomy.json` | 标签分类配置（可维护） |
+| `api/scripts/seed-data/` | JSON 数据文件目录 |

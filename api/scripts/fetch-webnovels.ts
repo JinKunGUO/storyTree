@@ -1,15 +1,24 @@
 /**
- * 网文数据获取/导入工具
+ * 网文/公版书数据导入工具（统一入口）
  *
  * 通用适配器框架，支持多种数据来源：
- * - local-txt：从本地 TXT 文件批量导入（默认适配器）
- * - local-dir：从包含多个 TXT 的目录批量导入
+ * - local-txt：从本地单个 TXT 文件导入
+ * - local-dir：从包含多个 TXT 的目录批量导入（支持 --recursive 递归子目录）
+ *
+ * 功能：
+ * - 智能分章（正则章节标记 → 空行分段 → 固定长度切割）
+ * - 自动标签推断（关键词规则引擎）
+ * - GBK/UTF-8 编码自动检测
+ * - 文件内元数据解析（[描述] / [标签] / [作者] 行）
+ * - 支持 .meta.json 外部元数据文件
+ * - 自动生成简介
  *
  * 输出标准 JSON 格式到 seed-data/ 目录，可直接用 batch-import-stories.ts 导入数据库。
  *
  * 用法：
  *   cd api && npx ts-node scripts/fetch-webnovels.ts --source local-txt --path ./novels/斗破苍穹.txt
  *   cd api && npx ts-node scripts/fetch-webnovels.ts --source local-dir --path ./novels/
+ *   cd api && npx ts-node scripts/fetch-webnovels.ts --source local-dir --path ./novels/ --recursive
  *   cd api && npx ts-node scripts/fetch-webnovels.ts --source local-dir --path ./novels/ --dry-run
  *   cd api && npx ts-node scripts/fetch-webnovels.ts --source local-txt --path ./novels/斗破苍穹.txt --author "天蚕土豆" --tags "玄幻,冒险"
  */
@@ -55,6 +64,8 @@ const AUTHOR = getArg('author');
 const TAGS = getArg('tags');
 const DESCRIPTION = getArg('description');
 const DRY_RUN = args.includes('--dry-run');
+const RECURSIVE = args.includes('--recursive');
+const FORCE = args.includes('--force');
 const OUTPUT_DIR = path.join(__dirname, 'seed-data');
 
 const SPLIT_OPTIONS: SplitOptions = {
@@ -62,6 +73,76 @@ const SPLIT_OPTIONS: SplitOptions = {
   targetChapterLength: 6000,
   maxChapterLength: 10000,
 };
+
+// ============ 编码检测 & 元数据解析 ============
+
+/** 检测文件是否为 GBK 编码（简单启发式：检查高字节对） */
+function isLikelyGBK(buf: Buffer): boolean {
+  // UTF-8 BOM
+  if (buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF) return false;
+  // 检查前 1000 字节中是否有非法 UTF-8 序列
+  let invalidUtf8 = 0;
+  for (let i = 0; i < Math.min(buf.length, 1000); i++) {
+    if (buf[i] > 0x7F) {
+      // 尝试判断是否是合法 UTF-8 多字节序列
+      if ((buf[i] & 0xE0) === 0xC0) { i += 1; }
+      else if ((buf[i] & 0xF0) === 0xE0) { i += 2; }
+      else if ((buf[i] & 0xF8) === 0xF0) { i += 3; }
+      else { invalidUtf8++; }
+    }
+  }
+  return invalidUtf8 > 5; // 超过 5 个非法序列则认为是 GBK
+}
+
+/** 读取文件内容，自动检测编码 */
+function readFileAutoEncoding(filePath: string): string {
+  const buf = fs.readFileSync(filePath);
+  if (isLikelyGBK(buf)) {
+    // 尝试用 iconv 解码 GBK（如果可用）
+    try {
+      const iconv = require('iconv-lite');
+      return iconv.decode(buf, 'gbk');
+    } catch {
+      // iconv-lite 不可用时尝试 TextDecoder
+      try {
+        const decoder = new TextDecoder('gbk');
+        return decoder.decode(buf);
+      } catch {
+        // 最终降级为 utf-8
+        return buf.toString('utf-8');
+      }
+    }
+  }
+  return buf.toString('utf-8');
+}
+
+/** 从文件内容头部提取 [描述]/[标签]/[作者] 元数据行 */
+function extractInlineMetadata(text: string): { cleanText: string; meta: Partial<NovelMetadata> } {
+  const meta: Partial<NovelMetadata> = {};
+  const lines = text.split('\n');
+  let startIdx = 0;
+
+  // 只检查前 10 行
+  for (let i = 0; i < Math.min(lines.length, 10); i++) {
+    const line = lines[i].trim();
+    if (!line) { startIdx = i + 1; continue; }
+
+    const descMatch = line.match(/^\[描述\]\s*(.+)/);
+    if (descMatch) { meta.description = descMatch[1].trim(); startIdx = i + 1; continue; }
+
+    const tagMatch = line.match(/^\[标签\]\s*(.+)/);
+    if (tagMatch) { meta.tags = tagMatch[1].trim(); startIdx = i + 1; continue; }
+
+    const authorMatch = line.match(/^\[作者\]\s*(.+)/);
+    if (authorMatch) { meta.author_name = authorMatch[1].trim(); startIdx = i + 1; continue; }
+
+    // 遇到非元数据行则停止
+    break;
+  }
+
+  const cleanText = lines.slice(startIdx).join('\n');
+  return { cleanText, meta };
+}
 
 // ============ 本地 TXT 适配器 ============
 
@@ -78,16 +159,17 @@ class LocalTxtAdapter implements SourceAdapter {
   }
 
   async fetch(id: string): Promise<{ text: string; meta: NovelMetadata }> {
-    const text = fs.readFileSync(id, 'utf-8');
+    const rawText = readFileAutoEncoding(id);
+    const { cleanText, meta: inlineMeta } = extractInlineMetadata(rawText);
     const fileName = path.basename(id, path.extname(id));
 
     return {
-      text,
+      text: cleanText,
       meta: {
         title: fileName,
-        author_name: AUTHOR || undefined,
-        description: DESCRIPTION || undefined,
-        tags: TAGS || undefined,
+        author_name: AUTHOR || inlineMeta.author_name || undefined,
+        description: DESCRIPTION || inlineMeta.description || undefined,
+        tags: TAGS || inlineMeta.tags || undefined,
       },
     };
   }
@@ -103,16 +185,28 @@ class LocalDirAdapter implements SourceAdapter {
     this.dirPath = path.resolve(dirPath);
   }
 
+  /** 递归收集目录下所有 .txt 文件 */
+  private collectFiles(dir: string, recursive: boolean): string[] {
+    const results: string[] = [];
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory() && recursive) {
+        results.push(...this.collectFiles(fullPath, true));
+      } else if (entry.isFile() && entry.name.endsWith('.txt') && !entry.name.startsWith('.')) {
+        results.push(fullPath);
+      }
+    }
+    return results;
+  }
+
   async list(): Promise<string[]> {
-    const files = fs.readdirSync(this.dirPath)
-      .filter(f => f.endsWith('.txt'))
-      .map(f => path.join(this.dirPath, f))
-      .sort();
-    return files;
+    return this.collectFiles(this.dirPath, RECURSIVE).sort();
   }
 
   async fetch(id: string): Promise<{ text: string; meta: NovelMetadata }> {
-    const text = fs.readFileSync(id, 'utf-8');
+    const rawText = readFileAutoEncoding(id);
+    const { cleanText, meta: inlineMeta } = extractInlineMetadata(rawText);
     const fileName = path.basename(id, '.txt');
 
     // 尝试从同名 .meta.json 读取元数据
@@ -125,12 +219,12 @@ class LocalDirAdapter implements SourceAdapter {
     }
 
     return {
-      text,
+      text: cleanText,
       meta: {
         title: extraMeta.title || fileName,
-        author_name: extraMeta.author_name || AUTHOR || undefined,
-        description: extraMeta.description || DESCRIPTION || undefined,
-        tags: extraMeta.tags || TAGS || undefined,
+        author_name: extraMeta.author_name || AUTHOR || inlineMeta.author_name || undefined,
+        description: extraMeta.description || DESCRIPTION || inlineMeta.description || undefined,
+        tags: extraMeta.tags || TAGS || inlineMeta.tags || undefined,
         cover_image: extraMeta.cover_image || undefined,
       },
     };
@@ -240,9 +334,14 @@ function generateDescription(text: string): string {
   return firstContent ? firstContent + '...' : '';
 }
 
-function saveNovel(novel: NovelData): string {
+function saveNovel(novel: NovelData): string | null {
   const fileName = novel.title.replace(/[\/\\:*?"<>|]/g, '_') + '.json';
   const outputPath = path.join(OUTPUT_DIR, fileName);
+
+  // 如果文件已存在且未指定 --force，跳过
+  if (fs.existsSync(outputPath) && !FORCE && !DRY_RUN) {
+    return null; // 表示跳过
+  }
 
   if (!DRY_RUN) {
     fs.writeFileSync(outputPath, JSON.stringify(novel, null, 2), 'utf-8');
@@ -274,16 +373,25 @@ async function main() {
     console.log('  # 批量导入目录下所有 TXT');
     console.log('  npx ts-node scripts/fetch-webnovels.ts --source local-dir --path ./novels/');
     console.log('');
+    console.log('  # 递归扫描子目录');
+    console.log('  npx ts-node scripts/fetch-webnovels.ts --source local-dir --path ./novels/ --recursive');
+    console.log('');
     console.log('  # 预览模式（不写入文件）');
     console.log('  npx ts-node scripts/fetch-webnovels.ts --source local-dir --path ./novels/ --dry-run');
+    console.log('');
+    console.log('  # 强制覆盖已存在的 JSON');
+    console.log('  npx ts-node scripts/fetch-webnovels.ts --source local-dir --path ./novels/ --force');
     console.log('');
     console.log('TXT 文件格式要求:');
     console.log('  - 文件名即书名（如"斗破苍穹.txt"）');
     console.log('  - 内容中包含章节标记（如"第一章 xxx"）会自动识别分章');
     console.log('  - 无章节标记时按空行或固定字数自动切割');
+    console.log('  - 支持 UTF-8 和 GBK 编码（自动检测）');
     console.log('');
-    console.log('可选: 同目录下放置 .meta.json 文件提供元数据:');
-    console.log('  斗破苍穹.meta.json → { "author_name": "天蚕土豆", "tags": "玄幻,冒险", "description": "..." }');
+    console.log('可选元数据（三种方式，优先级从高到低）:');
+    console.log('  1. 命令行参数: --author "作者" --tags "标签" --description "简介"');
+    console.log('  2. 同名 .meta.json: 斗破苍穹.meta.json → { "author_name": "天蚕土豆", ... }');
+    console.log('  3. 文件内嵌: TXT 开头写 [作者] xxx / [标签] xxx / [描述] xxx');
     process.exit(1);
   }
 
@@ -323,6 +431,11 @@ async function main() {
       }
 
       const outputPath = saveNovel(novel);
+      if (outputPath === null) {
+        console.log(`⏭ 跳过（已存在）: ${novel.title}.json`);
+        skipped++;
+        continue;
+      }
       totalChapters += novel.chapters.length;
       success++;
       console.log(`✓ ${novel.chapters.length} 章, 标签: [${novel.tags}]`);
