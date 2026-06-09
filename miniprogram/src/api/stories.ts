@@ -166,3 +166,21 @@ export function getCollaborators(storyId: number) {
   )
 }
 
+// 获取标签分类体系
+export interface TagTaxonomy {
+  version: string
+  dimensions: Record<string, { label: string; description?: string; tags: string[] }>
+}
+export function getTagTaxonomy() {
+  return http.get<TagTaxonomy>('/api/stories/tags/taxonomy')
+}
+
+// 猜你喜欢推荐
+export interface RecommendResponse {
+  stories: Story[]
+  isPersonalized: boolean
+}
+export function getRecommendStories(limit = 6) {
+  return http.get<RecommendResponse>(`/api/stories/recommend?limit=${limit}`)
+}
+

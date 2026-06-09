@@ -1,10 +1,24 @@
 import { Router } from 'express';
+import * as fs from 'fs';
+import * as path from 'path';
 import { prisma } from '../index';
 import { needsReview } from '../utils/sensitiveWords';
 import { authenticateToken, optionalAuth, getUserId, safeParsePage, safeParseLimit, safeParsePageSize } from '../utils/middleware';
 import { canViewStory, canEditStory, checkViewPermission, checkEditPermission } from '../utils/permissions';
 
 const router = Router();
+
+// ===== 标签分类体系 API =====
+// GET /api/stories/tags/taxonomy - 返回标签分类配置（供前端动态筛选）
+router.get('/tags/taxonomy', (_req, res) => {
+  try {
+    const taxonomyPath = path.join(__dirname, '../../config/tag-taxonomy.json');
+    const taxonomy = JSON.parse(fs.readFileSync(taxonomyPath, 'utf-8'));
+    res.json(taxonomy);
+  } catch (err) {
+    res.status(500).json({ error: '无法加载标签分类配置' });
+  }
+});
 
 // List all stories with first node info
 // 支持参数：sort(popular/trending/latest)、tag、page、limit (兼容 pageSize)
@@ -1486,6 +1500,103 @@ router.post('/admin/fix-cover-path', authenticateToken, async (req: any, res) =>
   } catch (error) {
     console.error('Fix cover path error:', error);
     res.status(500).json({ error: '修复封面路径失败' });
+  }
+});
+
+// ===== 猜你喜欢推荐 =====
+// GET /api/stories/recommend - 基于用户收藏/追更的标签偏好推荐
+router.get('/recommend', optionalAuth, async (req, res) => {
+  const userId = getUserId(req);
+  const limit = Math.min(parseInt(req.query.limit as string) || 6, 20);
+
+  try {
+    let recommendedStories: any[] = [];
+
+    if (userId) {
+      // 1. 获取用户收藏和追更的故事的标签
+      const [bookmarked, followed] = await Promise.all([
+        prisma.bookmarks.findMany({
+          where: { user_id: userId },
+          select: { story: { select: { id: true, tags: true } } },
+          take: 50,
+        }),
+        prisma.story_followers.findMany({
+          where: { user_id: userId },
+          select: { story: { select: { id: true, tags: true } } },
+          take: 50,
+        }),
+      ]);
+
+      // 2. 统计标签频率
+      const tagFreq: Record<string, number> = {};
+      const readStoryIds = new Set<number>();
+
+      [...bookmarked.map(b => b.story), ...followed.map(f => f.story)]
+        .filter(Boolean)
+        .forEach(story => {
+          readStoryIds.add(story.id);
+          if (story.tags) {
+            story.tags.split(',').map((t: string) => t.trim()).filter(Boolean).forEach((tag: string) => {
+              tagFreq[tag] = (tagFreq[tag] || 0) + 1;
+            });
+          }
+        });
+
+      // 3. 取频率最高的 3 个标签
+      const topTags = Object.entries(tagFreq)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([tag]) => tag);
+
+      if (topTags.length > 0) {
+        // 4. 查找包含这些标签但用户还没读过的故事
+        const candidates = await prisma.stories.findMany({
+          where: {
+            AND: [
+              { id: { notIn: Array.from(readStoryIds) } },
+              { OR: topTags.map(tag => ({ tags: { contains: tag } })) },
+              { nodes: { some: { parent_id: null } } },
+            ],
+          },
+          include: {
+            author: { select: { id: true, username: true, avatar: true } },
+            _count: { select: { nodes: true, bookmarks: true, followers: true } },
+          },
+          orderBy: { followers: { _count: 'desc' } },
+          take: limit,
+        });
+        recommendedStories = candidates;
+      }
+    }
+
+    // 5. 如果推荐不足，用热门故事补充
+    if (recommendedStories.length < limit) {
+      const existingIds = recommendedStories.map(s => s.id);
+      const popular = await prisma.stories.findMany({
+        where: {
+          id: { notIn: existingIds },
+          nodes: { some: { parent_id: null } },
+        },
+        include: {
+          author: { select: { id: true, username: true, avatar: true } },
+          _count: { select: { nodes: true, bookmarks: true, followers: true } },
+        },
+        orderBy: [
+          { followers: { _count: 'desc' } },
+          { nodes: { _count: 'desc' } },
+        ],
+        take: limit - recommendedStories.length,
+      });
+      recommendedStories = [...recommendedStories, ...popular];
+    }
+
+    res.json({
+      stories: recommendedStories,
+      isPersonalized: userId ? true : false,
+    });
+  } catch (error) {
+    console.error('Recommend error:', error);
+    res.status(500).json({ error: '获取推荐失败' });
   }
 });
 

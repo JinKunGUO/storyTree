@@ -96,6 +96,55 @@
             background: white;
             box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
         }
+        /* ===== 猜你喜欢横向滚动 ===== */
+        .recommend-scroll {
+            display: flex;
+            gap: var(--st-space-4);
+            overflow-x: auto;
+            padding-bottom: var(--st-space-3);
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+        }
+        .recommend-scroll::-webkit-scrollbar { height: 4px; }
+        .recommend-scroll::-webkit-scrollbar-thumb { background: var(--st-gray-300); border-radius: 2px; }
+        .recommend-card {
+            flex: 0 0 200px;
+            scroll-snap-align: start;
+            background: var(--st-bg-primary);
+            border-radius: var(--st-radius-xl);
+            overflow: hidden;
+            box-shadow: var(--st-shadow-sm);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        .recommend-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--st-shadow-md);
+        }
+        .recommend-card-cover {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            background: var(--st-gray-100);
+        }
+        .recommend-card-body {
+            padding: var(--st-space-3);
+        }
+        .recommend-card-title {
+            font-size: var(--st-text-sm);
+            font-weight: var(--st-font-semibold);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 4px;
+        }
+        .recommend-card-meta {
+            font-size: var(--st-text-xs);
+            color: var(--st-gray-500);
+            display: flex;
+            gap: var(--st-space-2);
+        }
+
         .filter-tabs {
             display: flex;
             gap: var(--st-space-2);
@@ -746,6 +795,13 @@
                                 </div>
                             </div>
                             <div class="filter-group">
+                                <div class="filter-group-label">类型</div>
+                                <div class="filter-chips genre-chips" id="genreFilterChips" role="group" aria-label="类型筛选">
+                                    <button class="filter-chip active" data-type="genre" data-value="all" onclick="toggleFilterChip(this)">全部</button>
+                                    <!-- 动态加载自 /api/stories/tags/taxonomy -->
+                                </div>
+                            </div>
+                            <div class="filter-group">
                                 <div class="filter-group-label">完结状态</div>
                                 <div class="filter-chips" role="group" aria-label="完结状态">
                                     <button class="filter-chip active" data-type="status" data-value="all" onclick="toggleFilterChip(this)">全部</button>
@@ -789,6 +845,20 @@
                     <div id="featuredStoryCard"></div>
                     <div class="ranking-list" id="rankingList"></div>
                 </div>
+            </section>
+
+            <!-- 猜你喜欢 -->
+            <section id="recommendSection" style="display: none; margin-bottom: var(--st-space-8);" aria-labelledby="recommendTitle">
+                <div class="section-header" style="margin-bottom: var(--st-space-4);">
+                    <h2 class="section-title" id="recommendTitle">
+                        <i class="fas fa-magic" style="color: var(--st-accent-500);" aria-hidden="true"></i>
+                        猜你喜欢
+                    </h2>
+                    <button class="filter-tab" onclick="refreshRecommend()" style="font-size: var(--st-text-xs);">
+                        <i class="fas fa-sync-alt"></i> 换一批
+                    </button>
+                </div>
+                <div class="recommend-scroll" id="recommendList"></div>
             </section>
 
             <!-- 故事列表 -->
@@ -1016,6 +1086,44 @@
             }
         }
         
+        // ===== 猜你喜欢 =====
+        async function loadRecommend() {
+            try {
+                const token = localStorage.getItem('token');
+                const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+                const res = await fetch('/api/stories/recommend?limit=8', { headers });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (!data.stories || data.stories.length === 0) return;
+
+                const section = document.getElementById('recommendSection');
+                const list = document.getElementById('recommendList');
+                section.style.display = 'block';
+
+                list.innerHTML = data.stories.map(story => `
+                    <div class="recommend-card" onclick="location.href='story.html?id=${story.id}'">
+                        <img class="recommend-card-cover" src="${story.cover_image || '/assets/default-cover.jpg'}" alt="${story.title}" loading="lazy" onerror="this.src='/assets/default-cover.jpg'">
+                        <div class="recommend-card-body">
+                            <div class="recommend-card-title" title="${story.title}">${story.title}</div>
+                            <div class="recommend-card-meta">
+                                <span><i class="fas fa-book-open"></i> ${story._count?.nodes || 0}章</span>
+                                <span><i class="fas fa-heart"></i> ${story._count?.followers || 0}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('加载推荐失败:', e);
+            }
+        }
+
+        function refreshRecommend() {
+            loadRecommend();
+        }
+
+        // 页面加载时获取推荐
+        loadRecommend();
+
         // 加载更多按钮状态更新
         function updateLoadMoreButton() {
             let loadMoreContainer = document.getElementById('loadMoreContainer');
@@ -1246,7 +1354,30 @@
         });
 
         // ===== 高级筛选 =====
-        const advancedFilters = { sort: 'default', status: 'all', length: 'all' };
+        const advancedFilters = { sort: 'default', status: 'all', length: 'all', genre: 'all' };
+
+        // 动态加载标签分类
+        async function loadTagTaxonomy() {
+            try {
+                const resp = await fetch('/api/stories/tags/taxonomy');
+                if (!resp.ok) return;
+                const taxonomy = await resp.json();
+                const genreChips = document.getElementById('genreFilterChips');
+                if (!genreChips || !taxonomy.dimensions?.genre) return;
+                // 只取前 12 个类型标签避免过长
+                const tags = taxonomy.dimensions.genre.tags.slice(0, 12);
+                tags.forEach(tag => {
+                    const btn = document.createElement('button');
+                    btn.className = 'filter-chip';
+                    btn.dataset.type = 'genre';
+                    btn.dataset.value = tag;
+                    btn.textContent = tag;
+                    btn.onclick = function() { toggleFilterChip(this); };
+                    genreChips.appendChild(btn);
+                });
+            } catch (e) { /* 静默失败，标签筛选不影响核心功能 */ }
+        }
+        loadTagTaxonomy();
 
         // 排序说明弹窗
         function showSortHelp() {
@@ -1283,10 +1414,13 @@
             const labelMap = {
                 sort: { default: null, chapters: '章节最多', bookmarks: '收藏最多', followers: '关注最多' },
                 status: { all: null, ongoing: '连载中', completed: '已完结' },
-                length: { all: null, short: '短篇', medium: '中篇', long: '长篇' }
+                length: { all: null, short: '短篇', medium: '中篇', long: '长篇' },
+                genre: { all: null }  // genre 的非 'all' 值直接用作标签名
             };
             Object.entries(advancedFilters).forEach(([type, value]) => {
-                const label = labelMap[type]?.[value];
+                let label = labelMap[type]?.[value];
+                // genre 类型：非 'all' 时直接用 value 作为显示标签
+                if (type === 'genre' && value !== 'all') label = value;
                 if (label) {
                     tags.push(`<span class="active-filter-tag">
                         ${label}
@@ -1305,7 +1439,7 @@
         }
 
         function removeFilterTag(type) {
-            advancedFilters[type] = type === 'sort' ? 'default' : 'all';
+            advancedFilters[type] = (type === 'sort') ? 'default' : 'all';
             // 重置对应chip的active状态
             document.querySelectorAll(`.filter-chip[data-type="${type}"]`).forEach(c => {
                 c.classList.toggle('active', c.dataset.value === advancedFilters[type]);
@@ -1318,6 +1452,7 @@
             advancedFilters.sort = 'default';
             advancedFilters.status = 'all';
             advancedFilters.length = 'all';
+            advancedFilters.genre = 'all';
             document.querySelectorAll('.filter-chip').forEach(c => {
                 const defaultValue = c.dataset.type === 'sort' ? 'default' : 'all';
                 c.classList.toggle('active', c.dataset.value === defaultValue);
@@ -1357,6 +1492,11 @@
                 filtered = filtered.filter(s => chapters(s) >= 5 && chapters(s) <= 20);
             } else if (advancedFilters.length === 'long') {
                 filtered = filtered.filter(s => chapters(s) > 20);
+            }
+
+            // 类型标签过滤
+            if (advancedFilters.genre !== 'all') {
+                filtered = filtered.filter(s => s.tags && s.tags.includes(advancedFilters.genre));
             }
 
             // 高级排序（覆盖基础排序）

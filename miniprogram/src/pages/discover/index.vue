@@ -82,6 +82,32 @@
       @scrolltolower="onLoadMore"
       @scroll="onScroll"
     >
+      <!-- 猜你喜欢 -->
+      <view v-if="recommendStories.length > 0" class="recommend-section">
+        <view class="recommend-header">
+          <text class="recommend-title">✨ 猜你喜欢</text>
+          <text class="recommend-refresh" @tap="loadRecommend">换一批</text>
+        </view>
+        <scroll-view class="recommend-scroll" scroll-x>
+          <view class="recommend-list">
+            <view
+              v-for="story in recommendStories"
+              :key="story.id"
+              class="recommend-card"
+              @tap="goStory(story.id)"
+            >
+              <image
+                class="recommend-cover"
+                :src="getImageUrl(story.cover_image) || '/static/images/default-cover.jpg'"
+                mode="aspectFill"
+              />
+              <text class="recommend-card-title">{{ story.title }}</text>
+              <text class="recommend-card-meta">{{ story._count?.nodes || 0 }}章 · {{ story._count?.followers || 0 }}追更</text>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+
       <!-- 骨架屏 -->
       <view v-if="loading && stories.length === 0" class="skeleton-rank-list">
         <view v-for="i in 6" :key="i" class="skeleton-rank-item">
@@ -178,7 +204,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { getStories } from '@/api/stories'
+import { getStories, getTagTaxonomy, getRecommendStories } from '@/api/stories'
 import { getImageUrl } from '@/utils/request'
 import type { Story } from '@/api/stories'
 
@@ -197,17 +223,39 @@ const page = ref(1)
 const pageSize = 20
 const totalStories = ref(0)
 
-const popularTags = [
-  '奇幻', '科幻', '悬疑', '言情', '武侠', '历史',
-  '都市', '恐怖', '喜剧', '冒险', '推理', '古风',
-  '末世', '穿越', '校园', '职场',
-]
+// 标签列表：优先从 API 加载，降级使用默认值
+const popularTags = ref<string[]>([
+  '武侠', '仙侠', '玄幻', '奇幻', '科幻',
+  '都市', '言情', '悬疑推理', '恐怖灵异', '历史',
+])
+
+async function loadTaxonomy() {
+  try {
+    const res = await getTagTaxonomy()
+    if (res?.dimensions?.genre?.tags) {
+      popularTags.value = res.dimensions.genre.tags.slice(0, 14)
+    }
+  } catch { /* 静默失败，使用默认标签 */ }
+}
+loadTaxonomy()
 
 const sortTabs = [
   { label: '热门榜', icon: '🔥', value: 'popular' as const },
   { label: '趋势榜', icon: '📈', value: 'trending' as const },
   { label: '最新榜', icon: '🆕', value: 'latest' as const },
 ]
+
+// 猜你喜欢
+const recommendStories = ref<Story[]>([])
+async function loadRecommend() {
+  try {
+    const res = await getRecommendStories(6)
+    if (res?.stories) {
+      recommendStories.value = res.stories
+    }
+  } catch { /* 静默失败 */ }
+}
+loadRecommend()
 
 onMounted(() => {
   try {
@@ -426,6 +474,44 @@ function goStory(id: number) {
   // 不使用 flex: 1，高度完全由 JS 内联样式控制
   // 这样才能让 scroll-view 产生滚动，触发 scrolltolower 事件
   overflow: hidden;
+}
+
+// ===== 猜你喜欢 =====
+.recommend-section {
+  padding: 20rpx 24rpx;
+  background: #fff;
+  margin-bottom: 12rpx;
+}
+.recommend-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 16rpx;
+}
+.recommend-title {
+  font-size: 28rpx; font-weight: 600; color: #1e293b;
+}
+.recommend-refresh {
+  font-size: 22rpx; color: #7c6af7;
+}
+.recommend-scroll {
+  white-space: nowrap;
+}
+.recommend-list {
+  display: flex; gap: 16rpx; padding-bottom: 8rpx;
+}
+.recommend-card {
+  flex-shrink: 0; width: 200rpx; display: flex; flex-direction: column;
+}
+.recommend-cover {
+  width: 200rpx; height: 160rpx; border-radius: 12rpx;
+  background: #f1f5f9;
+}
+.recommend-card-title {
+  font-size: 22rpx; font-weight: 500; color: #1e293b;
+  margin-top: 8rpx; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recommend-card-meta {
+  font-size: 20rpx; color: #94a3b8; margin-top: 4rpx;
 }
 
 // ===== 榜单列表 =====
