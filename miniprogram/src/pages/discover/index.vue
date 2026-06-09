@@ -24,6 +24,32 @@
         class="rank-tab-indicator"
         :style="{ left: sortTabs.findIndex(t => t.value === currentSort) * 33.33 + '%' }"
       />
+      <!-- 排序说明按钮 -->
+      <view class="sort-help-btn" @tap="showSortHelp = true">
+        <text class="sort-help-icon">?</text>
+      </view>
+    </view>
+
+    <!-- 排序说明弹窗 -->
+    <view v-if="showSortHelp" class="sort-help-mask" @tap="showSortHelp = false">
+      <view class="sort-help-modal" @tap.stop>
+        <view class="sort-help-title">
+          <text>排序方式说明</text>
+          <text class="sort-help-close" @tap="showSortHelp = false">×</text>
+        </view>
+        <view class="sort-help-item">
+          <text class="sort-help-item-title">🔥 热门榜</text>
+          <text class="sort-help-item-desc">综合追更人数、章节数量及创建时间排序。追更人数越多、内容越丰富的故事排名越靠前。</text>
+        </view>
+        <view class="sort-help-item">
+          <text class="sort-help-item-title">📈 趋势榜</text>
+          <text class="sort-help-item-desc">按章节数（更新活跃度）及追更数排序，反映近期最活跃的故事。</text>
+        </view>
+        <view class="sort-help-item">
+          <text class="sort-help-item-title">🆕 最新榜</text>
+          <text class="sort-help-item-desc">按发布时间倒序排列，最新创建的故事排在最前面。</text>
+        </view>
+      </view>
     </view>
 
     <!-- 分类标签（横向滚动）-->
@@ -162,6 +188,7 @@ const loadingMore = ref(false)
 const noMore = ref(false)
 const statusBarHeight = ref(20)
 const scrollViewHeight = ref(500) // 滚动区域高度
+const showSortHelp = ref(false)
 
 const stories = ref<Story[]>([])
 const currentTag = ref('')
@@ -587,4 +614,82 @@ function goStory(id: number) {
 }
 
 .bottom-placeholder { height: 60rpx; }
+
+// ===== 排序说明按钮 & 弹窗 =====
+.sort-help-btn {
+  position: absolute;
+  right: 16rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  border: 2rpx solid rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .sort-help-icon {
+    font-size: 22rpx;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 600;
+  }
+}
+
+.sort-help-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sort-help-modal {
+  width: 80%;
+  max-width: 600rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 40rpx 32rpx;
+  box-shadow: 0 20rpx 60rpx rgba(0, 0, 0, 0.3);
+}
+
+.sort-help-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.sort-help-close {
+  font-size: 40rpx;
+  color: #94a3b8;
+  line-height: 1;
+}
+
+.sort-help-item {
+  background: #f8fafc;
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+  margin-bottom: 16rpx;
+}
+
+.sort-help-item-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #7c6af7;
+  margin-bottom: 8rpx;
+}
+
+.sort-help-item-desc {
+  display: block;
+  font-size: 24rpx;
+  color: #64748b;
+  line-height: 1.6;
+}
 </style>

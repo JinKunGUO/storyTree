@@ -453,6 +453,14 @@
                         </button>
                     </div>
                     <div class="tree-toolbar-right">
+                        <button class="toolbar-btn" id="expandAll" onclick="expandAll()" title="展开所有节点">
+                            <i class="fas fa-expand-arrows-alt"></i>
+                            展开全部
+                        </button>
+                        <button class="toolbar-btn" id="collapseAuto" onclick="collapseToAuto()" title="智能折叠">
+                            <i class="fas fa-compress-arrows-alt"></i>
+                            智能折叠
+                        </button>
                         <button class="toolbar-btn" id="zoomIn">
                             <i class="fas fa-search-plus"></i>
                             放大
@@ -694,9 +702,14 @@
                 document.getElementById('loadingState').style.display = 'none';
                 document.getElementById('mainContent').style.display = 'block';
                 
-                // 如果节点数量较多，显示提示
-                if (data.stats.totalNodes > 20 && oldNodeCount === 0) {
-                    showMessage(`当前故事共有 ${data.stats.totalNodes} 个章节，建议使用缩放功能查看`, 'info');
+                // 如果节点数量较多，显示折叠提示
+                if (data.stats.totalNodes > 30 && oldNodeCount === 0) {
+                    const depth = getInitialTreeDepth();
+                    if (depth !== -1) {
+                        showMessage(`此故事共 ${data.stats.totalNodes} 个节点，已智能折叠至第 ${depth} 层。点击节点可展开子节点，或使用"展开全部"按钮。`, 'info');
+                    } else {
+                        showMessage(`当前故事共有 ${data.stats.totalNodes} 个章节，可使用缩放和拖拽查看`, 'info');
+                    }
                 }
 
             } catch (error) {
@@ -779,6 +792,51 @@
         }
 
         // 渲染树状图
+        // 根据节点数动态决定初始展开深度
+        function getInitialTreeDepth() {
+            if (manualTreeDepth !== null) return manualTreeDepth;
+            const totalNodes = treeData?.stats?.totalNodes || 0;
+            if (totalNodes > 100) return 2;  // 超过100节点：只展开2层
+            if (totalNodes > 30) return 3;   // 超过30节点：展开3层
+            return -1;                        // 30以下：全部展开
+        }
+
+        // 展开/折叠到指定层数
+        function setTreeDepth(depth) {
+            if (!treeChart) return;
+            treeChart.setOption({
+                series: [{ initialTreeDepth: depth }]
+            });
+            // 需要重新渲染来应用 depth 变化
+            renderTree(treeData.tree);
+            const totalNodes = treeData?.stats?.totalNodes || 0;
+            if (depth === -1) {
+                showMessage('已展开所有节点', 'info');
+            } else {
+                showMessage(`已折叠至第 ${depth} 层（共 ${totalNodes} 个节点）`, 'info');
+            }
+        }
+
+        // 当前手动设定的深度（null 表示自动）
+        let manualTreeDepth = null;
+
+        function expandAll() {
+            manualTreeDepth = -1;
+            renderTree(treeData.tree);
+            showMessage('已展开所有节点', 'info');
+        }
+
+        function collapseToAuto() {
+            manualTreeDepth = null;
+            renderTree(treeData.tree);
+            const depth = getInitialTreeDepth();
+            if (depth === -1) {
+                showMessage('节点较少，已全部展开', 'info');
+            } else {
+                showMessage(`已智能折叠至第 ${depth} 层`, 'info');
+            }
+        }
+
         function renderTree(tree) {
             const chartDom = document.getElementById('treeChart');
             
@@ -922,7 +980,7 @@
                             focus: 'descendant'
                         },
                         expandAndCollapse: true,
-                        initialTreeDepth: -1, // -1 表示展开所有节点
+                        initialTreeDepth: getInitialTreeDepth(), // 根据节点数动态决定展开深度
                         animationDuration: 550,
                         animationDurationUpdate: 750,
                         itemStyle: {
@@ -953,7 +1011,7 @@
                         },
                         // 径向布局的初始设置
                         ...(currentLayout === 'radial' ? {
-                            initialTreeDepth: -1
+                            initialTreeDepth: getInitialTreeDepth()
                         } : {})
                     }
                 ]

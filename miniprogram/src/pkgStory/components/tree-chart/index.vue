@@ -13,6 +13,10 @@
         </view>
       </view>
       <view class="toolbar-right">
+        <view v-if="totalNodes > 30" class="tb-btn" @tap="toggleCollapse">
+          <text class="tb-icon">{{ isCollapsed ? '⊞' : '⊟' }}</text>
+          <text class="tb-label">{{ isCollapsed ? '展开' : '折叠' }}</text>
+        </view>
         <view class="tb-btn" @tap="zoomIn"><text class="tb-icon">＋</text></view>
         <view class="tb-btn" @tap="zoomOut"><text class="tb-icon">－</text></view>
         <view class="tb-btn" @tap="resetZoom"><text class="tb-icon">⊙</text></view>
@@ -46,7 +50,7 @@
 
     <!-- 底部统计 -->
     <view class="tree-footer">
-      <text class="footer-txt">共 {{ totalNodes }} 个节点 · 双指缩放 · 单指拖拽</text>
+      <text class="footer-txt">共 {{ totalNodes }} 个节点 · {{ totalNodes > 30 ? '点击节点展开 · ' : '' }}双指缩放 · 单指拖拽</text>
     </view>
 
     <!-- Bottom Sheet 遮罩 -->
@@ -216,6 +220,7 @@ const canvasHeight = ref(
     : Math.min(Math.max(_initSys.windowHeight * 0.55 - _INIT_TOOLBAR - _INIT_FOOTER, 200), 550)
 )
 const totalNodes = ref(0)
+const isCollapsed = ref(false)  // 当前是否处于折叠状态
 
 let chartInstance: any = null
 // 初始值为 0：renderChart 里 currentZoom <= 0 时会调用 calcInitialZoom 计算自适应 zoom，
@@ -280,6 +285,17 @@ function countNodes(node: Node | null | undefined): number {
     for (const c of node.children) count += countNodes(c)
   }
   return count
+}
+
+/** 根据节点数动态决定初始展开深度 */
+function getInitialDepth(): number {
+  const n = totalNodes.value
+  if (n <= 30) return -1  // 30以下：全部展开
+  // 用户手动点击了"展开"按钮
+  if (!isCollapsed.value) return -1
+  // 自动折叠
+  if (n > 100) return 2
+  return 3
 }
 
 function nodeToEChartsData(node: Node, depth = 0): any {
@@ -452,6 +468,8 @@ async function initChart() {
   chartLoading.value = true
   hasData.value = true
   totalNodes.value = countNodes(props.rootNode)
+  // 节点数 > 30 时默认折叠
+  isCollapsed.value = totalNodes.value > 30
 
   // @ready 事件会在 canvas 渲染完成后自动触发 onCanvasReady
   // 如果 canvas 已经存在（数据更新场景），直接走 queryCanvas fallback
@@ -592,12 +610,12 @@ function renderChart() {
         right:  isHorizontal ? '20%'  : '5%',
         orient: layout.value,
         layout: 'orthogonal',
-        initialTreeDepth: -1,
+        initialTreeDepth: getInitialDepth(),
         roam: true,
         zoom: currentZoom,
         scaleLimit: { min: 0.1, max: 5 },
         symbolSize: 10,
-        expandAndCollapse: false,
+        expandAndCollapse: totalNodes.value > 30,
         animationDuration: 300,
         animationDurationUpdate: 350,
         lineStyle: {
@@ -802,6 +820,12 @@ function resetZoom() {
   renderChart()
 }
 
+/** 切换折叠/展开状态 */
+function toggleCollapse() {
+  isCollapsed.value = !isCollapsed.value
+  renderChart()
+}
+
 // ─── Bottom Sheet ─────────────────────────────────────────────────────────────
 function openSheet(data: any) {
   sheet.nodeId = data.id
@@ -902,6 +926,7 @@ watch(
   (newVal) => {
     if (newVal) {
       totalNodes.value = countNodes(newVal)
+      isCollapsed.value = totalNodes.value > 30
       if (chartInstance) {
         renderChart()
       } else {

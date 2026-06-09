@@ -1,0 +1,110 @@
+/**
+ * StoryTree 用户引导样式覆盖
+ * 将 Driver.js 默认蓝色主题适配为 StoryTree 绿色主题 (#2d5d5a)
+ */
+
+/* ===== 遮罩层 ===== */
+.driver-overlay {
+  background: rgba(45, 93, 90, 0.75) !important;
+}
+
+/* ===== 弹窗容器 ===== */
+.driver-popover {
+  border-radius: 16px !important;
+  box-shadow: 0 20px 60px rgba(45, 93, 90, 0.25), 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid rgba(45, 93, 90, 0.15) !important;
+}
+
+/* ===== 弹窗标题 ===== */
+.driver-popover-title {
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', serif !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  color: #2d5d5a !important;
+}
+
+/* ===== 弹窗描述 ===== */
+.driver-popover-description {
+  color: #4a5568 !important;
+  line-height: 1.6 !important;
+  font-size: 14px !important;
+}
+
+/* ===== 进度条 ===== */
+.driver-popover-progress-text {
+  color: #2d5d5a !important;
+  font-weight: 600 !important;
+}
+
+/* ===== 导航按钮 ===== */
+.driver-popover-prev-btn {
+  background: #f0f4f3 !important;
+  color: #2d5d5a !important;
+  border: 1px solid #c8d8d6 !important;
+  border-radius: 8px !important;
+  padding: 8px 16px !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+}
+
+.driver-popover-prev-btn:hover {
+  background: #e0eae8 !important;
+  border-color: #2d5d5a !important;
+}
+
+.driver-popover-next-btn {
+  background: linear-gradient(135deg, #2d5d5a 0%, #3a7a76 100%) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 8px 20px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 12px rgba(45, 93, 90, 0.3) !important;
+  transition: all 0.2s ease !important;
+}
+
+.driver-popover-next-btn:hover {
+  background: linear-gradient(135deg, #245250 0%, #2d5d5a 100%) !important;
+  box-shadow: 0 6px 16px rgba(45, 93, 90, 0.4) !important;
+  transform: translateY(-1px) !important;
+}
+
+.driver-popover-close-btn {
+  color: #2d5d5a !important;
+}
+
+.driver-popover-close-btn:hover {
+  color: #1a3d3b !important;
+}
+
+/* ===== 跳过引导按钮 ===== */
+.st-tour-skip-btn {
+  background: transparent !important;
+  color: #9ca3af !important;
+  border: none !important;
+  padding: 8px 12px !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  border-radius: 6px !important;
+  margin-left: 4px !important;
+}
+
+.st-tour-skip-btn:hover {
+  color: #2d5d5a !important;
+  background: #f0f4f3 !important;
+}
+
+/* ===== 高亮区域边框 ===== */
+.driver-active-element {
+  box-shadow: 0 0 0 4px rgba(45, 93, 90, 0.4) !important;
+}
+
+/* ===== 弹窗箭头 ===== */
+.driver-popover-arrow-side-left,
+.driver-popover-arrow-side-right,
+.driver-popover-arrow-side-top,
+.driver-popover-arrow-side-bottom {
+  border-color: white !important;
+}
+

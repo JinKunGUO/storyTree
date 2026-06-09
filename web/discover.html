@@ -526,6 +526,92 @@
                 grid-template-columns: 80px 1fr;
             }
         }
+
+        /* 排序说明弹窗 */
+        .sort-help-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 1.5px solid var(--st-text-tertiary);
+            background: transparent;
+            color: var(--st-text-tertiary);
+            font-size: 12px;
+            cursor: pointer;
+            margin-left: 8px;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .sort-help-btn:hover {
+            border-color: var(--st-primary-500);
+            color: var(--st-primary-500);
+            background: var(--st-primary-50);
+        }
+        .sort-help-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+        .sort-help-overlay.active {
+            display: flex;
+        }
+        .sort-help-modal {
+            background: var(--st-bg-primary);
+            border-radius: 16px;
+            padding: 28px 24px;
+            max-width: 420px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        .sort-help-modal h3 {
+            margin: 0 0 16px;
+            font-size: 18px;
+            color: var(--st-text-primary);
+        }
+        .sort-help-modal .sort-item {
+            margin-bottom: 14px;
+            padding: 12px;
+            background: var(--st-bg-secondary);
+            border-radius: 10px;
+        }
+        .sort-help-modal .sort-item-title {
+            font-weight: 600;
+            color: var(--st-primary-600);
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+        .sort-help-modal .sort-item-desc {
+            font-size: 13px;
+            color: var(--st-text-secondary);
+            line-height: 1.5;
+        }
+        .sort-help-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: var(--st-bg-secondary);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--st-text-secondary);
+            font-size: 16px;
+        }
+        .sort-help-close:hover {
+            background: var(--st-danger-50);
+            color: var(--st-danger-500);
+        }
     </style>
 </head>
 <body>
@@ -613,6 +699,31 @@
                         <button class="filter-tab" data-filter="completed" role="tab" aria-selected="false">
                             <i class="fas fa-check-circle" aria-hidden="true"></i> 已完结
                         </button>
+                        <button class="sort-help-btn" onclick="showSortHelp()" aria-label="排序方式说明" title="排序方式说明">?</button>
+                    </div>
+
+                    <!-- 排序说明弹窗 -->
+                    <div class="sort-help-overlay" id="sortHelpOverlay" onclick="hideSortHelp(event)">
+                        <div class="sort-help-modal" onclick="event.stopPropagation()">
+                            <button class="sort-help-close" onclick="hideSortHelp()">&times;</button>
+                            <h3><i class="fas fa-info-circle"></i> 排序方式说明</h3>
+                            <div class="sort-item">
+                                <div class="sort-item-title"><i class="fas fa-th-large"></i> 全部（默认）</div>
+                                <div class="sort-item-desc">显示所有公开故事，按创建时间倒序排列。</div>
+                            </div>
+                            <div class="sort-item">
+                                <div class="sort-item-title"><i class="fas fa-fire"></i> 热门</div>
+                                <div class="sort-item-desc">综合追更人数、章节数量及创建时间排序。追更人数越多、内容越丰富的故事排名越靠前。</div>
+                            </div>
+                            <div class="sort-item">
+                                <div class="sort-item-title"><i class="fas fa-clock"></i> 最新</div>
+                                <div class="sort-item-desc">按发布时间倒序排列，最新创建的故事排在最前面。</div>
+                            </div>
+                            <div class="sort-item">
+                                <div class="sort-item-title"><i class="fas fa-check-circle"></i> 已完结</div>
+                                <div class="sort-item-desc">仅显示标记为"已完结"的故事，适合喜欢一口气读完整个故事的读者。</div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- 高级筛选切换按钮 -->
@@ -1136,6 +1247,16 @@
 
         // ===== 高级筛选 =====
         const advancedFilters = { sort: 'default', status: 'all', length: 'all' };
+
+        // 排序说明弹窗
+        function showSortHelp() {
+            document.getElementById('sortHelpOverlay').classList.add('active');
+        }
+        function hideSortHelp(e) {
+            if (!e || e.target === e.currentTarget) {
+                document.getElementById('sortHelpOverlay').classList.remove('active');
+            }
+        }
 
         function toggleAdvancedFilter() {
             const panel = document.getElementById('advancedFilterPanel');
