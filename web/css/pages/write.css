@@ -936,3 +936,69 @@
         .action-btn.btn-ai {
             position: relative;
         }
+
+        /* ========================================
+           移动端增强适配（阶段二）
+           ======================================== */
+
+        @media (max-width: 480px) {
+            .ql-editor {
+                padding: 16px;
+                font-size: 15px;
+                line-height: 1.8;
+            }
+
+            .ql-toolbar {
+                padding: 6px 8px;
+                overflow-x: auto;
+                flex-wrap: nowrap;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .ql-toolbar .ql-formats {
+                flex-shrink: 0;
+            }
+
+            .write-actions {
+                bottom: 12px;
+                right: 12px;
+                gap: 6px;
+            }
+
+            .write-actions .action-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 14px;
+            }
+
+            .word-count {
+                bottom: 12px;
+                left: 12px;
+                font-size: 12px;
+                padding: 6px 12px;
+            }
+
+            /* 标题输入框 */
+            .title-input,
+            input[placeholder*="标题"] {
+                font-size: 20px;
+                padding: 12px 16px;
+            }
+
+            /* AI 面板 */
+            .ai-panel,
+            .ai-suggestions {
+                max-height: 50vh;
+                font-size: 14px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .write-container.sidebar-open .write-sidebar {
+                left: 10px;
+                right: 10px;
+                width: auto;
+                top: 70px;
+                height: calc(100vh - 80px);
+            }
+        }

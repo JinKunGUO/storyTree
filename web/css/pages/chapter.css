@@ -1597,3 +1597,99 @@
 
         @media (max-width: 1024px) { .compare-grid { grid-template-columns: 1fr; } }
 
+        /* ========================================
+           移动端增强适配（阶段二）
+           ======================================== */
+
+        @media (max-width: 480px) {
+            .chapter-content {
+                padding: 20px 16px;
+                font-size: 15px;
+                line-height: 1.9;
+            }
+
+            .chapter-title {
+                font-size: 20px;
+                padding: 16px;
+            }
+
+            .reading-toolbar {
+                padding: 8px 12px;
+            }
+
+            .toolbar-left,
+            .toolbar-right {
+                gap: 6px;
+            }
+
+            .toolbar-btn {
+                min-width: 36px;
+                min-height: 36px;
+                font-size: 14px;
+            }
+
+            /* 章节导航 - 移动端底部固定 */
+            .chapter-nav-bottom {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 12px 16px;
+                background: var(--st-bg-elevated);
+                border-top: 1px solid var(--st-gray-200);
+                box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+                z-index: 100;
+            }
+
+            .chapter-nav-bottom .btn {
+                min-height: 44px;
+                font-size: 14px;
+                padding: 10px 16px;
+            }
+
+            /* 为底部导航栏留出空间 */
+            .reading-container {
+                padding-bottom: 70px;
+            }
+
+            /* 分支选择 */
+            .branch-selector {
+                padding: 12px;
+            }
+
+            .branch-option {
+                padding: 12px;
+                font-size: 14px;
+                min-height: 44px;
+            }
+
+            /* 评论区 */
+            .comments-section {
+                padding: 16px;
+            }
+
+            .comment-input textarea {
+                font-size: 16px; /* 防止 iOS 缩放 */
+            }
+        }
+
+        @media (max-width: 640px) {
+            .breadcrumb {
+                font-size: 12px;
+                overflow-x: auto;
+                white-space: nowrap;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .breadcrumb-item:not(:last-child):not(:first-child) {
+                display: none;
+            }
+
+            .breadcrumb-item:not(:last-child):not(:first-child) + .breadcrumb-separator {
+                display: none;
+            }
+        }
+
