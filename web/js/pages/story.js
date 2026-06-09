@@ -173,7 +173,7 @@
                     document.getElementById('storyDate').textContent = '未知时间';
                 }
                 
-                document.getElementById('storyGenre').textContent = story.genre || '未分类';
+                document.getElementById('storyGenre').textContent = (story.tags ? story.tags.split(',')[0].trim() : '') || '未分类';
                 document.getElementById('storyDescription').textContent = story.description || '暂无简介';
                 
                 // 统计数据
