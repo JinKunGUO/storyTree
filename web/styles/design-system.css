@@ -474,5 +474,20 @@ img {
   footer[style*="border-top"][style*="color"] a {
     color: var(--st-text-tertiary) !important;
   }
+
+  /* 全局 input/textarea/select 暗黑模式修复 */
+  input, textarea, select {
+    background-color: var(--st-gray-50);
+    color: var(--st-text-primary);
+    border-color: var(--st-gray-200);
+  }
+  input::placeholder, textarea::placeholder {
+    color: var(--st-text-disabled);
+  }
+  input:focus, textarea:focus, select:focus {
+    background-color: var(--st-bg-primary);
+    color: var(--st-text-primary);
+    border-color: var(--st-primary-500);
+  }
 }
 

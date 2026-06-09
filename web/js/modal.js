@@ -181,6 +181,43 @@ class Modal {
                 background: #F3F4F6;
                 margin: 0 1.5rem;
             }
+
+            /* 暗黑模式适配 */
+            @media (prefers-color-scheme: dark) {
+                .st-modal {
+                    background: var(--st-bg-elevated, #2a2a50);
+                    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+                }
+                .st-modal-title {
+                    color: var(--st-text-primary, #f0f0f5);
+                }
+                .st-modal-close-btn {
+                    color: var(--st-gray-400, #7070a0);
+                }
+                .st-modal-close-btn:hover {
+                    background: var(--st-gray-200, #353560);
+                    color: var(--st-text-primary, #f0f0f5);
+                }
+                .st-modal-body {
+                    color: var(--st-text-secondary, #b8b8c8);
+                }
+                .st-modal-btn-cancel {
+                    background: var(--st-gray-100, #252542);
+                    color: var(--st-text-secondary, #b8b8c8);
+                    border-color: var(--st-gray-200, #353560);
+                }
+                .st-modal-btn-cancel:hover {
+                    background: var(--st-gray-200, #353560);
+                    border-color: var(--st-gray-300, #505080);
+                }
+                .st-modal-icon.type-default { background: rgba(99,102,241,0.15); }
+                .st-modal-icon.type-danger { background: rgba(239,68,68,0.15); }
+                .st-modal-icon.type-warning { background: rgba(245,158,11,0.15); }
+                .st-modal-icon.type-success { background: rgba(34,197,94,0.15); }
+                .st-modal-divider {
+                    background: var(--st-gray-200, #353560);
+                }
+            }
         `;
         document.head.appendChild(style);
     }

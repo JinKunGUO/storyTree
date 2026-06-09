@@ -117,6 +117,21 @@ class Toast {
                 color: white;
             }
             .st-toast-dark .st-toast-close { color: #6B7280; }
+
+            /* 暗黑模式适配 */
+            @media (prefers-color-scheme: dark) {
+                .st-toast {
+                    background: var(--st-bg-elevated, #2a2a50);
+                    color: var(--st-text-primary, #f0f0f5);
+                    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+                }
+                .st-toast-close {
+                    color: var(--st-gray-400, #7070a0);
+                }
+                .st-toast:hover .st-toast-close {
+                    color: var(--st-text-secondary, #b8b8c8);
+                }
+            }
         `;
         document.head.appendChild(style);
     }

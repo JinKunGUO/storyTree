@@ -89,11 +89,13 @@
             font-family: var(--st-font-sans);
             transition: all var(--st-duration-fast);
             background: var(--st-gray-50);
+            color: var(--st-text-primary);
         }
         .search-input:focus {
             outline: none;
             border-color: var(--st-primary-500);
-            background: white;
+            background: var(--st-bg-primary);
+            color: var(--st-text-primary);
             box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
         }
         /* ===== 猜你喜欢横向滚动 ===== */
@@ -547,7 +549,7 @@
         }
         .view-btn:hover { color: var(--st-text-primary); }
         .view-btn.active {
-            background: white;
+            background: var(--st-bg-primary);
             color: var(--st-primary-600);
             box-shadow: var(--st-shadow-sm);
         }
@@ -1103,11 +1105,12 @@
                 const list = document.getElementById('recommendList');
                 section.style.display = 'block';
 
-                // 更新批次显示
+                // 更新批次显示（最多显示10批）
                 const pageInfo = document.getElementById('recommendPageInfo');
-                if (pageInfo && data.totalPages > 1) {
-                    const currentBatch = (data.page % data.totalPages) + 1;
-                    pageInfo.textContent = `(${currentBatch}/${data.totalPages})`;
+                const displayTotalPages = Math.min(data.totalPages || 1, RECOMMEND_MAX_PAGES);
+                if (pageInfo && displayTotalPages > 1) {
+                    const currentBatch = (data.page % displayTotalPages) + 1;
+                    pageInfo.textContent = `(${currentBatch}/${displayTotalPages})`;
                 }
 
                 list.innerHTML = data.stories.map(story => `
@@ -1127,8 +1130,10 @@
             }
         }
 
+        const RECOMMEND_MAX_PAGES = 10;
+
         function refreshRecommend() {
-            recommendPage++;
+            recommendPage = (recommendPage + 1) % RECOMMEND_MAX_PAGES;
             loadRecommend(recommendPage);
         }
 
