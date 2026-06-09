@@ -39,6 +39,11 @@ import adminDashboardRoutes from './routes/admin-dashboard';
 export function createApp() {
   const app = express();
 
+  // 健康检查端点 - 放在所有中间件之前，确保部署检查不受 CORS/解析器影响
+  app.get('/health', (_req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
   // CORS 配置 - 只允许白名单内的来源
   const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
@@ -98,11 +103,6 @@ export function createApp() {
   app.use('/api/admin/content', adminContentRoutes);
   app.use('/api/admin/points', adminPointsRoutes);
   app.use('/api/admin/dashboard', adminDashboardRoutes);
-
-  // 健康检查端点
-  app.get('/health', (_req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
-  });
 
   // 版本信息端点 - 读取 VERSION.json
   app.get('/api/version', (_req, res) => {

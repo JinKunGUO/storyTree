@@ -309,22 +309,26 @@ restart_service() {
 # ===================================
 health_check() {
     log_info "执行健康检查..."
-    sleep 3  # 等待服务启动
+    sleep 5  # 等待服务完全启动（含数据库连接、Worker初始化）
 
-    MAX_RETRIES=5
+    MAX_RETRIES=6
     RETRY=0
     while [ $RETRY -lt $MAX_RETRIES ]; do
-        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/api/health 2>/dev/null || echo "000")
+        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:3001/health 2>/dev/null || echo "000")
         if [ "$HTTP_STATUS" = "200" ]; then
             log_success "健康检查通过（HTTP $HTTP_STATUS）"
             return 0
         fi
         RETRY=$((RETRY + 1))
         log_warn "健康检查失败（HTTP $HTTP_STATUS），重试 $RETRY/$MAX_RETRIES..."
-        sleep 3
+        sleep 4
     done
 
-    log_error "健康检查失败！请查看日志：pm2 logs $PM2_APP_NAME"
+    # 最终失败时打印更多诊断信息
+    log_error "健康检查失败！诊断信息："
+    log_error "  curl 响应: $(curl -s --max-time 5 http://localhost:3001/health 2>&1)"
+    log_error "  PM2 状态: $(pm2 show $PM2_APP_NAME 2>&1 | grep -E 'status|uptime|restarts')"
+    log_error "  请查看完整日志：pm2 logs $PM2_APP_NAME"
 }
 
 # ===================================
