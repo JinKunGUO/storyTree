@@ -15,6 +15,7 @@
 - [标签分类体系](#标签分类体系)
 - [定时/批量导入方案](#定时批量导入方案)
 - [删除已导入的故事](#删除已导入的故事)
+- [环境迁移与数据同步](#环境迁移与数据同步)
 - [常见问题](#常见问题)
 
 ---
@@ -356,6 +357,64 @@ npx ts-node scripts/delete-story.ts --author admin --force
 ```
 
 ⚠️ 删除操作不可逆，务必先用 `--dry-run` 预览。
+
+---
+
+## 环境迁移与数据同步
+
+当 seed-data 中的 JSON 文件更新后（如重新分章、标签增强），需要将改动同步到数据库。以下是不同环境的处理方法。
+
+### 开发环境（SQLite）
+
+开发环境数据不重要，推荐**清空重建**：
+
+```bash
+cd api
+
+# 方式 A：重置数据库（最干净）
+npx prisma migrate reset --force
+npx ts-node scripts/create-admin.ts
+npx ts-node scripts/batch-import-stories.ts
+
+# 方式 B：增量更新（保留其他测试数据）
+npx ts-node scripts/batch-import-stories.ts --update
+```
+
+> 注：`prisma migrate reset` 会删除所有数据并重建表结构，适合开发环境从头来过。
+
+### 生产环境（MySQL / PostgreSQL）
+
+生产环境有用户数据（收藏、关注、评论），必须保留故事 ID。使用 `--update` 模式：
+
+```bash
+cd api
+
+# 1. 先预览变更范围（不写入）
+npx ts-node scripts/batch-import-stories.ts --update --dry-run
+
+# 2. 正式增量更新
+npx ts-node scripts/batch-import-stories.ts --update
+```
+
+**`--update` 模式保证**：
+
+| 保留 | 更新 |
+|------|------|
+| 故事 ID | 章节内容（删旧写新） |
+| 用户收藏/关注 | 标签 |
+| 用户评论 | 描述/简介 |
+| 故事创建时间 | 作者归属 |
+
+**建议在低峰期执行**（如凌晨），471 本书全量更新约需 5-10 分钟。
+
+### 何时需要同步
+
+| 场景 | 操作 |
+|------|------|
+| 运行了 `resplit-seed-data.ts`（重新分章） | `--update` |
+| 运行了 `reassign-tags.ts`（重新打标签） | `--update` |
+| 新增了 TXT 文件并转为 JSON | 正常导入（不需要 --update） |
+| 修改了 `tag-taxonomy.json` | 无需同步数据库，前端自动获取最新配置 |
 
 ---
 
