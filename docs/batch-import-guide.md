@@ -142,10 +142,14 @@ npx ts-node scripts/batch-import-stories.ts --file 斗破苍穹.json
 
 # 预览模式
 npx ts-node scripts/batch-import-stories.ts --dry-run
+
+# 增量更新模式（已存在的故事：删旧章 → 写新章 → 更新标签）
+npx ts-node scripts/batch-import-stories.ts --update
 ```
 
 **特性**：
 - **断点续传**：同名故事自动跳过，不会重复导入
+- **增量更新**：`--update` 模式下，已存在的故事会被更新（保留故事 ID，用户收藏/关注不丢失）
 - **虚拟作者**：JSON 中有 `author_name` 字段时，自动创建不可登录的虚拟用户
 - **分批写入**：每 50 章一个事务，避免超时
 
@@ -203,6 +207,7 @@ npx ts-node scripts/batch-import-stories.ts --dry-run
 |------|------|------|
 | `--file <path>` | 只导入指定 JSON 文件 | `--file 西游记.json` |
 | `--admin-username <name>` | 指定管理员用户名 | `--admin-username admin` |
+| `--update` | 增量更新已存在的故事 | `--update` |
 | `--dry-run` | 预览模式，不写入数据库 | `--dry-run` |
 
 ### delete-story.ts
@@ -383,6 +388,7 @@ iconv -f GBK -t UTF-8 原文件.txt > 新文件.txt
 
 - `fetch-webnovels.ts`：已存在同名 JSON 时跳过（除非 `--force`）
 - `batch-import-stories.ts`：已存在同名故事时跳过（断点续传）
+- `batch-import-stories.ts --update`：已存在的故事会被更新（删旧章→写新章→更新标签），故事 ID 不变
 
 ### Q5: 如何只重新处理某本书
 

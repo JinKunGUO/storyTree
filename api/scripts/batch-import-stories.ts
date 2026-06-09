@@ -13,6 +13,16 @@ const prisma = new PrismaClient();
  *   cd api && npx ts-node scripts/batch-import-stories.ts
  *   cd api && npx ts-node scripts/batch-import-stories.ts --file seed-data/西游记.json
  *   cd api && npx ts-node scripts/batch-import-stories.ts --admin-username admin
+ *   cd api && npx ts-node scripts/batch-import-stories.ts --update   # 更新已存在的故事（删旧章→写新章→更新标签）
+ *   cd api && npx ts-node scripts/batch-import-stories.ts --dry-run  # 仅检查数据，不写入
+ * 
+ * --update 模式说明：
+ *   对于已存在的同名故事，会：
+ *   1. 保留故事 ID（用户收藏/关注不丢失）
+ *   2. 删除所有旧章节
+ *   3. 写入新章节（来自 JSON）
+ *   4. 更新标签、描述等元数据
+ *   适用场景：seed-data 中的 JSON 已更新（如重新分章、标签增强），需要同步到数据库
  * 
  * JSON 数据格式：
  *   {
@@ -54,6 +64,7 @@ const SEED_DATA_DIR = path.join(__dirname, 'seed-data');
 const SPECIFIC_FILE = getArg('file');
 const ADMIN_USERNAME = getArg('admin-username') || 'admin';
 const DRY_RUN = args.includes('--dry-run');
+const UPDATE_MODE = args.includes('--update');
 
 async function getAdminUser() {
   const admin = await prisma.users.findUnique({
@@ -105,7 +116,7 @@ async function getOrCreateVirtualUser(authorName: string, adminId: number): Prom
   return virtualUser.id;
 }
 
-async function importStory(storyData: StoryData, adminId: number): Promise<{ storyId: number; nodeCount: number; wordCount: number }> {
+async function importStory(storyData: StoryData, adminId: number): Promise<{ storyId: number; nodeCount: number; wordCount: number; wasUpdated: boolean }> {
   // 确定作者：有 author_name 则创建/复用虚拟用户，否则使用管理员
   let authorId = adminId;
   if (storyData.author_name?.trim()) {
@@ -119,7 +130,94 @@ async function importStory(storyData: StoryData, adminId: number): Promise<{ sto
   });
 
   if (existing) {
-    // 如果故事已存在但 author_id 需要更新（之前以管理员身份导入，现在需要改为虚拟用户）
+    if (UPDATE_MODE) {
+      // --update 模式：删除旧章节 → 重新导入新章节 → 更新故事元数据
+      console.log(`  🔄 更新模式: "${storyData.title}" (ID: ${existing.id})`);
+
+      // 删除所有旧章节
+      const deleteResult = await prisma.nodes.deleteMany({
+        where: { story_id: existing.id }
+      });
+      console.log(`  🗑️  已删除 ${deleteResult.count} 个旧章节`);
+
+      // 更新故事元数据（标签、描述、作者）
+      await prisma.stories.update({
+        where: { id: existing.id },
+        data: {
+          description: storyData.description || existing.description,
+          tags: storyData.tags || existing.tags,
+          cover_image: storyData.cover_image || existing.cover_image,
+          author_id: authorId,
+          root_node_id: null,
+          updated_at: new Date()
+        }
+      });
+
+      // 重新导入章节（复用下方逻辑）
+      const chapters = storyData.chapters;
+      let rootNodeId: number | null = null;
+      let prevNodeId: number | null = null;
+      let totalWords = 0;
+      let importedCount = 0;
+
+      for (let batchStart = 0; batchStart < chapters.length; batchStart += BATCH_SIZE) {
+        const batchEnd = Math.min(batchStart + BATCH_SIZE, chapters.length);
+        const batchChapters = chapters.slice(batchStart, batchEnd);
+
+        if (batchStart > 0) {
+          const lastNode = await prisma.nodes.findFirst({
+            where: { story_id: existing.id },
+            orderBy: { sort_order: 'desc' },
+            select: { id: true }
+          });
+          prevNodeId = lastNode?.id ?? null;
+        }
+
+        await prisma.$transaction(async (tx) => {
+          for (let i = 0; i < batchChapters.length; i++) {
+            const globalIndex = batchStart + i;
+            const chapter = batchChapters[i];
+            const chapterTitle = chapter.title?.trim() || `第 ${globalIndex + 1} 章`;
+
+            const createdNode: { id: number } = await tx.nodes.create({
+              data: {
+                story_id: existing.id,
+                parent_id: prevNodeId,
+                author_id: authorId,
+                title: chapterTitle,
+                content: chapter.content,
+                path: `${globalIndex + 1}`,
+                sort_order: globalIndex + 1,
+                is_published: true,
+                review_status: 'APPROVED',
+                updated_at: new Date()
+              }
+            });
+
+            totalWords += chapter.content.length;
+            prevNodeId = createdNode.id;
+            if (globalIndex === 0) rootNodeId = createdNode.id;
+          }
+        }, { maxWait: 10000, timeout: 30000 });
+
+        importedCount += batchChapters.length;
+        const batchNum = Math.floor(batchStart / BATCH_SIZE) + 1;
+        const totalBatches = Math.ceil(chapters.length / BATCH_SIZE);
+        console.log(`  📦 批次 ${batchNum}/${totalBatches} 完成 (${importedCount}/${chapters.length} 章)`);
+      }
+
+      if (rootNodeId) {
+        await prisma.stories.update({
+          where: { id: existing.id },
+          data: { root_node_id: rootNodeId }
+        });
+      }
+
+      console.log(`  ✅ 更新完成 (${chapters.length} 章, ${totalWords.toLocaleString()} 字)`);
+      return { storyId: existing.id, nodeCount: chapters.length, wordCount: totalWords, wasUpdated: true };
+    }
+
+    // 非 update 模式：跳过或迁移作者
     if (storyData.author_name?.trim() && existing.author_id === adminId) {
       console.log(`  🔄 迁移作者: "${storyData.title}" 从管理员 → ${storyData.author_name.trim()}`);
       await prisma.stories.update({
@@ -134,7 +232,7 @@ async function importStory(storyData: StoryData, adminId: number): Promise<{ sto
     } else {
       console.log(`  ⏭️  跳过已存在的故事: "${storyData.title}" (ID: ${existing.id})`);
     }
-    return { storyId: existing.id, nodeCount: 0, wordCount: 0 };
+    return { storyId: existing.id, nodeCount: 0, wordCount: 0, wasUpdated: false };
   }
 
   if (!storyData.chapters || storyData.chapters.length === 0) {
@@ -230,7 +328,7 @@ async function importStory(storyData: StoryData, adminId: number): Promise<{ sto
     });
   }
 
-  return { storyId, nodeCount: chapters.length, wordCount: totalWords };
+  return { storyId, nodeCount: chapters.length, wordCount: totalWords, wasUpdated: false };
 }
 
 async function main() {
@@ -238,6 +336,9 @@ async function main() {
 
   if (DRY_RUN) {
     console.log('🔍 [DRY RUN 模式] 仅检查数据，不写入数据库\n');
+  }
+  if (UPDATE_MODE) {
+    console.log('🔄 [UPDATE 模式] 已存在的故事将被更新（删旧章→写新章→更新元数据）\n');
   }
 
   // 1. 获取管理员用户
@@ -279,6 +380,7 @@ async function main() {
   let totalNodes = 0;
   let totalWords = 0;
   let skipped = 0;
+  let updated = 0;
   let failed = 0;
 
   for (const file of files) {
@@ -314,6 +416,10 @@ async function main() {
       const result = await importStory(storyData, admin.id);
       if (result.nodeCount === 0) {
         skipped++;
+      } else if (result.wasUpdated) {
+        updated++;
+        totalNodes += result.nodeCount;
+        totalWords += result.wordCount;
       } else {
         totalStories++;
         totalNodes += result.nodeCount;
@@ -347,10 +453,11 @@ async function main() {
   // 4. 汇总
   console.log('\n' + '='.repeat(50));
   console.log('📊 导入完成汇总:');
-  console.log(`   成功导入: ${totalStories} 部故事`);
+  console.log(`   新增导入: ${totalStories} 部故事`);
+  if (updated > 0) console.log(`   增量更新: ${updated} 部故事`);
   console.log(`   总章节数: ${totalNodes}`);
   console.log(`   总字数:   ${totalWords.toLocaleString()}`);
-  if (skipped > 0) console.log(`   已跳过:   ${skipped} 部（已存在）`);
+  if (skipped > 0) console.log(`   已跳过:   ${skipped} 部（已存在，未使用 --update）`);
   if (failed > 0) console.log(`   失败:     ${failed} 部`);
   console.log('='.repeat(50));
 
