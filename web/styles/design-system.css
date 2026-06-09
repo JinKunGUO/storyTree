@@ -223,7 +223,27 @@
 }
 
 /* ========================================
-   1.18 暗黑模式变量覆盖
+   1.18 响应式变量覆盖（Mobile-First）
+   ======================================== */
+
+@media (min-width: 768px) {
+  :root {
+    --st-page-padding-x: 1.5rem;
+    --st-text-4xl: 2.5rem;
+    --st-text-5xl: 3.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --st-page-padding-x: 2rem;
+    --st-text-4xl: 2.75rem;
+    --st-text-5xl: 4rem;
+  }
+}
+
+/* ========================================
+   1.19 暗黑模式变量覆盖
    ======================================== */
 
 @media (prefers-color-scheme: dark) {

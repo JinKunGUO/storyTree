@@ -1,0 +1,546 @@
+/**
+ * StoryTree Responsive Layer
+ * 全局响应式适配 - Mobile-First (min-width)
+ * 
+ * 断点体系：
+ *   默认    : < 480px  (小手机)
+ *   xs      : 480px+   (大手机)
+ *   sm      : 640px+   (大手机/小平板竖屏)
+ *   md      : 768px+   (平板竖屏)
+ *   lg      : 1024px+  (平板横屏/小桌面)
+ *   xl      : 1280px+  (桌面)
+ */
+
+/* ======================================================
+   Section 1: 触摸设备全局优化（无断点，默认生效）
+   ====================================================== */
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+}
+
+body {
+  overscroll-behavior-y: none;
+}
+
+/* 所有可交互元素：去除点击高亮、优化触摸 */
+a,
+button,
+input,
+select,
+textarea,
+[role="button"],
+[tabindex] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* 按钮和链接的最小触摸区域 */
+button,
+[role="button"],
+.btn,
+.nav-link,
+.navbar-link {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* 平滑滚动容器 */
+.scroll-container,
+.stories-grid,
+.tab-content,
+[style*="overflow"] {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ======================================================
+   Section 2: 默认样式（移动端基础，< 480px）
+   ====================================================== */
+
+/* 容器默认全宽 */
+.section-container,
+.page-container,
+.container {
+  width: 100%;
+  padding-left: var(--st-page-padding-x, 1rem);
+  padding-right: var(--st-page-padding-x, 1rem);
+}
+
+/* 网格默认单列 */
+.stories-grid,
+.features-grid,
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--st-space-4);
+}
+
+/* 模态框默认近全屏 */
+.modal-content,
+.modal-body {
+  width: calc(100vw - 2rem);
+  max-width: 100%;
+  max-height: 90vh;
+  margin: 1rem;
+  border-radius: var(--st-radius-lg);
+}
+
+/* 标题流式缩放 */
+.hero-title,
+.page-title {
+  font-size: clamp(1.75rem, 6vw, 3.5rem);
+  line-height: 1.2;
+}
+
+.section-title {
+  font-size: clamp(1.25rem, 4vw, 2rem);
+}
+
+/* 按钮在移动端默认全宽 */
+.btn-group-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--st-space-2);
+}
+
+.btn-group-mobile .btn {
+  width: 100%;
+}
+
+/* 表单在移动端全宽 */
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  font-size: 16px; /* 防止 iOS 缩放 */
+}
+
+/* 隐藏桌面端元素 */
+.desktop-only {
+  display: none !important;
+}
+
+/* 卡片在移动端简化间距 */
+.card,
+.story-card {
+  border-radius: var(--st-radius-md);
+}
+
+/* 标签/筛选横向滚动 */
+.tabs-scroll,
+.filter-tags,
+.tag-list {
+  display: flex;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  gap: var(--st-space-2);
+  padding-bottom: var(--st-space-2);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.tabs-scroll::-webkit-scrollbar,
+.filter-tags::-webkit-scrollbar,
+.tag-list::-webkit-scrollbar {
+  display: none;
+}
+
+/* ======================================================
+   Section 3: 页面级响应式 - 首页 (index)
+   ====================================================== */
+
+/* 英雄区移动端 */
+.hero-section {
+  min-height: 70vh;
+  padding: var(--st-space-8) var(--st-page-padding-x, 1rem);
+}
+
+.hero-section .hero-subtitle {
+  font-size: var(--st-text-base);
+}
+
+.hero-section .hero-stats {
+  flex-direction: column;
+  gap: var(--st-space-3);
+}
+
+/* ======================================================
+   Section 3b: 页面级响应式 - 故事详情 (story)
+   ====================================================== */
+
+.story-header {
+  flex-direction: column;
+}
+
+.story-cover {
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: var(--st-radius-md);
+}
+
+.story-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--st-space-2);
+}
+
+.story-actions .btn {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--st-text-sm);
+}
+
+/* ======================================================
+   Section 3c: 页面级响应式 - 写作 (write)
+   ====================================================== */
+
+.write-container .editor-area {
+  padding: var(--st-space-4);
+}
+
+.write-container .ql-toolbar {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch;
+}
+
+.write-container .sidebar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  top: auto;
+  width: 100%;
+  max-height: 60vh;
+  border-radius: var(--st-radius-xl) var(--st-radius-xl) 0 0;
+  transform: translateY(100%);
+  transition: transform var(--st-duration-slow) var(--st-ease-out);
+  z-index: 1000;
+}
+
+.write-container .sidebar.open {
+  transform: translateY(0);
+}
+
+/* ======================================================
+   Section 3d: 页面级响应式 - 章节阅读 (chapter)
+   ====================================================== */
+
+.chapter-content {
+  padding: var(--st-space-4) var(--st-page-padding-x, 1rem);
+  font-size: var(--st-text-base);
+  line-height: 2;
+}
+
+.chapter-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: var(--st-space-3) var(--st-space-4);
+  background: var(--st-bg-elevated);
+  border-top: 1px solid var(--st-gray-200);
+  z-index: 100;
+}
+
+/* ======================================================
+   Section 3e: 页面级响应式 - 个人中心 (profile)
+   ====================================================== */
+
+.profile-header {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--st-space-3);
+}
+
+.profile-actions .btn {
+  width: 100%;
+}
+
+/* ======================================================
+   Section 3f: 页面级响应式 - 我的故事 (my-stories)
+   ====================================================== */
+
+.my-stories-grid {
+  grid-template-columns: 1fr;
+}
+
+/* ======================================================
+   Section 3g: 页面级响应式 - 会员/支付
+   ====================================================== */
+
+.membership-cards,
+.pricing-grid {
+  grid-template-columns: 1fr;
+  gap: var(--st-space-4);
+}
+
+.payment-form {
+  width: 100%;
+  padding: var(--st-space-4);
+}
+
+/* ======================================================
+   @media (min-width: 480px) — 大手机
+   ====================================================== */
+
+@media (min-width: 480px) {
+  .stories-grid,
+  .features-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .hero-section .hero-stats {
+    flex-direction: row;
+    gap: var(--st-space-6);
+  }
+
+  .btn-group-mobile {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .btn-group-mobile .btn {
+    width: auto;
+    flex: 0 1 auto;
+  }
+
+  .profile-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ======================================================
+   @media (min-width: 640px) — 大手机/小平板竖屏
+   ====================================================== */
+
+@media (min-width: 640px) {
+  .stories-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--st-space-5);
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .modal-content,
+  .modal-body {
+    width: min(90vw, 500px);
+    margin: auto;
+  }
+
+  .my-stories-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .story-cover {
+    max-height: 260px;
+  }
+}
+
+/* ======================================================
+   @media (min-width: 768px) — 平板竖屏
+   ====================================================== */
+
+@media (min-width: 768px) {
+  /* 导航栏：隐藏汉堡菜单，恢复水平排列 */
+  .mobile-menu-toggle {
+    display: none !important;
+  }
+
+  .nav-menu,
+  .navbar-menu {
+    display: flex !important;
+    flex-direction: row;
+    position: static;
+    width: auto;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  /* 网格升级 */
+  .stories-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .features-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* 模态框居中 */
+  .modal-content,
+  .modal-body {
+    width: min(80vw, 600px);
+    max-height: 80vh;
+    border-radius: var(--st-radius-xl);
+  }
+
+  /* 故事详情 */
+  .story-header {
+    flex-direction: row;
+    gap: var(--st-space-6);
+  }
+
+  .story-cover {
+    width: 280px;
+    max-height: none;
+    flex-shrink: 0;
+  }
+
+  .story-actions .btn {
+    flex: 0 1 auto;
+  }
+
+  /* 个人中心 */
+  .profile-header {
+    flex-direction: row;
+    text-align: left;
+    gap: var(--st-space-6);
+  }
+
+  .profile-stats {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .profile-actions .btn {
+    width: auto;
+  }
+
+  /* 英雄区 */
+  .hero-section {
+    min-height: 80vh;
+    padding: var(--st-space-12) var(--st-page-padding-x, 1.5rem);
+  }
+
+  /* 章节阅读 */
+  .chapter-content {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: var(--st-space-8) var(--st-space-6);
+    font-size: var(--st-text-lg);
+  }
+
+  .chapter-nav {
+    position: static;
+    border-top: none;
+    justify-content: center;
+    gap: var(--st-space-4);
+    padding: var(--st-space-6) 0;
+  }
+
+  /* 写作编辑器 */
+  .write-container .editor-area {
+    padding: var(--st-space-8) var(--st-space-10);
+  }
+
+  .write-container .ql-toolbar {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
+  /* 我的故事 */
+  .my-stories-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* 会员卡片 */
+  .membership-cards,
+  .pricing-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* 显示桌面元素 */
+  .desktop-only {
+    display: initial !important;
+  }
+
+  /* 隐藏移动端专属元素 */
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+/* ======================================================
+   @media (min-width: 1024px) — 平板横屏/小桌面
+   ====================================================== */
+
+@media (min-width: 1024px) {
+  .stories-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--st-space-6);
+  }
+
+  .features-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* 写作编辑器侧边栏 */
+  .write-container .sidebar {
+    position: static;
+    width: 320px;
+    max-height: none;
+    border-radius: 0;
+    transform: none;
+    border-left: 1px solid var(--st-gray-200);
+  }
+
+  .write-container .editor-area {
+    padding: var(--st-space-10) var(--st-space-16);
+  }
+
+  /* 章节阅读 */
+  .chapter-content {
+    max-width: 800px;
+    font-size: var(--st-text-lg);
+    line-height: 1.8;
+  }
+
+  /* 我的故事 */
+  .my-stories-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* 会员 */
+  .membership-cards,
+  .pricing-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ======================================================
+   @media (min-width: 1280px) — 桌面
+   ====================================================== */
+
+@media (min-width: 1280px) {
+  .stories-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .my-stories-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .features-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
