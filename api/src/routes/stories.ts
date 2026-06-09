@@ -390,14 +390,16 @@ router.get('/shared-with-me', authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/stories/recommend - 基于用户收藏/追更的标签偏好推荐
+// GET /api/stories/recommend - 基于用户收藏/追更的标签偏好推荐（支持分页轮播）
 router.get('/recommend', optionalAuth, async (req, res) => {
   const userId = getUserId(req);
   const limit = Math.min(parseInt(req.query.limit as string) || 6, 20);
-  const shuffle = req.query.shuffle !== '0'; // 默认随机打乱，传 shuffle=0 可关闭
+  const page = Math.max(parseInt(req.query.page as string) || 0, 0);
 
   try {
-    let recommendedStories: any[] = [];
+    // 构建候选池的 where 条件
+    let where: any = { nodes: { some: { parent_id: null } } };
+    let isPersonalized = false;
 
     if (userId) {
       // 1. 获取用户收藏和追更的故事的标签
@@ -436,34 +438,43 @@ router.get('/recommend', optionalAuth, async (req, res) => {
         .map(([tag]) => tag);
 
       if (topTags.length > 0) {
-        // 4. 查找包含这些标签但用户还没读过的故事
-        const candidates = await prisma.stories.findMany({
-          where: {
-            AND: [
-              { id: { notIn: Array.from(readStoryIds) } },
-              { OR: topTags.map(tag => ({ tags: { contains: tag } })) },
-              { nodes: { some: { parent_id: null } } },
-            ],
-          },
-          include: {
-            author: { select: { id: true, username: true, avatar: true } },
-            _count: { select: { nodes: true, bookmarks: true, followers: true } },
-          },
-          orderBy: { followers: { _count: 'desc' } },
-          take: limit * 3, // 多取候选，用于随机
-        });
-        recommendedStories = candidates;
+        where = {
+          AND: [
+            { id: { notIn: Array.from(readStoryIds) } },
+            { OR: topTags.map(tag => ({ tags: { contains: tag } })) },
+            { nodes: { some: { parent_id: null } } },
+          ],
+        };
+        isPersonalized = true;
       }
     }
 
-    // 5. 如果推荐不足，用热门故事补充
-    if (recommendedStories.length < limit) {
-      const existingIds = recommendedStories.map(s => s.id);
-      const popular = await prisma.stories.findMany({
-        where: {
-          id: { notIn: existingIds },
-          nodes: { some: { parent_id: null } },
-        },
+    // 4. 计算总数，用于分页轮播
+    const total = await prisma.stories.count({ where });
+    // 当 page * limit 超出总数时，回到开头（轮播）
+    const skip = total > 0 ? (page * limit) % total : 0;
+
+    // 5. 分页查询
+    const stories = await prisma.stories.findMany({
+      where,
+      include: {
+        author: { select: { id: true, username: true, avatar: true } },
+        _count: { select: { nodes: true, bookmarks: true, followers: true } },
+      },
+      orderBy: [
+        { followers: { _count: 'desc' } },
+        { nodes: { _count: 'desc' } },
+      ],
+      skip,
+      take: limit,
+    });
+
+    // 6. 如果跨越尾部（skip + limit > total），从头部补齐
+    let recommendedStories = stories;
+    if (stories.length < limit && total > limit) {
+      const remaining = limit - stories.length;
+      const wrap = await prisma.stories.findMany({
+        where,
         include: {
           author: { select: { id: true, username: true, avatar: true } },
           _count: { select: { nodes: true, bookmarks: true, followers: true } },
@@ -472,23 +483,19 @@ router.get('/recommend', optionalAuth, async (req, res) => {
           { followers: { _count: 'desc' } },
           { nodes: { _count: 'desc' } },
         ],
-        take: Math.max(limit * 3, 30), // 多取候选
+        skip: 0,
+        take: remaining,
       });
-      recommendedStories = [...recommendedStories, ...popular];
+      recommendedStories = [...stories, ...wrap];
     }
 
-    // 6. 随机打乱并截取
-    if (shuffle && recommendedStories.length > limit) {
-      for (let i = recommendedStories.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [recommendedStories[i], recommendedStories[j]] = [recommendedStories[j], recommendedStories[i]];
-      }
-      recommendedStories = recommendedStories.slice(0, limit);
-    }
+    const totalPages = Math.max(Math.ceil(total / limit), 1);
 
     res.json({
       stories: recommendedStories,
-      isPersonalized: userId ? true : false,
+      isPersonalized,
+      page,
+      totalPages,
     });
   } catch (error) {
     console.error('Recommend error:', error);

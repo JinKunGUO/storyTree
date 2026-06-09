@@ -1087,11 +1087,14 @@
         }
         
         // ===== 猜你喜欢 =====
-        async function loadRecommend() {
+        let recommendPage = 0;
+
+        async function loadRecommend(page) {
             try {
+                if (page === undefined) page = recommendPage;
                 const token = localStorage.getItem('token');
                 const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-                const res = await fetch('/api/stories/recommend?limit=8', { headers });
+                const res = await fetch(`/api/stories/recommend?limit=8&page=${page}`, { headers });
                 if (!res.ok) return;
                 const data = await res.json();
                 if (!data.stories || data.stories.length === 0) return;
@@ -1118,11 +1121,12 @@
         }
 
         function refreshRecommend() {
-            loadRecommend();
+            recommendPage++;
+            loadRecommend(recommendPage);
         }
 
         // 页面加载时获取推荐
-        loadRecommend();
+        loadRecommend(0);
 
         // 加载更多按钮状态更新
         function updateLoadMoreButton() {
