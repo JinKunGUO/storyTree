@@ -129,12 +129,6 @@ update_code() {
     log_info "拉取最新代码..."
     cd "$APP_DIR"
 
-    # 先恢复数据库相关文件（这些文件在部署时会自动生成/切换）
-    # 避免 git diff 非空导致 git pull 失败
-    log_info "恢复数据库相关文件..."
-    git checkout -- api/prisma/schema.prisma 2>/dev/null || true
-    git checkout -- api/prisma/migrations/migration_lock.toml 2>/dev/null || true
-
     # 记录拉取前的 schema 哈希，用于后续判断是否需要重新生成 Prisma 客户端
     SCHEMA_HASH_BEFORE=""
     if [ -f "$API_DIR/prisma/schema.mysql.prisma" ]; then
@@ -142,8 +136,13 @@ update_code() {
     fi
     export SCHEMA_HASH_BEFORE
 
-    # 再拉取代码
-    git pull origin main
+    # 强制同步远程代码
+    # 使用 fetch + reset --hard 代替 git pull，避免以下问题：
+    # 1. 部署时 schema.prisma/migration_lock.toml 会被切换为 MySQL 版本，导致 git pull 冲突
+    # 2. 服务器上可能存在未跟踪文件（如 package-lock.json）与远程冲突
+    git fetch origin main
+    git reset --hard origin/main
+    git clean -fd -e "*.env.production" -e "api/prisma/dev.db" 2>/dev/null || true
     log_success "代码更新完成（$(git log --oneline -1)）"
 }
 
