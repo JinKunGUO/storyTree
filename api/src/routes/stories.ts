@@ -394,6 +394,7 @@ router.get('/shared-with-me', authenticateToken, async (req, res) => {
 router.get('/recommend', optionalAuth, async (req, res) => {
   const userId = getUserId(req);
   const limit = Math.min(parseInt(req.query.limit as string) || 6, 20);
+  const shuffle = req.query.shuffle !== '0'; // 默认随机打乱，传 shuffle=0 可关闭
 
   try {
     let recommendedStories: any[] = [];
@@ -449,7 +450,7 @@ router.get('/recommend', optionalAuth, async (req, res) => {
             _count: { select: { nodes: true, bookmarks: true, followers: true } },
           },
           orderBy: { followers: { _count: 'desc' } },
-          take: limit,
+          take: limit * 3, // 多取候选，用于随机
         });
         recommendedStories = candidates;
       }
@@ -471,9 +472,18 @@ router.get('/recommend', optionalAuth, async (req, res) => {
           { followers: { _count: 'desc' } },
           { nodes: { _count: 'desc' } },
         ],
-        take: limit - recommendedStories.length,
+        take: Math.max(limit * 3, 30), // 多取候选
       });
       recommendedStories = [...recommendedStories, ...popular];
+    }
+
+    // 6. 随机打乱并截取
+    if (shuffle && recommendedStories.length > limit) {
+      for (let i = recommendedStories.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [recommendedStories[i], recommendedStories[j]] = [recommendedStories[j], recommendedStories[i]];
+      }
+      recommendedStories = recommendedStories.slice(0, limit);
     }
 
     res.json({
