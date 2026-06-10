@@ -63,7 +63,7 @@ const stats: Stats = {
 
 // ============ 核心逻辑 ============
 
-async function splitStoryChapters(storyId: number, storyTitle: string, node: { id: number; content: string; author_id: number | null }): Promise<void> {
+async function splitStoryChapters(storyId: number, storyTitle: string, node: { id: number; content: string; author_id: number | null; }): Promise<void> {
   const content = node.content || '';
 
   if (content.length < MIN_CONTENT_LENGTH) {
@@ -98,7 +98,7 @@ async function splitStoryChapters(storyId: number, storyTitle: string, node: { i
     // 2. 分批创建新 nodes（链式结构）
     let rootNodeId: number | null = null;
     let prevNodeId: number | null = null;
-    const authorId = node.author_id;
+    const authorId = node.author_id ?? 1; // fallback to admin (id=1) if null
 
     for (let batchStart = 0; batchStart < newChapters.length; batchStart += BATCH_SIZE) {
       const batchEnd = Math.min(batchStart + BATCH_SIZE, newChapters.length);
