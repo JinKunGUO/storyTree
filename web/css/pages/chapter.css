@@ -980,22 +980,39 @@
 
         /* 深色阅读主题 - 扩展覆盖更多元素 */
         /* 面包屑导航 */
-        body.theme-dark .breadcrumb-bar {
+        body.theme-dark .breadcrumb-nav {
             background: rgba(26, 26, 46, 0.95);
             border-bottom-color: var(--st-gray-200);
         }
         body.theme-dark .breadcrumb-item,
-        body.theme-dark .breadcrumb-bar a {
+        body.theme-dark .breadcrumb-nav a {
             color: var(--st-text-secondary);
+        }
+        body.theme-dark .breadcrumb-item.current {
+            color: var(--st-text-primary);
+        }
+        body.theme-dark .breadcrumb-separator {
+            color: var(--st-gray-400);
         }
         /* 阅读工具栏 */
         body.theme-dark .reading-toolbar {
             background: rgba(26, 26, 46, 0.95);
-            border-top-color: var(--st-gray-200);
+            border-bottom-color: var(--st-gray-200);
         }
         body.theme-dark .reading-toolbar button,
         body.theme-dark .toolbar-btn {
             color: var(--st-text-secondary);
+        }
+        /* 上一章/下一章按钮 */
+        body.theme-dark .nav-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.15);
+            color: var(--st-text-secondary);
+        }
+        body.theme-dark .nav-btn:hover:not(:disabled) {
+            background: var(--st-primary);
+            border-color: var(--st-primary);
+            color: white;
         }
         /* 评论区 */
         body.theme-dark .comments-section {
@@ -1080,13 +1097,13 @@
 
         /* 系统暗夜模式适配 - 面包屑和工具栏的 rgba(255,255,255,0.95) 背景 */
         @media (prefers-color-scheme: dark) {
-            .breadcrumb-bar {
+            .breadcrumb-nav {
                 background: rgba(26, 26, 46, 0.95) !important;
                 border-bottom-color: var(--st-gray-200);
             }
             .reading-toolbar {
                 background: rgba(26, 26, 46, 0.95) !important;
-                border-top-color: var(--st-gray-200);
+                border-bottom-color: var(--st-gray-200);
             }
             .toolbar-btn,
             .reading-toolbar button {
@@ -1095,6 +1112,16 @@
             .toolbar-btn:hover,
             .reading-toolbar button:hover {
                 color: var(--st-text-primary);
+            }
+            .nav-btn {
+                background: rgba(255, 255, 255, 0.08) !important;
+                border-color: rgba(255, 255, 255, 0.15);
+                color: var(--st-text-secondary);
+            }
+            .nav-btn:hover:not(:disabled) {
+                background: var(--st-primary) !important;
+                border-color: var(--st-primary);
+                color: white;
             }
             /* 消息提示暗夜 */
             .message {
