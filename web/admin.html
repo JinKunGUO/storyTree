@@ -342,6 +342,28 @@
         padding: 14px;
       }
     }
+
+    /* 暗黑模式适配 */
+    @media (prefers-color-scheme: dark) {
+      /* 会员等级徽章 - 暗色背景版本 */
+      .badge-trial { background: rgba(255, 236, 210, 0.15); color: #f0c89a; }
+      .badge-monthly { background: rgba(213, 225, 223, 0.15); color: #7fbfb9; }
+      .badge-quarterly { background: rgba(168, 213, 186, 0.15); color: #6fd9a0; }
+      .badge-yearly { background: rgba(255, 215, 0, 0.15); color: #ffd700; }
+      .badge-enterprise { background: rgba(185, 242, 255, 0.15); color: #7dd8ec; }
+
+      /* 状态标签 - 暗色背景版本 */
+      .tag-active { background: rgba(209, 250, 229, 0.12); color: #6ee7b7; }
+      .tag-inactive { background: rgba(254, 226, 226, 0.12); color: #fca5a5; }
+      .tag-admin { background: rgba(237, 233, 254, 0.12); color: #c4b5fd; }
+      .tag-user { background: rgba(224, 242, 254, 0.12); color: #7dd3fc; }
+
+      /* footer */
+      footer[style*="color: #6b7280"] {
+        color: var(--st-text-tertiary) !important;
+        border-top-color: var(--st-gray-300) !important;
+      }
+    }
   </style>
 </head>
 <body>
