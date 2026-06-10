@@ -354,6 +354,106 @@
             padding: 30px;
             color: #888;
         }
+
+        /* 暗黑模式适配 */
+        @media (prefers-color-scheme: dark) {
+            .settings-section {
+                background: var(--st-bg-primary);
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            }
+
+            .settings-section h2 {
+                color: var(--st-text-primary);
+            }
+
+            .form-group label {
+                color: var(--st-text-secondary);
+            }
+
+            .form-group select,
+            .form-group input[type="text"],
+            .form-group input[type="password"] {
+                background: var(--st-gray-100);
+                border-color: var(--st-gray-300);
+                color: var(--st-text-primary);
+            }
+
+            .form-group .help-text {
+                color: var(--st-text-tertiary);
+            }
+
+            .toggle-group {
+                background: var(--st-gray-100);
+            }
+
+            .toggle-group.disabled {
+                background: var(--st-gray-200);
+            }
+
+            .toggle-group label {
+                color: var(--st-text-primary);
+            }
+
+            .toggle-group.disabled label,
+            .toggle-group.disabled .help-text {
+                color: var(--st-text-muted);
+            }
+
+            .toggle-slider {
+                background-color: var(--st-gray-400);
+            }
+
+            .collaborator-item {
+                background: var(--st-gray-100);
+            }
+
+            .collaborator-role {
+                background: rgba(25, 118, 210, 0.15);
+                color: #64b5f6;
+            }
+
+            .add-collaborator-form input {
+                background: var(--st-gray-100);
+                border-color: var(--st-gray-300);
+                color: var(--st-text-primary);
+            }
+
+            .btn-secondary {
+                background: var(--st-bg-primary);
+                color: var(--st-primary-400);
+                border-color: var(--st-primary-400);
+            }
+
+            .btn-secondary:hover {
+                background: var(--st-gray-100);
+            }
+
+            .request-item {
+                background: var(--st-gray-100);
+            }
+
+            .request-message {
+                color: var(--st-text-secondary);
+            }
+
+            .request-time {
+                color: var(--st-text-tertiary);
+            }
+
+            .empty-requests {
+                color: var(--st-text-tertiary);
+            }
+
+            /* JS 动态生成的内联样式 */
+            p[style*="color: #888"] {
+                color: var(--st-text-tertiary) !important;
+            }
+
+            footer[style*="color: #6b7280"] {
+                color: var(--st-text-tertiary) !important;
+                border-top-color: var(--st-gray-300) !important;
+            }
+        }
     </style>
 </head>
 <body>

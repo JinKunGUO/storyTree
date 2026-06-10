@@ -109,25 +109,25 @@ class SystemLoadWidget {
                         <div style="font-size: 16px; font-weight: 600; color: ${config.color};">
                             ${config.text}
                         </div>
-                        <div style="font-size: 12px; color: #666; margin-top: 2px;">
+                        <div style="font-size: 12px; color: var(--st-text-secondary, #666); margin-top: 2px;">
                             当前队列: ${totalLoad} 个任务
                         </div>
                     </div>
                     <div style="text-align: right;">
-                        <div style="font-size: 14px; color: #666;">预计等待</div>
+                        <div style="font-size: 14px; color: var(--st-text-secondary, #666);">预计等待</div>
                         <div style="font-size: 20px; font-weight: 700; color: ${config.color};">
                             ~${estimatedWaitMinutes}分钟
                         </div>
                     </div>
                 </div>
                 <div style="
-                    background: white;
+                    background: var(--st-bg-primary, white);
                     padding: 12px;
                     border-radius: 8px;
                     border-left: 3px solid ${config.color};
                     font-size: 13px;
                     line-height: 1.6;
-                    color: #333;
+                    color: var(--st-text-primary, #333);
                 ">
                     <i class="fas fa-info-circle" style="color: ${config.color};"></i>
                     ${recommendation}

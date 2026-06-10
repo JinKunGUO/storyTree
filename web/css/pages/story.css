@@ -1457,6 +1457,25 @@
                 background: var(--st-warning-100);
                 color: var(--st-warning-600);
             }
+
+            /* story.html 内联样式覆盖 */
+            div[style*="color: #333"] {
+                color: var(--st-text-primary) !important;
+            }
+
+            span[style*="color: #999"],
+            div[style*="color: #999"] {
+                color: var(--st-text-tertiary) !important;
+            }
+
+            p[style*="color: #666"] {
+                color: var(--st-text-secondary) !important;
+            }
+
+            footer[style*="color: #6b7280"] {
+                color: var(--st-text-tertiary) !important;
+                border-top-color: var(--st-gray-300) !important;
+            }
         }
 
         /* ========================================

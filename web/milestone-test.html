@@ -237,6 +237,38 @@
         .history-amount.negative {
             color: #f44336;
         }
+
+        /* 暗黑模式适配 */
+        @media (prefers-color-scheme: dark) {
+            .card {
+                background: var(--st-bg-primary, #1a1a2e);
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            }
+
+            .card h3,
+            .milestone-name {
+                color: var(--st-text-primary, #e0e0e0) !important;
+            }
+
+            .milestone-desc,
+            .history-item span {
+                color: var(--st-text-secondary, #b0b0b0);
+            }
+
+            .history-item {
+                border-bottom-color: var(--st-gray-200, #3a3a4e);
+            }
+
+            div[style*="color: #999"],
+            small[style*="color: #999"] {
+                color: var(--st-text-tertiary, #888) !important;
+            }
+
+            footer[style*="color: #6b7280"] {
+                color: var(--st-text-tertiary, #888) !important;
+                border-top-color: var(--st-gray-300, #4a4a5e) !important;
+            }
+        }
     </style>
 </head>
 <body>

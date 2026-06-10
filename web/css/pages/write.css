@@ -1002,3 +1002,110 @@
                 height: calc(100vh - 80px);
             }
         }
+
+        /* ========================================
+           暗黑模式适配 - write 页面
+           覆盖 AI 模态框中的内联硬编码颜色
+           ======================================== */
+        @media (prefers-color-scheme: dark) {
+            /* AI 续写/润色模态框内的提示文字 */
+            .ai-modal-body div[style*="color: #999"],
+            .ai-modal-body p[style*="color: #999"],
+            .ai-modal-body div[style*="color: #666"],
+            .ai-modal-body ul[style*="color: #666"] {
+                color: var(--st-text-tertiary) !important;
+            }
+
+            .ai-modal-body div[style*="color: #333"],
+            .ai-modal-body h3[style*="color: #333"] {
+                color: var(--st-text-primary) !important;
+            }
+
+            /* 润色对比区域 - 原文背景 */
+            #originalText {
+                background: var(--st-gray-100) !important;
+                color: var(--st-text-secondary) !important;
+            }
+
+            /* 润色对比区域 - 润色后背景 */
+            #polishedText {
+                background: var(--st-bg-tertiary) !important;
+                color: var(--st-text-primary) !important;
+            }
+
+            /* 插图加载中的提示区域 */
+            #illustrationLoading div[style*="background: #f9f9f9"] {
+                background: var(--st-gray-100) !important;
+            }
+
+            #illustrationLoading h4[style*="color: #ff6b6b"] {
+                color: #ff6b6b !important;
+            }
+
+            /* 插图限制提示 */
+            #illustrationLimitInfo {
+                background: rgba(33, 150, 243, 0.1) !important;
+                border-left-color: #64b5f6 !important;
+                color: #64b5f6 !important;
+            }
+
+            /* ===== write.js 动态生成的弹窗 ===== */
+
+            /* 积分确认弹窗 & AI预览弹窗 - 白色背景容器 */
+            div[style*="z-index: 10000"] > div[style*="background: white"],
+            div[style*="z-index: 3000"] > div[style*="background: white"] {
+                background: var(--st-bg-primary, #1a1a2e) !important;
+                color: var(--st-text-primary, #e0e0e0) !important;
+            }
+
+            /* 弹窗内标题文字 #333 */
+            div[style*="z-index: 10000"] h3[style*="color: #333"],
+            div[style*="z-index: 10000"] p[style*="color: #333"],
+            div[style*="z-index: 10000"] button[style*="color: #333"],
+            div[style*="z-index: 3000"] h2[style*="color: #333"] {
+                color: var(--st-text-primary, #e0e0e0) !important;
+            }
+
+            /* 弹窗内次要文字 #666 */
+            div[style*="z-index: 10000"] p[style*="color: #666"],
+            div[style*="z-index: 3000"] div[style*="color: #666"] {
+                color: var(--st-text-secondary, #b0b0b0) !important;
+            }
+
+            /* 弹窗内辅助文字 #999 */
+            div[style*="z-index: 10000"] p[style*="color: #999"] {
+                color: var(--st-text-tertiary, #888) !important;
+            }
+
+            /* 积分弹窗描述区域背景 */
+            div[style*="z-index: 10000"] p[style*="background: #f8f9fa"] {
+                background: var(--st-gray-100, #2a2a3e) !important;
+            }
+
+            /* 积分弹窗取消按钮背景 */
+            div[style*="z-index: 10000"] button[style*="background: #f1f3f5"] {
+                background: var(--st-gray-200, #3a3a4e) !important;
+                color: var(--st-text-primary, #e0e0e0) !important;
+            }
+
+            /* AI选项卡片内辅助文字 */
+            .ai-option-card span[style*="color: #999"] {
+                color: var(--st-text-tertiary, #888) !important;
+            }
+
+            /* AI续写空状态提示 */
+            #aiOptions p[style*="color: #999"] {
+                color: var(--st-text-tertiary, #888) !important;
+            }
+
+            /* 插图加载中的文字颜色 */
+            #illustrationLoading p[style*="color: #333"] {
+                color: var(--st-text-primary, #e0e0e0) !important;
+            }
+            #illustrationLoading p[style*="color: #999"] {
+                color: var(--st-text-tertiary, #888) !important;
+            }
+            #illustrationLoading p[style*="color: #666"] {
+                color: var(--st-text-secondary, #b0b0b0) !important;
+            }
+        }
