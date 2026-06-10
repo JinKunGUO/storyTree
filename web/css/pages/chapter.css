@@ -1100,6 +1100,25 @@
             .message {
                 box-shadow: var(--st-shadow-lg);
             }
+
+            /* chapter.js 动态生成的分支卡片 */
+            #alternativesList > div[style*="background: white"] {
+                background: var(--st-bg-primary) !important;
+            }
+            #alternativesList h4[style*="color: #333"] {
+                color: var(--st-text-primary) !important;
+            }
+            #alternativesList div[style*="color: #999"] {
+                color: var(--st-text-tertiary) !important;
+            }
+            #alternativesList div[style*="color: #666"] {
+                color: var(--st-text-secondary) !important;
+            }
+
+            /* 空状态提示 */
+            p[style*="color: #999"] {
+                color: var(--st-text-tertiary) !important;
+            }
         }
 
         /* ===== 阅读进度条 ===== */

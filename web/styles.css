@@ -492,7 +492,7 @@ body {
 
 /* 卡片样式响应式 */
 .card {
-    background: white;
+    background: var(--st-bg-primary, white);
     border-radius: 15px;
     padding: 25px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
