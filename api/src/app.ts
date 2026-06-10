@@ -40,9 +40,12 @@ export function createApp() {
   const app = express();
 
   // 健康检查端点 - 放在所有中间件之前，确保部署检查不受 CORS/解析器影响
-  app.get('/health', (_req, res) => {
+  // 同时注册 /health 和 /api/health，兼容直连和 Nginx 代理两种场景
+  const healthHandler = (_req: express.Request, res: express.Response) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
-  });
+  };
+  app.get('/health', healthHandler);
+  app.get('/api/health', healthHandler);
 
   // CORS 配置 - 只允许白名单内的来源
   const allowedOrigins = process.env.ALLOWED_ORIGINS
