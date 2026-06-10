@@ -1191,13 +1191,31 @@
         }
 
         // ===== 热门故事 =====
-        function displayHotStories(stories) {
-            const hotStories = [...stories]
-                .sort((a, b) => (b._count?.nodes || 0) - (a._count?.nodes || 0))
-                .slice(0, 5);
-            if (!hotStories.length) return;
+        // 榜单配置：根据分类 tab 切换排序方式、标题、徽章
+        const rankingConfig = {
+            all:       { title: '本周热榜', icon: 'fa-trophy', badge: '最热门', color: '#F59E0B', sort: (a, b) => (b._count?.followers || 0) + (b._count?.nodes || 0) - (a._count?.followers || 0) - (a._count?.nodes || 0), filter: null },
+            popular:   { title: '热门榜', icon: 'fa-fire', badge: '最受欢迎', color: '#EF4444', sort: (a, b) => (b._count?.followers || 0) - (a._count?.followers || 0), filter: null },
+            new:       { title: '新书榜', icon: 'fa-clock', badge: '最新发布', color: '#3B82F6', sort: (a, b) => new Date(b.createdAt || b.created_at || 0) - new Date(a.createdAt || a.created_at || 0), filter: null },
+            completed: { title: '完结榜', icon: 'fa-check-circle', badge: '完结佳作', color: '#10B981', sort: (a, b) => (b._count?.followers || 0) - (a._count?.followers || 0), filter: s => s.status === 'COMPLETED' }
+        };
+
+        function displayHotStories(stories, filter = 'all') {
+            const config = rankingConfig[filter] || rankingConfig.all;
+            let source = [...stories];
+            if (config.filter) source = source.filter(config.filter);
+            const hotStories = source.sort(config.sort).slice(0, 5);
+            if (!hotStories.length) {
+                document.getElementById('hotStoriesSection').style.display = 'none';
+                return;
+            }
 
             document.getElementById('hotStoriesSection').style.display = 'block';
+            // 动态更新标题
+            document.getElementById('hotStoriesTitle').innerHTML = `
+                <i class="fas ${config.icon}" style="color: ${config.color};" aria-hidden="true"></i>
+                ${config.title}
+            `;
+
             const top = hotStories[0];
             const coverGrad = 'linear-gradient(135deg, #EC4899 0%, #F43F5E 100%)';
 
@@ -1206,11 +1224,11 @@
                     <div class="featured-cover" style="background: ${coverGrad}">
                         <i class="fas fa-crown" aria-hidden="true"></i>
                         <div class="featured-badge">
-                            <i class="fas fa-trophy" aria-hidden="true"></i> 最热门
+                            <i class="fas ${config.icon}" aria-hidden="true"></i> ${config.badge}
                         </div>
                         <div class="featured-stats">
                             <span class="featured-stat-pill"><i class="fas fa-book-open"></i> ${top._count?.nodes || 0}章</span>
-                            <span class="featured-stat-pill"><i class="fas fa-bookmark"></i> ${top._count?.bookmarks || 0}</span>
+                            <span class="featured-stat-pill"><i class="fas fa-heart"></i> ${top._count?.followers || 0}</span>
                         </div>
                     </div>
                     <div class="featured-body">
@@ -1330,14 +1348,10 @@
             });
 
             let filtered = [...allStories];
-            const hotSection = document.getElementById('hotStoriesSection');
-
-            // 本周热榜在所有分类下始终显示
-            if (allStories.length >= 3) hotSection.style.display = 'block';
 
             switch (filter) {
                 case 'popular':
-                    filtered.sort((a, b) => (b._count?.nodes || 0) - (a._count?.nodes || 0));
+                    filtered.sort((a, b) => (b._count?.followers || 0) - (a._count?.followers || 0));
                     break;
                 case 'new':
                     filtered.sort((a, b) => new Date(b.createdAt || b.created_at || 0) - new Date(a.createdAt || a.created_at || 0));
@@ -1346,6 +1360,12 @@
                     filtered = filtered.filter(s => s.status === 'COMPLETED');
                     break;
             }
+
+            // 根据当前分类更新热榜排序和标题
+            if (allStories.length >= 3) {
+                displayHotStories(allStories, filter);
+            }
+
             displayStories(filtered);
         }
 
@@ -1565,10 +1585,9 @@
             }
 
             displayStories(filtered);
-            // 本周热榜始终显示（只要有足够数据）
-            const hotSection = document.getElementById('hotStoriesSection');
+            // 根据当前分类更新热榜
             if (allStories.length >= 3) {
-                hotSection.style.display = 'block';
+                displayHotStories(allStories, currentFilter);
             }
         }
 
