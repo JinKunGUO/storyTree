@@ -835,7 +835,7 @@ function renderProjectBrief(brief) {
           <div class="editable-chapter" data-chapter-index="${i}">
             <div class="editable-chapter-title">
               第<input type="number" class="editable-field" data-field="chapterNum" data-index="${i}" value="${c.chapter || (i+1)}" min="1" style="width:60px; display:inline-block;">章：
-              <input type="text" class="editable-field" data-field="chapterTitle" data-index="${i}" value="${escapeHtml(c.title || '')}" placeholder="章节标题" style="display:inline-block; width: calc(100% - 160px);">
+              <input type="text" class="editable-field" data-field="chapterTitle" data-index="${i}" value="${escapeHtml(c.title || '')}" placeholder="章节标题" style="display:inline-block; width: calc(100% - 130px); min-width: 60px; max-width: 100%; box-sizing: border-box;">
               <button class="btn-remove-item" onclick="removeChapter(${i})" title="删除章节" style="vertical-align: middle;"><i class="fas fa-times"></i></button>
             </div>
             <textarea class="editable-field" data-field="chapterSummary" data-index="${i}" rows="2" placeholder="章节摘要">${escapeHtml(c.summary || '')}</textarea>
@@ -914,7 +914,7 @@ function renderOutline(outline) {
           <div class="editable-chapter" data-chapter-index="${i}">
             <div class="editable-chapter-title">
               第<input type="number" class="editable-field" data-field="chapterNum" data-index="${i}" value="${c.chapter || (i+1)}" min="1" style="width:60px; display:inline-block;">章：
-              <input type="text" class="editable-field" data-field="chapterTitle" data-index="${i}" value="${escapeHtml(c.title || '')}" placeholder="章节标题" style="display:inline-block; width: calc(100% - 160px);">
+              <input type="text" class="editable-field" data-field="chapterTitle" data-index="${i}" value="${escapeHtml(c.title || '')}" placeholder="章节标题" style="display:inline-block; width: calc(100% - 130px); min-width: 60px; max-width: 100%; box-sizing: border-box;">
               <button class="btn-remove-item" onclick="removeChapter(${i})" title="删除章节" style="vertical-align: middle;"><i class="fas fa-times"></i></button>
             </div>
             <textarea class="editable-field" data-field="chapterSummary" data-index="${i}" rows="2" placeholder="章节摘要">${escapeHtml(c.summary || '')}</textarea>
@@ -996,7 +996,7 @@ function renderPasticheResult(pastiche) {
           <div class="editable-chapter" data-chapter-index="${i}">
             <div class="editable-chapter-title">
               第<input type="number" class="editable-field" data-field="chapterNum" data-index="${i}" value="${c.chapter || (i+1)}" min="1" style="width:60px; display:inline-block;">章：
-              <input type="text" class="editable-field" data-field="chapterTitle" data-index="${i}" value="${escapeHtml(c.title || '')}" placeholder="章节标题" style="display:inline-block; width: calc(100% - 160px);">
+              <input type="text" class="editable-field" data-field="chapterTitle" data-index="${i}" value="${escapeHtml(c.title || '')}" placeholder="章节标题" style="display:inline-block; width: calc(100% - 130px); min-width: 60px; max-width: 100%; box-sizing: border-box;">
               <button class="btn-remove-item" onclick="removeChapter(${i})" title="删除章节" style="vertical-align: middle;"><i class="fas fa-times"></i></button>
             </div>
             <textarea class="editable-field" data-field="chapterSummary" data-index="${i}" rows="2" placeholder="章节摘要">${escapeHtml(c.summary || '')}</textarea>
@@ -1090,7 +1090,7 @@ function renderTemplateResult(template) {
           <div class="editable-chapter" data-chapter-index="${i}">
             <div class="editable-chapter-title">
               第<input type="number" class="editable-field" data-field="chapterNum" data-index="${i}" value="${c.chapter || (i+1)}" min="1" style="width:60px; display:inline-block;">章：
-              <input type="text" class="editable-field" data-field="chapterTitle" data-index="${i}" value="${escapeHtml(c.title || '')}" placeholder="章节标题" style="display:inline-block; width: calc(100% - 160px);">
+              <input type="text" class="editable-field" data-field="chapterTitle" data-index="${i}" value="${escapeHtml(c.title || '')}" placeholder="章节标题" style="display:inline-block; width: calc(100% - 130px); min-width: 60px; max-width: 100%; box-sizing: border-box;">
               <button class="btn-remove-item" onclick="removeChapter(${i})" title="删除章节" style="vertical-align: middle;"><i class="fas fa-times"></i></button>
             </div>
             <textarea class="editable-field" data-field="chapterSummary" data-index="${i}" rows="2" placeholder="章节摘要">${escapeHtml(c.summary || '')}</textarea>
@@ -1544,7 +1544,7 @@ function addChapter() {
   div.innerHTML = `
     <div class="editable-chapter-title">
       第<input type="number" class="editable-field" data-field="chapterNum" data-index="${index}" value="${index + 1}" min="1" style="width:60px; display:inline-block;">章：
-      <input type="text" class="editable-field" data-field="chapterTitle" data-index="${index}" value="" placeholder="章节标题" style="display:inline-block; width: calc(100% - 160px);">
+      <input type="text" class="editable-field" data-field="chapterTitle" data-index="${index}" value="" placeholder="章节标题" style="display:inline-block; width: calc(100% - 130px); min-width: 60px; max-width: 100%; box-sizing: border-box;">
       <button class="btn-remove-item" onclick="this.closest('.editable-chapter').remove()" title="删除章节" style="vertical-align: middle;"><i class="fas fa-times"></i></button>
     </div>
     <textarea class="editable-field" data-field="chapterSummary" data-index="${index}" rows="2" placeholder="章节摘要"></textarea>

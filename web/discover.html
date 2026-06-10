@@ -17,6 +17,26 @@
         body {
             background: var(--st-bg-secondary);
             min-height: 100vh;
+            overflow-x: hidden;
+        }
+        /* 确保导航栏在移动端始终可见 */
+        .navbar {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+        }
+        /* 确保移动端汉堡菜单按钮可见 */
+        @media (max-width: 767px) {
+            .mobile-menu-toggle {
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+            }
         }
 
 
@@ -98,20 +118,24 @@
             color: var(--st-text-primary);
             box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
         }
-        /* ===== 猜你喜欢横向滚动 ===== */
-        .recommend-scroll {
-            display: flex;
+        /* ===== 猜你喜欢网格布局 ===== */
+        .recommend-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
             gap: var(--st-space-4);
-            overflow-x: auto;
-            padding-bottom: var(--st-space-3);
-            scroll-snap-type: x mandatory;
-            -webkit-overflow-scrolling: touch;
         }
-        .recommend-scroll::-webkit-scrollbar { height: 4px; }
-        .recommend-scroll::-webkit-scrollbar-thumb { background: var(--st-gray-300); border-radius: 2px; }
+        @media (max-width: 767px) {
+            .recommend-grid {
+                display: block;
+                column-count: 2;
+                column-gap: 10px;
+            }
+            .recommend-card {
+                break-inside: avoid;
+                margin-bottom: 10px;
+            }
+        }
         .recommend-card {
-            flex: 0 0 200px;
-            scroll-snap-align: start;
             background: var(--st-bg-primary);
             border-radius: var(--st-radius-xl);
             overflow: hidden;
@@ -356,7 +380,11 @@
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: var(--st-space-6);
         }
-        @media (max-width: 640px) { .stories-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 767px) {
+            .stories-grid { display: block !important; column-count: 2; column-gap: 10px; }
+            #loadMoreContainer { column-span: all; max-width: 100%; overflow: hidden; }
+            #loadMoreContainer .btn { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        }
 
         /* 骨架屏 */
         .skeleton-card {
@@ -860,7 +888,7 @@
                         <i class="fas fa-sync-alt"></i> 换一批 <span id="recommendPageInfo" style="opacity:0.7;"></span>
                     </button>
                 </div>
-                <div class="recommend-scroll" id="recommendList"></div>
+                <div class="recommend-grid" id="recommendList"></div>
             </section>
 
             <!-- 故事列表 -->
@@ -1017,24 +1045,19 @@
         let hasMore = true;
         let totalStories = 0;
         
-        // 根据屏幕分辨率计算每页加载数量（凑够整排）
+        // 根据屏幕分辨率计算每页加载数量
         function calculatePageSize() {
-            const grid = document.getElementById('storiesGrid');
-            if (!grid) return 20;
-            
-            // 获取网格容器宽度
-            const containerWidth = grid.clientWidth;
-            // 卡片最小宽度 300px + gap 24px
+            const containerWidth = window.innerWidth;
+            if (containerWidth < 768) {
+                // 移动端双列瀑布流：每次加载 10 个
+                return 10;
+            }
+            // 桌面端：根据列数 × 行数
             const cardMinWidth = 300;
             const gap = 24;
-            
-            // 计算每行能放多少个卡片
             let cardsPerRow = Math.floor((containerWidth + gap) / (cardMinWidth + gap));
-            cardsPerRow = Math.max(1, Math.min(cardsPerRow, 4)); // 限制在 1-4 之间
-            
-            // 每次加载 2-3 行的数量，确保是整排的倍数
-            const rows = 3;
-            return cardsPerRow * rows;
+            cardsPerRow = Math.max(1, Math.min(cardsPerRow, 4));
+            return cardsPerRow * 3;
         }
 
         async function loadStories(reset = true) {
@@ -1096,7 +1119,7 @@
                 if (page === undefined) page = recommendPage;
                 const token = localStorage.getItem('token');
                 const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-                const res = await fetch(`/api/stories/recommend?limit=8&page=${page}`, { headers });
+                const res = await fetch(`/api/stories/recommend?limit=10&page=${page}`, { headers });
                 if (!res.ok) return;
                 const data = await res.json();
                 if (!data.stories || data.stories.length === 0) return;
@@ -1146,14 +1169,14 @@
             if (!loadMoreContainer) {
                 loadMoreContainer = document.createElement('div');
                 loadMoreContainer.id = 'loadMoreContainer';
-                loadMoreContainer.style.cssText = 'text-align: center; padding: 20px; grid-column: 1 / -1;';
+                loadMoreContainer.style.cssText = 'text-align: center; padding: 20px; grid-column: 1 / -1; column-span: all; max-width: 100%; overflow: hidden; box-sizing: border-box;';
                 document.getElementById('storiesGrid').appendChild(loadMoreContainer);
             }
             
             if (hasMore) {
                 loadMoreContainer.innerHTML = `
-                    <button class="btn btn-secondary" onclick="loadStories(false)" id="loadMoreBtn">
-                        <i class="fas fa-plus"></i> 加载更多（已加载 ${allStories.length}/${totalStories}）
+                    <button class="btn btn-secondary" onclick="loadStories(false)" id="loadMoreBtn" style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-sizing: border-box;">
+                        <i class="fas fa-plus"></i> 加载更多（${allStories.length}/${totalStories}）
                     </button>
                 `;
             } else if (allStories.length > pageSize) {
@@ -1239,6 +1262,10 @@
                     </div>
                     <div class="story-card-content">
                         <h3 class="story-card-title">${escapeHtml(story.title)}</h3>
+                        ${story.tags ? `
+                        <div class="story-card-tags">
+                            ${(typeof story.tags === 'string' ? story.tags.split(',') : story.tags).filter(Boolean).slice(0, 2).map(t => `<span class="story-card-tag">${escapeHtml((typeof t === 'string' ? t : t.name || '').trim())}</span>`).join('')}
+                        </div>` : ''}
                         <p class="story-card-desc">${escapeHtml(story.description || '这个故事正在等待你的探索...')}</p>
                         <div class="story-card-meta">
                             <span class="story-card-author">
@@ -1305,20 +1332,17 @@
             let filtered = [...allStories];
             const hotSection = document.getElementById('hotStoriesSection');
 
+            // 本周热榜在所有分类下始终显示
+            if (allStories.length >= 3) hotSection.style.display = 'block';
+
             switch (filter) {
-                case 'all':
-                    if (allStories.length >= 3) hotSection.style.display = 'block';
-                    break;
                 case 'popular':
-                    hotSection.style.display = 'none';
                     filtered.sort((a, b) => (b._count?.nodes || 0) - (a._count?.nodes || 0));
                     break;
                 case 'new':
-                    hotSection.style.display = 'none';
                     filtered.sort((a, b) => new Date(b.createdAt || b.created_at || 0) - new Date(a.createdAt || a.created_at || 0));
                     break;
                 case 'completed':
-                    hotSection.style.display = 'none';
                     filtered = filtered.filter(s => s.status === 'COMPLETED');
                     break;
             }
@@ -1541,10 +1565,9 @@
             }
 
             displayStories(filtered);
+            // 本周热榜始终显示（只要有足够数据）
             const hotSection = document.getElementById('hotStoriesSection');
-            if (currentFilter !== 'all' || advancedFilters.status !== 'all' || advancedFilters.length !== 'all') {
-                hotSection.style.display = 'none';
-            } else if (allStories.length >= 3) {
+            if (allStories.length >= 3) {
                 hotSection.style.display = 'block';
             }
         }

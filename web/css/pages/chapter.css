@@ -667,7 +667,7 @@
         }
 
         .comment-avatar img { width: 100%; height: 100%; object-fit: cover; }
-        .comment-content { flex: 1; }
+        .comment-content { flex: 1; min-width: 0; overflow-wrap: break-word; }
 
         .comment-header {
             display: flex;
@@ -1630,6 +1630,15 @@
             .chapter-title {
                 font-size: 20px;
                 padding: 16px;
+            }
+
+            .paid-lock-overlay {
+                padding: 30px 16px;
+                min-height: 280px;
+            }
+
+            .paid-lock-icon {
+                font-size: 48px;
             }
 
             .reading-toolbar {

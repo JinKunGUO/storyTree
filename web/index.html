@@ -20,6 +20,17 @@
             background: var(--st-bg-secondary);
             min-height: 100vh;
         }
+        /* 确保导航栏在移动端始终可见 */
+        .navbar {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+        }
 
 
         /* ===== 英雄区域 ===== */
@@ -241,9 +252,11 @@
             }
         }
 
-        @media (max-width: 640px) {
+        @media (max-width: 767px) {
             .stories-grid {
-                grid-template-columns: 1fr;
+                display: block !important;
+                column-count: 2;
+                column-gap: 10px;
             }
         }
 
@@ -747,6 +760,10 @@
                             </div>
                             <div class="story-card-content">
                                 <h3 class="story-card-title">${escapeHtml(story.title)}</h3>
+                                ${story.tags ? `
+                                <div class="story-card-tags">
+                                    ${(typeof story.tags === 'string' ? story.tags.split(',') : story.tags).filter(Boolean).slice(0, 2).map(t => `<span class="story-card-tag">${escapeHtml((typeof t === 'string' ? t : t.name || '').trim())}</span>`).join('')}
+                                </div>` : ''}
                                 <p class="story-card-desc">${escapeHtml(story.description || '这个故事正在等待你的探索...')}</p>
                                 <div class="story-card-meta">
                                     <span class="story-card-author">

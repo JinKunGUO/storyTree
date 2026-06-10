@@ -48,6 +48,7 @@ build/
 coverage/
 .nyc_output/
 test-results/
+test-screenshots/
 playwright-report/
 
 # Temporary files

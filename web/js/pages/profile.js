@@ -447,8 +447,7 @@ profileHeader.innerHTML = `
                             ${escapeHtml(user.email)}
                         </div>
                         <div class="profile-points">
-                            <i class="fas fa-star"></i>
-                            积分：${points.toLocaleString()}
+                            <span><i class="fas fa-star"></i> 积分：${points.toLocaleString()}
                             <button onclick="showPointsHistory()" style="
                                 background: none;
                                 border: 1px solid #ccc;
@@ -464,12 +463,12 @@ profileHeader.innerHTML = `
                                 transition: all 0.3s;
                                 padding: 0;
                                 line-height: 1;
-                                margin-left: 8px;
+                                margin-left: 4px;
                             " onmouseover="this.style.borderColor='var(--st-primary-500)'; this.style.background='var(--st-primary-500)'; this.style.color='white';" 
                                onmouseout="this.style.borderColor='#ccc'; this.style.background='none'; this.style.color='var(--st-primary-500)';" 
-                               title="查看积分明细">?</button>
-                            <span style="margin-left: 15px;"><i class="fas fa-pen-fancy"></i> 码字：${wordCount.toLocaleString()}字</span>
-                            <span style="margin-left: 15px;"><i class="fas fa-calendar-check"></i> 补签：${makeupChances}次</span>
+                               title="查看积分明细">?</button></span>
+                            <span><i class="fas fa-pen-fancy"></i> 码字：${wordCount.toLocaleString()}字</span>
+                            <span><i class="fas fa-calendar-check"></i> 补签：${makeupChances}次</span>
                         </div>
                         <!-- 用户等级信息卡片 -->
                         <div id="userLevelCard" style="
@@ -600,7 +599,7 @@ profileHeader.innerHTML = `
                                onmouseout="this.style.borderColor='#ccc'; this.style.background='none'; this.style.color='var(--st-primary-500)';" 
                                title="查看签到规则">?</button>
                         </div>
-                        <div style="display: flex; gap: 15px; font-size: 12px; font-weight: normal;">
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px 15px; font-size: 12px; font-weight: normal;">
                             <span><i class="fas fa-fire"></i> 连续 <strong id="compactConsecutiveDays">0</strong> 天</span>
                             <span><i class="fas fa-ticket-alt"></i> 补签 <strong id="compactMakeupChances">0</strong> 次</span>
                         </div>
@@ -4137,7 +4136,7 @@ if (codes.length === 0) {
                     </div>
 
                     <!-- Tab 切换 -->
-                    <div style="display:flex; border-bottom:2px solid #f0f0f0; margin-bottom:25px;">
+                    <div style="display:flex; flex-wrap:wrap; border-bottom:2px solid #f0f0f0; margin-bottom:25px;">
                         <button id="tabBasicBtn" onclick="switchEditTab('basic')" style="
                             flex:1; padding:10px; background:none; border:none; cursor:pointer;
                             font-size:15px; font-weight:600; color:var(--st-primary-500);
