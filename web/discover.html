@@ -611,17 +611,19 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 22px;
-            height: 22px;
+            width: 14px;
+            height: 14px;
             border-radius: 50%;
-            border: 1.5px solid var(--st-text-tertiary);
+            border: 1px solid var(--st-gray-400, #aaa);
             background: transparent;
             color: var(--st-text-tertiary);
-            font-size: 12px;
+            font-size: 10px;
+            font-weight: 600;
             cursor: pointer;
-            margin-left: 8px;
+            margin-left: 4px;
             transition: all 0.2s;
             flex-shrink: 0;
+            vertical-align: super;
         }
         .sort-help-btn:hover {
             border-color: var(--st-primary-500);
@@ -778,7 +780,7 @@
                         <button class="filter-tab" data-filter="completed" role="tab" aria-selected="false">
                             <i class="fas fa-check-circle" aria-hidden="true"></i> 已完结
                         </button>
-                        <button class="sort-help-btn" onclick="showSortHelp()" aria-label="排序方式说明" title="排序方式说明">?</button>
+                        <button class="sort-help-btn help-hint-btn" onclick="showSortHelp()" aria-label="排序方式说明" title="排序方式说明">?</button>
                     </div>
 
                     <!-- 排序说明弹窗 -->

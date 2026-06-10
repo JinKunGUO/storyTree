@@ -448,25 +448,7 @@ profileHeader.innerHTML = `
                         </div>
                         <div class="profile-points">
                             <span><i class="fas fa-star"></i> 积分：${points.toLocaleString()}
-                            <button onclick="showPointsHistory()" style="
-                                background: none;
-                                border: 1px solid #ccc;
-                                border-radius: 50%;
-                                width: 18px;
-                                height: 18px;
-                                cursor: pointer;
-                                color: var(--st-primary-500);
-                                font-size: 12px;
-                                display: inline-flex;
-                                align-items: center;
-                                justify-content: center;
-                                transition: all 0.3s;
-                                padding: 0;
-                                line-height: 1;
-                                margin-left: 4px;
-                            " onmouseover="this.style.borderColor='var(--st-primary-500)'; this.style.background='var(--st-primary-500)'; this.style.color='white';" 
-                               onmouseout="this.style.borderColor='#ccc'; this.style.background='none'; this.style.color='var(--st-primary-500)';" 
-                               title="查看积分明细">?</button></span>
+                            <button class="help-hint-btn" onclick="showPointsHistory()" title="查看积分明细">?</button></span>
                             <span><i class="fas fa-pen-fancy"></i> 码字：${wordCount.toLocaleString()}字</span>
                             <span><i class="fas fa-calendar-check"></i> 补签：${makeupChances}次</span>
                         </div>
@@ -501,24 +483,7 @@ profileHeader.innerHTML = `
                                 <div style="flex: 1;">
                                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
                                         <span style="font-weight: 600; color: #333; font-size: 16px;" id="levelName">加载中...</span>
-                                        <button onclick="showLevelInfo()" style="
-                                            background: none;
-                                            border: 1px solid #ccc;
-                                            border-radius: 50%;
-                                            width: 20px;
-                                            height: 20px;
-                                            cursor: pointer;
-                                            color: var(--st-primary-500);
-                                            font-size: 14px;
-                                            display: flex;
-                                            align-items: center;
-                                            justify-content: center;
-                                            transition: all 0.3s;
-                                            padding: 0;
-                                            line-height: 1;
-                                        " onmouseover="this.style.borderColor='var(--st-primary-500)'; this.style.background='var(--st-primary-500)'; this.style.color='white';" 
-                                           onmouseout="this.style.borderColor='#ccc'; this.style.background='none'; this.style.color='var(--st-primary-500)';" 
-                                           title="查看等级说明">?</button>
+                                        <button class="help-hint-btn" onclick="showLevelInfo()" title="查看等级说明">?</button>
                                     </div>
                                     <div style="color: #666; font-size: 13px;" id="levelProgress">
                                         升级进度：<span id="levelProgressText">加载中...</span>
@@ -580,24 +545,7 @@ profileHeader.innerHTML = `
                     <div class="compact-checkin-header">
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <span><i class="fas fa-calendar-check"></i> 每日签到</span>
-                            <button onclick="showCheckinRules()" style="
-                                background: none;
-                                border: 1px solid #ccc;
-                                border-radius: 50%;
-                                width: 20px;
-                                height: 20px;
-                                cursor: pointer;
-                                color: var(--st-primary-500);
-                                font-size: 14px;
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                                transition: all 0.3s;
-                                padding: 0;
-                                line-height: 1;
-                            " onmouseover="this.style.borderColor='var(--st-primary-500)'; this.style.background='var(--st-primary-500)'; this.style.color='white';" 
-                               onmouseout="this.style.borderColor='#ccc'; this.style.background='none'; this.style.color='var(--st-primary-500)';" 
-                               title="查看签到规则">?</button>
+                            <button class="help-hint-btn" onclick="showCheckinRules()" title="查看签到规则">?</button>
                         </div>
                         <div style="display: flex; flex-wrap: wrap; gap: 10px 15px; font-size: 12px; font-weight: normal;">
                             <span><i class="fas fa-fire"></i> 连续 <strong id="compactConsecutiveDays">0</strong> 天</span>
@@ -651,25 +599,7 @@ profileHeader.innerHTML = `
                             flex-wrap: wrap;
                         ">
                             ${userBadges.map(badgeId => getBadgeDisplay(badgeId)).join('')}
-                            <button onclick="showMilestoneInfo()" style="
-                                background: none;
-                                border: 1px solid #ccc;
-                                border-radius: 50%;
-                                width: 20px;
-                                height: 20px;
-                                cursor: pointer;
-                                color: #4caf50;
-                                font-size: 14px;
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                                transition: all 0.3s;
-                                padding: 0;
-                                line-height: 1;
-                                flex-shrink: 0;
-                            " onmouseover="this.style.borderColor='#4caf50'; this.style.background='#4caf50'; this.style.color='white';" 
-                               onmouseout="this.style.borderColor='#ccc'; this.style.background='none'; this.style.color='#4caf50';" 
-                               title="查看里程碑说明">?</button>
+                            <button class="help-hint-btn" onclick="showMilestoneInfo()" title="查看里程碑说明">?</button>
                         </div>
                     `;
                 } else {
@@ -690,25 +620,7 @@ profileHeader.innerHTML = `
                                 <i class="fas fa-trophy" style="color: #4caf50;"></i>
                                 继续创作，解锁你的第一个里程碑徽章！（1 万字）
                             </span>
-                            <button onclick="showMilestoneInfo()" style="
-                                background: none;
-                                border: 1px solid #ccc;
-                                border-radius: 50%;
-                                width: 20px;
-                                height: 20px;
-                                cursor: pointer;
-                                color: #4caf50;
-                                font-size: 14px;
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                                transition: all 0.3s;
-                                padding: 0;
-                                line-height: 1;
-                                flex-shrink: 0;
-                            " onmouseover="this.style.borderColor='#4caf50'; this.style.background='#4caf50'; this.style.color='white';" 
-                               onmouseout="this.style.borderColor='#ccc'; this.style.background='none'; this.style.color='#4caf50';" 
-                               title="查看里程碑说明">?</button>
+                            <button class="help-hint-btn" onclick="showMilestoneInfo()" title="查看里程碑说明">?</button>
                         </div>
                     `;
                 }

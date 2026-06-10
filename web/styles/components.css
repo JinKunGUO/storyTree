@@ -161,6 +161,39 @@
   border-radius: 0 var(--st-radius-lg) var(--st-radius-lg) 0;
 }
 
+/* 问号提示按钮（全局统一样式） */
+.help-hint-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  min-height: 14px !important;
+  max-width: 14px !important;
+  max-height: 14px !important;
+  border-radius: 50% !important;
+  border: 1px solid var(--st-gray-400, #aaa);
+  background: transparent;
+  color: var(--st-text-tertiary, #999);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0 !important;
+  line-height: 1;
+  margin-left: 4px;
+  vertical-align: super;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.help-hint-btn:hover {
+  border-color: var(--st-primary-500);
+  color: white;
+  background: var(--st-primary-500);
+}
+
 /* ========================================
    2. 卡片组件
    ======================================== */
