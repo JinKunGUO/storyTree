@@ -379,6 +379,76 @@
                 font-size: 20px;
             }
         }
+
+        /* 暗黑模式适配 */
+        @media (prefers-color-scheme: dark) {
+            .payment-card {
+                background: var(--st-bg-primary);
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            }
+
+            .payment-title,
+            .payment-method-title,
+            .payment-option-name,
+            .order-value,
+            .status-title {
+                color: var(--st-text-primary);
+            }
+
+            .payment-subtitle,
+            .payment-option-desc,
+            .status-message {
+                color: var(--st-text-tertiary);
+            }
+
+            .order-label,
+            .qr-hint {
+                color: var(--st-text-secondary);
+            }
+
+            .order-info {
+                background: var(--st-gray-100);
+            }
+
+            .order-row {
+                border-bottom-color: var(--st-gray-200);
+            }
+
+            .payment-option {
+                border-color: var(--st-gray-200);
+            }
+
+            .payment-option:hover {
+                background: var(--st-gray-100);
+            }
+
+            .qr-code {
+                border-color: var(--st-gray-200);
+            }
+
+            .payment-timer {
+                background: rgba(255, 243, 205, 0.1);
+                border-color: rgba(255, 193, 7, 0.3);
+            }
+
+            .payment-timer-text {
+                color: #ffc107;
+            }
+
+            .btn-secondary {
+                background: var(--st-gray-200);
+                color: var(--st-text-secondary);
+            }
+
+            .btn-secondary:hover {
+                background: var(--st-gray-300);
+            }
+
+            .spinner {
+                border-color: var(--st-gray-200);
+                border-top-color: var(--st-primary-500);
+            }
+        }
     </style>
 </head>
 <body>

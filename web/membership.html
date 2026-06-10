@@ -399,6 +399,42 @@
                 padding: 12px;
             }
         }
+
+        /* 暗黑模式适配 */
+        @media (prefers-color-scheme: dark) {
+            .membership-status,
+            .tier-card {
+                background: var(--st-bg-primary);
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            }
+
+            .info-item {
+                background: var(--st-gray-100);
+            }
+
+            .info-item h3,
+            .tier-price small,
+            .tier-duration {
+                color: var(--st-text-secondary);
+            }
+
+            .info-item p {
+                color: var(--st-text-primary);
+            }
+
+            .badge-free {
+                background: var(--st-gray-200);
+                color: var(--st-text-secondary);
+            }
+
+            .tier-duration {
+                border-bottom-color: var(--st-gray-200);
+            }
+
+            .tier-card.popular {
+                border-color: #ffd700;
+            }
+        }
     </style>
 </head>
 <body>

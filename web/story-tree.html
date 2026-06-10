@@ -369,6 +369,66 @@
                 justify-content: center;
             }
         }
+
+        /* 暗黑模式适配 */
+        @media (prefers-color-scheme: dark) {
+            .back-btn,
+            .toolbar-btn {
+                background: var(--st-gray-100);
+                border-color: var(--st-gray-200);
+                color: var(--st-text-primary);
+            }
+
+            .tabs,
+            .tab-content {
+                background: var(--st-bg-primary);
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            }
+
+            .tab-btn {
+                color: var(--st-text-tertiary);
+            }
+
+            .tab-btn.active {
+                background: var(--st-gray-100);
+            }
+
+            .tab-btn:hover:not(.active) {
+                background: var(--st-gray-100);
+            }
+
+            .node-detail {
+                background: var(--st-gray-100);
+            }
+
+            .node-detail-title,
+            .detail-value {
+                color: var(--st-text-primary);
+            }
+
+            .node-detail-close {
+                color: var(--st-text-tertiary);
+            }
+
+            .node-detail-close:hover {
+                background: var(--st-gray-200);
+                color: var(--st-text-primary);
+            }
+
+            .detail-item {
+                background: var(--st-bg-primary);
+            }
+
+            .detail-label,
+            .loading,
+            .empty-state {
+                color: var(--st-text-tertiary);
+            }
+
+            .tab-btn {
+                border-bottom-color: var(--st-gray-200);
+            }
+        }
     </style>
 </head>
 <body>

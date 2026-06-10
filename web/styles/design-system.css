@@ -491,3 +491,263 @@ img {
   }
 }
 
+/* ========================================
+   10. 暗黑模式工具类
+   用于替代 JS 内联 style 中的硬编码颜色
+   使用方式: element.className = 'st-surface st-text-primary'
+   ======================================== */
+
+/* --- 10.1 表面/背景类 --- */
+.st-surface {
+  background-color: var(--st-bg-primary);
+  color: var(--st-text-primary);
+}
+
+.st-surface-elevated {
+  background-color: var(--st-bg-primary);
+  color: var(--st-text-primary);
+  box-shadow: var(--st-shadow-lg);
+}
+
+.st-surface-secondary {
+  background-color: var(--st-bg-secondary);
+  color: var(--st-text-primary);
+}
+
+.st-surface-tertiary {
+  background-color: var(--st-bg-tertiary);
+  color: var(--st-text-primary);
+}
+
+/* --- 10.2 文字颜色类 --- */
+.st-text-primary {
+  color: var(--st-text-primary);
+}
+
+.st-text-secondary {
+  color: var(--st-text-secondary);
+}
+
+.st-text-tertiary {
+  color: var(--st-text-tertiary);
+}
+
+.st-text-muted {
+  color: var(--st-text-disabled);
+}
+
+.st-text-link {
+  color: var(--st-text-link);
+}
+
+/* --- 10.3 输入框类 --- */
+.st-input {
+  background-color: var(--st-gray-50);
+  border: 1px solid var(--st-gray-200);
+  color: var(--st-text-primary);
+  border-radius: var(--st-radius-md);
+  padding: 8px 12px;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.st-input:focus {
+  background-color: var(--st-bg-primary);
+  border-color: var(--st-primary-500);
+  outline: none;
+}
+
+.st-input::placeholder {
+  color: var(--st-text-disabled);
+}
+
+/* --- 10.4 按钮类 --- */
+.st-btn-primary {
+  background-color: var(--st-primary-500);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--st-radius-md);
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.st-btn-primary:hover {
+  background-color: var(--st-primary-600);
+}
+
+.st-btn-secondary {
+  background-color: var(--st-gray-100);
+  color: var(--st-text-primary);
+  border: 1px solid var(--st-gray-200);
+  border-radius: var(--st-radius-md);
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.st-btn-secondary:hover {
+  background-color: var(--st-gray-200);
+}
+
+.st-btn-danger {
+  background-color: var(--st-error-500);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--st-radius-md);
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.st-btn-danger:hover {
+  background-color: var(--st-error-600);
+}
+
+/* --- 10.5 卡片/模态框类 --- */
+.st-card {
+  background-color: var(--st-bg-primary);
+  color: var(--st-text-primary);
+  border: 1px solid var(--st-gray-200);
+  border-radius: var(--st-radius-lg);
+  padding: var(--st-space-4);
+}
+
+.st-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--st-bg-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.st-modal {
+  background-color: var(--st-bg-primary);
+  color: var(--st-text-primary);
+  border-radius: var(--st-radius-xl);
+  box-shadow: var(--st-shadow-xl);
+  padding: var(--st-space-6);
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* --- 10.6 分割线/边框类 --- */
+.st-border {
+  border-color: var(--st-gray-200);
+}
+
+.st-border-top {
+  border-top: 1px solid var(--st-gray-200);
+}
+
+.st-border-bottom {
+  border-bottom: 1px solid var(--st-gray-200);
+}
+
+.st-divider {
+  height: 1px;
+  background-color: var(--st-gray-200);
+  border: none;
+  margin: var(--st-space-3) 0;
+}
+
+/* --- 10.7 Toast/消息提示类 --- */
+.st-toast {
+  background-color: var(--st-bg-primary);
+  color: var(--st-text-primary);
+  border-radius: var(--st-radius-lg);
+  box-shadow: var(--st-shadow-lg);
+  padding: 12px 24px;
+  font-size: 14px;
+}
+
+.st-toast-success {
+  background-color: var(--st-success-50);
+  color: var(--st-success-600);
+  border: 1px solid var(--st-success-200);
+}
+
+.st-toast-error {
+  background-color: var(--st-error-50);
+  color: var(--st-error-600);
+  border: 1px solid var(--st-error-200);
+}
+
+.st-toast-warning {
+  background-color: var(--st-warning-50);
+  color: var(--st-warning-600);
+  border: 1px solid var(--st-warning-200);
+}
+
+/* --- 10.8 标签/徽章类 --- */
+.st-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--st-radius-full);
+  font-size: 12px;
+  font-weight: 500;
+  background-color: var(--st-gray-100);
+  color: var(--st-text-secondary);
+}
+
+.st-badge-primary {
+  background-color: var(--st-primary-50);
+  color: var(--st-primary-600);
+}
+
+.st-badge-success {
+  background-color: var(--st-success-50);
+  color: var(--st-success-600);
+}
+
+/* --- 10.9 覆盖内联样式的暗黑修复类 --- */
+@media (prefers-color-scheme: dark) {
+  .st-dark-fix-bg {
+    background-color: var(--st-bg-primary) !important;
+  }
+
+  .st-dark-fix-text {
+    color: var(--st-text-primary) !important;
+  }
+
+  .st-dark-fix-border {
+    border-color: var(--st-gray-200) !important;
+  }
+
+  /* 强制覆盖内联 style 的通用修复 */
+  [data-st-dark="surface"] {
+    background-color: var(--st-bg-primary) !important;
+    color: var(--st-text-primary) !important;
+  }
+
+  [data-st-dark="surface-elevated"] {
+    background-color: var(--st-bg-elevated) !important;
+    color: var(--st-text-primary) !important;
+    box-shadow: var(--st-shadow-lg) !important;
+  }
+
+  [data-st-dark="input"] {
+    background-color: var(--st-gray-100) !important;
+    color: var(--st-text-primary) !important;
+    border-color: var(--st-gray-300) !important;
+  }
+
+  [data-st-dark="text-primary"] {
+    color: var(--st-text-primary) !important;
+  }
+
+  [data-st-dark="text-secondary"] {
+    color: var(--st-text-secondary) !important;
+  }
+
+  [data-st-dark="text-muted"] {
+    color: var(--st-text-disabled) !important;
+  }
+}
+

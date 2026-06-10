@@ -26,4 +26,19 @@ if [ -f "api/package.json" ]; then
   cd "$REPO_ROOT"
 fi
 
+# Dark mode compatibility check on staged web files
+STAGED_WEB_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^web/.*\.(js|html|css)$' || true)
+if [ -n "$STAGED_WEB_FILES" ]; then
+  # Only check newly added lines (lines starting with +)
+  DARK_VIOLATIONS=$(git diff --cached -U0 -- $STAGED_WEB_FILES 2>/dev/null | grep "^+" | grep -v "^+++" | grep -E "background:\s*(white|#fff)|color:\s*#(333|666|111|222|444|555)" | grep -v "var(--" | grep -v "matchMedia" | grep -v "prefers-color-scheme" || true)
+  if [ -n "$DARK_VIOLATIONS" ]; then
+    echo ""
+    echo "⚠️  暗黑模式警告: 检测到新增硬编码颜色值"
+    echo "   建议使用 CSS 变量: var(--st-bg-primary), var(--st-text-primary) 等"
+    echo "   详情运行: bash scripts/check-dark-mode.sh --verbose --fix-suggestions"
+    echo "$DARK_VIOLATIONS" | head -5 | sed 's/^/   /'
+    echo ""
+  fi
+fi
+
 echo "✅ Pre-commit checks passed!"

@@ -1,3 +1,296 @@
+        // ============================================
+        // 暗黑模式样式注入 - 覆盖 profile 页面所有模态框内联样式
+        // ============================================
+        (function injectProfileDarkStyles() {
+            if (document.getElementById('profile-dark-mode-fixes')) return;
+            const style = document.createElement('style');
+            style.id = 'profile-dark-mode-fixes';
+            style.textContent = `
+                @media (prefers-color-scheme: dark) {
+                    /* 所有 profile 模态框容器 */
+                    #checkinRulesOverlay > div,
+                    #inviteRulesOverlay > div,
+                    #milestoneOverlay > div,
+                    #levelInfoOverlay > div,
+                    #pointsHistoryOverlay > div,
+                    #editProfileOverlay > div,
+                    #inviteCodesOverlay > div,
+                    #generateInviteCodeDialog > div,
+                    #withdrawalOverlay > div,
+                    #withdrawalHistoryOverlay > div,
+                    #makeupCheckinOverlay > div {
+                        background: var(--st-bg-primary, #1a1a2e) !important;
+                        color: var(--st-text-primary, #f0f0f5) !important;
+                    }
+
+                    /* 模态框标题 h2, h3 */
+                    #checkinRulesOverlay h2, #checkinRulesOverlay h3,
+                    #inviteRulesOverlay h2, #inviteRulesOverlay h3,
+                    #milestoneOverlay h2, #milestoneOverlay h3,
+                    #levelInfoOverlay h2, #levelInfoOverlay h3,
+                    #pointsHistoryOverlay h2, #pointsHistoryOverlay h3,
+                    #editProfileOverlay h2, #editProfileOverlay h3,
+                    #inviteCodesOverlay h2, #inviteCodesOverlay h3,
+                    #generateInviteCodeDialog h2, #generateInviteCodeDialog h3,
+                    #withdrawalOverlay h2, #withdrawalOverlay h3,
+                    #withdrawalHistoryOverlay h2, #withdrawalHistoryOverlay h3,
+                    #makeupCheckinOverlay h2, #makeupCheckinOverlay h3 {
+                        color: var(--st-text-primary, #f0f0f5) !important;
+                    }
+
+                    /* 模态框正文文字 */
+                    #checkinRulesOverlay div,
+                    #inviteRulesOverlay div,
+                    #milestoneOverlay div,
+                    #levelInfoOverlay div,
+                    #pointsHistoryOverlay div,
+                    #editProfileOverlay div,
+                    #inviteCodesOverlay div,
+                    #generateInviteCodeDialog div,
+                    #withdrawalOverlay div,
+                    #withdrawalHistoryOverlay div,
+                    #makeupCheckinOverlay div {
+                        color: var(--st-text-secondary, #b8b8c8);
+                    }
+
+                    /* 关闭按钮 */
+                    #checkinRulesOverlay button[onclick*="remove"],
+                    #inviteRulesOverlay button[onclick*="remove"],
+                    #milestoneOverlay button[onclick*="remove"],
+                    #levelInfoOverlay button[onclick*="remove"],
+                    #pointsHistoryOverlay button[onclick*="remove"],
+                    #editProfileOverlay button[onclick*="remove"],
+                    #inviteCodesOverlay button[onclick*="remove"],
+                    #generateInviteCodeDialog button[onclick*="remove"],
+                    #withdrawalOverlay button[onclick*="remove"],
+                    #withdrawalHistoryOverlay button[onclick*="remove"],
+                    #makeupCheckinOverlay button[onclick*="remove"] {
+                        color: var(--st-text-tertiary, #9a9ab8) !important;
+                    }
+
+                    #checkinRulesOverlay button[onclick*="remove"]:hover,
+                    #inviteRulesOverlay button[onclick*="remove"]:hover,
+                    #milestoneOverlay button[onclick*="remove"]:hover,
+                    #levelInfoOverlay button[onclick*="remove"]:hover,
+                    #pointsHistoryOverlay button[onclick*="remove"]:hover,
+                    #editProfileOverlay button[onclick*="remove"]:hover,
+                    #inviteCodesOverlay button[onclick*="remove"]:hover,
+                    #generateInviteCodeDialog button[onclick*="remove"]:hover,
+                    #withdrawalOverlay button[onclick*="remove"]:hover,
+                    #withdrawalHistoryOverlay button[onclick*="remove"]:hover,
+                    #makeupCheckinOverlay button[onclick*="remove"]:hover {
+                        background: var(--st-gray-100, #252542) !important;
+                        color: var(--st-text-primary, #f0f0f5) !important;
+                    }
+
+                    /* 提现/补签对话框的输入框和表单 */
+                    #withdrawalOverlay input,
+                    #withdrawalOverlay textarea,
+                    #withdrawalOverlay select,
+                    #makeupCheckinOverlay input {
+                        background: var(--st-gray-100, #252542) !important;
+                        color: var(--st-text-primary, #f0f0f5) !important;
+                        border-color: var(--st-gray-300, #505080) !important;
+                    }
+
+                    #withdrawalOverlay label,
+                    #makeupCheckinOverlay label {
+                        color: var(--st-text-secondary, #b8b8c8) !important;
+                    }
+
+                    /* 提现记录表格 */
+                    #withdrawalHistoryOverlay table {
+                        background: var(--st-bg-primary, #1a1a2e) !important;
+                    }
+
+                    #withdrawalHistoryOverlay th {
+                        color: var(--st-text-primary, #f0f0f5) !important;
+                    }
+
+                    #withdrawalHistoryOverlay td {
+                        color: var(--st-text-secondary, #b8b8c8) !important;
+                        border-color: var(--st-gray-200, #353560) !important;
+                    }
+
+                    /* 信息卡片/提示区域 (背景 #f9f9f9, #fff8e1, #fff3e0, #f8f9fa) */
+                    #checkinRulesOverlay div[style*="background: #f9f9f9"],
+                    #checkinRulesOverlay div[style*="background: #fff8e1"],
+                    #checkinRulesOverlay div[style*="background: #fff3e0"],
+                    #inviteRulesOverlay div[style*="background: #f9f9f9"],
+                    #inviteRulesOverlay div[style*="background: #fff8e1"],
+                    #inviteRulesOverlay div[style*="background: #fff3e0"],
+                    #milestoneOverlay div[style*="background: #fff3e0"],
+                    #levelInfoOverlay div[style*="background: #f9f9f9"],
+                    #levelInfoOverlay div[style*="background: #fff3e0"],
+                    #pointsHistoryOverlay div[style*="background: #fff3e0"],
+                    #inviteCodesOverlay div[style*="background: #f8f9fa"],
+                    #inviteCodesOverlay div[style*="background: #fff5f5"] {
+                        background: var(--st-gray-100, #252542) !important;
+                        border-color: var(--st-gray-300, #505080) !important;
+                    }
+
+                    /* 表格暗黑适配 */
+                    #levelInfoOverlay table,
+                    #pointsHistoryOverlay table {
+                        background: var(--st-bg-primary, #1a1a2e) !important;
+                    }
+
+                    #levelInfoOverlay th,
+                    #pointsHistoryOverlay th {
+                        color: var(--st-text-primary, #f0f0f5) !important;
+                    }
+
+                    #levelInfoOverlay td,
+                    #pointsHistoryOverlay td {
+                        color: var(--st-text-secondary, #b8b8c8) !important;
+                        border-color: var(--st-gray-200, #353560) !important;
+                    }
+
+                    #levelInfoOverlay tr:hover td,
+                    #pointsHistoryOverlay tr:hover td {
+                        background: var(--st-gray-100, #252542) !important;
+                    }
+
+                    /* 积分明细列表项 hover */
+                    #pointsHistoryOverlay div[style*="border-bottom"] {
+                        border-color: var(--st-gray-200, #353560) !important;
+                    }
+
+                    #pointsHistoryOverlay div[style*="border-bottom"]:hover {
+                        background: var(--st-gray-100, #252542) !important;
+                    }
+
+                    /* 邀请码卡片 */
+                    #inviteCodesOverlay div[style*="background: white"],
+                    #inviteCodesOverlay div[style*="border: 2px solid #e9ecef"] {
+                        background: var(--st-bg-tertiary, #262648) !important;
+                        border-color: var(--st-gray-200, #353560) !important;
+                    }
+
+                    /* 邀请码内按钮 (复制/分享) */
+                    #inviteCodesOverlay button[style*="background: white"] {
+                        background: var(--st-gray-100, #252542) !important;
+                        color: var(--st-text-primary, #f0f0f5) !important;
+                        border-color: var(--st-gray-300, #505080) !important;
+                    }
+
+                    /* showMessage toast */
+                    div[style*="position: fixed"][style*="top: 80px"][style*="right: 20px"][style*="background: white"] {
+                        background: var(--st-bg-primary, #1a1a2e) !important;
+                        color: var(--st-text-primary, #f0f0f5) !important;
+                    }
+
+                    /* 编辑个人资料表单 */
+                    #editProfileOverlay input,
+                    #editProfileOverlay textarea,
+                    #editProfileOverlay select {
+                        background: var(--st-gray-100, #252542) !important;
+                        color: var(--st-text-primary, #f0f0f5) !important;
+                        border-color: var(--st-gray-300, #505080) !important;
+                    }
+
+                    #editProfileOverlay label {
+                        color: var(--st-text-secondary, #b8b8c8) !important;
+                    }
+
+                    /* 里程碑/徽章区域 */
+                    #milestoneOverlay div[style*="background: #f9f9f9"],
+                    #milestoneOverlay div[style*="background: #f8f9fa"] {
+                        background: var(--st-gray-100, #252542) !important;
+                    }
+
+                    /* 等级信息中的等级卡片 */
+                    #levelInfoOverlay div[style*="font-weight: 600"][style*="color: #333"] {
+                        color: var(--st-text-primary, #f0f0f5) !important;
+                    }
+
+                    /* 通用段落文字 */
+                    #checkinRulesOverlay p,
+                    #inviteRulesOverlay p,
+                    #milestoneOverlay p,
+                    #levelInfoOverlay p,
+                    #pointsHistoryOverlay p,
+                    #inviteCodesOverlay p {
+                        color: var(--st-text-secondary, #b8b8c8) !important;
+                    }
+
+                    /* 强调文字 strong */
+                    #checkinRulesOverlay strong,
+                    #inviteRulesOverlay strong,
+                    #milestoneOverlay strong,
+                    #levelInfoOverlay strong {
+                        color: var(--st-text-primary, #f0f0f5) !important;
+                    }
+
+                    /* 生成邀请码对话框 */
+                    #generateInviteCodeDialog input {
+                        background: var(--st-gray-100, #252542) !important;
+                        color: var(--st-text-primary, #f0f0f5) !important;
+                        border-color: var(--st-gray-300, #505080) !important;
+                    }
+
+                    /* 页面内嵌 section: 邀请码/收益/AI用量 */
+                    #invitationSection div[style*="background: white"],
+                    #invitationSection div[style*="background: #f8f9fa"],
+                    #earningsSection div[style*="background: white"],
+                    #earningsSection div[style*="background: #f8f9fa"],
+                    #aiUsageStats div[style*="background: white"],
+                    #aiUsageStats div[style*="background: #f8f9fa"] {
+                        background: var(--st-bg-tertiary, #262648) !important;
+                        border-color: var(--st-gray-200, #353560) !important;
+                    }
+
+                    #invitationSection div[style*="background: linear-gradient(135deg, #fff5f5"],
+                    #invitationSection div[style*="background: linear-gradient(135deg, #f8f9fa"] {
+                        background: var(--st-gray-100, #252542) !important;
+                    }
+
+                    #invitationSection div[style*="color: #666"],
+                    #invitationSection div[style*="color: #333"],
+                    #invitationSection span[style*="color: #333"],
+                    #earningsSection div[style*="color: #666"],
+                    #earningsSection div[style*="color: #333"],
+                    #aiUsageStats div[style*="color: #666"],
+                    #aiUsageStats div[style*="color: #333"] {
+                        color: var(--st-text-secondary, #b8b8c8) !important;
+                    }
+
+                    #invitationSection h3,
+                    #earningsSection h3,
+                    #aiUsageStats h3 {
+                        color: var(--st-text-primary, #f0f0f5) !important;
+                    }
+
+                    #invitationSection button[style*="background: white"],
+                    #earningsSection button[style*="background: white"] {
+                        background: var(--st-gray-100, #252542) !important;
+                        color: var(--st-text-primary, #f0f0f5) !important;
+                        border-color: var(--st-gray-300, #505080) !important;
+                    }
+
+                    /* 收益提现区域 */
+                    #earningsSection div[style*="background: #fff3e0"],
+                    #earningsSection div[style*="background: #fff8e1"] {
+                        background: var(--st-gray-100, #252542) !important;
+                        border-color: var(--st-gray-300, #505080) !important;
+                    }
+
+                    /* 邀请码列表中的卡片边框 */
+                    #invitationSection div[style*="border: 2px solid #e9ecef"] {
+                        border-color: var(--st-gray-200, #353560) !important;
+                    }
+
+                    /* 统计卡片背景 */
+                    #invitationSection div[style*="background: linear-gradient(135deg, #f8f9fa, #e9ecef)"],
+                    #earningsSection div[style*="background: linear-gradient(135deg, #f8f9fa, #e9ecef)"] {
+                        background: var(--st-bg-tertiary, #262648) !important;
+                        border-color: var(--st-gray-200, #353560) !important;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        })();
+
         let currentUser = null;
         let allFollowers = []; // 存储所有粉丝数据
         let allStoryFollowers = []; // 存储所有故事追更者数据
@@ -472,8 +765,8 @@ profileHeader.innerHTML = `
                             justify-content: center;
                             border-radius: 50%;
                             transition: all 0.3s;
-                        " onmouseover="this.style.background='#f0f0f0'; this.style.color='#333';" 
-                           onmouseout="this.style.background='none'; this.style.color='#999';">
+                        " onmouseover="this.style.background=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-gray-100)':'#f0f0f0'; this.style.color=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-text-primary)':'#333';" 
+                           onmouseout="this.style.background='none'; this.style.color=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-text-tertiary)':'#999';">
                             ×
                         </button>
                     </div>
@@ -603,8 +896,8 @@ profileHeader.innerHTML = `
                             justify-content: center;
                             border-radius: 50%;
                             transition: all 0.3s;
-                        " onmouseover="this.style.background='#f0f0f0'; this.style.color='#333';" 
-                           onmouseout="this.style.background='none'; this.style.color='#999';">
+                        " onmouseover="this.style.background=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-gray-100)':'#f0f0f0'; this.style.color=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-text-primary)':'#333';" 
+                           onmouseout="this.style.background='none'; this.style.color=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-text-tertiary)':'#999';">
                             ×
                         </button>
                     </div>
@@ -764,8 +1057,8 @@ profileHeader.innerHTML = `
                             justify-content: center;
                             border-radius: 50%;
                             transition: all 0.3s;
-                        " onmouseover="this.style.background='#f0f0f0'; this.style.color='#333';" 
-                           onmouseout="this.style.background='none'; this.style.color='#999';">
+                        " onmouseover="this.style.background=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-gray-100)':'#f0f0f0'; this.style.color=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-text-primary)':'#333';" 
+                           onmouseout="this.style.background='none'; this.style.color=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-text-tertiary)':'#999';">
                             ×
                         </button>
                     </div>
@@ -981,8 +1274,8 @@ profileHeader.innerHTML = `
                             justify-content: center;
                             border-radius: 50%;
                             transition: all 0.3s;
-                        " onmouseover="this.style.background='#f0f0f0'; this.style.color='#333';" 
-                           onmouseout="this.style.background='none'; this.style.color='#999';">
+                        " onmouseover="this.style.background=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-gray-100)':'#f0f0f0'; this.style.color=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-text-primary)':'#333';" 
+                           onmouseout="this.style.background='none'; this.style.color=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-text-tertiary)':'#999';">
                             ×
                         </button>
                     </div>
@@ -1145,8 +1438,8 @@ profileHeader.innerHTML = `
                             justify-content: center;
                             border-radius: 50%;
                             transition: all 0.3s;
-                        " onmouseover="this.style.background='#f0f0f0'; this.style.color='#333';" 
-                           onmouseout="this.style.background='none'; this.style.color='#999';">
+                        " onmouseover="this.style.background=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-gray-100)':'#f0f0f0'; this.style.color=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-text-primary)':'#333';" 
+                           onmouseout="this.style.background='none'; this.style.color=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-text-tertiary)':'#999';">
                             ×
                         </button>
                     </div>
@@ -1253,7 +1546,7 @@ profileHeader.innerHTML = `
                             border-bottom: 1px solid #f0f0f0;
                             transition: background 0.3s;
                             min-height: 70px;
-                        " onmouseover="this.style.background='#f9f9f9'" onmouseout="this.style.background='white'">
+                        " onmouseover="this.style.background=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-gray-100)':'#f9f9f9'" onmouseout="this.style.background=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-bg-primary)':'white'">
                             <div style="
                                 display: flex;
                                 align-items: center;
@@ -1714,12 +2007,14 @@ profileHeader.innerHTML = `
                 return;
             }
             // 降级：内联消息提示
+            const _dk = window.matchMedia('(prefers-color-scheme: dark)').matches;
             const messageEl = document.createElement('div');
             messageEl.style.cssText = `
                 position: fixed;
                 top: 80px;
                 right: 20px;
-                background: white;
+                background: ${_dk ? 'var(--st-bg-primary, #1a1a2e)' : 'white'};
+                color: ${_dk ? 'var(--st-text-primary, #f0f0f5)' : '#333'};
                 padding: 15px 25px;
                 border-radius: 10px;
                 box-shadow: 0 5px 15px rgba(0,0,0,0.2);
@@ -2415,7 +2710,7 @@ if (codes.length === 0) {
                                                 font-weight: 600;
                                                 transition: all 0.3s;
                                             " onmouseover="this.style.background='var(--st-primary-500)'; this.style.color='white'" 
-                                               onmouseout="this.style.background='white'; this.style.color='var(--st-primary-500)'">
+                                               onmouseout="this.style.background=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-gray-100)':'white'; this.style.color='var(--st-primary-500)'">
                                                 <i class="fas fa-copy"></i> 复制
                                             </button>
                                             <button onclick="shareInviteCode('${code.code}')" style="
@@ -2430,7 +2725,7 @@ if (codes.length === 0) {
                                                 font-weight: 600;
                                                 transition: all 0.3s;
                                             " onmouseover="this.style.background='#4caf50'; this.style.color='white'" 
-                                               onmouseout="this.style.background='white'; this.style.color='#4caf50'">
+                                               onmouseout="this.style.background=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-gray-100)':'white'; this.style.color='#4caf50'">
                                                 <i class="fas fa-share-alt"></i> 分享
                                             </button>
                                         </div>
@@ -2512,6 +2807,7 @@ if (codes.length === 0) {
         // 显示生成邀请码对话框
         function showGenerateInviteCodeDialog() {
             const overlay = document.createElement('div');
+            overlay.id = 'generateInviteCodeDialog';
             overlay.style.cssText = `
                 position: fixed;
                 top: 0;
@@ -2861,7 +3157,7 @@ if (codes.length === 0) {
                             font-weight: 600;
                             transition: all 0.3s;
                         " onmouseover="this.style.background='var(--st-primary-500)'; this.style.color='white'" 
-                           onmouseout="this.style.background='white'; this.style.color='var(--st-primary-500)'">
+                           onmouseout="this.style.background=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-gray-100)':'white'; this.style.color='var(--st-primary-500)'">
                             <i class="fas fa-history"></i> 查看提现记录
                         </button>
                     </div>
@@ -3018,6 +3314,7 @@ if (codes.length === 0) {
         // 显示提现对话框
         function showWithdrawalDialog() {
             const overlay = document.createElement('div');
+            overlay.id = 'withdrawalOverlay';
             overlay.style.cssText = `
                 position: fixed;
                 top: 0;
@@ -3208,6 +3505,7 @@ if (codes.length === 0) {
                 const requests = data.requests || [];
                 
                 const overlay = document.createElement('div');
+                overlay.id = 'withdrawalHistoryOverlay';
                 overlay.style.cssText = `
                     position: fixed;
                     top: 0;
@@ -3259,8 +3557,8 @@ if (codes.length === 0) {
                                 justify-content: center;
                                 border-radius: 50%;
                                 transition: all 0.3s;
-                            " onmouseover="this.style.background='#f0f0f0'; this.style.color='#333';" 
-                               onmouseout="this.style.background='none'; this.style.color='#999';">
+                            " onmouseover="this.style.background=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-gray-100)':'#f0f0f0'; this.style.color=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-text-primary)':'#333';" 
+                               onmouseout="this.style.background='none'; this.style.color=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-text-tertiary)':'#999';">
                                 ×
                             </button>
                         </div>
@@ -3678,6 +3976,7 @@ if (codes.length === 0) {
             }
             
             const overlay = document.createElement('div');
+            overlay.id = 'makeupCheckinOverlay';
             overlay.style.cssText = `
                 position: fixed;
                 top: 0;
@@ -3833,8 +4132,8 @@ if (codes.length === 0) {
                             color:#999; width:32px; height:32px; display:flex;
                             align-items:center; justify-content:center; border-radius:50%;
                             transition:all 0.3s;
-                        " onmouseover="this.style.background='#f0f0f0'; this.style.color='#333';"
-                           onmouseout="this.style.background='none'; this.style.color='#999';">×</button>
+                        " onmouseover="this.style.background=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-gray-100)':'#f0f0f0'; this.style.color=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-text-primary)':'#333';"
+                           onmouseout="this.style.background='none'; this.style.color=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-text-tertiary)':'#999';">×</button>
                     </div>
 
                     <!-- Tab 切换 -->

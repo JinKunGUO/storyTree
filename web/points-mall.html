@@ -456,6 +456,65 @@
                 font-size: 13px;
             }
         }
+
+        /* 暗黑模式适配 */
+        @media (prefers-color-scheme: dark) {
+            .mall-header,
+            .package-card,
+            .payment-methods,
+            .exchange-code-section {
+                background: var(--st-bg-primary);
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            }
+
+            .mall-title,
+            .payment-title,
+            .exchange-title,
+            .package-name,
+            .payment-option-name,
+            .exchange-rules h4 {
+                color: var(--st-text-primary);
+            }
+
+            .mall-subtitle,
+            .package-features li,
+            .exchange-rules ul {
+                color: var(--st-text-secondary);
+            }
+
+            .package-points span,
+            .package-price span,
+            .payment-option-desc {
+                color: var(--st-text-tertiary);
+            }
+
+            .payment-option {
+                border-color: var(--st-gray-200);
+            }
+
+            .payment-option:hover {
+                background: var(--st-gray-100);
+            }
+
+            .payment-option.selected {
+                background: rgba(102, 126, 234, 0.15);
+            }
+
+            .exchange-input {
+                background: var(--st-gray-100);
+                border-color: var(--st-gray-200);
+                color: var(--st-text-primary);
+            }
+
+            .exchange-rules {
+                background: var(--st-gray-100);
+            }
+
+            .btn-buy:disabled {
+                background: var(--st-gray-200) !important;
+                color: var(--st-text-disabled) !important;
+            }
+        }
     </style>
 </head>
 <body>

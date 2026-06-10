@@ -253,6 +253,84 @@
                 opacity: 1;
             }
         }
+
+        /* 暗黑模式适配 */
+        @media (prefers-color-scheme: dark) {
+            .page-header,
+            .task-card,
+            .filter-tab,
+            .message {
+                background: var(--st-bg-primary);
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            }
+
+            .page-header h1 {
+                color: var(--st-text-primary);
+            }
+
+            .page-header p,
+            .task-info {
+                color: var(--st-text-secondary);
+            }
+
+            .task-info i,
+            .task-time,
+            .empty-state {
+                color: var(--st-text-tertiary);
+            }
+
+            .filter-tab {
+                border-color: var(--st-gray-200);
+                color: var(--st-text-secondary);
+            }
+
+            .filter-tab:hover {
+                border-color: #f093fb;
+                color: #f093fb;
+            }
+
+            .filter-tab.active {
+                color: white;
+            }
+
+            .btn-secondary {
+                background: var(--st-gray-100);
+                color: var(--st-primary-400, #818cf8);
+                border-color: var(--st-primary-400, #818cf8);
+            }
+
+            .btn-secondary:hover {
+                background: var(--st-gray-200);
+            }
+
+            .task-status.pending {
+                background: rgba(255, 243, 205, 0.15);
+                color: #ffc107;
+            }
+
+            .task-status.processing {
+                background: rgba(204, 229, 255, 0.15);
+                color: #64b5f6;
+            }
+
+            .task-status.completed {
+                background: rgba(212, 237, 218, 0.15);
+                color: #66bb6a;
+            }
+
+            .task-status.failed {
+                background: rgba(248, 215, 218, 0.15);
+                color: #ef5350;
+            }
+
+            .empty-state i {
+                color: var(--st-gray-300);
+            }
+
+            .message {
+                color: var(--st-text-primary);
+            }
+        }
     </style>
 </head>
 <body>
