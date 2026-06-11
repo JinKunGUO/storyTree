@@ -242,6 +242,8 @@ model users {
   bannedReason               String?                   @map("banned_reason")
   bannedAt                   DateTime?                 @map("banned_at")
   bannedBy                   Int?                      @map("banned_by")
+  has_seen_tour              Boolean                   @default(false) @map("has_seen_tour")
+  onboarding_progress        String?                   @map("onboarding_progress")
   emailVerified              Boolean                   @default(false) @map("email_verified")
   emailVerificationToken     String?                   @map("email_verification_token")
   emailVerificationExpires   DateTime?                 @map("email_verification_expires")

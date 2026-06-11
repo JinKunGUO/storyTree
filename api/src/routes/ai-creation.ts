@@ -4,9 +4,59 @@ import { prisma } from '../db';
 import { canUseAiFeature } from '../utils/points';
 import { JWT_SECRET } from '../utils/auth';
 import { canViewStory, isStoryAuthor, isCollaborator } from '../utils/permissions';
-import { aiProjectBriefQueue, aiOutlineQueue, aiPasticheQueue, aiTemplateQueue } from '../utils/queue';
+import { aiProjectBriefQueue, aiOutlineQueue, aiPasticheQueue, aiTemplateQueue, redisClient } from '../utils/queue';
 
 const router = Router();
+
+// ==================== 用户级限流 ====================
+/**
+ * 基于 Redis 的用户级限流（滑动窗口）
+ * 同一用户在 windowMs 时间窗口内最多提交 maxRequests 次 AI 创作请求
+ */
+const USER_RATE_LIMIT = {
+  windowMs: 60 * 1000,    // 1 分钟窗口
+  maxRequests: 5,          // 每分钟最多 5 次
+  message: '请求过于频繁，请稍后再试（每分钟最多 5 次 AI 创作请求）'
+};
+
+async function checkUserRateLimit(userId: number): Promise<{ allowed: boolean; remaining: number; retryAfter?: number }> {
+  const key = `rate_limit:ai_creation:${userId}`;
+  const now = Date.now();
+  const windowStart = now - USER_RATE_LIMIT.windowMs;
+
+  try {
+    // 使用 Redis sorted set 实现滑动窗口
+    const pipeline = redisClient.pipeline();
+    // 移除窗口外的旧记录
+    pipeline.zremrangebyscore(key, 0, windowStart);
+    // 获取当前窗口内的请求数
+    pipeline.zcard(key);
+    const results = await pipeline.exec();
+
+    const currentCount = (results && results[1] && results[1][1]) as number || 0;
+
+    if (currentCount >= USER_RATE_LIMIT.maxRequests) {
+      // 获取最早的请求时间，计算需要等待多久
+      const oldest = await redisClient.zrange(key, 0, 0, 'WITHSCORES');
+      const retryAfter = oldest.length >= 2
+        ? Math.ceil((parseInt(oldest[1]) + USER_RATE_LIMIT.windowMs - now) / 1000)
+        : Math.ceil(USER_RATE_LIMIT.windowMs / 1000);
+
+      return { allowed: false, remaining: 0, retryAfter };
+    }
+
+    // 记录本次请求
+    await redisClient.zadd(key, now.toString(), `${now}_${Math.random().toString(36).substring(2, 6)}`);
+    // 设置 key 过期时间（窗口大小 + 缓冲）
+    await redisClient.expire(key, Math.ceil(USER_RATE_LIMIT.windowMs / 1000) + 10);
+
+    return { allowed: true, remaining: USER_RATE_LIMIT.maxRequests - currentCount - 1 };
+  } catch (error) {
+    // Redis 出错时放行（降级策略）
+    console.error('[RateLimit] Redis error, allowing request:', error);
+    return { allowed: true, remaining: USER_RATE_LIMIT.maxRequests };
+  }
+}
 
 // JWT 认证函数
 const getUserId = (req: any): number | null => {
@@ -86,6 +136,15 @@ router.post('/generate-project-brief', async (req, res) => {
     const permission = await canUseAiFeature(userId, 'continuation'); // 复用续写配额
     if (!permission.allowed) {
       return res.status(403).json({ error: permission.reason });
+    }
+
+    // 用户级限流检查
+    const rateCheck = await checkUserRateLimit(userId);
+    if (!rateCheck.allowed) {
+      return res.status(429).json({
+        error: USER_RATE_LIMIT.message,
+        retryAfter: rateCheck.retryAfter
+      });
     }
 
     // 创建会话
@@ -235,6 +294,15 @@ router.post('/generate-outline', async (req, res) => {
     const permission = await canUseAiFeature(userId, 'continuation');
     if (!permission.allowed) {
       return res.status(403).json({ error: permission.reason });
+    }
+
+    // 用户级限流检查
+    const rateCheck = await checkUserRateLimit(userId);
+    if (!rateCheck.allowed) {
+      return res.status(429).json({
+        error: USER_RATE_LIMIT.message,
+        retryAfter: rateCheck.retryAfter
+      });
     }
 
     // 创建会话
@@ -1109,6 +1177,15 @@ router.post('/generate-pastiche', async (req, res) => {
       return res.status(403).json({ error: permission.reason });
     }
 
+    // 用户级限流检查
+    const rateCheck = await checkUserRateLimit(userId);
+    if (!rateCheck.allowed) {
+      return res.status(429).json({
+        error: USER_RATE_LIMIT.message,
+        retryAfter: rateCheck.retryAfter
+      });
+    }
+
     // 创建会话
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const session: GenerationSession = {
@@ -1184,6 +1261,15 @@ router.post('/generate-from-template', async (req, res) => {
     const permission = await canUseAiFeature(userId, 'continuation');
     if (!permission.allowed) {
       return res.status(403).json({ error: permission.reason });
+    }
+
+    // 用户级限流检查
+    const rateCheck = await checkUserRateLimit(userId);
+    if (!rateCheck.allowed) {
+      return res.status(429).json({
+        error: USER_RATE_LIMIT.message,
+        retryAfter: rateCheck.retryAfter
+      });
     }
 
     // 获取模板

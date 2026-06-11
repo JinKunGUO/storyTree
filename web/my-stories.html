@@ -11,6 +11,10 @@
     <link rel="stylesheet" href="styles/utilities.css">
     <link rel="stylesheet" href="styles/responsive.css">
     <link rel="stylesheet" href="libs/fontawesome/css/all.min.css">
+    <!-- 新手引导 -->
+    <link rel="stylesheet" href="libs/driver.js/driver.css">
+    <link rel="stylesheet" href="styles/tour.css">
+    <link rel="stylesheet" href="styles/onboarding.css">
     <style>
         body {
             background: var(--st-bg-secondary);
@@ -599,11 +603,20 @@
 
         // 页面加载时初始化
         loadMyStories();
+        // 新手引导初始化
+        if (window.onboardingManager) {
+          window.onboardingManager.init('my-stories');
+        }
     </script>
     <script src="js/loading.js"></script>
     <script src="js/toast.js"></script>
     <script src="js/modal.js"></script>
     <script src="js/navbar.js"></script>
+    <!-- 新手引导 -->
+    <script src="libs/driver.js/driver.js.iife.js" defer></script>
+    <script src="js/tour.js?v=2" defer></script>
+    <script src="js/welcome-modal.js?v=2" defer></script>
+    <script src="js/onboarding-manager.js?v=2" defer></script>
     <!-- 页脚 -->
     <footer style="text-align: center; padding: 20px; margin-top: 40px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
         <p>© 2026 StoryTree. 用心创作每一个故事。</p>

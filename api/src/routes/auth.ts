@@ -514,6 +514,8 @@ router.get('/me', async (req, res) => {
         membership_expires_at: true,
         isAdmin: true,
         createdAt: true,
+        has_seen_tour: true,
+        onboarding_progress: true,
       }
     });
 
@@ -523,6 +525,58 @@ router.get('/me', async (req, res) => {
 
     res.json({ user });
   } catch (error) {
+    return res.status(401).json({ error: '无效的认证令牌' });
+  }
+});
+
+// 标记新手引导已完成
+router.post('/tour-complete', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+
+  if (!token) {
+    return res.status(401).json({ error: '未提供认证令牌' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+    // 支持 body.reset=true 重置为未完成状态（测试用）
+    const value = req.body?.reset === true ? false : true;
+
+    await prisma.users.update({
+      where: { id: decoded.userId },
+      data: { has_seen_tour: value }
+    });
+
+    res.json({ success: true, has_seen_tour: value });
+  } catch (error) {
+    console.error('标记引导完成错误:', error);
+    return res.status(401).json({ error: '无效的认证令牌' });
+  }
+});
+
+// 更新新手引导进度
+router.put('/onboarding-progress', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+
+  if (!token) {
+    return res.status(401).json({ error: '未提供认证令牌' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+    const { progress } = req.body;
+
+    // progress 可以是 object（正常更新）或 null（重置）
+    const progressStr = progress === null ? null : (typeof progress === 'object' ? JSON.stringify(progress) : null);
+
+    await prisma.users.update({
+      where: { id: decoded.userId },
+      data: { onboarding_progress: progressStr }
+    });
+
+    res.json({ success: true, progress });
+  } catch (error) {
+    console.error('更新引导进度错误:', error);
     return res.status(401).json({ error: '无效的认证令牌' });
   }
 });

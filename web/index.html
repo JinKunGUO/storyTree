@@ -14,6 +14,11 @@
     <link rel="stylesheet" href="styles/responsive.css">
     <!-- 图标 -->
     <link href="libs/fontawesome/css/all.min.css" rel="stylesheet">
+    <!-- 新手引导 -->
+    <link rel="stylesheet" href="libs/driver.js/driver.css">
+    <link rel="stylesheet" href="styles/tour.css">
+    <link rel="stylesheet" href="styles/onboarding.css">
+    <link rel="stylesheet" href="styles/concept-guide.css">
     <style>
         /* 页面级样式 */
         body {
@@ -629,6 +634,12 @@
     <script src="js/toast.js?v=2"></script>
     <script src="js/modal.js?v=2"></script>
     <script src="js/navbar.js?v=2"></script>
+    <!-- 新手引导 -->
+    <script src="libs/driver.js/driver.js.iife.js" defer></script>
+    <script src="js/tour.js?v=2" defer></script>
+    <script src="js/welcome-modal.js?v=2" defer></script>
+    <script src="js/concept-guide.js?v=1" defer></script>
+    <script src="js/onboarding-manager.js?v=2" defer></script>
     <script>
         // ===== 工具函数 =====
         function escapeHtml(text) {
@@ -861,6 +872,10 @@
         document.addEventListener('DOMContentLoaded', () => {
             checkAuthStatus();
             loadStories();
+            // 新手引导初始化
+            if (window.onboardingManager) {
+                window.onboardingManager.init('index');
+            }
         });
     </script>
 </body>

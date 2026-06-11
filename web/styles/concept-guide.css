@@ -1,0 +1,485 @@
+/**
+ * StoryTree 概念讲解组件样式
+ * 全屏 Modal + 步骤动画 + SVG 插图动效
+ */
+
+/* ===== 遮罩层 ===== */
+.st-concept-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 10002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.st-concept-overlay.st-concept-visible {
+  opacity: 1;
+}
+
+.st-concept-overlay.st-concept-fade-out {
+  opacity: 0;
+}
+
+/* ===== Modal 容器 ===== */
+.st-concept-modal {
+  background: var(--st-bg-primary, #fff);
+  border-radius: 24px;
+  max-width: 440px;
+  width: 100%;
+  padding: 2rem;
+  box-shadow: 0 32px 100px rgba(45, 93, 90, 0.25), 0 8px 32px rgba(0, 0, 0, 0.15);
+  transform: scale(0.95) translateY(10px);
+  animation: stConceptSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  position: relative;
+  overflow: hidden;
+}
+
+@keyframes stConceptSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* 步骤切换过渡 */
+.st-concept-modal.st-concept-step-transition {
+  opacity: 0.4;
+  transform: scale(0.98);
+  transition: all 0.2s ease;
+}
+
+/* ===== 关闭按钮 ===== */
+.st-concept-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: var(--st-bg-secondary, #f3f4f6);
+  color: var(--st-text-secondary, #6b7280);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 1;
+}
+
+.st-concept-close:hover {
+  background: #e5e7eb;
+  color: #1f2937;
+  transform: rotate(90deg);
+}
+
+/* ===== 插图区域 ===== */
+.st-concept-illustration {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 1rem;
+  margin: 0 -0.5rem;
+  background: linear-gradient(135deg, #f0f9f8 0%, #e8f5f3 100%);
+  border-radius: 16px;
+  margin-bottom: 1.5rem;
+  min-height: 180px;
+}
+
+.st-concept-svg {
+  width: 100%;
+  max-width: 240px;
+  height: auto;
+}
+
+/* ===== 内容区域 ===== */
+.st-concept-content {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.st-concept-title {
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--st-text-primary, #1a1a1a);
+  margin: 0 0 0.75rem;
+}
+
+.st-concept-desc {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--st-text-secondary, #4b5563);
+  margin: 0;
+  padding: 0 0.5rem;
+}
+
+/* ===== 步骤指示器 ===== */
+.st-concept-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.st-concept-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #d1d5db;
+  transition: all 0.3s ease;
+}
+
+.st-concept-dot.active {
+  width: 24px;
+  border-radius: 4px;
+  background: #2d5d5a;
+}
+
+.st-concept-dot.done {
+  background: #6ee7b7;
+}
+
+/* ===== 操作按钮区 ===== */
+.st-concept-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.st-concept-btn-prev {
+  padding: 0.625rem 1.25rem;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--st-text-secondary, #6b7280);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.st-concept-btn-prev:hover {
+  border-color: #2d5d5a;
+  color: #2d5d5a;
+  background: #f0f9f8;
+}
+
+.st-concept-btn-next,
+.st-concept-btn-finish {
+  padding: 0.625rem 1.5rem;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2d5d5a 0%, #3a7a76 100%);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(45, 93, 90, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.st-concept-btn-next:hover,
+.st-concept-btn-finish:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(45, 93, 90, 0.4);
+  background: linear-gradient(135deg, #245250 0%, #2d5d5a 100%);
+}
+
+.st-concept-btn-finish {
+  background: linear-gradient(135deg, #059669 0%, #2d5d5a 100%);
+}
+
+.st-concept-btn-finish:hover {
+  background: linear-gradient(135deg, #047857 0%, #245250 100%);
+}
+
+/* ===== SVG 动画 ===== */
+
+/* 树生长动画 */
+.st-anim-tree-grow .st-svg-trunk {
+  stroke-dasharray: 80;
+  stroke-dashoffset: 80;
+  animation: stSvgDraw 0.8s ease forwards;
+}
+
+.st-anim-tree-grow .st-svg-branch {
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+  animation: stSvgDraw 0.6s ease forwards;
+}
+
+.st-anim-tree-grow .st-svg-leaf {
+  transform: scale(0);
+  transform-origin: center;
+  animation: stSvgPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* 节点脉冲动画 */
+.st-anim-node-pulse .st-svg-pulse {
+  animation: stSvgPulse 2s ease-in-out infinite;
+}
+
+.st-anim-node-pulse .st-svg-node-group {
+  opacity: 0;
+  animation: stSvgFadeSlide 0.5s ease forwards;
+}
+
+/* 分支分裂动画 */
+.st-anim-branch-split .st-svg-path-a,
+.st-anim-branch-split .st-svg-path-b,
+.st-anim-branch-split .st-svg-path-c {
+  stroke-dasharray: 150;
+  stroke-dashoffset: 150;
+  animation: stSvgDraw 1s ease forwards;
+}
+
+.st-anim-branch-split .st-svg-path-b {
+  animation-delay: 0.2s;
+}
+
+.st-anim-branch-split .st-svg-path-c {
+  animation-delay: 0.4s;
+}
+
+/* 续写动画 */
+.st-anim-write .st-svg-new-line {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: stSvgDraw 0.8s ease 0.3s forwards;
+}
+
+.st-anim-write .st-svg-new-node {
+  transform: scale(0);
+  transform-origin: center;
+  animation: stSvgPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.8s forwards;
+}
+
+.st-anim-write .st-svg-write-panel {
+  opacity: 0;
+  transform: translateY(5px);
+  animation: stSvgFadeSlide 0.5s ease 1s forwards;
+}
+
+.st-anim-write .st-svg-cursor {
+  animation: stSvgBlink 1s step-end infinite 1.2s;
+}
+
+/* 探索动画 */
+.st-anim-explore .st-svg-stars text {
+  animation: stSvgTwinkle 2s ease-in-out infinite alternate;
+}
+
+.st-anim-explore .st-svg-stars text:nth-child(2) {
+  animation-delay: 0.5s;
+}
+
+.st-anim-explore .st-svg-stars text:nth-child(3) {
+  animation-delay: 1s;
+}
+
+.st-anim-explore .st-svg-stars text:nth-child(4) {
+  animation-delay: 1.5s;
+}
+
+.st-anim-explore .st-svg-person {
+  animation: stSvgFloat 3s ease-in-out infinite;
+}
+
+/* 延迟类 */
+.st-anim-delay-1 { animation-delay: 0.2s !important; }
+.st-anim-delay-2 { animation-delay: 0.4s !important; }
+.st-anim-delay-3 { animation-delay: 0.6s !important; }
+.st-anim-delay-4 { animation-delay: 0.8s !important; }
+.st-anim-delay-5 { animation-delay: 1.0s !important; }
+
+/* ===== 关键帧定义 ===== */
+@keyframes stSvgDraw {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes stSvgPop {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+
+@keyframes stSvgPulse {
+  0%, 100% { r: 26; opacity: 0.4; }
+  50% { r: 32; opacity: 0.1; }
+}
+
+@keyframes stSvgFadeSlide {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes stSvgBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes stSvgTwinkle {
+  from { opacity: 0.3; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1.2); }
+}
+
+@keyframes stSvgFloat {
+  0%, 100% { transform: translate(120px, 170px) translateY(0); }
+  50% { transform: translate(120px, 170px) translateY(-3px); }
+}
+
+/* ===== 暗黑模式 ===== */
+@media (prefers-color-scheme: dark) {
+  .st-concept-overlay {
+    background: rgba(0, 0, 0, 0.75);
+  }
+
+  .st-concept-modal {
+    background: var(--st-bg-primary, #1f2937);
+    box-shadow: 0 32px 100px rgba(0, 0, 0, 0.5);
+  }
+
+  .st-concept-close {
+    background: #374151;
+    color: #9ca3af;
+  }
+
+  .st-concept-close:hover {
+    background: #4b5563;
+    color: #f9fafb;
+  }
+
+  .st-concept-illustration {
+    background: linear-gradient(135deg, #1a2e2d 0%, #1f3736 100%);
+  }
+
+  .st-concept-title {
+    color: var(--st-text-primary, #f9fafb);
+  }
+
+  .st-concept-desc {
+    color: var(--st-text-secondary, #9ca3af);
+  }
+
+  .st-concept-dot {
+    background: #4b5563;
+  }
+
+  .st-concept-btn-prev {
+    border-color: #4b5563;
+    color: #9ca3af;
+  }
+
+  .st-concept-btn-prev:hover {
+    border-color: #6ee7b7;
+    color: #6ee7b7;
+    background: rgba(110, 231, 183, 0.1);
+  }
+}
+
+/* ===== 移动端响应式 ===== */
+@media (max-width: 480px) {
+  .st-concept-overlay {
+    padding: 0.5rem;
+    align-items: flex-end;
+  }
+
+  .st-concept-modal {
+    max-width: 100%;
+    border-radius: 20px 20px 12px 12px;
+    padding: 1.5rem;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .st-concept-illustration {
+    min-height: 140px;
+    padding: 1rem;
+  }
+
+  .st-concept-svg {
+    max-width: 200px;
+  }
+
+  .st-concept-title {
+    font-size: 1.15rem;
+  }
+
+  .st-concept-desc {
+    font-size: 0.85rem;
+    padding: 0;
+  }
+
+  .st-concept-actions {
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+  }
+
+  .st-concept-btn-prev,
+  .st-concept-btn-next,
+  .st-concept-btn-finish {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ===== 减少动画偏好 ===== */
+@media (prefers-reduced-motion: reduce) {
+  .st-concept-modal {
+    animation: none;
+    transform: none;
+    opacity: 1;
+  }
+
+  .st-concept-overlay {
+    transition: none;
+  }
+
+  .st-anim-tree-grow .st-svg-trunk,
+  .st-anim-tree-grow .st-svg-branch,
+  .st-anim-branch-split .st-svg-path-a,
+  .st-anim-branch-split .st-svg-path-b,
+  .st-anim-branch-split .st-svg-path-c,
+  .st-anim-write .st-svg-new-line {
+    stroke-dashoffset: 0;
+    animation: none;
+  }
+
+  .st-anim-tree-grow .st-svg-leaf,
+  .st-anim-write .st-svg-new-node {
+    transform: scale(1);
+    animation: none;
+  }
+
+  .st-anim-write .st-svg-write-panel,
+  .st-anim-node-pulse .st-svg-node-group {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+
+  .st-anim-node-pulse .st-svg-pulse,
+  .st-anim-write .st-svg-cursor,
+  .st-anim-explore .st-svg-stars text,
+  .st-anim-explore .st-svg-person {
+    animation: none;
+  }
+}

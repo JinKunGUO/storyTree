@@ -204,19 +204,24 @@ const openai = process.env.OPENAI_API_KEY ? new OpenAI({
 }) : null;
 
 /**
- * 千问API响应类型
+ * 千问API响应类型（OpenAI兼容格式）
  */
-interface QwenAPIResponse {
-  output?: {
-    text?: string;
-    finish_reason?: string; // 流式模式完成标志：'stop'、'length' 等
-  };
+interface QwenStreamChunk {
+  id?: string;
+  choices?: Array<{
+    delta?: { content?: string; role?: string };
+    finish_reason?: string | null;
+    index?: number;
+  }>;
   usage?: {
-    input_tokens?: number;
-    output_tokens?: number;
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
   };
-  code?: string;
-  message?: string;
+  error?: {
+    code?: string;
+    message?: string;
+  };
 }
 
 /**
@@ -243,12 +248,10 @@ interface QwenImageAPIResponse {
 }
 
 /**
- * 调用千问API（SSE 流式输出 + 增量模式，彻底解决超时问题）
+ * 调用千问API（OpenAI兼容接口 + SSE流式输出）
  * 
- * 改进：
- * - 使用 stream: true + incremental_output: true 开启流式输出
- * - 服务器边生成边推送，HTTP 连接不会因为等待而超时
- * - 适用于长文本生成（8000 token 也不会超时）
+ * 使用百炼 OpenAI 兼容端点：https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
+ * 支持所有新模型（qwen3-plus, qwen-max, qwen-turbo 等）
  */
 async function callQwenAPI(prompt: string, maxTokens: number = 2000, temperature: number = 0.8, timeoutMs: number = 30000): Promise<{ text: string; usage: { input: number; output: number } }> {
   // 1. 限流：等待令牌
@@ -256,9 +259,7 @@ async function callQwenAPI(prompt: string, maxTokens: number = 2000, temperature
 
   // 2. 熔断器包裹实际调用
   return qwenCircuitBreaker.execute(async () => {
-    // 3. 超时控制：
-    // - connectTimeout: 仅用于等待首次响应（TTFB），超时则中止连接
-    // - 流式传输期间使用 STREAM_IDLE_TIMEOUT 检测连接中断
+    // 3. 超时控制
     const controller = new AbortController();
     let connectTimeoutId: ReturnType<typeof setTimeout> | null = setTimeout(() => {
       console.warn(`⏱️ 千问API连接超时（${timeoutMs / 1000}秒未收到首字节），中止请求`);
@@ -266,27 +267,21 @@ async function callQwenAPI(prompt: string, maxTokens: number = 2000, temperature
     }, timeoutMs);
 
     try {
-      const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation', {
+      const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${process.env.QWEN_API_KEY}`,
-          'Content-Type': 'application/json',
-          'Accept': 'text/event-stream',       // SSE 流式响应
-          'X-DashScope-SSE': 'enable'          // DashScope 原生接口开启 SSE 的方式
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           model: QWEN_MODEL,
-          input: {
-            messages: [
-              { role: 'user', content: prompt }
-            ]
-          },
-          parameters: {
-            max_tokens: maxTokens,
-            temperature: temperature,
-            top_p: 0.9,
-            incremental_output: true   // 增量模式（只返回新增部分，减少传输量）
-          }
+          messages: [
+            { role: 'user', content: prompt }
+          ],
+          max_tokens: maxTokens,
+          temperature: temperature,
+          top_p: 0.9,
+          stream: true
         }),
         signal: controller.signal
       });
@@ -296,12 +291,10 @@ async function callQwenAPI(prompt: string, maxTokens: number = 2000, temperature
         throw new Error(`千问API调用失败: ${response.status} ${errorText}`);
       }
 
-      // 解析 SSE 流
+      // 解析 SSE 流（OpenAI兼容格式）
       let fullText = '';
       let inputTokens = 0;
       let outputTokens = 0;
-      let lastActivityTime = Date.now();
-      // 流式活跃超时：如果 60 秒内没有收到新数据，认为连接已中断
       const STREAM_IDLE_TIMEOUT = 60000;
 
       const reader = response.body?.getReader();
@@ -311,8 +304,9 @@ async function callQwenAPI(prompt: string, maxTokens: number = 2000, temperature
         throw new Error('无法读取响应流');
       }
 
+      let buffer = '';
+
       while (true) {
-        // 使用 Promise.race 实现流式活跃超时
         const readPromise = reader.read();
         const idleTimeoutPromise = new Promise<never>((_, reject) => {
           setTimeout(() => {
@@ -323,48 +317,49 @@ async function callQwenAPI(prompt: string, maxTokens: number = 2000, temperature
         const { done, value } = await Promise.race([readPromise, idleTimeoutPromise]);
         if (done) break;
 
-        // 收到首字节后，清除连接超时，后续由 STREAM_IDLE_TIMEOUT 接管
+        // 收到首字节后，清除连接超时
         if (connectTimeoutId) {
           clearTimeout(connectTimeoutId);
           connectTimeoutId = null;
         }
 
-        lastActivityTime = Date.now();
-        const chunk = decoder.decode(value, { stream: true });
-        
+        buffer += decoder.decode(value, { stream: true });
+
         // SSE 格式：data: {...}\n\n
-        const lines = chunk.split('\n').filter(line => line.trim().startsWith('data:'));
-        
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // 保留不完整的最后一行
+
         for (const line of lines) {
-          const jsonStr = line.replace(/^data:\s*/, '').trim();
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data:')) continue;
+          const jsonStr = trimmed.slice(5).trim();
           if (!jsonStr || jsonStr === '[DONE]') continue;
 
           try {
-            const data = JSON.parse(jsonStr) as QwenAPIResponse;
-            
+            const data = JSON.parse(jsonStr) as QwenStreamChunk;
+
             // 检查错误
-            if (data.code) {
-              throw new Error(`千问API错误: ${data.code} - ${data.message}`);
+            if (data.error) {
+              throw new Error(`千问API错误: ${data.error.code} - ${data.error.message}`);
             }
 
             // 累加增量文本
-            const incrementalText = data.output?.text || '';
-            fullText += incrementalText;
+            const delta = data.choices?.[0]?.delta?.content || '';
+            fullText += delta;
 
-            // 最后一条消息包含 usage 和 finish_reason
+            // usage 信息（通常在最后一条消息中）
             if (data.usage) {
-              inputTokens = data.usage.input_tokens || 0;
-              outputTokens = data.usage.output_tokens || 0;
+              inputTokens = data.usage.prompt_tokens || 0;
+              outputTokens = data.usage.completion_tokens || 0;
             }
 
-            // 检查是否完成（finish_reason 有值如 'stop'/'length' 时表示生成结束）
-            // 注意：千问增量模式中，中间消息的 finish_reason 为 null，只有最后一条消息才有值
-            const finishReason = data.output?.finish_reason;
+            // 检查是否完成
+            const finishReason = data.choices?.[0]?.finish_reason;
             if (finishReason && finishReason !== 'null') {
               console.log(`✅ 千问流式生成完成，finish_reason: ${finishReason}，累计 ${fullText.length} 字`);
-              break;
             }
-          } catch (parseError) {
+          } catch (parseError: any) {
+            if (parseError.message?.includes('千问API错误')) throw parseError;
             console.warn('解析 SSE 数据失败:', jsonStr, parseError);
           }
         }
@@ -2277,11 +2272,11 @@ ${projectBrief ? `【项目立项书】\n${JSON.stringify(projectBrief, null, 2)
 }
 
 // 注册队列处理器
-aiProjectBriefQueue.process(async (job: Job) => {
+aiProjectBriefQueue.process(3, async (job: Job) => {
   return processProjectBrief(job);
 });
 
-aiOutlineQueue.process(async (job: Job) => {
+aiOutlineQueue.process(3, async (job: Job) => {
   return processOutline(job);
 });
 
@@ -2598,10 +2593,10 @@ ${coreConflict ? `【核心冲突】${coreConflict}` : ''}
 }
 
 // 注册队列处理器
-aiPasticheQueue.process(async (job: Job) => {
+aiPasticheQueue.process(3, async (job: Job) => {
   return processPastiche(job);
 });
 
-aiTemplateQueue.process(async (job: Job) => {
+aiTemplateQueue.process(3, async (job: Job) => {
   return processTemplate(job);
 });

@@ -11,6 +11,10 @@
     <link rel="stylesheet" href="styles/utilities.css">
     <link rel="stylesheet" href="styles/responsive.css">
     <link href="libs/fontawesome/css/all.min.css" rel="stylesheet">
+    <!-- 新手引导 -->
+    <link rel="stylesheet" href="libs/driver.js/driver.css">
+    <link rel="stylesheet" href="styles/tour.css">
+    <link rel="stylesheet" href="styles/onboarding.css">
     <style>
         body {
             background: var(--st-bg-secondary);
@@ -229,21 +233,23 @@
                 <a href="/discover.html" class="nav-link" role="menuitem">
                     <i class="fas fa-compass" aria-hidden="true"></i> 发现故事
                 </a>
-                <a href="/create.html" class="nav-link active" role="menuitem">
-                    <i class="fas fa-pen-fancy" aria-hidden="true"></i> 开始创作
+                <a href="/membership.html" class="nav-link" role="menuitem">
+                    <i class="fas fa-crown" aria-hidden="true"></i> 会员中心
                 </a>
-                <a href="/notifications.html" class="nav-link nav-notification" id="notificationIcon" role="menuitem" aria-label="消息通知" style="display: none;">
+                <a href="/points-mall.html" class="nav-link" role="menuitem">
+                    <i class="fas fa-shopping-cart" aria-hidden="true"></i> 积分商城
+                </a>
+                <a href="/notifications.html" class="nav-link nav-notification" id="notificationIcon" style="display: none;" role="menuitem" aria-label="消息通知">
                     <i class="fas fa-bell" aria-hidden="true"></i> 消息
                     <span class="notification-badge" id="notificationBadge" style="display: none;" aria-live="polite">0</span>
                 </a>
-                <a href="/profile.html" class="nav-link" id="profileLink" role="menuitem" style="display: none;">
+                <a href="/login.html" class="nav-link" id="loginLink" role="menuitem">登录</a>
+                <a href="/register.html" class="nav-link nav-link-primary" id="registerLink" role="menuitem">注册</a>
+                <a href="/profile.html" class="nav-link" id="profileLink" style="display: none;" role="menuitem">
                     <i class="fas fa-user" aria-hidden="true"></i> 个人中心
                 </a>
-                <a href="/login.html" class="nav-link" id="loginLink" role="menuitem">
-                    <i class="fas fa-sign-in-alt" aria-hidden="true"></i> 登录
-                </a>
-                <a href="/register.html" class="nav-link nav-link-primary" id="registerLink" role="menuitem">
-                    <i class="fas fa-user-plus" aria-hidden="true"></i> 注册
+                <a href="/login.html" class="nav-link" id="logoutLink" style="display: none;" onclick="logout(); return false;" role="menuitem">
+                    <i class="fas fa-sign-out-alt" aria-hidden="true"></i> 退出
                 </a>
             </div>
         </div>
@@ -490,12 +496,21 @@
             checkAuthStatus();
             setupCharCount('title', 'titleCount');
             setupCharCount('description', 'descCount');
+            // 新手引导初始化
+            if (window.onboardingManager) {
+                window.onboardingManager.init('create');
+            }
         });
     </script>
     <script src="js/loading.js"></script>
     <script src="js/toast.js"></script>
     <script src="js/modal.js"></script>
     <script src="js/navbar.js"></script>
+    <!-- 新手引导 -->
+    <script src="libs/driver.js/driver.js.iife.js" defer></script>
+    <script src="js/tour.js?v=2" defer></script>
+    <script src="js/welcome-modal.js?v=2" defer></script>
+    <script src="js/onboarding-manager.js?v=2" defer></script>
     <!-- 页脚 -->
     <footer style="text-align: center; padding: 20px; margin-top: 40px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
         <p>© 2026 StoryTree. 用心创作每一个故事。</p>

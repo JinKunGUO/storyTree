@@ -147,6 +147,15 @@ const PAGES = [
   '/create-ai.html',
   '/story.html',
   '/write.html',
+  // 新手引导激活状态变体（验证引导层不溢出）
+  '/?tour=0',
+  '/?welcome=1',
+  '/discover.html?tour=1',
+  '/create.html?tour=2',
+  '/write.html?tour=3',
+  '/story-tree.html?guide=concept',
+  '/story-tree.html?tour=4',
+  '/my-stories.html?tour=5',
 ];
 
 // 需要登录才能正常渲染的页面（可能重定向到 login）
@@ -157,6 +166,7 @@ const AUTH_PAGES = new Set([
   '/create.html',
   '/create-ai.html',
   '/write.html',
+  '/story-tree.html',
 ]);
 
 // ============================================================
@@ -242,7 +252,9 @@ async function main() {
         }
 
         // 等待页面渲染（JS 动态内容）
-        await page.waitForTimeout(800);
+        // 引导层页面需要更长等待时间（动画延迟 + 弹窗渲染）
+        const isGuidePage = pagePath.includes('tour=') || pagePath.includes('welcome=') || pagePath.includes('guide=');
+        await page.waitForTimeout(isGuidePage ? 2500 : 800);
 
         // 检测水平溢出
         const overflowInfo = await page.evaluate(() => {

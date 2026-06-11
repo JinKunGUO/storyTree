@@ -5,7 +5,7 @@
 
 /* ===== 遮罩层 ===== */
 .driver-overlay {
-  background: rgba(45, 93, 90, 0.75) !important;
+  background: rgba(15, 23, 42, 0.65) !important;
 }
 
 /* ===== 弹窗容器 ===== */
@@ -13,6 +13,9 @@
   border-radius: 16px !important;
   box-shadow: 0 20px 60px rgba(45, 93, 90, 0.25), 0 4px 16px rgba(0, 0, 0, 0.1) !important;
   border: 1px solid rgba(45, 93, 90, 0.15) !important;
+  max-width: 360px !important;
+  min-width: 280px !important;
+  padding: 20px 24px !important;
 }
 
 /* ===== 弹窗标题 ===== */
@@ -28,6 +31,8 @@
   color: #4a5568 !important;
   line-height: 1.6 !important;
   font-size: 14px !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
 }
 
 /* ===== 进度条 ===== */
@@ -97,7 +102,8 @@
 
 /* ===== 高亮区域边框 ===== */
 .driver-active-element {
-  box-shadow: 0 0 0 4px rgba(45, 93, 90, 0.4) !important;
+  box-shadow: 0 0 0 4px rgba(45, 93, 90, 0.5), 0 0 20px 4px rgba(45, 93, 90, 0.15) !important;
+  border-radius: 8px !important;
 }
 
 /* ===== 弹窗箭头 ===== */
@@ -106,5 +112,149 @@
 .driver-popover-arrow-side-top,
 .driver-popover-arrow-side-bottom {
   border-color: white !important;
+}
+
+/* ===== 暗黑模式 ===== */
+@media (prefers-color-scheme: dark) {
+  .driver-overlay {
+    background: rgba(0, 0, 0, 0.8) !important;
+  }
+
+  .driver-popover {
+    background: #1f2937 !important;
+    border-color: rgba(110, 231, 183, 0.2) !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .driver-popover-title {
+    color: #6ee7b7 !important;
+  }
+
+  .driver-popover-description {
+    color: #d1d5db !important;
+  }
+
+  .driver-popover-progress-text {
+    color: #6ee7b7 !important;
+  }
+
+  .driver-popover-prev-btn {
+    background: #374151 !important;
+    color: #d1d5db !important;
+    border-color: #4b5563 !important;
+  }
+
+  .driver-popover-prev-btn:hover {
+    background: #4b5563 !important;
+    border-color: #6ee7b7 !important;
+    color: #6ee7b7 !important;
+  }
+
+  .driver-popover-next-btn {
+    background: linear-gradient(135deg, #2d5d5a 0%, #059669 100%) !important;
+    box-shadow: 0 4px 12px rgba(6, 150, 105, 0.3) !important;
+  }
+
+  .driver-popover-next-btn:hover {
+    background: linear-gradient(135deg, #245250 0%, #047857 100%) !important;
+    box-shadow: 0 6px 16px rgba(6, 150, 105, 0.4) !important;
+  }
+
+  .driver-popover-close-btn {
+    color: #9ca3af !important;
+  }
+
+  .driver-popover-close-btn:hover {
+    color: #f9fafb !important;
+  }
+
+  .st-tour-skip-btn {
+    color: #6b7280 !important;
+  }
+
+  .st-tour-skip-btn:hover {
+    color: #6ee7b7 !important;
+    background: #374151 !important;
+  }
+
+  .driver-active-element {
+    box-shadow: 0 0 0 4px rgba(110, 231, 183, 0.4) !important;
+  }
+
+  .driver-popover-arrow-side-left,
+  .driver-popover-arrow-side-right,
+  .driver-popover-arrow-side-top,
+  .driver-popover-arrow-side-bottom {
+    border-color: #1f2937 !important;
+  }
+}
+
+/* ===== 按钮文字不换行（全局，确保任何分辨率都单行显示） ===== */
+.driver-popover-prev-btn,
+.driver-popover-next-btn,
+.st-tour-skip-btn,
+.driver-popover-progress-text {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+.driver-popover-footer {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  gap: 8px !important;
+}
+
+/* ===== 移动端响应式 (375px 适配) ===== */
+@media (max-width: 480px) {
+  .driver-popover {
+    max-width: calc(100vw - 24px) !important;
+    min-width: unset !important;
+    border-radius: 12px !important;
+    margin: 0 12px !important;
+    padding: 16px 18px !important;
+  }
+
+  .driver-popover-title {
+    font-size: 15px !important;
+  }
+
+  .driver-popover-description {
+    font-size: 13px !important;
+    line-height: 1.5 !important;
+  }
+
+  .driver-popover-prev-btn,
+  .driver-popover-next-btn {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+  }
+
+  .driver-popover-footer {
+    flex-wrap: nowrap !important;
+    gap: 4px !important;
+    justify-content: space-between !important;
+  }
+
+  .driver-popover-progress-text {
+    font-size: 11px !important;
+  }
+
+  .st-tour-skip-btn {
+    font-size: 11px !important;
+    padding: 6px 6px !important;
+  }
+}
+
+/* ===== 减少动画偏好 ===== */
+@media (prefers-reduced-motion: reduce) {
+  .driver-popover-next-btn:hover,
+  .driver-popover-prev-btn:hover {
+    transform: none !important;
+  }
+
+  .driver-popover {
+    transition: none !important;
+  }
 }
 

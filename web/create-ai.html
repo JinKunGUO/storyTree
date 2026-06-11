@@ -174,10 +174,20 @@
             padding: 15px;
             border: 2px solid var(--st-gray-200);
             border-radius: var(--st-radius-lg);
-            font-size: var(--st-text-base);
+            font-size: 16px;
             transition: all 0.2s var(--st-ease-default);
             font-family: inherit;
             color: var(--st-text-primary);
+            background-color: var(--st-bg-primary);
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .form-select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            padding-right: 40px;
         }
 
         .form-input:focus,
@@ -497,6 +507,17 @@
                 width: 100%;
                 justify-content: center;
             }
+
+            /* 移动端 select 修复：确保字体 >= 16px 防止 iOS 缩放，固定定位弹出 */
+            .form-select {
+                font-size: 16px;
+                min-height: 50px;
+            }
+
+            .form-input,
+            .form-textarea {
+                font-size: 16px;
+            }
         }
 
         /* 可编辑字段样式 */
@@ -560,6 +581,10 @@
         }
 
         .editable-chapter-title {
+            display: flex;
+            align-items: center;
+            flex-wrap: nowrap;
+            gap: 4px;
             font-weight: 600;
             color: var(--st-text-primary);
             margin-bottom: 8px;
@@ -666,15 +691,23 @@
                 <a href="/discover.html" class="nav-link" role="menuitem">
                     <i class="fas fa-compass" aria-hidden="true"></i> 发现故事
                 </a>
-                <a href="/create.html" class="nav-link" role="menuitem">
-                    <i class="fas fa-pen" aria-hidden="true"></i> 开始创作
+                <a href="/membership.html" class="nav-link" role="menuitem">
+                    <i class="fas fa-crown" aria-hidden="true"></i> 会员中心
                 </a>
-                <a href="/notifications.html" class="nav-link nav-notification" id="notificationIcon" role="menuitem" aria-label="消息通知" style="display: none;">
+                <a href="/points-mall.html" class="nav-link" role="menuitem">
+                    <i class="fas fa-shopping-cart" aria-hidden="true"></i> 积分商城
+                </a>
+                <a href="/notifications.html" class="nav-link nav-notification" id="notificationIcon" style="display: none;" role="menuitem" aria-label="消息通知">
                     <i class="fas fa-bell" aria-hidden="true"></i> 消息
                     <span class="notification-badge" id="notificationBadge" style="display: none;" aria-live="polite">0</span>
                 </a>
-                <a href="/profile.html" class="nav-link" id="profileLink" role="menuitem">
+                <a href="/login.html" class="nav-link" id="loginLink" role="menuitem">登录</a>
+                <a href="/register.html" class="nav-link nav-link-primary" id="registerLink" role="menuitem">注册</a>
+                <a href="/profile.html" class="nav-link" id="profileLink" style="display: none;" role="menuitem">
                     <i class="fas fa-user" aria-hidden="true"></i> 个人中心
+                </a>
+                <a href="/login.html" class="nav-link" id="logoutLink" style="display: none;" onclick="logout(); return false;" role="menuitem">
+                    <i class="fas fa-sign-out-alt" aria-hidden="true"></i> 退出
                 </a>
             </div>
         </div>

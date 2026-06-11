@@ -11,6 +11,10 @@
     <link rel="stylesheet" href="styles/utilities.css">
     <link rel="stylesheet" href="styles/responsive.css">
     <link href="libs/fontawesome/css/all.min.css" rel="stylesheet">
+    <!-- 新手引导 -->
+    <link rel="stylesheet" href="libs/driver.js/driver.css">
+    <link rel="stylesheet" href="styles/tour.css">
+    <link rel="stylesheet" href="styles/onboarding.css">
     
     <!-- Quill富文本编辑器 -->
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
@@ -632,6 +636,18 @@
     <script src="js/toast.js"></script>
     <script src="js/modal.js"></script>
     <script src="js/navbar.js"></script>
+    <!-- 新手引导 -->
+    <script src="libs/driver.js/driver.js.iife.js" defer></script>
+    <script src="js/tour.js?v=2" defer></script>
+    <script src="js/welcome-modal.js?v=2" defer></script>
+    <script src="js/onboarding-manager.js?v=2" defer></script>
+    <script>
+      window.addEventListener('load', function() {
+        if (window.onboardingManager) {
+          window.onboardingManager.init('write');
+        }
+      });
+    </script>
     <!-- 页脚 -->
     <footer style="text-align: center; padding: 20px; margin-top: 40px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
         <p>© 2026 StoryTree. 用心创作每一个故事。</p>

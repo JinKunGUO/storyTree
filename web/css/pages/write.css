@@ -15,15 +15,20 @@
             padding: 30px;
             margin-bottom: 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 15px;
         }
 
         .story-info {
             display: flex;
             align-items: center;
             gap: 15px;
-            margin-bottom: 20px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid var(--st-gray-200);
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+            flex: 1;
         }
 
         .story-info i {
@@ -45,6 +50,7 @@
             font-size: 18px;
             font-weight: bold;
             transition: all 0.3s;
+            flex-basis: 100%;
         }
 
         .chapter-title-input:focus {
@@ -74,6 +80,17 @@
             background: var(--st-bg-secondary);
             border: none !important;
             border-bottom: 1px solid var(--st-gray-200) !important;
+            padding: 8px 12px !important;
+        }
+
+        .ql-toolbar .ql-formats button {
+            width: 28px !important;
+            height: 28px !important;
+            padding: 4px !important;
+        }
+
+        .ql-toolbar .ql-formats .ql-picker {
+            height: 28px !important;
         }
 
         .ql-container {
@@ -192,6 +209,16 @@
                 bottom: 15px;
                 right: 15px;
                 flex-direction: column;
+                gap: 8px;
+            }
+
+            .write-actions .action-btn {
+                padding: 12px 18px;
+                font-size: 14px;
+                gap: 6px;
+                justify-content: center;
+                align-items: center;
+                white-space: nowrap;
             }
 
             .word-count {
@@ -681,6 +708,7 @@
         /* ==================== 侧边栏样式 ==================== */
         .write-container {
             display: flex;
+            align-items: flex-start;
             gap: 20px;
         }
 
@@ -949,7 +977,7 @@
             }
 
             .ql-toolbar {
-                padding: 6px 8px;
+                padding: 6px 8px !important;
                 overflow-x: auto;
                 flex-wrap: nowrap;
                 -webkit-overflow-scrolling: touch;
@@ -966,9 +994,23 @@
             }
 
             .write-actions .action-btn {
-                width: 40px;
-                height: 40px;
+                padding: 10px 14px;
+                font-size: 12px;
+                gap: 4px;
+                border-radius: 30px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                line-height: 1;
+            }
+
+            .write-actions .action-btn i {
                 font-size: 14px;
+            }
+
+            /* 隐藏 AI 配额徽章在极小屏幕 */
+            .write-actions .ai-quota-badge {
+                display: none;
             }
 
             .word-count {
@@ -990,6 +1032,10 @@
             .ai-suggestions {
                 max-height: 50vh;
                 font-size: 14px;
+            }
+
+            .write-header {
+                padding: 20px 15px;
             }
         }
 

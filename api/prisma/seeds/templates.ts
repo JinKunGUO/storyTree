@@ -175,11 +175,22 @@ const templates = [
 async function seed() {
   console.log('开始插入故事模板...');
 
-  for (const template of templates) {
-    await prisma.story_templates.upsert({
-      where: { id: template.created_by === 1 ? templates.indexOf(template) + 1 : 0 },
-      update: {},
-      create: template
+  // 先检查是否已有数据
+  const existing = await prisma.story_templates.count();
+  if (existing >= templates.length) {
+    console.log(`✅ 故事模板已存在（${existing} 条），跳过插入`);
+    return;
+  }
+
+  // 清空后重新插入，确保 id 与前端一致（1-6）
+  await prisma.story_templates.deleteMany({});
+
+  for (let i = 0; i < templates.length; i++) {
+    await prisma.story_templates.create({
+      data: {
+        ...templates[i],
+        id: i + 1
+      }
     });
   }
 
