@@ -748,6 +748,7 @@ p, h1, h2, h3, h4, h5, h6, li, td, th, span, a, label {
 
   .chapter-nav {
     position: static;
+    background: transparent;
     border-top: none;
     justify-content: center;
     gap: var(--st-space-4);

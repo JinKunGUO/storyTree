@@ -102,7 +102,7 @@
 
         .back-btn:hover { transform: translateX(-3px); }
 
-        .chapter-nav { display: flex; gap: 10px; }
+        .chapter-nav { display: flex; gap: 10px; background: transparent; padding: 0; }
 
         .nav-btn {
             padding: 7px 18px;
@@ -1005,12 +1005,12 @@
         }
         /* 上一章/下一章按钮 */
         body.theme-dark .nav-btn {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(255, 255, 255, 0.15);
+            background: transparent !important;
+            border-color: rgba(255, 255, 255, 0.2);
             color: var(--st-text-secondary);
         }
         body.theme-dark .nav-btn:hover:not(:disabled) {
-            background: var(--st-primary);
+            background: var(--st-primary) !important;
             border-color: var(--st-primary);
             color: white;
         }
@@ -1114,8 +1114,8 @@
                 color: var(--st-text-primary);
             }
             .nav-btn {
-                background: rgba(255, 255, 255, 0.08) !important;
-                border-color: rgba(255, 255, 255, 0.15);
+                background: transparent !important;
+                border-color: rgba(255, 255, 255, 0.2);
                 color: var(--st-text-secondary);
             }
             .nav-btn:hover:not(:disabled) {
