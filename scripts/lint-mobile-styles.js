@@ -32,6 +32,13 @@ const rules = [
       if (px < 50) return null;
       // 如果同时有 max-width: 100% 则安全
       if (styleContent.includes('max-width') && styleContent.includes('100%')) return null;
+      // flex 子元素声明了 flex: 0 0 auto 或 flex-shrink: 0，表示有意固定宽度
+      if (styleContent.match(/flex\s*:\s*0\s+0\s+(auto|\d)/i)) return null;
+      if (styleContent.match(/flex-shrink\s*:\s*0/i)) return null;
+      // 小型表单控件（≤120px 的 inline-block 或 select/input 行）不算溢出风险
+      if (px <= 120 && (styleContent.includes('inline-block') || fullLine.match(/<select|<input/i))) return null;
+      // 宽度 ≤ 120px 且在表单类元素上下文中一般安全
+      if (px <= 120 && fullLine.match(/class=".*field|editable-field/i)) return null;
       return `固定宽度 width: ${px}px，建议使用 max-width 或 flex 布局`;
     }
   },
@@ -39,11 +46,21 @@ const rules = [
     id: 'flex-no-wrap',
     description: 'display: flex 缺少 flex-wrap',
     severity: 'warning',
-    test(styleContent) {
+    test(styleContent, fullLine) {
       if (!styleContent.match(/display\s*:\s*flex/i)) return null;
       if (styleContent.includes('flex-wrap')) return null;
       // 如果是 flex-direction: column 则不需要 wrap
       if (styleContent.match(/flex-direction\s*:\s*column/i)) return null;
+      // justify-content: space-between 是典型的两端对齐单行布局，不需要 wrap
+      if (styleContent.match(/justify-content\s*:\s*space-between/i)) return null;
+      // 带有 align-items: center 且 gap 较小（≤15px）的行内元素组，通常是图标+文字的单行展示
+      if (styleContent.match(/align-items\s*:\s*center/i)) {
+        const gapMatch = styleContent.match(/gap\s*:\s*(\d+)px/i);
+        if (!gapMatch || parseInt(gapMatch[1]) <= 15) return null;
+      }
+      // 只有 gap 没有大量子元素风险的简单 flex 容器，gap ≤ 15px 时安全
+      const gapOnly = styleContent.match(/gap\s*:\s*(\d+)px/i);
+      if (gapOnly && parseInt(gapOnly[1]) <= 15) return null;
       return 'display: flex 缺少 flex-wrap: wrap';
     }
   },
