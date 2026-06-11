@@ -88,9 +88,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Install Playwright
-        run: npm install playwright
-      - name: Install Chromium
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       - name: Run mobile overflow lint (static)
         run: node scripts/lint-mobile-styles.js
