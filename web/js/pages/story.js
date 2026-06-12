@@ -2351,6 +2351,28 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                 const successMessage = data.message || (publishImmediately ? 'AI章节已发布！' : 'AI章节已保存为草稿！');
                 showSuccess(successMessage + ' 即将刷新页面...');
 
+                // 标记新手任务：发布第一个章节（仅在发布模式下）
+                if (publishImmediately) {
+                  try {
+                    const progressStr = localStorage.getItem('st_onboarding_progress');
+                    let progress = progressStr ? JSON.parse(progressStr) : {};
+                    if (!progress.tasks) progress.tasks = {};
+                    if (!progress.tasks.publishedChapter) {
+                      progress.tasks.publishedChapter = true;
+                      localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
+                      const tk = localStorage.getItem('token') || sessionStorage.getItem('token');
+                      if (tk) {
+                        fetch('/api/auth/onboarding-progress', {
+                          method: 'PUT',
+                          headers: { 'Authorization': `Bearer ${tk}`, 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ progress })
+                        }).catch(() => {});
+                      }
+                      if (window.onboardingManager) window.onboardingManager.checkAndCelebrate();
+                    }
+                  } catch (e) { /* ignore */ }
+                }
+
                 // 刷新页面显示新章节
                 setTimeout(() => {
                     window.location.reload();
@@ -2532,6 +2554,23 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                 console.log('章节发布成功:', data);
 
                 showSuccess('草稿已发布！即将刷新页面...');
+
+                // 标记新手任务：发布第一个章节
+                try {
+                  const progressStr = localStorage.getItem('st_onboarding_progress');
+                  let progress = progressStr ? JSON.parse(progressStr) : {};
+                  if (!progress.tasks) progress.tasks = {};
+                  if (!progress.tasks.publishedChapter) {
+                    progress.tasks.publishedChapter = true;
+                    localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
+                    fetch('/api/auth/onboarding-progress', {
+                      method: 'PUT',
+                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ progress })
+                    }).catch(() => {});
+                    if (window.onboardingManager) window.onboardingManager.checkAndCelebrate();
+                  }
+                } catch (e) { /* ignore */ }
 
                 setTimeout(() => {
                     window.location.reload();

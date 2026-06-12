@@ -34,9 +34,9 @@ class OnboardingManager {
       return;
     }
 
-    // 如果有 guide 参数，触发对应引导
-    if (hasGuideParam === 'concept' && window.conceptGuide) {
-      window.conceptGuide.show();
+    // 如果有 guide=concept 参数，跳转到示例故事页面触发引导
+    if (hasGuideParam === 'concept') {
+      this._redirectToStoryForConcept();
       return;
     }
 
@@ -62,16 +62,25 @@ class OnboardingManager {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (!token) return;
 
+    // 如果刚注册/登录，强制跳过缓存
+    const justRegistered = localStorage.getItem('st_just_registered');
+    if (justRegistered) {
+      localStorage.removeItem('st_just_registered');
+      localStorage.removeItem('st_user_state');
+    }
+
     // 检查缓存是否新鲜（5 分钟内）
-    const cached = localStorage.getItem('st_user_state');
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        if (Date.now() - parsed._ts < 5 * 60 * 1000) {
-          this.userState = parsed;
-          return;
-        }
-      } catch (e) { /* 忽略解析错误 */ }
+    if (!justRegistered) {
+      const cached = localStorage.getItem('st_user_state');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Date.now() - parsed._ts < 5 * 60 * 1000) {
+            this.userState = parsed;
+            return;
+          }
+        } catch (e) { /* 忽略解析错误 */ }
+      }
     }
 
     try {
@@ -79,7 +88,13 @@ class OnboardingManager {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
-      if (!response.ok) return;
+      if (!response.ok) {
+        // 请求失败但有 token，构造默认状态确保新用户引导能触发
+        if (justRegistered) {
+          this.userState = { has_seen_tour: false, onboarding_progress: null, _ts: Date.now() };
+        }
+        return;
+      }
 
       const data = await response.json();
       if (data.user) {
@@ -94,6 +109,10 @@ class OnboardingManager {
       }
     } catch (error) {
       console.error('[OnboardingManager] 获取用户状态失败:', error);
+      // 网络错误但刚注册，构造默认状态
+      if (justRegistered) {
+        this.userState = { has_seen_tour: false, onboarding_progress: null, _ts: Date.now() };
+      }
     }
   }
 
@@ -118,6 +137,39 @@ class OnboardingManager {
       return;
     }
 
+    // 场景 4（优先）：写作页/创建AI页首次访问自动启动引导 tour
+    // 无论 has_seen_tour 状态如何，只要 completedTour 未完成就触发
+    const tasks = progress && progress.tasks ? progress.tasks : {};
+    if ((this.currentPage === 'write' || this.currentPage === 'create-ai') && !tasks.completedTour) {
+      setTimeout(() => {
+        if (window.storyTreeTour) {
+          window.storyTreeTour.startTour(this.currentPage);
+        }
+      }, 1500);
+      return;
+    }
+
+    // 场景 4b：写作页已完成主 tour 但首次进入写作页，显示写作功能引导
+    if (this.currentPage === 'write' && tasks.completedTour && !progress.writeGuideSeen) {
+      setTimeout(() => {
+        if (window.storyTreeTour) {
+          window.storyTreeTour.startTour('write');
+          // 标记已看过写作引导
+          progress.writeGuideSeen = true;
+          localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
+          const tk = localStorage.getItem('token') || sessionStorage.getItem('token');
+          if (tk) {
+            fetch('/api/auth/onboarding-progress', {
+              method: 'PUT',
+              headers: { 'Authorization': `Bearer ${tk}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ progress })
+            }).catch(() => {});
+          }
+        }
+      }, 2000);
+      return;
+    }
+
     // 场景 2：全新用户，非首页（可能是直接访问 discover/create）
     // 不主动弹窗，但增强空状态
     if (!has_seen_tour) {
@@ -136,10 +188,8 @@ class OnboardingManager {
       }
     }
 
-    // 场景 4：首页显示进度卡片（任务未全部完成时）
-    if (this.currentPage === 'index' && progress && !this.allTasksCompleted(progress)) {
-      this.showProgressCard(progress);
-    }
+    // 场景 5：首页不再显示进度卡片（已移除）
+    // 灯泡按钮已在上方 showNavHelpButton 中处理
 
     // 始终增强空状态
     this.enhanceEmptyStates();
@@ -155,7 +205,7 @@ class OnboardingManager {
 
   /**
    * 在导航栏显示帮助按钮（灯泡图标）
-   * 已登录用户始终显示；有未完成任务时带小红点
+   * 已登录用户显示；所有任务完成后隐藏
    */
   showNavHelpButton(progress) {
     const navActions = document.querySelector('.nav-actions') || document.querySelector('.navbar-content');
@@ -164,7 +214,8 @@ class OnboardingManager {
     // 检查是否已存在
     if (document.querySelector('.st-onboarding-nav-btn')) return;
 
-    const hasUnfinished = !progress || !this.allTasksCompleted(progress);
+    // 所有任务完成后不显示灯泡
+    if (progress && this.allTasksCompleted(progress)) return;
 
     const btn = document.createElement('button');
     btn.className = 'st-onboarding-nav-btn';
@@ -172,7 +223,7 @@ class OnboardingManager {
     btn.setAttribute('aria-label', '新手引导帮助');
     btn.innerHTML = `
       <i class="fas fa-lightbulb"></i>
-      ${hasUnfinished ? '<span class="st-onboarding-nav-badge"></span>' : ''}
+      <span class="st-onboarding-nav-badge"></span>
     `;
     btn.addEventListener('click', () => {
       if (window.welcomeModal) {
@@ -192,7 +243,7 @@ class OnboardingManager {
 
     const tasks = progress.tasks || {};
     const taskList = [
-      { key: 'completedTour', label: '完成新手引导' },
+      { key: 'completedTour', label: '熟悉平台功能' },
       { key: 'browsedDiscover', label: '浏览发现页' },
       { key: 'viewedStoryTree', label: '了解故事树概念' },
       { key: 'createdStory', label: '创建第一个故事' },
@@ -314,7 +365,7 @@ class OnboardingManager {
           <span class="st-empty-guide-step-text">邀请协作</span>
         </div>
       </div>
-      <a href="/create.html" class="st-empty-guide-cta">创建第一个故事</a>
+      <a href="/create-ai.html" class="st-empty-guide-cta">创建第一个故事</a>
     `;
     emptyEl.appendChild(guide);
   }
@@ -340,7 +391,7 @@ class OnboardingManager {
     guide.className = 'st-empty-guide';
     guide.innerHTML = `
       <p class="st-empty-guide-title">故事广场还很安静，来创作第一个故事吧！</p>
-      <a href="/create.html" class="st-empty-guide-cta">开始创作</a>
+      <a href="/create-ai.html" class="st-empty-guide-cta">开始创作</a>
     `;
     emptyEl.appendChild(guide);
   }
@@ -361,11 +412,53 @@ class OnboardingManager {
   }
 
   /**
+   * 跳转到示例故事页面触发概念引导
+   * 当 ?guide=concept 在非 story 页面被检测到时调用
+   */
+  async _redirectToStoryForConcept() {
+    let storyId = null;
+
+    try {
+      const res = await fetch('/api/stories?search=反三国演义&limit=1');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.stories && data.stories.length > 0) {
+          storyId = data.stories[0].id;
+        }
+      }
+
+      if (!storyId) {
+        const res2 = await fetch('/api/stories?limit=1');
+        if (res2.ok) {
+          const data2 = await res2.json();
+          if (data2.stories && data2.stories.length > 0) {
+            storyId = data2.stories[0].id;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[OnboardingManager] Failed to fetch example story:', e);
+    }
+
+    if (storyId) {
+      window.location.href = `/story.html?id=${storyId}&guide=concept`;
+    } else {
+      // fallback：如果找不到故事，直接在当前页显示概念引导
+      if (window.conceptGuide) {
+        window.conceptGuide.show();
+      }
+    }
+  }
+
+  /**
    * 标记概念讲解已看过
    */
   async markConceptGuideSeen() {
     const progress = this.getProgress();
     progress.conceptGuideSeen = true;
+    // 同时标记任务完成
+    if (!progress.tasks) progress.tasks = this.getDefaultProgress().tasks;
+    progress.tasks.viewedStoryTree = true;
     progress.lastUpdated = new Date().toISOString();
 
     this.saveLocalProgress(progress);
@@ -413,12 +506,33 @@ class OnboardingManager {
 
   /**
    * 获取当前进度
+   * 合并服务器状态和本地状态，确保最新的任务标记被反映
    */
   getProgress() {
-    if (this.userState && this.userState.onboarding_progress) {
-      return { ...this.userState.onboarding_progress };
+    const serverProgress = (this.userState && this.userState.onboarding_progress)
+      ? { ...this.userState.onboarding_progress }
+      : null;
+    const localProgress = this.getLocalProgress();
+
+    // 如果两者都存在，合并 tasks（取并集，任一为 true 则为 true）
+    if (serverProgress && localProgress) {
+      const merged = { ...serverProgress };
+      if (!merged.tasks) merged.tasks = {};
+      if (localProgress.tasks) {
+        for (const key of Object.keys(localProgress.tasks)) {
+          if (localProgress.tasks[key]) {
+            merged.tasks[key] = true;
+          }
+        }
+      }
+      // 合并顶层布尔字段
+      if (localProgress.conceptGuideSeen) merged.conceptGuideSeen = true;
+      if (localProgress.tourCompleted) merged.tourCompleted = true;
+      if (localProgress.welcomeSeen) merged.welcomeSeen = true;
+      return merged;
     }
-    return this.getLocalProgress() || this.getDefaultProgress();
+
+    return serverProgress || localProgress || this.getDefaultProgress();
   }
 
   getDefaultProgress() {
@@ -500,9 +614,8 @@ class OnboardingManager {
         }
         break;
       case 'concept':
-        if (window.conceptGuide) {
-          window.conceptGuide.show();
-        }
+        // 跳转到示例故事页面展示概念引导
+        this._redirectToStoryForConcept();
         break;
     }
   }
@@ -566,6 +679,49 @@ class OnboardingManager {
     this.initialized = false;
     this.userState = null;
     this.progressCache = null;
+  }
+
+  /**
+   * 检查是否所有任务完成，如果是则弹出祝贺弹窗
+   * 各处标记任务完成后调用此方法
+   */
+  checkAndCelebrate() {
+    const progressStr = localStorage.getItem('st_onboarding_progress');
+    let progress = progressStr ? JSON.parse(progressStr) : {};
+    if (!this.allTasksCompleted(progress)) return;
+    // 只弹一次
+    if (localStorage.getItem('st_celebration_shown')) return;
+    localStorage.setItem('st_celebration_shown', 'true');
+    setTimeout(() => this.showCompletionCelebration(), 1000);
+  }
+
+  /**
+   * 显示祝贺完成弹窗
+   */
+  showCompletionCelebration() {
+    const overlay = document.createElement('div');
+    overlay.className = 'st-celebration-overlay';
+    overlay.innerHTML = `
+      <div class="st-celebration-modal">
+        <div class="st-celebration-icon">
+          <svg viewBox="0 0 80 80" class="st-celebration-svg">
+            <circle cx="40" cy="40" r="36" fill="none" stroke="#2d5d5a" stroke-width="3" opacity="0.2"/>
+            <circle cx="40" cy="40" r="36" fill="none" stroke="#2d5d5a" stroke-width="3"
+              stroke-dasharray="226" stroke-dashoffset="226" class="st-celebration-circle"/>
+            <path d="M24 42 L35 53 L56 30" fill="none" stroke="#2d5d5a" stroke-width="4"
+              stroke-linecap="round" stroke-linejoin="round"
+              stroke-dasharray="60" stroke-dashoffset="60" class="st-celebration-check"/>
+          </svg>
+        </div>
+        <h2 class="st-celebration-title">恭喜完成新手教学！</h2>
+        <p class="st-celebration-desc">你已经掌握了 StoryTree 的核心功能。<br>未来如果还需要，可以进入<strong>个人中心</strong>随时重新查看教程。</p>
+        <button class="st-celebration-btn" onclick="this.closest('.st-celebration-overlay').remove()">
+          开始创作之旅
+        </button>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('st-celebration-overlay--visible'));
   }
 }
 

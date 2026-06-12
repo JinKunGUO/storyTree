@@ -7,6 +7,9 @@
             max-width: 1200px;
             margin: 20px auto;
             padding: 0 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
         }
 
         .write-header {
@@ -81,16 +84,63 @@
             border: none !important;
             border-bottom: 1px solid var(--st-gray-200) !important;
             padding: 8px 12px !important;
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .ql-toolbar .ql-formats {
+            display: inline-flex !important;
+            align-items: center;
+            flex-shrink: 0;
+            margin-right: 8px !important;
         }
 
         .ql-toolbar .ql-formats button {
             width: 28px !important;
             height: 28px !important;
             padding: 4px !important;
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ql-toolbar .ql-formats button svg {
+            width: 18px !important;
+            height: 18px !important;
         }
 
         .ql-toolbar .ql-formats .ql-picker {
             height: 28px !important;
+        }
+
+        .ql-toolbar .ql-formats .ql-color-picker,
+        .ql-toolbar .ql-formats .ql-icon-picker {
+            width: 28px !important;
+            height: 28px !important;
+        }
+
+        .ql-toolbar .ql-formats .ql-color-picker .ql-picker-label,
+        .ql-toolbar .ql-formats .ql-icon-picker .ql-picker-label {
+            padding: 2px 4px !important;
+        }
+
+        .ql-toolbar .ql-formats .ql-color-picker .ql-picker-label svg,
+        .ql-toolbar .ql-formats .ql-icon-picker .ql-picker-label svg {
+            width: 18px !important;
+            height: 18px !important;
+        }
+
+        .ql-toolbar .ql-formats .ql-picker.ql-header {
+            width: auto !important;
+            height: 28px !important;
+        }
+
+        .ql-toolbar .ql-formats .ql-picker.ql-header .ql-picker-label {
+            padding: 2px 8px !important;
+            display: inline-flex !important;
+            align-items: center;
         }
 
         .ql-container {
@@ -706,11 +756,6 @@
         }
 
         /* ==================== 侧边栏样式 ==================== */
-        .write-container {
-            display: flex;
-            align-items: flex-start;
-            gap: 20px;
-        }
 
         .write-sidebar {
             width: 350px;
@@ -978,9 +1023,6 @@
 
             .ql-toolbar {
                 padding: 6px 8px !important;
-                overflow-x: auto;
-                flex-wrap: nowrap;
-                -webkit-overflow-scrolling: touch;
             }
 
             .ql-toolbar .ql-formats {

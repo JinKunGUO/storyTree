@@ -118,11 +118,26 @@
             </div>
         </div>
 
+        <!-- 帮助与教程 -->
+        <div class="content-section" id="helpSection">
+            <div class="section-header">
+                <h2 class="section-title"><i class="fas fa-graduation-cap"></i> 帮助与教程</h2>
+            </div>
+            <div class="help-actions" style="display:flex;flex-wrap:wrap;gap:12px;">
+                <button class="btn" id="btnRestartTour" onclick="restartOnboardingTour()" style="background:var(--st-bg-primary,#fff);border:1px solid #2d5d5a;color:#2d5d5a;padding:10px 18px;border-radius:8px;cursor:pointer;font-size:14px;">
+                    <i class="fas fa-redo"></i> 重新查看新手引导
+                </button>
+                <button class="btn" onclick="window.location.href='/story.html?id=1&guide=concept'" style="background:var(--st-bg-primary,#fff);border:1px solid #2d5d5a;color:#2d5d5a;padding:10px 18px;border-radius:8px;cursor:pointer;font-size:14px;">
+                    <i class="fas fa-sitemap"></i> 了解故事树概念
+                </button>
+            </div>
+        </div>
+
         <!-- 我的故事 -->
         <div class="content-section">
             <div class="section-header">
                 <h2 class="section-title"><i class="fas fa-book-open"></i> 我的故事</h2>
-                <a href="/create.html" class="btn btn-primary">
+                <a href="/create-ai.html" class="btn btn-primary">
                     <i class="fas fa-plus"></i> 创建新故事
                 </a>
             </div>
@@ -342,6 +357,37 @@
         </div>
     </div>
 
+<script>
+    function restartOnboardingTour() {
+      // 重置进度
+      const defaultProgress = {
+        tasks: {
+          completedTour: false,
+          browsedDiscover: false,
+          viewedStoryTree: false,
+          createdStory: false,
+          publishedChapter: false
+        },
+        conceptGuideSeen: false
+      };
+      localStorage.setItem('st_onboarding_progress', JSON.stringify(defaultProgress));
+      localStorage.removeItem('st_celebration_shown');
+      localStorage.removeItem('st_user_state');
+
+      // 同步到服务端
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (token) {
+        fetch('/api/auth/onboarding-progress', {
+          method: 'PUT',
+          headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ progress: defaultProgress })
+        }).catch(function() {});
+      }
+
+      // 跳转到首页触发欢迎弹窗
+      window.location.href = '/?welcome=1';
+    }
+</script>
 <script src="js/pages/profile.js"></script>
     <script src="js/loading.js"></script>
     <script src="js/toast.js"></script>

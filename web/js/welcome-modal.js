@@ -106,8 +106,8 @@ class WelcomeModal {
       {
         key: 'completedTour',
         icon: '<i class="fas fa-route"></i>',
-        title: '完成新手引导',
-        desc: '跟随引导了解核心功能',
+        title: '熟悉平台功能',
+        desc: '跟随引导快速了解各页面功能',
         completed: !!tasks.completedTour,
         href: null // 启动 tour
       },
@@ -117,7 +117,7 @@ class WelcomeModal {
         title: '浏览发现页',
         desc: '探索社区中的精彩故事',
         completed: !!tasks.browsedDiscover,
-        href: '/discover.html'
+        href: '/discover.html?guide=discover'
       },
       {
         key: 'viewedStoryTree',
@@ -133,7 +133,7 @@ class WelcomeModal {
         title: '创建第一个故事',
         desc: '开启你的创作之旅',
         completed: !!tasks.createdStory,
-        href: '/create.html'
+        href: '/create-ai.html?guide=create-ai'
       },
       {
         key: 'publishedChapter',
@@ -141,7 +141,7 @@ class WelcomeModal {
         title: '发布第一个章节',
         desc: '让你的故事被更多人看到',
         completed: !!tasks.publishedChapter,
-        href: '/my-stories.html'
+        href: '/my-stories.html?guide=publish'
       }
     ];
   }
@@ -190,16 +190,8 @@ class WelcomeModal {
           }, 300);
         } else if (taskKey === 'viewedStoryTree') {
           this.hide();
-          // 如果已在首页，直接触发概念讲解；否则跳转到首页
-          if (window.location.pathname === '/' || window.location.pathname === '/index.html') {
-            setTimeout(() => {
-              if (window.conceptGuide) {
-                window.conceptGuide.show();
-              }
-            }, 300);
-          } else {
-            window.location.href = '/?guide=concept';
-          }
+          // 跳转到示例故事页面触发概念引导
+          this._navigateToStoryForConcept();
         } else if (href) {
           this.hide();
           window.location.href = href;
@@ -222,6 +214,45 @@ class WelcomeModal {
       }
     };
     document.addEventListener('keydown', this._escHandler);
+  }
+
+  /**
+   * 跳转到示例故事页面触发概念引导
+   * 逻辑与 tour.js 中 navigateToStoryForConcept 一致
+   */
+  async _navigateToStoryForConcept() {
+    let storyId = null;
+
+    try {
+      const res = await fetch('/api/stories?search=反三国演义&limit=1');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.stories && data.stories.length > 0) {
+          storyId = data.stories[0].id;
+        }
+      }
+
+      if (!storyId) {
+        const res2 = await fetch('/api/stories?limit=1');
+        if (res2.ok) {
+          const data2 = await res2.json();
+          if (data2.stories && data2.stories.length > 0) {
+            storyId = data2.stories[0].id;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[WelcomeModal] Failed to fetch example story:', e);
+    }
+
+    if (storyId) {
+      window.location.href = `/story.html?id=${storyId}&guide=concept`;
+    } else {
+      // fallback：在当前页直接触发概念引导
+      if (window.conceptGuide) {
+        window.conceptGuide.show();
+      }
+    }
   }
 
   _getDefaultProgress() {

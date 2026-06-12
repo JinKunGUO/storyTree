@@ -158,6 +158,9 @@ function renderMethodForm(method) {
     case 'template':
       html = renderTemplateForm();
       break;
+    case 'manual':
+      html = renderManualForm();
+      break;
   }
 
   methodContent.innerHTML = html;
@@ -314,6 +317,43 @@ function renderTemplateForm() {
   `;
 }
 
+// 渲染直接创建表单
+function renderManualForm() {
+  return `
+    <h2 style="margin-bottom: 25px; font-size: 24px;">直接创建故事</h2>
+
+    <div class="form-group">
+      <label>故事标题 <span class="label-hint">（必填）</span></label>
+      <input type="text" class="form-input" id="manualTitle" placeholder="给你的故事起一个吸引人的标题" maxlength="50">
+      <div class="char-count">0/50</div>
+    </div>
+
+    <div class="form-group">
+      <label>故事简介 <span class="label-hint">（必填）</span></label>
+      <textarea
+        class="form-textarea"
+        id="manualDescription"
+        placeholder="用几句话描述你的故事核心内容，让读者快速了解故事的主题和看点"
+        maxlength="500"
+      ></textarea>
+      <div class="char-count">0/500</div>
+    </div>
+
+    <div class="form-group">
+      <label>故事类型</label>
+      <select class="form-select" id="manualGenre">
+        <option value="">请选择类型</option>
+        ${GENRES.map(g => `<option value="${g}">${g}</option>`).join('')}
+      </select>
+    </div>
+
+    <button class="btn-generate" id="btnManualCreate">
+      <i class="fas fa-rocket"></i>
+      创建故事
+    </button>
+  `;
+}
+
 // 绑定表单事件
 function bindFormEvents(method) {
   const genreSelector = document.getElementById('genreSelector');
@@ -451,6 +491,31 @@ function bindFormEvents(method) {
   // 生成按钮
   if (btnGenerate) {
     btnGenerate.addEventListener('click', handleGenerate);
+  }
+
+  // 直接创建表单绑定
+  if (method === 'manual') {
+    const manualTitle = document.getElementById('manualTitle');
+    const manualDesc = document.getElementById('manualDescription');
+    const btnManualCreate = document.getElementById('btnManualCreate');
+
+    if (manualTitle) {
+      manualTitle.addEventListener('input', (e) => {
+        const countDiv = manualTitle.parentElement.querySelector('.char-count');
+        if (countDiv) countDiv.textContent = `${e.target.value.length}/${manualTitle.maxLength}`;
+      });
+    }
+
+    if (manualDesc) {
+      manualDesc.addEventListener('input', (e) => {
+        const countDiv = manualDesc.parentElement.querySelector('.char-count');
+        if (countDiv) countDiv.textContent = `${e.target.value.length}/${manualDesc.maxLength}`;
+      });
+    }
+
+    if (btnManualCreate) {
+      btnManualCreate.addEventListener('click', handleManualCreate);
+    }
   }
 }
 
@@ -1183,6 +1248,73 @@ async function pollRevisionStatus(taskId) {
   watchCreationTask(taskId, true);
 }
 
+// 处理直接创建故事
+async function handleManualCreate() {
+  const title = document.getElementById('manualTitle')?.value.trim();
+  const description = document.getElementById('manualDescription')?.value.trim();
+  const genre = document.getElementById('manualGenre')?.value || '';
+
+  if (!title) {
+    alert('请输入故事标题');
+    return;
+  }
+  if (!description) {
+    alert('请输入故事简介');
+    return;
+  }
+
+  const btn = document.getElementById('btnManualCreate');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 创建中...';
+  }
+
+  try {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    const response = await fetch('/api/stories', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ title, description, genre })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || '创建失败');
+    }
+
+    const storyId = data.story?.id || data.id;
+
+    // 标记新手任务
+    try {
+      const progressStr = localStorage.getItem('st_onboarding_progress');
+      let progress = progressStr ? JSON.parse(progressStr) : {};
+      if (!progress.tasks) progress.tasks = {};
+      if (!progress.tasks.createdStory) {
+        progress.tasks.createdStory = true;
+        localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
+        fetch('/api/auth/onboarding-progress', {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ progress })
+        }).catch(() => {});
+      }
+    } catch (e) { /* ignore */ }
+
+    // 跳转到写作页
+    window.location.href = `/write.html?storyId=${storyId}&from=create`;
+
+  } catch (error) {
+    alert('创建失败：' + error.message);
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-rocket"></i> 创建故事';
+    }
+  }
+}
+
 // 处理返回
 function handleBack() {
   if (loadingContainer.classList.contains('active')) {
@@ -1386,6 +1518,22 @@ async function handleConfirm() {
         console.warn('自动创建第一章失败，用户可手动创建:', e);
       }
     }
+
+    // 标记新手任务：创建第一个故事
+    try {
+      const progressStr = localStorage.getItem('st_onboarding_progress');
+      let progress = progressStr ? JSON.parse(progressStr) : {};
+      if (!progress.tasks) progress.tasks = {};
+      if (!progress.tasks.createdStory) {
+        progress.tasks.createdStory = true;
+        localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
+        fetch('/api/auth/onboarding-progress', {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ progress })
+        }).catch(() => {});
+      }
+    } catch (e) { /* ignore */ }
 
     // 跳转到创作台：如果有第一章节点则进入编辑模式
     if (firstNodeId) {

@@ -318,6 +318,9 @@ function handleRegister() {
                 
                 // 跳转到主页
                 console.log('准备跳转到首页');
+                // 清除引导相关缓存，确保首页能正确触发欢迎弹窗
+                localStorage.removeItem('st_user_state');
+                localStorage.setItem('st_just_registered', 'true');
                 window.location.href = '/';
             } else {
                 // 显示错误信息
@@ -427,6 +430,8 @@ function handleLogin() {
                 const rawRedirectUrl = new URLSearchParams(window.location.search).get('redirect') || '/';
                 const redirectUrl = validateRedirectUrl(rawRedirectUrl);
                 console.log('准备跳转到:', redirectUrl);
+                // 清除引导缓存，确保新用户首页能正确触发欢迎弹窗
+                localStorage.removeItem('st_user_state');
                 window.location.href = redirectUrl;
             } else if (response.status === 403 && data.code === 'EMAIL_NOT_VERIFIED') {
                 // 邮箱未验证：触发自定义事件，由 login.html 中的脚本处理提示横幅

@@ -12,6 +12,9 @@
     <link rel="stylesheet" href="styles/responsive.css">
     <link href="libs/fontawesome/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/components/navbar.css">
+    <link rel="stylesheet" href="styles/tour.css">
+    <link rel="stylesheet" href="styles/onboarding.css">
+    <link rel="stylesheet" href="libs/driver.js/driver.css">
     <style>
         body {
             background: var(--st-bg-secondary);
@@ -590,6 +593,13 @@
             margin-bottom: 8px;
         }
 
+        .editable-chapter-title input.editable-field {
+            padding: 4px 8px;
+            margin-top: 0;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
         .editable-highlight {
             display: flex;
             align-items: center;
@@ -742,6 +752,11 @@
                 <h3>故事模板</h3>
                 <p>新手友好！使用预制模板快速搭建故事框架</p>
             </div>
+            <div class="method-card" data-method="manual">
+                <div class="method-icon">✏️</div>
+                <h3>直接创建</h3>
+                <p>已有明确想法？跳过AI，直接填写标题和简介创建故事</p>
+            </div>
         </div>
 
         <!-- 方法内容区域 -->
@@ -799,6 +814,33 @@
     </script>
     <script src="auth.js?v=2"></script>
     <script src="js/ws-client.js?v=2"></script>
+    <script src="libs/driver.js/driver.js.iife.js"></script>
+    <script src="js/tour.js?v=2"></script>
+    <script src="js/welcome-modal.js?v=2"></script>
+    <script src="js/onboarding-manager.js?v=2"></script>
     <script src="js/pages/create-ai.js"></script>
+    <script>
+        // AI辅助创作页引导初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('guide') === 'create-ai' && window.onboardingManager) {
+                // 清理 URL 参数
+                const url = new URL(window.location.href);
+                url.searchParams.delete('guide');
+                window.history.replaceState({}, '', url.toString());
+                // 延迟启动引导等待页面渲染
+                setTimeout(() => {
+                    if (window.StoryTreeTour) {
+                        const tour = new StoryTreeTour();
+                        tour.startCreateAiTour();
+                    }
+                }, 800);
+            }
+            // 初始化 onboarding manager
+            if (window.onboardingManager) {
+                window.onboardingManager.init('create-ai');
+            }
+        });
+    </script>
 </body>
 </html>

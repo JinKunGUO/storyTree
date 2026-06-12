@@ -1738,7 +1738,7 @@ profileHeader.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-book"></i>
                     <p>还没有创作任何故事</p>
-                    <a href="/create.html" class="btn btn-primary">
+                    <a href="/create-ai.html" class="btn btn-primary">
                         <i class="fas fa-plus"></i> 创建第一个故事
                     </a>
                 </div>

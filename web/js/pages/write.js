@@ -33,6 +33,9 @@
             setTimeout(() => {
                 initAiFeature();
             }, 100);
+
+            // 检测从创建页跳转来的情况，弹出下一步提示
+            checkFromCreateToast();
         });
         
         // 检查编辑模式
@@ -51,6 +54,49 @@
             } else {
                 console.log('📝 创作模式');
             }
+        }
+
+        // 检测从创建页跳转过来，弹出下一步提示
+        function checkFromCreateToast() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const from = urlParams.get('from');
+            if (from !== 'create') return;
+
+            // 清理 URL 中的 from 参数
+            const url = new URL(window.location.href);
+            url.searchParams.delete('from');
+            window.history.replaceState({}, '', url.toString());
+
+            // 延迟弹出提示，等待页面加载完成
+            setTimeout(() => {
+                const toast = document.createElement('div');
+                toast.className = 'st-next-step-toast';
+                toast.innerHTML = `
+                    <div class="st-next-step-content">
+                        <i class="fas fa-check-circle" style="color:#2d5d5a;font-size:18px;"></i>
+                        <div class="st-next-step-text">
+                            <strong>故事创建成功！</strong>
+                            <span>撰写内容后点击"发布章节"完成最后一步</span>
+                        </div>
+                        <button class="st-next-step-close" aria-label="关闭">&times;</button>
+                    </div>
+                `;
+                document.body.appendChild(toast);
+                requestAnimationFrame(() => toast.classList.add('st-next-step-toast--visible'));
+
+                toast.querySelector('.st-next-step-close').addEventListener('click', () => {
+                    toast.classList.remove('st-next-step-toast--visible');
+                    setTimeout(() => toast.remove(), 300);
+                });
+
+                // 8秒后自动消失
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.classList.remove('st-next-step-toast--visible');
+                        setTimeout(() => toast.remove(), 300);
+                    }
+                }, 8000);
+            }, 2000);
         }
 
         // 初始化编辑器
@@ -263,7 +309,7 @@
                 console.error('故事ID不存在');
                 showError('故事ID不存在');
                 setTimeout(() => {
-                    window.location.href = '/create.html';
+                    window.location.href = '/create-ai.html';
                 }, 2000);
                 return;
             }
@@ -583,6 +629,31 @@
                     // 发布模式：显示成功消息并跳转
                     showSuccess(`${chapterNum}发布成功！即将跳转...`);
                     
+                    // 标记新手任务：发布第一个章节
+                    try {
+                      const progressStr = localStorage.getItem('st_onboarding_progress');
+                      let progress = progressStr ? JSON.parse(progressStr) : {};
+                      if (!progress.tasks) progress.tasks = {};
+                      if (!progress.tasks.publishedChapter) {
+                        progress.tasks.publishedChapter = true;
+                        localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
+                        const tk = localStorage.getItem('token') || sessionStorage.getItem('token');
+                        if (tk) {
+                          fetch('/api/auth/onboarding-progress', {
+                            method: 'PUT',
+                            headers: { 'Authorization': `Bearer ${tk}`, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ progress })
+                          }).catch(() => {});
+                        }
+                        // 检查是否所有任务完成，标记待显示（跳转后在章节页展示）
+                        if (window.onboardingManager && window.onboardingManager.allTasksCompleted(progress)) {
+                          if (!localStorage.getItem('st_celebration_shown')) {
+                            localStorage.setItem('st_celebration_pending', 'true');
+                          }
+                        }
+                      }
+                    } catch (e) { /* ignore */ }
+
                     // 清除未保存标记
                     hasUnsavedChanges = false;
                     
@@ -716,6 +787,31 @@
                         showSuccess('章节更新成功！即将返回...');
                     }
                     
+                    // 标记新手任务：发布第一个章节
+                    try {
+                      const progressStr = localStorage.getItem('st_onboarding_progress');
+                      let progress = progressStr ? JSON.parse(progressStr) : {};
+                      if (!progress.tasks) progress.tasks = {};
+                      if (!progress.tasks.publishedChapter) {
+                        progress.tasks.publishedChapter = true;
+                        localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
+                        const tk = localStorage.getItem('token') || sessionStorage.getItem('token');
+                        if (tk) {
+                          fetch('/api/auth/onboarding-progress', {
+                            method: 'PUT',
+                            headers: { 'Authorization': `Bearer ${tk}`, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ progress })
+                          }).catch(() => {});
+                        }
+                        // 检查是否所有任务完成
+                        if (window.onboardingManager && window.onboardingManager.allTasksCompleted(progress)) {
+                          if (!localStorage.getItem('st_celebration_shown')) {
+                            localStorage.setItem('st_celebration_pending', 'true');
+                          }
+                        }
+                      }
+                    } catch (e) { /* ignore */ }
+
                     // 清除未保存标记
                     hasUnsavedChanges = false;
                     

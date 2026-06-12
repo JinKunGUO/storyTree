@@ -199,10 +199,91 @@
 }
 
 .driver-popover-footer {
-  display: flex !important;
+  display: flex;
   align-items: center !important;
   flex-wrap: nowrap !important;
   gap: 8px !important;
+}
+
+/* 单步高亮模式隐藏导航按钮（通过 popoverClass 控制） */
+.driver-popover.st-highlight-only .driver-popover-footer {
+  display: none !important;
+}
+
+/* ===== 概念引导高亮步骤（含操作按钮） ===== */
+.driver-popover.st-concept-highlight .driver-popover-footer {
+  display: none !important;
+}
+
+.st-concept-highlight-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(45, 93, 90, 0.1);
+}
+
+.st-concept-highlight-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #2d5d5a 0%, #3a7a76 100%);
+  color: #fff !important;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(45, 93, 90, 0.3);
+}
+
+.st-concept-highlight-cta:hover {
+  background: linear-gradient(135deg, #245250 0%, #2d5d5a 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(45, 93, 90, 0.4);
+}
+
+.st-concept-highlight-dismiss {
+  display: block;
+  width: 100%;
+  padding: 8px 16px;
+  background: transparent;
+  color: #9ca3af;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.st-concept-highlight-dismiss:hover {
+  color: #2d5d5a;
+  background: #f0f4f3;
+}
+
+@media (prefers-color-scheme: dark) {
+  .st-concept-highlight-actions {
+    border-top-color: rgba(110, 231, 183, 0.15);
+  }
+
+  .st-concept-highlight-cta {
+    background: linear-gradient(135deg, #2d5d5a 0%, #059669 100%);
+    box-shadow: 0 4px 12px rgba(6, 150, 105, 0.3);
+  }
+
+  .st-concept-highlight-dismiss {
+    color: #6b7280;
+  }
+
+  .st-concept-highlight-dismiss:hover {
+    color: #6ee7b7;
+    background: #374151;
+  }
 }
 
 /* ===== 移动端响应式 (375px 适配) ===== */
@@ -256,5 +337,11 @@
   .driver-popover {
     transition: none !important;
   }
+}
+
+/* ===== 概念引导高亮模式：加快关闭响应 ===== */
+.driver-popover.st-highlight-only ~ .driver-overlay,
+.driver-popover.st-highlight-only {
+  transition-duration: 0.1s !important;
 }
 

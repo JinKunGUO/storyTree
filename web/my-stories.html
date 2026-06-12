@@ -29,12 +29,17 @@
 
         .page-header {
             margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
         }
 
         .page-header h1 {
             font-size: 28px;
             color: var(--st-text-primary);
-            margin-bottom: 10px;
+            margin-bottom: 0;
+            white-space: nowrap;
         }
 
         .filter-tabs {
@@ -229,8 +234,9 @@
             font-size: var(--st-text-base);
             font-weight: var(--st-font-semibold);
             cursor: pointer;
-            margin-top: 20px;
             transition: all 0.2s var(--st-ease-bounce);
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .create-story-btn:hover {
@@ -310,8 +316,8 @@
                 font-size: 48px;
             }
             .create-story-btn {
-                width: 100%;
-                justify-content: center;
+                padding: 10px 16px;
+                font-size: 13px;
             }
         }
     </style>
@@ -354,7 +360,7 @@
     <div class="my-stories-container">
         <div class="page-header">
             <h1>我的故事</h1>
-            <button class="create-story-btn" onclick="window.location.href='/create.html'">
+            <button class="create-story-btn" onclick="window.location.href='/create-ai.html'">
                 <i class="fas fa-plus"></i>
                 创建新故事
             </button>
@@ -374,7 +380,7 @@
             <i class="fas fa-book-open"></i>
             <h3>还没有故事</h3>
             <p>开始创建你的第一个故事吧！</p>
-            <button class="create-story-btn" onclick="window.location.href='/create.html'">
+            <button class="create-story-btn" onclick="window.location.href='/create-ai.html'">
                 <i class="fas fa-plus"></i>
                 创建故事
             </button>
@@ -617,6 +623,7 @@
     <script src="js/tour.js?v=2" defer></script>
     <script src="js/welcome-modal.js?v=2" defer></script>
     <script src="js/onboarding-manager.js?v=2" defer></script>
+    <script src="js/page-guide-bridge.js?v=1" defer></script>
     <!-- 页脚 -->
     <footer style="text-align: center; padding: 20px; margin-top: 40px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
         <p>© 2026 StoryTree. 用心创作每一个故事。</p>

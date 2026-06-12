@@ -474,9 +474,25 @@
                     document.getElementById('successMessage').style.display = 'block';
                     document.getElementById('successMessage').innerHTML = '<i class="fas fa-check-circle"></i> 故事创建成功！正在跳转到撰写页面...';
                     
-                    // 跳转到撰写页面
+                    // 标记新手任务：创建第一个故事
+                    try {
+                      const progressStr = localStorage.getItem('st_onboarding_progress');
+                      let progress = progressStr ? JSON.parse(progressStr) : {};
+                      if (!progress.tasks) progress.tasks = {};
+                      if (!progress.tasks.createdStory) {
+                        progress.tasks.createdStory = true;
+                        localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
+                        fetch('/api/auth/onboarding-progress', {
+                          method: 'PUT',
+                          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ progress })
+                        }).catch(() => {});
+                      }
+                    } catch (e) { /* ignore */ }
+
+                    // 跳转到撰写页面（附带 from=create 参数用于下一步提示）
                     setTimeout(() => {
-                        window.location.href = `/write.html?storyId=${data.story.id}`;
+                        window.location.href = `/write.html?storyId=${data.story.id}&from=create`;
                     }, 1500);
                 } else {
                     toast.error(data.error || '创建失败，请重试');
@@ -511,6 +527,7 @@
     <script src="js/tour.js?v=2" defer></script>
     <script src="js/welcome-modal.js?v=2" defer></script>
     <script src="js/onboarding-manager.js?v=2" defer></script>
+    <script src="js/page-guide-bridge.js?v=1" defer></script>
     <!-- 页脚 -->
     <footer style="text-align: center; padding: 20px; margin-top: 40px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
         <p>© 2026 StoryTree. 用心创作每一个故事。</p>

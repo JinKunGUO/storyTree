@@ -375,6 +375,22 @@
                             // 显示成功消息
                             showSuccess(data.message || '章节发布成功！');
 
+                            // 标记新手任务：发布第一个章节
+                            try {
+                              const progressStr = localStorage.getItem('st_onboarding_progress');
+                              let progress = progressStr ? JSON.parse(progressStr) : {};
+                              if (!progress.tasks) progress.tasks = {};
+                              if (!progress.tasks.publishedChapter) {
+                                progress.tasks.publishedChapter = true;
+                                localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
+                                fetch('/api/auth/onboarding-progress', {
+                                  method: 'PUT',
+                                  headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                                  body: JSON.stringify(progress)
+                                }).catch(() => {});
+                              }
+                            } catch (e) { /* ignore */ }
+
                             // 隐藏发布按钮
                             publishBtn.style.display = 'none';
 

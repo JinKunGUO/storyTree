@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="styles/responsive.css">
     <link href="libs/fontawesome/css/all.min.css" rel="stylesheet">
 <link rel="stylesheet" href="css/pages/chapter.css">
+    <link rel="stylesheet" href="styles/onboarding.css">
 </head>
 <body>
     <!-- 阅读进度条 -->
@@ -566,6 +567,39 @@
     <script src="js/toast.js"></script>
     <script src="js/modal.js"></script>
     <script src="js/navbar.js"></script>
+    <script>
+      // 检查是否有待显示的新手教程完成庆祝弹窗
+      window.addEventListener('load', function() {
+        if (localStorage.getItem('st_celebration_pending') !== 'true') return;
+        if (localStorage.getItem('st_celebration_shown')) {
+          localStorage.removeItem('st_celebration_pending');
+          return;
+        }
+        // 延迟显示，让用户先看到章节内容
+        setTimeout(function() {
+          localStorage.removeItem('st_celebration_pending');
+          localStorage.setItem('st_celebration_shown', 'true');
+          var overlay = document.createElement('div');
+          overlay.className = 'st-celebration-overlay';
+          overlay.innerHTML = '<div class="st-celebration-modal">' +
+            '<div class="st-celebration-icon">' +
+              '<svg viewBox="0 0 80 80" class="st-celebration-svg">' +
+                '<circle cx="40" cy="40" r="36" fill="none" stroke="#2d5d5a" stroke-width="3" opacity="0.2"/>' +
+                '<circle cx="40" cy="40" r="36" fill="none" stroke="#2d5d5a" stroke-width="3" stroke-dasharray="226" stroke-dashoffset="226" class="st-celebration-circle"/>' +
+                '<path d="M24 42 L35 53 L56 30" fill="none" stroke="#2d5d5a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="60" stroke-dashoffset="60" class="st-celebration-check"/>' +
+              '</svg>' +
+            '</div>' +
+            '<h2 class="st-celebration-title">恭喜完成新手教学！</h2>' +
+            '<p class="st-celebration-desc">你已经掌握了 StoryTree 的核心功能。<br>未来如果还需要，可以进入<strong>个人中心</strong>随时重新查看教程。</p>' +
+            '<button class="st-celebration-btn" onclick="this.closest(\'.st-celebration-overlay\').remove()">开始创作之旅</button>' +
+          '</div>';
+          document.body.appendChild(overlay);
+          requestAnimationFrame(function() {
+            overlay.classList.add('st-celebration-overlay--visible');
+          });
+        }, 2000);
+      });
+    </script>
     <!-- 页脚 -->
     <footer style="text-align: center; padding: 20px; margin-top: 40px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
         <p>© 2026 StoryTree. 用心创作每一个故事。</p>
