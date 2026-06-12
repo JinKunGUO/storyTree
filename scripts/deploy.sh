@@ -240,16 +240,22 @@ check_prisma_client() {
         NEED_REGENERATE=true
     fi
 
-    # 4. 尝试 TypeScript 编译检查，验证 Prisma 客户端类型是否与 schema 一致
-    #    通过检查 schema 中的 model 数量与生成的类型文件中的 model 数量是否匹配
+    # 4. 验证 Prisma 客户端类型是否与 schema 一致
+    #    通过检查 schema 中的 model 名称是否在生成的类型文件中存在
     if [ "$NEED_REGENERATE" = false ] && [ -f "$PRISMA_CLIENT_DIR/index.d.ts" ]; then
-        # 统计 schema 中的 model 数量
-        SCHEMA_MODEL_COUNT=$(grep -c "^model " "$SCHEMA_FILE" 2>/dev/null || echo "0")
-        # 统计生成的类型文件中的 model 接口数量
-        CLIENT_MODEL_COUNT=$(grep -c "export type " "$PRISMA_CLIENT_DIR/index.d.ts" 2>/dev/null || echo "0")
-        # 如果 model 数量差异过大（允许少量差异因为有些是内部类型），则标记需要重新生成
-        if [ "$SCHEMA_MODEL_COUNT" -gt 0 ] && [ "$CLIENT_MODEL_COUNT" -lt "$((SCHEMA_MODEL_COUNT * 2))" ]; then
-            log_warn "Prisma 客户端类型数量（$CLIENT_MODEL_COUNT）与 schema model 数量（$SCHEMA_MODEL_COUNT）不匹配"
+        # 提取 schema 中所有 model 名称
+        SCHEMA_MODELS=$(grep "^model " "$SCHEMA_FILE" 2>/dev/null | awk '{print $2}')
+        MISSING_MODELS=0
+        for model in $SCHEMA_MODELS; do
+            # 检查生成的类型文件中是否包含该 model 的类型定义
+            # Prisma 生成的类型格式：export type ${model}ScalarFieldEnum 或 export type ${model} = ...
+            if ! grep -q "export type $model " "$PRISMA_CLIENT_DIR/index.d.ts" 2>/dev/null; then
+                log_warn "Prisma 客户端缺少 model 类型: $model"
+                MISSING_MODELS=$((MISSING_MODELS + 1))
+            fi
+        done
+        if [ "$MISSING_MODELS" -gt 0 ]; then
+            log_warn "Prisma 客户端缺少 $MISSING_MODELS 个 model 类型，需要重新生成"
             NEED_REGENERATE=true
         fi
     fi
