@@ -88,9 +88,15 @@
             margin-bottom: 10px;
             display: flex;
             align-items: center;
+            flex-wrap: wrap;
             gap: 8px;
             font-size: 16px;
             font-weight: 600;
+        }
+
+        .profile-points span {
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .profile-points i {
@@ -169,7 +175,10 @@
             cursor: pointer;
             transition: all 0.3s ease;
             text-decoration: none;
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
 
         .btn-primary {
@@ -1317,6 +1326,31 @@
                 gap: 12px;
             }
 
+            /* 签到组件：移动端全宽 */
+            .compact-checkin-widget {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+
+            /* 移动端 section-header 适配：标题不换行，按钮缩短 */
+            .section-header {
+                gap: 8px;
+            }
+
+            .section-header .section-title {
+                white-space: nowrap;
+                flex-shrink: 0;
+                font-size: 16px;
+            }
+
+            .section-header .btn {
+                padding: 8px 12px;
+                font-size: 12px;
+                white-space: nowrap;
+                flex-shrink: 0;
+                width: auto !important;
+            }
+
             /* 主内容区：头像+信息 纵向排列 */
             .profile-main-content {
                 flex-direction: column !important;
@@ -1523,6 +1557,70 @@
             #userLevelCard > div:first-child {
                 flex-direction: column;
                 text-align: center;
+            }
+        }
+
+        /* ========================================
+           iPad 适配（768px - 1024px）
+           ======================================== */
+        @media (min-width: 641px) and (max-width: 1024px) {
+            /* 个人信息头部：保持横向布局，缩小内边距 */
+            .profile-header {
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+                text-align: left !important;
+                overflow: visible !important;
+                gap: 20px !important;
+                padding: 25px !important;
+            }
+
+            /* iPad 下按钮不要全宽 */
+            .profile-header .btn {
+                width: auto !important;
+            }
+
+            /* 签到日历组件：缩小宽度，紧凑显示 */
+            .compact-checkin-widget {
+                width: 260px !important;
+                max-width: 260px !important;
+                padding: 15px !important;
+            }
+
+            .compact-checkin-widget .compact-calendar-grid {
+                gap: 2px !important;
+            }
+
+            .compact-checkin-widget .compact-calendar-day {
+                font-size: 10px !important;
+            }
+
+            .compact-checkin-widget .compact-checkin-header {
+                font-size: 13px !important;
+                margin-bottom: 8px !important;
+            }
+
+            /* 等级卡片：确保内容不被压缩，允许换行 */
+            #userLevelCard {
+                flex-wrap: wrap !important;
+            }
+
+            #userLevelCard > div:first-child {
+                min-width: 0 !important;
+                flex: 1 1 auto !important;
+            }
+
+            #userLevelCard > a {
+                flex-shrink: 0 !important;
+            }
+
+            /* 统计行：保持4列网格 */
+            .profile-stats-row {
+                grid-template-columns: repeat(4, 1fr) !important;
+            }
+
+            /* section-header 在 iPad 下保持横向 */
+            .section-header .btn {
+                width: auto !important;
             }
         }
 

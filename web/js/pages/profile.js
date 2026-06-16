@@ -587,10 +587,22 @@ profileHeader.innerHTML = `
             // 更新用户等级显示（必须在 innerHTML 设置之后）
             updateUserLevelDisplay(points);
             
-            // 显示里程碑成就徽章在用户名旁边
+            // 显示里程碑成就徽章在用户名旁边（只展示最高等级）
             const badgeContainer = document.getElementById('userBadgeContainer');
             if (badgeContainer) {
                 if (hasBadges && userBadges.length > 0) {
+                    // 里程碑等级从低到高排列
+                    const badgeRankOrder = ['rookie', 'achiever', 'diligent', 'professional', 'signed', 'master', 'legend'];
+                    // 找到用户拥有的最高等级勋章
+                    let highestBadgeId = userBadges[0];
+                    let highestRank = -1;
+                    userBadges.forEach(badgeId => {
+                        const rank = badgeRankOrder.indexOf(badgeId);
+                        if (rank > highestRank) {
+                            highestRank = rank;
+                            highestBadgeId = badgeId;
+                        }
+                    });
                     badgeContainer.innerHTML = `
                         <div style="
                             display: inline-flex;
@@ -598,7 +610,7 @@ profileHeader.innerHTML = `
                             gap: 8px;
                             flex-wrap: wrap;
                         ">
-                            ${userBadges.map(badgeId => getBadgeDisplay(badgeId)).join('')}
+                            ${getBadgeDisplay(highestBadgeId)}
                             <button class="help-hint-btn" onclick="showMilestoneInfo()" title="查看里程碑说明">?</button>
                         </div>
                     `;
