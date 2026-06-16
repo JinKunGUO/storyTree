@@ -193,16 +193,23 @@ class OnboardingManager {
     // 场景 5：首页不再显示进度卡片（已移除）
     // 灯泡按钮已在上方 showNavHelpButton 中处理
 
+    // 检查是否有待显示的祝贺弹窗（跨页面跳转后触发）
+    if (localStorage.getItem('st_celebration_pending')) {
+      localStorage.removeItem('st_celebration_pending');
+      this.checkAndCelebrate();
+    }
+
     // 始终增强空状态
     this.enhanceEmptyStates();
   }
 
   /**
-   * 检查任务清单是否全部完成
+   * 检查任务清单是否全部完成（明确检查 5 个已知任务 key）
    */
   allTasksCompleted(progress) {
     if (!progress || !progress.tasks) return false;
-    return Object.values(progress.tasks).every(v => v === true);
+    const requiredTasks = ['completedTour', 'browsedDiscover', 'viewedStoryTree', 'createdStory', 'publishedChapter'];
+    return requiredTasks.every(key => progress.tasks[key] === true);
   }
 
   /**
@@ -465,6 +472,9 @@ class OnboardingManager {
 
     this.saveLocalProgress(progress);
     await this.syncProgressToServer(progress);
+
+    // 祝贺检查
+    this.checkAndCelebrate();
   }
 
   /**
@@ -516,6 +526,8 @@ class OnboardingManager {
       : null;
     const localProgress = this.getLocalProgress();
 
+    let result;
+
     // 如果两者都存在，合并 tasks（取并集，任一为 true 则为 true）
     if (serverProgress && localProgress) {
       const merged = { ...serverProgress };
@@ -531,10 +543,26 @@ class OnboardingManager {
       if (localProgress.conceptGuideSeen) merged.conceptGuideSeen = true;
       if (localProgress.tourCompleted) merged.tourCompleted = true;
       if (localProgress.welcomeSeen) merged.welcomeSeen = true;
-      return merged;
+      result = merged;
+    } else {
+      result = serverProgress || localProgress || this.getDefaultProgress();
     }
 
-    return serverProgress || localProgress || this.getDefaultProgress();
+    // 确保逻辑前置任务被补全，如果有修复则持久化
+    const fixed = this.ensurePrerequisiteTasks(result);
+    if (fixed) {
+      this.saveLocalProgress(result);
+      // 异步同步到服务器（不阻塞）
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (token) {
+        fetch('/api/auth/onboarding-progress', {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ progress: result })
+        }).catch(() => {});
+      }
+    }
+    return result;
   }
 
   getDefaultProgress() {
@@ -684,16 +712,66 @@ class OnboardingManager {
   }
 
   /**
+   * 确保逻辑前置任务被标记完成
+   * 任务之间存在隐含依赖：发布章节 → 必然已创建故事；完成引导 → 必然已浏览发现页和了解概念
+   * 如果后置任务已完成但前置任务未标记（跨页面跳转丢失等），在此修复
+   * @param {Object} progress - 当前进度对象
+   * @returns {boolean} 是否有修复发生
+   */
+  ensurePrerequisiteTasks(progress) {
+    if (!progress || !progress.tasks) return false;
+    let fixed = false;
+
+    // 发布章节 → 必然已创建故事
+    if (progress.tasks.publishedChapter && !progress.tasks.createdStory) {
+      progress.tasks.createdStory = true;
+      fixed = true;
+    }
+
+    // 创建故事 → 必然已了解故事树概念（创建流程经过概念引导）
+    if (progress.tasks.createdStory && !progress.tasks.viewedStoryTree) {
+      progress.tasks.viewedStoryTree = true;
+      fixed = true;
+    }
+
+    // 完成引导 tour → 必然已浏览发现页
+    if (progress.tasks.completedTour && !progress.tasks.browsedDiscover) {
+      progress.tasks.browsedDiscover = true;
+      fixed = true;
+    }
+
+    return fixed;
+  }
+
+  /**
    * 检查是否所有任务完成，如果是则弹出祝贺弹窗
    * 各处标记任务完成后调用此方法
    */
   checkAndCelebrate() {
     const progressStr = localStorage.getItem('st_onboarding_progress');
     let progress = progressStr ? JSON.parse(progressStr) : {};
+    if (!progress.tasks) progress.tasks = {};
+
+    // 修复逻辑依赖不一致
+    const fixed = this.ensurePrerequisiteTasks(progress);
+    if (fixed) {
+      localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
+      // 异步同步到服务器
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (token) {
+        fetch('/api/auth/onboarding-progress', {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ progress })
+        }).catch(() => {});
+      }
+    }
+
     if (!this.allTasksCompleted(progress)) return;
     // 只弹一次
     if (localStorage.getItem('st_celebration_shown')) return;
     localStorage.setItem('st_celebration_shown', 'true');
+    localStorage.removeItem('st_celebration_pending');
     setTimeout(() => this.showCompletionCelebration(), 1000);
   }
 

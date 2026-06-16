@@ -546,22 +546,6 @@ p, h1, h2, h3, h4, h5, h6, li, td, th, span, a, label {
    ====================================================== */
 
 @media (min-width: 768px) {
-  /* 导航栏：隐藏汉堡菜单，恢复水平排列 */
-  .mobile-menu-toggle {
-    display: none !important;
-  }
-
-  .nav-menu,
-  .navbar-menu {
-    display: flex !important;
-    flex-direction: row;
-    position: static;
-    width: auto;
-    background: transparent;
-    box-shadow: none;
-    padding: 0;
-  }
-
   /* 网格升级：恢复桌面端三列 grid */
   .stories-grid {
     column-count: unset;
@@ -792,6 +776,27 @@ p, h1, h2, h3, h4, h5, h6, li, td, th, span, a, label {
    ====================================================== */
 
 @media (min-width: 1024px) {
+  /* 导航栏：隐藏汉堡菜单，恢复水平排列 */
+  .mobile-menu-toggle {
+    display: none !important;
+  }
+
+  .nav-menu,
+  .navbar-menu {
+    display: flex !important;
+    flex-direction: row;
+    position: static;
+    width: auto;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .nav-link {
+    width: auto;
+    white-space: nowrap;
+  }
+
   .stories-grid {
     grid-template-columns: repeat(3, 1fr);
     gap: var(--st-space-6);

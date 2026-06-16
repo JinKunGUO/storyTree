@@ -590,6 +590,13 @@ class StoryTreeTour {
           localStorage.setItem('st_user_state', JSON.stringify(userState));
         } catch (e) { /* ignore */ }
       }
+
+      // 祝贺检查：由于 markStepProgress 后通常会跳转页面，设置 pending 标志
+      const requiredTasks = ['completedTour', 'browsedDiscover', 'viewedStoryTree', 'createdStory', 'publishedChapter'];
+      const allDone = requiredTasks.every(key => progress.tasks[key] === true);
+      if (allDone && !localStorage.getItem('st_celebration_shown')) {
+        localStorage.setItem('st_celebration_pending', 'true');
+      }
     } catch (e) {
       console.warn('[StoryTreeTour] markStepProgress failed:', e);
     }

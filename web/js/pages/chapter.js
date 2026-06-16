@@ -382,12 +382,20 @@
                               if (!progress.tasks) progress.tasks = {};
                               if (!progress.tasks.publishedChapter) {
                                 progress.tasks.publishedChapter = true;
+                                // 发布章节必然意味着已创建故事和了解概念
+                                if (!progress.tasks.createdStory) progress.tasks.createdStory = true;
+                                if (!progress.tasks.viewedStoryTree) progress.tasks.viewedStoryTree = true;
                                 localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
                                 fetch('/api/auth/onboarding-progress', {
                                   method: 'PUT',
                                   headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                                  body: JSON.stringify(progress)
+                                  body: JSON.stringify({ progress })
                                 }).catch(() => {});
+                                // 页面即将 reload，设置 pending 标志让 reload 后显示祝贺
+                                const allDone = progress.tasks && Object.values(progress.tasks).every(v => v === true);
+                                if (allDone && !localStorage.getItem('st_celebration_shown')) {
+                                  localStorage.setItem('st_celebration_pending', 'true');
+                                }
                               }
                             } catch (e) { /* ignore */ }
 

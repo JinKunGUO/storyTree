@@ -1292,6 +1292,12 @@ async function handleManualCreate() {
           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ progress })
         }).catch(() => {});
+        // 祝贺检查：页面即将跳转，设置 pending
+        const requiredTasks = ['completedTour', 'browsedDiscover', 'viewedStoryTree', 'createdStory', 'publishedChapter'];
+        const allDone = requiredTasks.every(key => progress.tasks[key] === true);
+        if (allDone && !localStorage.getItem('st_celebration_shown')) {
+          localStorage.setItem('st_celebration_pending', 'true');
+        }
       }
     } catch (e) { /* ignore */ }
 
@@ -1524,6 +1530,12 @@ async function handleConfirm() {
           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ progress })
         }).catch(() => {});
+        // 祝贺检查：页面即将跳转，设置 pending
+        const requiredTasks = ['completedTour', 'browsedDiscover', 'viewedStoryTree', 'createdStory', 'publishedChapter'];
+        const allDone = requiredTasks.every(key => progress.tasks[key] === true);
+        if (allDone && !localStorage.getItem('st_celebration_shown')) {
+          localStorage.setItem('st_celebration_pending', 'true');
+        }
       }
     } catch (e) { /* ignore */ }
 

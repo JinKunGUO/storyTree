@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="libs/driver.js/driver.css">
     <link rel="stylesheet" href="styles/tour.css">
     <link rel="stylesheet" href="styles/concept-guide.css">
+    <link rel="stylesheet" href="styles/onboarding.css">
 </head>
 <body>
     <!-- 导航栏（与首页保持一致） -->
@@ -698,6 +699,15 @@
     <script src="libs/driver.js/driver.js.iife.js"></script>
     <script src="js/concept-guide.js"></script>
     <script src="js/story-concept-bridge.js"></script>
+    <script src="js/onboarding-manager.js?v=2" defer></script>
+    <script>
+      // 页面加载后初始化 onboarding manager（处理 celebration pending 等）
+      document.addEventListener('DOMContentLoaded', function() {
+        if (window.onboardingManager) {
+          window.onboardingManager.init('story');
+        }
+      });
+    </script>
     <!-- 页脚 -->
     <footer style="text-align: center; padding: 20px; margin-top: 40px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
         <p>© 2026 StoryTree. 用心创作每一个故事。</p>

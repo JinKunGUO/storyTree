@@ -104,12 +104,17 @@
             console.log('开始初始化编辑器...');
             
             try {
+                // 注册自定义字号（class-based）
+                var Size = Quill.import('formats/size');
+                Size.whitelist = ['12px', '14px', '16px', false, '20px', '24px', '28px', '32px'];
+                Quill.register(Size, true);
+
                 quill = new Quill('#editor', {
                     theme: 'snow',
                     placeholder: '开始撰写你的故事...\n\n可以使用工具栏格式化文本，让你的故事更加精彩！',
                     modules: {
                         toolbar: [
-                            [{ 'header': [1, 2, 3, false] }],
+                            [{ 'size': ['12px', '14px', '16px', false, '20px', '24px', '28px', '32px'] }],
                             ['bold', 'italic', 'underline', 'strike'],
                             [{ 'list': 'ordered'}, { 'list': 'bullet' }],
                             [{ 'indent': '-1'}, { 'indent': '+1' }],
@@ -636,6 +641,9 @@
                       if (!progress.tasks) progress.tasks = {};
                       if (!progress.tasks.publishedChapter) {
                         progress.tasks.publishedChapter = true;
+                        // 发布章节必然意味着已创建故事和了解概念
+                        if (!progress.tasks.createdStory) progress.tasks.createdStory = true;
+                        if (!progress.tasks.viewedStoryTree) progress.tasks.viewedStoryTree = true;
                         localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
                         const tk = localStorage.getItem('token') || sessionStorage.getItem('token');
                         if (tk) {
@@ -645,7 +653,7 @@
                             body: JSON.stringify({ progress })
                           }).catch(() => {});
                         }
-                        // 检查是否所有任务完成，标记待显示（跳转后在章节页展示）
+                        // 检查是否所有任务完成，标记待显示（跳转后在下一页展示）
                         if (window.onboardingManager && window.onboardingManager.allTasksCompleted(progress)) {
                           if (!localStorage.getItem('st_celebration_shown')) {
                             localStorage.setItem('st_celebration_pending', 'true');
@@ -794,6 +802,9 @@
                       if (!progress.tasks) progress.tasks = {};
                       if (!progress.tasks.publishedChapter) {
                         progress.tasks.publishedChapter = true;
+                        // 发布章节必然意味着已创建故事和了解概念
+                        if (!progress.tasks.createdStory) progress.tasks.createdStory = true;
+                        if (!progress.tasks.viewedStoryTree) progress.tasks.viewedStoryTree = true;
                         localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
                         const tk = localStorage.getItem('token') || sessionStorage.getItem('token');
                         if (tk) {
