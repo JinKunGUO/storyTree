@@ -3541,6 +3541,15 @@ function getTreeOption(treeData, layout) {
                 }
             });
 
+            // 修改章节（树状图节点详情面板中）
+            document.getElementById('editNodeBtn')?.addEventListener('click', function() {
+                const nodeId = this.dataset.nodeId;
+                const storyId = window.currentStory?.id;
+                if (nodeId && storyId) {
+                    window.location.href = `/write.html?storyId=${storyId}&nodeId=${nodeId}&editMode=true`;
+                }
+            });
+
             // 发布草稿（树状图节点详情面板中）
             document.getElementById('publishDraftNode')?.addEventListener('click', function() {
                 const nodeId = this.dataset.nodeId;
@@ -3694,6 +3703,8 @@ function getTreeOption(treeData, layout) {
             publishDraftBtn.style.display = 'none';
             deleteNodeBtn.style.display = 'none';
             document.getElementById('continueNode').style.display = 'none';
+            const editNodeBtn = document.getElementById('editNodeBtn');
+            editNodeBtn.style.display = 'none';
 
             // 检查用户权限
             const token = localStorage.getItem('token') || sessionStorage.getItem('token');
@@ -3726,6 +3737,12 @@ function getTreeOption(treeData, layout) {
                             // 删除章节：故事主创 或 节点作者本人（与章节列表逻辑一致）
                             if (roleData.is_author || isNodeAuthor) {
                                 deleteNodeBtn.style.display = '';
+                            }
+
+                            // 修改章节：节点作者本人 或 故事主创
+                            if (isNodeAuthor || roleData.is_author) {
+                                editNodeBtn.style.display = '';
+                                editNodeBtn.dataset.nodeId = nodeData.id;
                             }
                         }
                     }

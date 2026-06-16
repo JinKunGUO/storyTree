@@ -814,6 +814,113 @@
             font-size: 16px;
         }
 
+        /* AI创作页面 - 字数按钮：图标在左，文字右列两行 */
+        .ai-wordcount-grid .ai-style-btn {
+            gap: 6px;
+            padding: 10px 10px;
+            line-height: 1.3;
+            align-items: center;
+        }
+
+        .ai-wordcount-grid .ai-style-btn i {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .ai-wordcount-grid .wordcount-text {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+            align-self: stretch;
+            line-height: 1.3;
+            min-width: 0;
+        }
+
+        .ai-wordcount-grid .wordcount-label {
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .ai-wordcount-grid .wordcount-desc {
+            font-size: 12px;
+            opacity: 0.8;
+            white-space: nowrap;
+        }
+
+        /* 移动端适配 - AI创作页面按钮 */
+        @media (max-width: 480px) {
+            .ai-wordcount-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 8px !important;
+            }
+
+            .ai-wordcount-grid .ai-style-btn {
+                padding: 8px 8px;
+            }
+
+            .ai-wordcount-grid .ai-style-btn i {
+                font-size: 15px;
+            }
+
+            .ai-wordcount-grid .wordcount-label {
+                font-size: 13px;
+            }
+
+            .ai-wordcount-grid .wordcount-desc {
+                font-size: 11px;
+            }
+
+            .ai-style-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 8px !important;
+            }
+
+            .ai-style-btn {
+                padding: 10px 12px;
+                font-size: 13px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .ai-wordcount-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 6px !important;
+            }
+
+            .ai-wordcount-grid .ai-style-btn {
+                padding: 8px 6px;
+            }
+
+            .ai-wordcount-grid .ai-style-btn i {
+                font-size: 13px;
+            }
+
+            .ai-wordcount-grid .wordcount-label {
+                font-size: 12px;
+            }
+
+            .ai-wordcount-grid .wordcount-desc {
+                font-size: 10px;
+            }
+
+            .ai-style-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 6px !important;
+            }
+
+            .ai-style-btn {
+                padding: 8px 8px;
+                font-size: 12px;
+                gap: 4px;
+            }
+
+            .ai-style-btn i {
+                font-size: 14px;
+            }
+        }
+
         /* AI 配额徽章 */
         .ai-quota-badge {
             position: absolute;

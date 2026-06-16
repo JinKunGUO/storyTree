@@ -268,7 +268,7 @@
                     <div style="font-size: 16px; font-weight: 600; margin-bottom: 15px; color: var(--st-text-primary);">
                         <i class="fas fa-palette"></i> 选择续写风格
                     </div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px;">
+                    <div class="ai-style-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 10px;">
                         <button class="ai-style-btn active" data-style="悬疑">
                             <i class="fas fa-question-circle"></i> 悬疑
                         </button>
@@ -304,18 +304,33 @@
                             AI将生成接近此字数的内容
                         </span>
                     </div>
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+                    <div class="ai-wordcount-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 12px;">
                         <button class="ai-style-btn" data-wordcount="500">
-                            <i class="fas fa-align-left"></i> 短篇<br><span style="font-size: 12px; opacity: 0.8;">约500字</span>
+                            <i class="fas fa-align-left"></i>
+                            <span class="wordcount-text">
+                                <span class="wordcount-label">短篇</span>
+                                <span class="wordcount-desc">约500字</span>
+                            </span>
                         </button>
                         <button class="ai-style-btn active" data-wordcount="1000">
-                            <i class="fas fa-align-center"></i> 中篇<br><span style="font-size: 12px; opacity: 0.8;">约1000字</span>
+                            <i class="fas fa-align-center"></i>
+                            <span class="wordcount-text">
+                                <span class="wordcount-label">中篇</span>
+                                <span class="wordcount-desc">约1000字</span>
+                            </span>
                         </button>
                         <button class="ai-style-btn" data-wordcount="2000">
-                            <i class="fas fa-align-justify"></i> 长篇<br><span style="font-size: 12px; opacity: 0.8;">约2000字</span>
+                            <i class="fas fa-align-justify"></i>
+                            <span class="wordcount-text">
+                                <span class="wordcount-label">长篇</span>
+                                <span class="wordcount-desc">约2000字</span>
+                            </span>
                         </button>
                         <button class="ai-style-btn" data-wordcount="custom">
-                            <i class="fas fa-edit"></i> 自定义
+                            <i class="fas fa-edit"></i>
+                            <span class="wordcount-text">
+                                <span class="wordcount-label">自定义</span>
+                            </span>
                         </button>
                     </div>
                     
