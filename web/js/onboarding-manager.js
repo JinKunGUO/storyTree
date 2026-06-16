@@ -67,6 +67,8 @@ class OnboardingManager {
     if (justRegistered) {
       localStorage.removeItem('st_just_registered');
       localStorage.removeItem('st_user_state');
+      localStorage.removeItem('st_onboarding_progress');
+      localStorage.removeItem('st_celebration_shown');
     }
 
     // 检查缓存是否新鲜（5 分钟内）

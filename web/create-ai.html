@@ -681,6 +681,26 @@
                 padding: 30px 20px;
             }
         }
+
+        @media (max-width: 768px) {
+            .editable-character-header {
+                flex-wrap: wrap;
+            }
+
+            .editable-character-header select {
+                width: auto !important;
+                min-width: 70px;
+                max-width: 100%;
+                font-size: 13px;
+                padding: 6px 4px !important;
+                flex: 0 1 auto;
+            }
+
+            .editable-character-header input[data-field="characterName"] {
+                flex: 1 1 100px;
+                min-width: 0;
+            }
+        }
     </style>
 </head>
 <body>

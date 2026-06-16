@@ -1,6 +1,7 @@
         body {
             background: var(--st-bg-secondary);
             padding-top: 64px;
+            overflow-x: hidden;
         }
 
         .write-container {
@@ -10,6 +11,7 @@
             display: flex;
             align-items: flex-start;
             gap: 20px;
+            box-sizing: border-box;
         }
 
         .write-header {
@@ -269,6 +271,7 @@
                 justify-content: center;
                 align-items: center;
                 white-space: nowrap;
+                max-width: calc(100vw - 30px);
             }
 
             .word-count {
@@ -986,6 +989,9 @@
                 display: block;
                 position: fixed;
                 left: 20px;
+                right: 20px;
+                width: auto;
+                max-width: 350px;
                 top: 84px;
                 z-index: 1000;
                 height: calc(100vh - 140px);
@@ -996,12 +1002,23 @@
         @media (max-width: 768px) {
             .write-container {
                 flex-direction: column;
+                padding: 0 10px;
+                max-width: 100%;
+                overflow-x: hidden;
             }
 
             .write-sidebar {
                 width: 100%;
                 height: auto;
                 position: static;
+            }
+
+            .write-header {
+                padding: 20px 15px;
+            }
+
+            .ql-editor {
+                padding: 20px;
             }
         }
 

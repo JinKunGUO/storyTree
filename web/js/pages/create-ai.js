@@ -892,11 +892,10 @@ function renderProjectBrief(brief) {
     </div>
     ` : ''}
 
-    ${brief.chapterOutlines && brief.chapterOutlines.length > 0 ? `
     <div class="preview-section">
       <h4><i class="fas fa-list-ol"></i> 分章大纲</h4>
       <div id="chaptersList" style="max-height: 600px; overflow-y: auto;">
-        ${brief.chapterOutlines.map((c, i) => `
+        ${(brief.chapterOutlines || []).map((c, i) => `
           <div class="editable-chapter" data-chapter-index="${i}">
             <div class="editable-chapter-title">
               第<input type="number" class="editable-field" data-field="chapterNum" data-index="${i}" value="${c.chapter || (i+1)}" min="1" style="width:60px; flex-shrink: 0;">章：
@@ -909,7 +908,6 @@ function renderProjectBrief(brief) {
       </div>
       <button class="btn-add-item" onclick="addChapter()"><i class="fas fa-plus"></i> 添加章节</button>
     </div>
-    ` : ''}
   `;
 }
 
@@ -971,11 +969,10 @@ function renderOutline(outline) {
     </div>
     ` : ''}
 
-    ${outline.chapterOutlines && outline.chapterOutlines.length > 0 ? `
     <div class="preview-section">
       <h4><i class="fas fa-list-ol"></i> 分章大纲</h4>
       <div id="chaptersList" style="max-height: 600px; overflow-y: auto;">
-        ${outline.chapterOutlines.map((c, i) => `
+        ${(outline.chapterOutlines || []).map((c, i) => `
           <div class="editable-chapter" data-chapter-index="${i}">
             <div class="editable-chapter-title">
               第<input type="number" class="editable-field" data-field="chapterNum" data-index="${i}" value="${c.chapter || (i+1)}" min="1" style="width:60px; flex-shrink: 0;">章：
@@ -988,7 +985,6 @@ function renderOutline(outline) {
       </div>
       <button class="btn-add-item" onclick="addChapter()"><i class="fas fa-plus"></i> 添加章节</button>
     </div>
-    ` : ''}
   `;
 }
 
@@ -1053,11 +1049,10 @@ function renderPasticheResult(pastiche) {
     </div>
     ` : ''}
 
-    ${outline.chapterOutlines && outline.chapterOutlines.length > 0 ? `
     <div class="preview-section">
       <h4><i class="fas fa-list-ul"></i> 分章大纲</h4>
       <div id="chaptersList" style="max-height: 600px; overflow-y: auto;">
-        ${outline.chapterOutlines.map((c, i) => `
+        ${(outline.chapterOutlines || []).map((c, i) => `
           <div class="editable-chapter" data-chapter-index="${i}">
             <div class="editable-chapter-title">
               第<input type="number" class="editable-field" data-field="chapterNum" data-index="${i}" value="${c.chapter || (i+1)}" min="1" style="width:60px; flex-shrink: 0;">章：
@@ -1070,7 +1065,6 @@ function renderPasticheResult(pastiche) {
       </div>
       <button class="btn-add-item" onclick="addChapter()"><i class="fas fa-plus"></i> 添加章节</button>
     </div>
-    ` : ''}
     ` : ''}
   `;
 }
@@ -1147,11 +1141,10 @@ function renderTemplateResult(template) {
     </div>
     ` : ''}
 
-    ${outline.chapterOutlines && outline.chapterOutlines.length > 0 ? `
     <div class="preview-section">
       <h4><i class="fas fa-list-ol"></i> 分章大纲</h4>
       <div id="chaptersList" style="max-height: 600px; overflow-y: auto;">
-        ${outline.chapterOutlines.map((c, i) => `
+        ${(outline.chapterOutlines || []).map((c, i) => `
           <div class="editable-chapter" data-chapter-index="${i}">
             <div class="editable-chapter-title">
               第<input type="number" class="editable-field" data-field="chapterNum" data-index="${i}" value="${c.chapter || (i+1)}" min="1" style="width:60px; flex-shrink: 0;">章：
@@ -1164,7 +1157,6 @@ function renderTemplateResult(template) {
       </div>
       <button class="btn-add-item" onclick="addChapter()"><i class="fas fa-plus"></i> 添加章节</button>
     </div>
-    ` : ''}
   `;
 }
 
@@ -1683,8 +1675,20 @@ function removeChapter(index) {
 
 // 添加章节
 function addChapter() {
-  const list = document.getElementById('chaptersList');
-  if (!list) return;
+  let list = document.getElementById('chaptersList');
+  // 如果 chaptersList 不存在，尝试在分章大纲 section 中创建它
+  if (!list) {
+    // 查找"添加章节"按钮所在的 section，在按钮前插入列表容器
+    const addBtn = document.querySelector('.btn-add-item[onclick="addChapter()"]');
+    if (addBtn && addBtn.parentElement) {
+      list = document.createElement('div');
+      list.id = 'chaptersList';
+      list.style.cssText = 'max-height: 600px; overflow-y: auto;';
+      addBtn.parentElement.insertBefore(list, addBtn);
+    } else {
+      return;
+    }
+  }
   const index = list.children.length;
   const div = document.createElement('div');
   div.className = 'editable-chapter';
@@ -1698,6 +1702,8 @@ function addChapter() {
     <textarea class="editable-field" data-field="chapterSummary" data-index="${index}" rows="2" placeholder="章节摘要"></textarea>
   `;
   list.appendChild(div);
+  // 滚动到新添加的章节
+  div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 // 验证表单

@@ -20,7 +20,7 @@ class StoryTreeTour {
     this.driver = window.driver.js.driver({
       showProgress: true,
       allowClose: false,
-      overlayOpacity: 0.6,
+      overlayOpacity: 0.4,
       stagePadding: 12,
       stageRadius: 10,
       popoverOffset: 15,
@@ -132,6 +132,8 @@ class StoryTreeTour {
           side: 'top',
           align: 'center',
           onNextClick: () => {
+            // 完成首页引导，增量标记 completedTour
+            this.markStepProgress('completedTour');
             this.navigateToNextPage('discover', 1);
           }
         }
@@ -164,6 +166,8 @@ class StoryTreeTour {
           side: 'bottom',
           align: 'center',
           onNextClick: () => {
+            // 完成发现页引导，增量标记 browsedDiscover
+            this.markStepProgress('browsedDiscover');
             this.navigateToStoryForConcept();
           }
         }
@@ -538,6 +542,57 @@ class StoryTreeTour {
     const url = new URL(window.location.href);
     url.searchParams.delete('tour');
     window.history.replaceState({}, '', url.toString());
+  }
+
+  /**
+   * 增量标记单个步骤完成（跨页面跳转时调用）
+   * 不标记 has_seen_tour，仅更新 progress.tasks 中对应的 key
+   * @param {string} taskKey - 任务键名，如 'completedTour'、'browsedDiscover'
+   */
+  markStepProgress(taskKey) {
+    try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (!token) return;
+
+      const progressStr = localStorage.getItem('st_onboarding_progress');
+      let progress = progressStr ? JSON.parse(progressStr) : {};
+      if (!progress.tasks) progress.tasks = {};
+
+      // 已标记则跳过
+      if (progress.tasks[taskKey]) return;
+
+      progress.tasks[taskKey] = true;
+      progress.lastUpdated = new Date().toISOString();
+      localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
+
+      // 同步到服务器（异步，不阻塞页面跳转）
+      fetch('/api/auth/onboarding-progress', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ progress })
+      }).catch(() => {});
+
+      // 更新本地 userState 缓存
+      const userStateStr = localStorage.getItem('st_user_state');
+      if (userStateStr) {
+        try {
+          const userState = JSON.parse(userStateStr);
+          if (userState.onboarding_progress) {
+            if (!userState.onboarding_progress.tasks) userState.onboarding_progress.tasks = {};
+            userState.onboarding_progress.tasks[taskKey] = true;
+          } else {
+            userState.onboarding_progress = progress;
+          }
+          userState._ts = Date.now();
+          localStorage.setItem('st_user_state', JSON.stringify(userState));
+        } catch (e) { /* ignore */ }
+      }
+    } catch (e) {
+      console.warn('[StoryTreeTour] markStepProgress failed:', e);
+    }
   }
 
   /**

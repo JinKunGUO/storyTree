@@ -110,7 +110,7 @@
     const driverInstance = window.driver.js.driver({
       showProgress: false,
       allowClose: true,
-      overlayOpacity: 0.5,
+      overlayOpacity: 0.35,
       stagePadding: 10,
       stageRadius: 12,
       popoverOffset: 15,

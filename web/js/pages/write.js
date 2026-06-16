@@ -3196,9 +3196,9 @@ function renderEditableOutline() {
             <div class="panel-section-title">主要角色</div>
             ${outline.characters.map((c, i) => `
                 <div style="margin-bottom: 12px; padding: 10px; background: var(--st-bg-secondary); border-radius: 8px;">
-                    <div style="display: flex; gap: 8px; margin-bottom: 6px;">
-                        <input type="text" id="editCharName_${i}" class="edit-brief-input" value="${escapeHtml(c.name || '')}" placeholder="角色名" style="flex: 1;" />
-                        <select id="editCharRole_${i}" class="edit-brief-input" style="width: 100px;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;">
+                        <input type="text" id="editCharName_${i}" class="edit-brief-input" value="${escapeHtml(c.name || '')}" placeholder="角色名" style="flex: 1; min-width: 80px;" />
+                        <select id="editCharRole_${i}" class="edit-brief-input" style="width: 100px; max-width: 100%;">
                             <option value="protagonist" ${c.role === 'protagonist' ? 'selected' : ''}>主角</option>
                             <option value="antagonist" ${c.role === 'antagonist' ? 'selected' : ''}>反派</option>
                             <option value="love_interest" ${c.role === 'love_interest' ? 'selected' : ''}>感情线</option>
