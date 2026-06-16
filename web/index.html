@@ -208,6 +208,13 @@
             gap: var(--st-space-2);
             animation: bounce 2s infinite;
             position: relative;
+            cursor: pointer;
+            transition: color 0.3s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .hero-scroll-hint:hover {
+            color: rgba(255, 255, 255, 0.9);
         }
 
         /* ===== 故事区域 ===== */
@@ -668,6 +675,18 @@
                 navbar.classList.remove('scrolled');
             }
         }, { passive: true });
+
+        // ===== "向下探索"点击滚动到热门故事 =====
+        const scrollHint = document.querySelector('.hero-scroll-hint');
+        if (scrollHint) {
+            scrollHint.style.cursor = 'pointer';
+            scrollHint.addEventListener('click', () => {
+                const hotStories = document.getElementById('hotStoriesTitle');
+                if (hotStories) {
+                    hotStories.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        }
 
         // ===== 认证状态 =====
         function checkAuthStatus() {
