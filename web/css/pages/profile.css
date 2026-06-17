@@ -1171,6 +1171,20 @@
                 font-size: 12px;
             }
 
+            /* 签到头部：窄屏纵向排列 */
+            .compact-checkin-header {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 6px !important;
+                font-size: 13px !important;
+            }
+
+            .compact-checkin-header > div:last-child {
+                font-size: 11px !important;
+                gap: 6px 10px !important;
+                width: 100% !important;
+            }
+
             .ai-usage-summary {
                 grid-template-columns: 1fr;
             }
@@ -1324,12 +1338,29 @@
             .profile-header {
                 padding: 20px 16px;
                 gap: 12px;
+                align-items: center;
+                text-align: center;
             }
 
             /* 签到组件：移动端全宽 */
             .compact-checkin-widget {
                 width: 100% !important;
                 max-width: 100% !important;
+            }
+
+            /* 签到头部：移动端纵向排列，标题和统计信息各占一行 */
+            .compact-checkin-header {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 8px !important;
+                font-size: 14px !important;
+            }
+
+            /* 签到统计信息：移动端确保换行和合适间距 */
+            .compact-checkin-header > div:last-child {
+                font-size: 12px !important;
+                gap: 8px 12px !important;
+                width: 100% !important;
             }
 
             /* 移动端 section-header 适配：允许标题换行，按钮不缩小 */
@@ -1367,12 +1398,15 @@
 
             .profile-info {
                 width: 100%;
+                text-align: center;
             }
 
             .profile-name {
                 font-size: 20px;
                 justify-content: center;
                 text-align: center;
+                word-break: keep-all;
+                overflow-wrap: break-word;
             }
 
             /* 徽章容器：允许换行，居中 */
@@ -1391,6 +1425,8 @@
 
             .profile-email {
                 justify-content: center;
+                word-break: break-all;
+                overflow-wrap: break-word;
             }
 
             /* 积分行：换行显示 */
@@ -1405,6 +1441,8 @@
                 margin-left: 0 !important;
                 white-space: normal;
                 flex-shrink: 1;
+                word-break: keep-all;
+                overflow-wrap: break-word;
             }
 
             .profile-bio {
@@ -1556,11 +1594,32 @@
 
             .profile-name {
                 font-size: 18px;
+                word-break: keep-all;
+                overflow-wrap: break-word;
+            }
+
+            .profile-points span {
+                word-break: keep-all;
+                overflow-wrap: break-word;
             }
 
             #userLevelCard > div:first-child {
                 flex-direction: column;
                 text-align: center;
+            }
+
+            /* 签到头部：极小屏纵向排列 */
+            .compact-checkin-header {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 4px !important;
+                font-size: 12px !important;
+            }
+
+            .compact-checkin-header > div:last-child {
+                font-size: 10px !important;
+                gap: 4px 8px !important;
+                width: 100% !important;
             }
         }
 
@@ -1568,15 +1627,39 @@
            iPad 适配（768px - 1024px）
            ======================================== */
         @media (min-width: 641px) and (max-width: 1024px) {
-            /* 个人信息头部：保持横向布局，缩小内边距 */
+            /* 个人信息头部：允许换行，防止内容溢出 */
             .profile-header {
                 flex-direction: row !important;
-                flex-wrap: nowrap !important;
+                flex-wrap: wrap !important;
                 text-align: left !important;
                 overflow-x: hidden !important;
                 overflow-y: visible !important;
                 gap: 20px !important;
                 padding: 25px !important;
+                justify-content: center !important;
+                align-items: flex-start !important;
+            }
+
+            /* 主内容区：允许换行，添加溢出防护 */
+            .profile-main-content {
+                flex: 1 1 300px !important;
+                min-width: 0 !important;
+                max-width: 100% !important;
+                flex-wrap: wrap !important;
+            }
+
+            /* 头像在 iPad 下适当缩小 */
+            .profile-avatar {
+                width: 100px !important;
+                height: 100px !important;
+                flex-shrink: 0 !important;
+            }
+
+            /* 信息区添加溢出防护 */
+            .profile-info {
+                flex: 1 1 250px !important;
+                min-width: 0 !important;
+                overflow: hidden !important;
             }
 
             /* iPad 下按钮不要全宽 */
@@ -1604,6 +1687,15 @@
             .compact-checkin-widget .compact-checkin-header {
                 font-size: 13px !important;
                 margin-bottom: 8px !important;
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 6px !important;
+            }
+
+            .compact-checkin-widget .compact-checkin-header > div:last-child {
+                font-size: 11px !important;
+                gap: 6px 10px !important;
+                width: 100% !important;
             }
 
             /* 等级卡片：确保内容不被压缩，允许换行 */
