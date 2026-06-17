@@ -232,6 +232,7 @@
    * 等待页面内容加载完成后触发概念引导
    */
   function waitAndTrigger() {
+    console.log('[DEBUG-concept-bridge] waitAndTrigger() started, timestamp:', Date.now());
     let attempts = 0;
     const maxAttempts = 20; // 最多等 10 秒
 
@@ -239,10 +240,16 @@
       attempts++;
       const treeChart = document.querySelector('#treeChart');
       const storyContent = document.querySelector('#storyContent');
+      const contentDisplay = storyContent ? storyContent.style.display : 'N/A';
+
+      if (attempts <= 3 || attempts % 5 === 0) {
+        console.log(`[DEBUG-concept-bridge] Poll #${attempts}: storyContent.display="${contentDisplay}", treeChart=${!!treeChart}`);
+      }
 
       // 等待故事内容显示且分支图容器存在
       if ((storyContent && storyContent.style.display !== 'none' && treeChart) || attempts >= maxAttempts) {
         clearInterval(check);
+        console.log(`[DEBUG-concept-bridge] Condition met at attempt #${attempts}, triggering guide. display="${contentDisplay}", treeChart=${!!treeChart}`);
         clearGuideParam();
 
         if (window.conceptGuide) {

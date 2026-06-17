@@ -15,6 +15,18 @@
     <link href="libs/fontawesome/css/all.min.css" rel="stylesheet">
     <!-- ECharts -->
     <script src="libs/echarts/echarts.min.js"></script>
+    <!-- 调试：检测页面是否真的被刷新/卸载 -->
+    <script>
+      console.log('[DEBUG-story-early] Page parsing started, timestamp:', Date.now(), 'URL:', window.location.href);
+      window.addEventListener('beforeunload', function() {
+        console.log('[DEBUG-story-early] ⚠️⚠️⚠️ beforeunload fired! Page is being unloaded/refreshed! timestamp:', Date.now());
+      });
+      // 记录 performance.navigation.type 来判断是否是刷新
+      window.addEventListener('load', function() {
+        const navType = performance.getEntriesByType('navigation')[0]?.type || 'unknown';
+        console.log('[DEBUG-story-early] Navigation type:', navType, '(reload=refresh, navigate=new navigation, back_forward=history)');
+      });
+    </script>
 <link rel="stylesheet" href="css/pages/story.css">
     <!-- 引导相关样式 -->
     <link rel="stylesheet" href="libs/driver.js/driver.css">
@@ -724,8 +736,11 @@
     <script>
       // 页面加载后初始化 onboarding manager（处理 celebration pending 等）
       document.addEventListener('DOMContentLoaded', function() {
+        console.log('[DEBUG-story-inline] DOMContentLoaded, window.onboardingManager exists:', !!window.onboardingManager, 'timestamp:', Date.now());
         if (window.onboardingManager) {
           window.onboardingManager.init('story');
+        } else {
+          console.warn('[DEBUG-story-inline] ⚠️ onboardingManager not available! defer scripts may not have loaded yet.');
         }
       });
     </script>

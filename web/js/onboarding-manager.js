@@ -16,6 +16,7 @@ class OnboardingManager {
    * @param {string} pageName - 页面名称
    */
   async init(pageName) {
+    console.log('[DEBUG-onboarding] init() called, pageName:', pageName, 'initialized:', this.initialized, 'timestamp:', Date.now());
     if (this.initialized) return;
     this.initialized = true;
     this.currentPage = pageName;
@@ -28,8 +29,11 @@ class OnboardingManager {
     const hasTourParam = urlParams.has('tour');
     const hasGuideParam = urlParams.get('guide');
 
+    console.log('[DEBUG-onboarding] URL params - tour:', hasTourParam, 'guide:', hasGuideParam);
+
     // 如果有 tour 参数，直接启动分步引导（跨页面续接）
     if (hasTourParam && window.storyTreeTour) {
+      console.log('[DEBUG-onboarding] Has tour param, starting tour for:', pageName);
       window.storyTreeTour.checkAndStartTour(pageName);
       return;
     }
@@ -39,9 +43,11 @@ class OnboardingManager {
     // （再次重定向会取消 loadStoryDetail 中所有进行中的 fetch 请求）
     if (hasGuideParam === 'concept') {
       if (pageName === 'story') {
+        console.log('[DEBUG-onboarding] ✅ Already on story page with guide=concept, returning (let story-concept-bridge handle)');
         // 已在故事页面，让 story-concept-bridge.js 处理概念引导
         return;
       }
+      console.log('[DEBUG-onboarding] ⚠️ guide=concept on non-story page, redirecting to story...');
       this._redirectToStoryForConcept();
       return;
     }

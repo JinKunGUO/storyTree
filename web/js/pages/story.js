@@ -1,5 +1,9 @@
         // 页面初始化
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('[DEBUG-story] DOMContentLoaded fired, timestamp:', Date.now(), 'URL:', window.location.href);
+            console.log('[DEBUG-story] Page load count this session:', (sessionStorage.getItem('_dbg_story_load_count') || 0));
+            sessionStorage.setItem('_dbg_story_load_count', (parseInt(sessionStorage.getItem('_dbg_story_load_count') || '0') + 1).toString());
+
             // 初始化 WebSocket 连接
             StoryTreeWS.connect();
             
@@ -53,9 +57,12 @@
             const storyId = urlParams.get('id');
             const nodeId = urlParams.get('node');
 
+            console.log('[DEBUG-story] loadStoryDetail() called, storyId:', storyId, 'nodeId:', nodeId, 'guide:', urlParams.get('guide'));
+
             // 如果有 node 参数，说明要跳转到特定章节（如评论通知）
             if (nodeId) {
                 const hash = window.location.hash || '';
+                console.log('[DEBUG-story] ⚠️ Redirecting to chapter.html due to node param:', nodeId);
                 window.location.href = `/chapter.html?id=${nodeId}${hash}`;
                 return;
             }
@@ -64,6 +71,7 @@
 
             if (!storyId) {
                 showError('故事ID不存在');
+                console.log('[DEBUG-story] ⚠️ No storyId! Redirecting to discover.html');
                 window.location.href = '/discover.html';
                 return;
             }
@@ -98,13 +106,15 @@
                 renderChapters(nodes);
                 
                 // 加载树状图数据
+                console.log('[DEBUG-story] About to await loadTreeData, timestamp:', Date.now());
                 await loadTreeData(storyId);
+                console.log('[DEBUG-story] loadTreeData completed, timestamp:', Date.now());
                 
                 // 隐藏加载状态，显示内容
                 console.log('准备显示内容...');
                 document.getElementById('loadingState').style.display = 'none';
                 document.getElementById('storyContent').style.display = 'block';
-                console.log('内容已显示');
+                console.log('[DEBUG-story] storyContent display set to block, timestamp:', Date.now());
                 
                 // 初始化树状图（默认在分支图标签页）
                 // 使用 setTimeout 确保容器已经渲染完成
@@ -2605,6 +2615,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
         let currentLayout = 'vertical';
 // 加载树状图数据
         async function loadTreeData(storyId) {
+            console.log('[DEBUG-story] loadTreeData() started for storyId:', storyId, 'timestamp:', Date.now());
             try {
                 // 获取 token（如果已登录）
                 const token = localStorage.getItem('token') || sessionStorage.getItem('token');
@@ -2615,6 +2626,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
 
                 // 加载树状图数据
                 const treeResponse = await fetch(`/api/stories/${storyId}/tree`, { headers });
+                console.log('[DEBUG-story] loadTreeData fetch completed, status:', treeResponse.status, 'timestamp:', Date.now());
                 
                 if (!treeResponse.ok) {
                     const errorData = await treeResponse.json().catch(() => ({}));
