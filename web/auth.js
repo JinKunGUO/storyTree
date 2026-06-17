@@ -436,6 +436,8 @@ function handleLogin() {
                 localStorage.removeItem('st_user_state');
                 localStorage.removeItem('st_onboarding_progress');
                 localStorage.removeItem('st_celebration_shown');
+                // 标记为刚登录，强制首页跳过缓存获取最新用户状态
+                localStorage.setItem('st_just_registered', 'true');
                 window.location.href = redirectUrl;
             } else if (response.status === 403 && data.code === 'EMAIL_NOT_VERIFIED') {
                 // 邮箱未验证：触发自定义事件，由 login.html 中的脚本处理提示横幅

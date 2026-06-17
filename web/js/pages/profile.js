@@ -460,6 +460,7 @@ profileHeader.innerHTML = `
                             border-radius: 12px;
                             border-left: 4px solid var(--st-primary-500);
                             display: flex;
+                            flex-wrap: wrap;
                             align-items: center;
                             justify-content: space-between;
                             gap: 20px;
