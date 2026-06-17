@@ -199,6 +199,11 @@ run_migrations() {
     # （迁移文件为 SQLite 语法，无法在 MySQL 上执行，故使用 db push）
     npx prisma db push
     log_success "数据库 schema 同步完成"
+
+    # 执行种子数据（确保模板等基础数据存在）
+    log_info "检查并插入种子数据..."
+    npx tsx prisma/seeds/templates.ts || npx ts-node prisma/seeds/templates.ts || log_warn "种子数据插入失败（非致命，继续部署）"
+    log_success "种子数据检查完成"
 }
 
 # ===================================
