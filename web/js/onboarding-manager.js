@@ -35,7 +35,13 @@ class OnboardingManager {
     }
 
     // 如果有 guide=concept 参数，跳转到示例故事页面触发引导
+    // 但如果已经在故事页面，说明已经跳转过来了，不需要再次重定向
+    // （再次重定向会取消 loadStoryDetail 中所有进行中的 fetch 请求）
     if (hasGuideParam === 'concept') {
+      if (pageName === 'story') {
+        // 已在故事页面，让 story-concept-bridge.js 处理概念引导
+        return;
+      }
       this._redirectToStoryForConcept();
       return;
     }
