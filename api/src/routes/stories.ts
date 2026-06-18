@@ -578,7 +578,24 @@ router.get('/:id', optionalAuth, async (req, res) => {
 
     const nodes = await prisma.nodes.findMany({
       where: nodeWhereFilter,
-      include: {
+      select: {
+        id: true,
+        story_id: true,
+        parent_id: true,
+        author_id: true,
+        title: true,
+        // 注意：不选择 content 字段，故事详情页不需要章节正文，大幅减少传输量
+        image: true,
+        path: true,
+        sort_order: true,
+        ai_generated: true,
+        is_published: true,
+        rating_avg: true,
+        rating_count: true,
+        read_count: true,
+        review_status: true,
+        created_at: true,
+        updated_at: true,
         author: {
           select: { id: true, username: true, level: true }
         },
@@ -589,23 +606,33 @@ router.get('/:id', optionalAuth, async (req, res) => {
       orderBy: { sort_order: 'asc' }
     });
 
-    // 计算统计数据
+    // 计算阅读量（从已查询的 nodes 数据中）
     const totalReads = nodes.reduce((sum, n) => sum + (n.read_count || 0), 0);
-    const totalWords = nodes.reduce((sum, n) => sum + (n.content?.length || 0), 0);
 
-    // 当前用户的追更状态
+    // 并行执行：字数统计、用户状态查询、协作者列表
+    // 字数统计使用轻量查询只取 content 长度，避免传输完整正文给前端
+    const wordCountPromise = prisma.nodes.findMany({
+      where: nodeWhereFilter,
+      select: { content: true }
+    });
+
+    const collabListPromise = prisma.story_collaborators.findMany({
+      where: { story_id: parseInt(id), removed_at: null },
+      include: {
+        user: { select: { id: true, username: true, avatar: true } }
+      },
+      take: 10
+    });
+
     let isFollowed = false;
-    // 当前用户的收藏状态
     let isBookmarked = false;
-    // 当前用户的协作者状态
     let isCollaborator = false;
-    // 当前用户的协作申请状态
     let collaborationRequestStatus: string | null = null;
-    // 协作者列表
     let collaborators: any[] = [];
 
     if (userId) {
-      const [followerRecord, collabRequest, bookmarkRecord] = await Promise.all([
+      const [nodesForWordCount, followerRecord, collabRequest, bookmarkRecord, collabList] = await Promise.all([
+        wordCountPromise,
         prisma.story_followers.findUnique({
           where: { story_id_user_id: { story_id: parseInt(id), user_id: userId } }
         }),
@@ -614,24 +641,40 @@ router.get('/:id', optionalAuth, async (req, res) => {
         }),
         prisma.bookmarks.findFirst({
           where: { story_id: parseInt(id), user_id: userId }
-        })
+        }),
+        collabListPromise
       ]);
+      const totalWords = nodesForWordCount.reduce((sum: number, n: any) => sum + (n.content?.length || 0), 0);
       isFollowed = !!followerRecord;
-      // isCollaboratorForDraft 已在上方查询过，直接复用
       isCollaborator = isCollaboratorForDraft;
       collaborationRequestStatus = collabRequest?.status ?? null;
       isBookmarked = !!bookmarkRecord;
+      collaborators = collabList.map((c: any) => c.user);
+
+      const storyWithStats = {
+        ...story,
+        views: totalReads,
+        likes: story._count.bookmarks,
+        nodeCount: story._count.nodes,
+        wordCount: totalWords,
+        isAuthor,
+        isFollowed,
+        isBookmarked,
+        isCollaborator,
+        collaborationRequestStatus,
+        collaborators,
+      };
+
+      return res.json({ story: storyWithStats, nodes });
     }
 
-    // 获取协作者列表（公开展示，不限登录状态）
-    const collabList = await prisma.story_collaborators.findMany({
-      where: { story_id: parseInt(id), removed_at: null },
-      include: {
-        user: { select: { id: true, username: true, avatar: true } }
-      },
-      take: 10
-    });
-    collaborators = collabList.map(c => c.user);
+    // 未登录用户：只需要字数统计和协作者列表
+    const [nodesForWordCount, collabList] = await Promise.all([
+      wordCountPromise,
+      collabListPromise
+    ]);
+    const totalWords = nodesForWordCount.reduce((sum: number, n: any) => sum + (n.content?.length || 0), 0);
+    collaborators = collabList.map((c: any) => c.user);
 
     const storyWithStats = {
       ...story,
@@ -799,7 +842,18 @@ router.get('/:id/tree', optionalAuth, async (req, res) => {
 
     const nodes = await prisma.nodes.findMany({
       where: treeNodeFilter,
-      include: {
+      select: {
+        id: true,
+        parent_id: true,
+        author_id: true,
+        title: true,
+        // 注意：不选择 content 字段，树状图不需要章节正文
+        path: true,
+        ai_generated: true,
+        is_published: true,
+        read_count: true,
+        rating_avg: true,
+        created_at: true,
         author: {
           select: { 
             id: true, 
@@ -809,7 +863,7 @@ router.get('/:id/tree', optionalAuth, async (req, res) => {
         },
         _count: {
           select: { 
-            other_nodes: true, // 子节点数量
+            other_nodes: true,
             comments: true,
             ratings: true
           }

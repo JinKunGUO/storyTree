@@ -49,70 +49,71 @@
         });
 
         // 加载故事详情
+        // 预获取当前用户信息（统一缓存，避免多处重复调用 /api/auth/me）
+        async function prefetchCurrentUser() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) return null;
+            try {
+                const response = await fetch('/api/auth/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const userData = await response.json();
+                    window.currentUserId = userData.user.id;
+                    window.currentUserData = userData.user;
+                    return userData.user;
+                }
+            } catch (e) {
+                console.error('预获取用户信息失败:', e);
+            }
+            return null;
+        }
+
         async function loadStoryDetail() {
             const urlParams = new URLSearchParams(window.location.search);
             const storyId = urlParams.get('id');
             const nodeId = urlParams.get('node');
 
-            
             // 如果有 node 参数，说明要跳转到特定章节（如评论通知）
             if (nodeId) {
                 const hash = window.location.hash || '';
-                                window.location.href = `/chapter.html?id=${nodeId}${hash}`;
+                window.location.href = `/chapter.html?id=${nodeId}${hash}`;
                 return;
             }
 
-            console.log('开始加载故事，ID:', storyId);
-
             if (!storyId) {
                 showError('故事ID不存在');
-                                window.location.href = '/discover.html';
+                window.location.href = '/discover.html';
                 return;
             }
 
             try {
-                // 获取token（如果已登录）
                 const token = localStorage.getItem('token') || sessionStorage.getItem('token');
                 const headers = {};
                 if (token) {
                     headers['Authorization'] = `Bearer ${token}`;
                 }
 
-                // 加载故事信息
-                console.log('正在请求API...');
-                const response = await fetch(`/api/stories/${storyId}`, { headers });
-                console.log('API响应状态:', response.status);
+                // 并行请求：故事详情 + 预获取用户信息
+                const [response] = await Promise.all([
+                    fetch(`/api/stories/${storyId}`, { headers }),
+                    prefetchCurrentUser()
+                ]);
                 
                 if (!response.ok) {
                     throw new Error('加载故事失败');
                 }
 
                 const data = await response.json();
-                console.log('API返回数据:', data);
-                
-                const story = data.story || data; // 兼容两种返回格式
-                const nodes = data.nodes || []; // 获取章节列表
-                
-                console.log('解析后的story:', story);
-                console.log('解析后的nodes:', nodes);
+                const story = data.story || data;
+                const nodes = data.nodes || [];
                 
                 renderStory(story);
                 renderChapters(nodes);
                 
-                // 加载树状图数据
-                await loadTreeData(storyId);
-                
-                // 隐藏加载状态，显示内容
+                // 先显示页面内容，不等待 tree 数据加载
                 document.getElementById('loadingState').style.display = 'none';
                 document.getElementById('storyContent').style.display = 'block';
-                
-                // 初始化树状图（默认在分支图标签页）
-                // 使用 setTimeout 确保容器已经渲染完成
-                if (window.treeData) {
-                    setTimeout(() => {
-                        initTreeChart();
-                    }, 100);
-                }
 
                 // 排序按钮
                 document.querySelectorAll('.sort-btn').forEach(btn => {
@@ -126,12 +127,22 @@
                     });
                 });
 
+                // 树状图数据在后台异步加载，不阻塞页面显示
+                loadTreeData(storyId).then(() => {
+                    if (window.treeData) {
+                        // 如果当前 tab 是分支图，立即初始化
+                        const activeTab = document.querySelector('.tab-btn.active');
+                        if (activeTab && activeTab.dataset.tab === 'tree') {
+                            setTimeout(() => initTreeChart(), 100);
+                        }
+                    }
+                }).catch(err => {
+                    console.error('树状图数据加载失败:', err);
+                });
+
             } catch (error) {
                 console.error('加载故事错误:', error);
-                console.error('错误堆栈:', error.stack);
                 showError('加载失败，请稍后重试');
-                
-                // 即使出错也隐藏加载状态
                 document.getElementById('loadingState').style.display = 'none';
             }
         }
@@ -295,15 +306,10 @@
             }
 
             try {
-                // 检查当前用户
-                const meResponse = await fetch('/api/auth/me', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                // 使用预缓存的用户信息，避免重复调用 /api/auth/me
+                const currentUserId = window.currentUserId;
 
-                if (!meResponse.ok) return;
-
-                const userData = await meResponse.json();
-                const currentUserId = userData.user.id;
+                if (!currentUserId) return;
 
                 // 如果是作者本人，隐藏关注按钮
                 if (currentUserId === authorId) {
@@ -311,7 +317,7 @@
                     return;
                 }
 
-                // 检查是否已关注作者
+                // 检查是否已关注作者（复用 loadAuthorStats 已获取的数据）
                 const userResponse = await fetch(`/api/users/${authorId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -447,14 +453,10 @@
             }
 
             try {
-                const response = await fetch('/api/auth/me', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                // 使用预缓存的用户信息，避免重复调用 /api/auth/me
+                const currentUserId = window.currentUserId;
 
-                if (response.ok) {
-                    const userData = await response.json();
-                    const currentUserId = userData.user.id;
-
+                if (currentUserId) {
                     // 获取用户在故事中的角色
                     const roleResponse = await fetch(`/api/stories/${story.id}/role`, {
                         headers: { 'Authorization': `Bearer ${token}` }
@@ -1301,28 +1303,8 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
         async function renderChapters(chapters) {
             const container = document.getElementById('chaptersList');
             
-            // 使用缓存的用户 ID，避免重复调用 API
-            let currentUserId = window.currentUserId;
-            
-            // 如果还没有缓存用户 ID，且需要判断作者身份，则获取一次
-            if (!currentUserId && chapters.length > 0) {
-                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-                if (token) {
-                    try {
-                        const response = await fetch('/api/auth/me', {
-                            headers: { 'Authorization': `Bearer ${token}` }
-                        });
-                        if (response.ok) {
-                            const userData = await response.json();
-                            currentUserId = userData.user.id;
-                            // 缓存用户 ID 供后续使用
-                            window.currentUserId = currentUserId;
-                        }
-                    } catch (error) {
-                        console.error('获取用户信息失败:', error);
-                    }
-                }
-            }
+            // 使用预缓存的用户 ID（由 prefetchCurrentUser 在页面初始化时统一获取）
+            const currentUserId = window.currentUserId;
             
             // 调试：输出章节数据
             console.log('渲染章节列表，章节数量:', chapters.length);
@@ -2721,11 +2703,29 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
         }
 
         // 初始化树状图
-        function initTreeChart() {
+        // ECharts 动态加载：首次需要时才加载 1.1MB 的 echarts.min.js
+        let echartsLoadPromise = null;
+        function ensureECharts() {
+            if (window.echarts) return Promise.resolve();
+            if (echartsLoadPromise) return echartsLoadPromise;
+            echartsLoadPromise = new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'libs/echarts/echarts.min.js';
+                script.onload = resolve;
+                script.onerror = () => reject(new Error('ECharts 加载失败'));
+                document.head.appendChild(script);
+            });
+            return echartsLoadPromise;
+        }
+
+        async function initTreeChart() {
             if (!window.treeData) return;
 
             const chartDom = document.getElementById('treeChart');
             if (!chartDom) return;
+
+            // 确保 ECharts 已加载
+            await ensureECharts();
 
             // 如果已有图表实例，先销毁
             if (treeChart) {
@@ -3791,11 +3791,14 @@ function getTreeOption(treeData, layout) {
         }
 
         // 初始化统计图表
-        function initStatsChart() {
+        async function initStatsChart() {
             if (!window.treeStats) return;
 
             const chartDom = document.getElementById('statsChart');
             if (!chartDom) return;
+
+            // 确保 ECharts 已加载
+            await ensureECharts();
 
             if (statsChart) {
                 statsChart.dispose();
