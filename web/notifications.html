@@ -741,6 +741,11 @@
             event.preventDefault();
             localStorage.removeItem('token');
             sessionStorage.removeItem('token');
+            // 清除引导相关缓存，防止切换账号时残留旧数据
+            localStorage.removeItem('st_user_state');
+            localStorage.removeItem('st_onboarding_progress');
+            localStorage.removeItem('st_celebration_shown');
+            localStorage.removeItem('st_just_registered');
             window.location.href = '/login.html';
         }
     </script>

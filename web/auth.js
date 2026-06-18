@@ -268,6 +268,11 @@ function handleRegister() {
             if (response.ok) {
                 console.log('注册响应:', data);
                 
+                // 无论是否需要邮箱验证，都清除旧的引导缓存（防止切换账号残留）
+                localStorage.removeItem('st_user_state');
+                localStorage.removeItem('st_onboarding_progress');
+                localStorage.removeItem('st_celebration_shown');
+
                 // 检查是否需要邮箱验证
                 if (data.requireVerification) {
                     // 邮箱注册需要先验证，显示提示并跳转到登录页
@@ -551,6 +556,11 @@ function logout() {
     localStorage.removeItem('user');
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('user');
+    // 清除引导相关缓存，防止切换账号时残留旧数据
+    localStorage.removeItem('st_user_state');
+    localStorage.removeItem('st_onboarding_progress');
+    localStorage.removeItem('st_celebration_shown');
+    localStorage.removeItem('st_just_registered');
     
     console.log('已退出登录');
     window.location.href = '/login.html';

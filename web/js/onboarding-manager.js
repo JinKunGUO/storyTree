@@ -84,9 +84,19 @@ class OnboardingManager {
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
-          if (Date.now() - parsed._ts < 5 * 60 * 1000) {
+          // 校验缓存用户是否与当前登录用户一致
+          const currentUser = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+          const cacheUserMatch = !parsed._userId || !currentUser.id || parsed._userId === currentUser.id;
+          if (cacheUserMatch && Date.now() - parsed._ts < 5 * 60 * 1000) {
             this.userState = parsed;
             return;
+          }
+          // 用户不匹配时清除旧引导数据
+          if (!cacheUserMatch) {
+            localStorage.removeItem('st_user_state');
+            localStorage.removeItem('st_onboarding_progress');
+            localStorage.removeItem('st_celebration_shown');
+            this.progressCache = null;
           }
         } catch (e) { /* 忽略解析错误 */ }
       }
@@ -105,7 +115,21 @@ class OnboardingManager {
 
       const data = await response.json();
       if (data.user) {
+        // 检测用户切换：如果缓存中的用户 ID 与当前登录用户不同，清除旧引导数据
+        const cachedStr = localStorage.getItem('st_user_state');
+        if (cachedStr) {
+          try {
+            const cachedState = JSON.parse(cachedStr);
+            if (cachedState._userId && cachedState._userId !== data.user.id) {
+              localStorage.removeItem('st_onboarding_progress');
+              localStorage.removeItem('st_celebration_shown');
+              this.progressCache = null;
+            }
+          } catch (e) { /* 忽略 */ }
+        }
+
         this.userState = {
+          _userId: data.user.id,
           has_seen_tour: data.user.has_seen_tour,
           onboarding_progress: data.user.onboarding_progress
             ? JSON.parse(data.user.onboarding_progress)

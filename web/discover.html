@@ -1036,6 +1036,8 @@
 
         function logout() {
             ['token','user'].forEach(k => { localStorage.removeItem(k); sessionStorage.removeItem(k); });
+            // 清除引导相关缓存，防止切换账号时残留旧数据
+            ['st_user_state','st_onboarding_progress','st_celebration_shown','st_just_registered'].forEach(k => localStorage.removeItem(k));
             window.location.href = '/login.html';
             return false;
         }
