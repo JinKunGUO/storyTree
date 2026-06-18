@@ -1116,7 +1116,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
             // 显示封面预览
             const coverPreview = document.getElementById('editCoverPreview');
             if (story.coverImage) {
-                coverPreview.innerHTML = `<img src="${story.coverImage}" alt="封面">`;
+                coverPreview.innerHTML = `<img src="${escapeHtml(story.coverImage)}" alt="封面">`;
             } else {
                 coverPreview.innerHTML = '<i class="fas fa-image"></i>';
             }
@@ -1343,13 +1343,13 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                     <div class="chapter-number">${index + 1}</div>
                     <div class="chapter-info">
                         <div class="chapter-title">
-                            ${chapter.title}
+                            ${escapeHtml(chapter.title)}
                             ${hasAI ? '<span class="ai-badge"><i class="fas fa-robot"></i> AI 创作</span>' : ''}
                         </div>
                         <div class="chapter-meta">
                             <span><i class="fas fa-eye"></i> ${chapter.readCount || chapter.read_count || chapter.views || 0} 阅读</span>
                             <span><i class="fas fa-comment"></i> ${chapter.commentCount || 0} 评论</span>
-                            <span><i class="fas fa-user"></i> ${chapter.author?.username || '未知作者'}</span>
+                            <span><i class="fas fa-user"></i> ${escapeHtml(chapter.author?.username || '未知作者')}</span>
                             <span><i class="fas fa-clock"></i> ${new Date(chapter.createdAt || chapter.created_at).toLocaleDateString('zh-CN')}</span>
                         </div>
                     </div>
@@ -1358,7 +1358,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                             ${chapter.isPublished || chapter.is_published ? '已发布' : '草稿'}
                         </div>
                         ${(!chapter.isPublished && !chapter.is_published) && (isChapterAuthor || isStoryAuthor) ? `
-                            <button class="chapter-action-btn" onclick="event.stopPropagation(); publishChapter(${chapter.id}, '${chapter.title.replace(/'/g, "\\'")}')}" title="发布草稿" style="
+                            <button class="chapter-action-btn" onclick="event.stopPropagation(); publishChapter(${chapter.id}, '${escapeHtml(chapter.title).replace(/'/g, "&#039;")}')}" title="发布草稿" style="
                                 padding: 8px 12px;
                                 background: #059669;
                                 color: white;
@@ -1372,7 +1372,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                             </button>
                         ` : ''}
                         ${canDelete ? `
-                            <button class="chapter-action-btn" onclick="event.stopPropagation(); deleteChapter(${chapter.id}, '${chapter.title.replace(/'/g, "\\'")}')}" title="删除章节" style="
+                            <button class="chapter-action-btn" onclick="event.stopPropagation(); deleteChapter(${chapter.id}, '${escapeHtml(chapter.title).replace(/'/g, "&#039;")}')}" title="删除章节" style="
                                 padding: 8px 12px;
                                 background: #f44336;
                                 color: white;

@@ -647,15 +647,8 @@
     <script src="js/welcome-modal.js?v=3" defer></script>
     <script src="js/concept-guide.js?v=3" defer></script>
     <script src="js/onboarding-manager.js?v=3" defer></script>
+    <script src="js/utils/escape.js"></script>
     <script>
-        // ===== 工具函数 =====
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
         // 封面颜色渐变列表
         const coverGradients = [
             'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',

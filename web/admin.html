@@ -1097,13 +1097,6 @@
       }
     }
 
-// HTML 转义函数
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-
     // ========== 会员管理功能 ==========
 
     // 加载会员统计
@@ -2048,6 +2041,7 @@
     <script src="js/toast.js"></script>
     <script src="js/modal.js"></script>
     <script src="js/navbar.js"></script>
+    <script src="js/utils/escape.js"></script>
     <!-- 页脚 -->
     <footer style="text-align: center; padding: 20px; margin-top: 40px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
         <p>© 2026 StoryTree. 用心创作每一个故事。</p>

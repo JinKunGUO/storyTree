@@ -169,7 +169,7 @@
                 
                 console.log('AI 生成标记:', aiGenerated);
                 
-                let titleHTML = chapter.title;
+                let titleHTML = escapeHtml(chapter.title);
                 
                 // 添加 AI 标记
                 if (aiGenerated) {
@@ -206,9 +206,9 @@
                     const afterImage = content.substring(actualPosition);
                     
                     chapterTextEl.innerHTML = `
-                        <div style="white-space: pre-wrap; text-indent: 2em;">${beforeImage}</div>
+                        <div style="white-space: pre-wrap; text-indent: 2em;">${escapeHtml(beforeImage)}</div>
                         <div style="text-align: center; margin: 40px 0;">
-                            <img src="${chapter.image}" 
+                            <img src="${escapeHtml(chapter.image)}" 
                                  alt="章节插图" 
                                  style="max-width: 100%; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1);" 
                                  onerror="this.style.display='none'">
@@ -216,7 +216,7 @@
                                 <i class="fas fa-image"></i> AI 生成插图
                             </p>
                         </div>
-                        <div style="white-space: pre-wrap; text-indent: 2em;">${afterImage}</div>
+                        <div style="white-space: pre-wrap; text-indent: 2em;">${escapeHtml(afterImage)}</div>
                     `;
                 } else {
                     // 没有插图：直接显示文本
@@ -386,11 +386,7 @@
                 showError(error.message || '评分失败，请稍后重试');
             }
         }
-                    function escapeHtml(text) {
-                        const div = document.createElement('div');
-                        div.textContent = text;
-                        return div.innerHTML;
-                    }
+                    // escapeHtml 已由 auth.js 全局提供
 
                     // 发布草稿章节
                     async function publishDraft(chapterId) {
@@ -832,14 +828,14 @@
                         breadcrumbHTML += `
                             <span class="breadcrumb-item current">
                                 <i class="fas fa-file-alt"></i>
-                                <span>${node.title}</span>
+                                <span>${escapeHtml(node.title)}</span>
                             </span>
                         `;
                     } else {
                         breadcrumbHTML += `
                             <a href="/chapter.html?id=${node.id}" class="breadcrumb-item">
                                 <i class="fas fa-file-alt"></i>
-                                <span>${node.title}</span>
+                                <span>${escapeHtml(node.title)}</span>
                             </a>
                         `;
                     }
@@ -890,7 +886,7 @@
                         breadcrumbHTML += `
                             <a href="/chapter.html?id=${node.id}" class="breadcrumb-item">
                                 <i class="fas fa-file-alt"></i>
-                                <span>${node.title}</span>
+                                <span>${escapeHtml(node.title)}</span>
                             </a>
                         `;
                     }
@@ -906,14 +902,14 @@
                         breadcrumbHTML += `
                             <span class="breadcrumb-item current">
                                 <i class="fas fa-file-alt"></i>
-                                <span>${node.title}</span>
+                                <span>${escapeHtml(node.title)}</span>
                             </span>
                         `;
                     } else {
                         breadcrumbHTML += `
                             <a href="/chapter.html?id=${node.id}" class="breadcrumb-item">
                                 <i class="fas fa-file-alt"></i>
-                                <span>${node.title}</span>
+                                <span>${escapeHtml(node.title)}</span>
                             </a>
                         `;
                     }
@@ -1191,7 +1187,7 @@
                 tocLoaded = true;
             } catch (err) {
                 console.error('目录加载失败:', err);
-                nav.innerHTML = `<div class="toc-loading">加载失败：${err.message}</div>`;
+                nav.innerHTML = `<div class="toc-loading">加载失败：${escapeHtml(err.message)}</div>`;
             }
         }
 
@@ -1435,7 +1431,7 @@
 
             messageEl.innerHTML = `
                 <i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'}"></i>
-                <span>${message}</span>
+                <span>${escapeHtml(message)}</span>
             `;
 
             document.body.appendChild(messageEl);
@@ -1647,7 +1643,7 @@
         function displayCurrentBranch() {
             document.getElementById('currentBranchTitle').textContent = currentChapter.title;
             document.getElementById('currentBranchMeta').innerHTML = `
-                <span><i class="fas fa-user"></i> ${currentChapter.author?.username || '未知'}</span>
+                <span><i class="fas fa-user"></i> ${escapeHtml(currentChapter.author?.username || '未知')}</span>
                 <span><i class="fas fa-calendar"></i> ${new Date(currentChapter.created_at).toLocaleDateString('zh-CN')}</span>
             `;
             document.getElementById('currentBranchContent').textContent = currentChapter.content || '暂无内容';
@@ -1681,7 +1677,7 @@
                 // 显示对比分支信息
                 document.getElementById('compareBranchTitle').textContent = branch.title;
                 document.getElementById('compareBranchMeta').innerHTML = `
-                    <span><i class="fas fa-user"></i> ${branch.author?.username || '未知'}</span>
+                    <span><i class="fas fa-user"></i> ${escapeHtml(branch.author?.username || '未知')}</span>
                     <span><i class="fas fa-calendar"></i> ${new Date(branch.created_at).toLocaleDateString('zh-CN')}</span>
                 `;
                 document.getElementById('compareBranchContent').textContent = branch.content || '暂无内容';
@@ -1855,11 +1851,11 @@
                          onmouseout="this.style.boxShadow='none'"
                          onclick="window.location.href='/chapter.html?id=${alt.id}'">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <h4 style="margin: 0; color: #333;">${alt.title}</h4>
+                            <h4 style="margin: 0; color: #333;">${escapeHtml(alt.title)}</h4>
                             ${alt.aiGenerated ? '<span style="background: var(--st-primary-700); color: white; padding: 2px 8px; border-radius: 8px; font-size: 11px;"><i class="fas fa-robot"></i> AI</span>' : ''}
                         </div>
                         <div style="color: #999; font-size: 13px; margin-bottom: 10px;">
-                            <i class="fas fa-user"></i> ${alt.author.username}
+                            <i class="fas fa-user"></i> ${escapeHtml(alt.author.username)}
                         </div>
                         <div style="display: flex; gap: 15px; font-size: 13px; color: #666;">
                             <span><i class="fas fa-eye"></i> ${alt.readCount}</span>

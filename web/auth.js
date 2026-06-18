@@ -1,9 +1,9 @@
 // 认证功能 JavaScript
 
-// XSS 防护：转义 HTML 特殊字符
+// XSS 防护：转义 HTML 特殊字符（全局公共函数）
 function escapeHtml(text) {
-    if (!text) return '';
-    return text
+    if (text === null || text === undefined) return '';
+    return String(text)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')

@@ -1764,11 +1764,7 @@ profileHeader.innerHTML = `
         }
 
         // HTML转义
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+        // escapeHtml 已由 auth.js 全局提供
 
         // 格式化日期
         function formatDate(dateString) {

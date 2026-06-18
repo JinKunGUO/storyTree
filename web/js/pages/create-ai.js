@@ -1552,13 +1552,7 @@ async function handleConfirm() {
   }
 }
 
-// HTML 转义（防止 XSS）
-function escapeHtml(text) {
-  if (!text) return '';
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
+// escapeHtml 已由 auth.js 全局提供
 
 // 从可编辑字段收集当前表单数据
 function collectEditedData() {

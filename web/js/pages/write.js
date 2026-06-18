@@ -3131,13 +3131,7 @@ async function saveProjectBrief() {
     await loadProjectBrief();
 }
 
-// HTML 转义工具函数
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// escapeHtml 已由 auth.js 全局提供
 
 // 切换大纲编辑/查看模式
 function toggleOutlineEdit() {
