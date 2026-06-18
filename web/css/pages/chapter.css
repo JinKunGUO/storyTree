@@ -1748,3 +1748,66 @@
             }
         }
 
+        /* ============ 分页阅读器样式（CSS Multi-Column 方案） ============ */
+        .pr-wrapper {
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+            /* 高度 = 视口 - 顶部工具栏(约100px) - 底部指示器(50px) - 留白 */
+            height: calc(100vh - 150px);
+            touch-action: none;
+        }
+
+        .pr-column-container {
+            height: 100%;
+            box-sizing: border-box;
+            will-change: transform;
+            /* column 属性由 JS 动态设置 */
+            line-height: inherit;
+        }
+
+        /* 段落样式 */
+        .pr-column-container p {
+            margin: 0 0 1.2em 0;
+            text-indent: 2em;
+            line-height: inherit;
+        }
+
+        /* 图片样式 */
+        .pr-column-container img {
+            max-width: 100%;
+            border-radius: 10px;
+            margin: 20px auto;
+            display: block;
+            /* 防止图片被列截断 */
+            break-inside: avoid;
+        }
+
+        /* 页码指示器 */
+        .pr-indicator {
+            text-align: center;
+            padding: 16px 0 8px;
+            color: var(--st-text-tertiary);
+            font-size: 13px;
+            user-select: none;
+        }
+
+        .pr-indicator-text {
+            background: var(--st-gray-100);
+            padding: 4px 14px;
+            border-radius: var(--st-radius-full);
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* 暗色主题下的指示器 */
+        body.theme-dark .pr-indicator-text {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* 护眼主题下的指示器 */
+        body.theme-sepia .pr-indicator-text {
+            background: rgba(139, 119, 92, 0.1);
+            color: rgba(139, 119, 92, 0.7);
+        }
+

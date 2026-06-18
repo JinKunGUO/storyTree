@@ -74,6 +74,12 @@ router.get('/', async (req, res) => {
               comments: true,
             },
           },
+          login_logs: {
+            where: { status: 'success' },
+            orderBy: { created_at: 'desc' },
+            take: 1,
+            select: { created_at: true },
+          },
         },
         orderBy,
         skip,
@@ -82,8 +88,17 @@ router.get('/', async (req, res) => {
       prisma.users.count({ where }),
     ]);
 
+    // 将 login_logs 数组转换为 lastLoginAt 字段
+    const usersWithLastLogin = users.map(user => {
+      const { login_logs, ...rest } = user;
+      return {
+        ...rest,
+        lastLoginAt: login_logs.length > 0 ? login_logs[0].created_at : null,
+      };
+    });
+
     res.json({
-      users,
+      users: usersWithLastLogin,
       pagination: {
         page,
         limit,

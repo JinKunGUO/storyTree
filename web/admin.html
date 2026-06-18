@@ -1403,7 +1403,8 @@
                       ID: ${user.id} | 
                       邮箱: ${user.email || '未绑定'} | 
                       ${user.wx_nickname ? '微信: ' + escapeHtml(user.wx_nickname) + ' | ' : ''}
-                      注册: ${new Date(user.createdAt).toLocaleDateString('zh-CN')}
+                      注册: ${new Date(user.createdAt).toLocaleDateString('zh-CN')} | 
+                      最近登录: ${user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '<span style="color: var(--st-text-tertiary);">从未</span>'}
                     </div>
                   </div>
                 </div>

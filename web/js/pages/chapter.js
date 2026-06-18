@@ -4,6 +4,9 @@
         let siblings = [];
         let selectedSiblingId = null;
         let recommendedBranch = null;
+        let paginationReader = null; // 分页阅读器实例
+        let prevChapterId = null; // 上一章 ID
+        let nextChapterId = null; // 下一章 ID
 
         // 页面初始化
         document.addEventListener('DOMContentLoaded', function() {
@@ -225,7 +228,53 @@
 
                 // 检查是否是作者
                 checkIfAuthor(chapter);
+
+                // 初始化分页阅读器（延迟执行，确保内容已渲染）
+                setTimeout(() => {
+                    initPaginationReader();
+                }, 100);
             }
+
+        /**
+         * 初始化分页阅读器
+         */
+        function initPaginationReader() {
+            if (!window.PaginationReader) return;
+
+            const contentEl = document.getElementById('chapterText');
+            const containerEl = document.querySelector('.chapter-content');
+            if (!contentEl || !containerEl) return;
+
+            // 内容太短不分页（少于 500 字）
+            const textLength = contentEl.textContent.length;
+            if (textLength < 500) return;
+
+            // 销毁旧实例
+            if (paginationReader) {
+                paginationReader.destroy();
+                paginationReader = null;
+            }
+
+            paginationReader = new PaginationReader({
+                contentEl: contentEl,
+                containerEl: containerEl,
+                onPageChange: (currentPage, totalPages) => {
+                    updateReadingProgressByPage(currentPage, totalPages);
+                },
+                onPrevChapter: () => {
+                    if (prevChapterId) {
+                        window.location.href = `/chapter.html?id=${prevChapterId}`;
+                    }
+                },
+                onNextChapter: () => {
+                    if (nextChapterId) {
+                        window.location.href = `/chapter.html?id=${nextChapterId}`;
+                    }
+                }
+            });
+
+            paginationReader.init();
+        }
 
 // ========== 评分功能 ==========
         let currentUserRating = 0; // 当前用户的评分
@@ -676,6 +725,7 @@
 
                 // 上一章
                 const prevChapter = currentIndex > 0 ? chapters[currentIndex - 1] : null;
+                prevChapterId = prevChapter ? prevChapter.id : null;
                 const prevBtns = [
                     document.getElementById('prevChapterBtn'),
                     document.getElementById('prevChapterBtnBottom')
@@ -692,6 +742,7 @@
 
                 // 下一章
                 const nextChapter = currentIndex < chapters.length - 1 ? chapters[currentIndex + 1] : null;
+                nextChapterId = nextChapter ? nextChapter.id : null;
                 const nextBtns = [
                     document.getElementById('nextChapterBtn'),
                     document.getElementById('nextChapterBtnBottom')
@@ -939,6 +990,16 @@
                         chapterText.style.fontSize = fontSize + 'px';
                     }
                     localStorage.setItem('chapter_font_size', fontSize);
+
+                    // 字体大小变化后重新分页
+                    if (paginationReader && paginationReader.enabled) {
+                        setTimeout(() => {
+                            const progress = paginationReader.getProgress();
+                            paginationReader.paginate();
+                            const newPage = Math.round(progress * (paginationReader.totalPages - 1));
+                            paginationReader.goToPage(newPage, false);
+                        }, 100);
+                    }
                 });
             });
 
@@ -1020,6 +1081,9 @@
             if (!fill) return;
 
             function updateProgress() {
+                // 分页模式下由 paginationReader 的 onPageChange 驱动进度
+                if (paginationReader && paginationReader.enabled) return;
+
                 const scrollTop = window.scrollY || document.documentElement.scrollTop;
                 const docHeight = document.documentElement.scrollHeight - window.innerHeight;
                 if (docHeight <= 0) {
@@ -1033,6 +1097,16 @@
 
             window.addEventListener('scroll', updateProgress, { passive: true });
             updateProgress();
+        }
+
+        /** 更新阅读进度条（供分页阅读器调用） */
+        function updateReadingProgressByPage(current, total) {
+            const fill = document.getElementById('readingProgressFill');
+            const wrapper = document.getElementById('readingProgressWrapper');
+            if (!fill) return;
+            const pct = total <= 1 ? 100 : Math.round((current / (total - 1)) * 100);
+            fill.style.width = pct + '%';
+            if (wrapper) wrapper.setAttribute('aria-valuenow', pct);
         }
 
         // ============================================
