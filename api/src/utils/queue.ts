@@ -22,8 +22,13 @@ export const aiContinuationQueue = new Queue('ai-continuation', {
       type: 'exponential',
       delay: 2000
     },
+    timeout: 300000, // 5分钟超时
     removeOnComplete: 100,
     removeOnFail: 50
+  },
+  settings: {
+    stalledInterval: 120000, // 2分钟检测卡死任务
+    maxStalledCount: 2
   }
 });
 
@@ -35,8 +40,13 @@ export const aiPolishQueue = new Queue('ai-polish', {
       type: 'exponential',
       delay: 1000
     },
+    timeout: 300000, // 5分钟超时
     removeOnComplete: 100,
     removeOnFail: 50
+  },
+  settings: {
+    stalledInterval: 120000,
+    maxStalledCount: 2
   }
 });
 
@@ -48,8 +58,13 @@ export const aiIllustrationQueue = new Queue('ai-illustration', {
       type: 'exponential',
       delay: 5000
     },
+    timeout: 600000, // 10分钟超时（图片生成耗时较长）
     removeOnComplete: 100,
     removeOnFail: 50
+  },
+  settings: {
+    stalledInterval: 180000,
+    maxStalledCount: 2
   }
 });
 
@@ -62,8 +77,13 @@ export const aiProjectBriefQueue = new Queue('ai-project-brief', {
       type: 'exponential',
       delay: 2000
     },
+    timeout: 300000,
     removeOnComplete: 100,
     removeOnFail: 50
+  },
+  settings: {
+    stalledInterval: 120000,
+    maxStalledCount: 2
   }
 });
 
@@ -75,8 +95,13 @@ export const aiOutlineQueue = new Queue('ai-outline', {
       type: 'exponential',
       delay: 2000
     },
+    timeout: 300000,
     removeOnComplete: 100,
     removeOnFail: 50
+  },
+  settings: {
+    stalledInterval: 120000,
+    maxStalledCount: 2
   }
 });
 
@@ -89,8 +114,13 @@ export const aiPasticheQueue = new Queue('ai-pastiche', {
       type: 'exponential',
       delay: 2000
     },
+    timeout: 300000,
     removeOnComplete: 100,
     removeOnFail: 50
+  },
+  settings: {
+    stalledInterval: 120000,
+    maxStalledCount: 2
   }
 });
 
@@ -102,8 +132,13 @@ export const aiTemplateQueue = new Queue('ai-template', {
       type: 'exponential',
       delay: 2000
     },
+    timeout: 300000,
     removeOnComplete: 100,
     removeOnFail: 50
+  },
+  settings: {
+    stalledInterval: 120000,
+    maxStalledCount: 2
   }
 });
 
