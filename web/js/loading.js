@@ -342,3 +342,16 @@
 
 })(window);
 
+// ===== 全局错误处理 =====
+// 捕获未处理的 JS 错误，防止静默失败
+window.onerror = function(message, source, lineno, colno, error) {
+    console.error('[全局错误]', message, '\n来源:', source, '行:', lineno, '列:', colno);
+    if (error && error.stack) {
+        console.error('[堆栈]', error.stack);
+    }
+};
+
+window.addEventListener('unhandledrejection', function(event) {
+    console.error('[未处理的 Promise 拒绝]', event.reason);
+});
+

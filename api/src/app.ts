@@ -47,6 +47,23 @@ export function createApp() {
   app.get('/health', healthHandler);
   app.get('/api/health', healthHandler);
 
+  // 安全 HTTP 头（等效 helmet 核心功能）
+  app.use((_req: express.Request, res: express.Response, next: express.NextFunction) => {
+    // 防止 MIME 类型嗅探
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    // 防止点击劫持
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    // XSS 过滤（旧浏览器）
+    res.setHeader('X-XSS-Protection', '0');
+    // 控制 Referrer 信息泄露
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    // 禁止嗅探服务器信息
+    res.removeHeader('X-Powered-By');
+    // 权限策略：限制敏感 API
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    next();
+  });
+
   // CORS 配置 - 只允许白名单内的来源
   const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
@@ -154,6 +171,19 @@ export function createApp() {
 
     // 默认提供index.html
     res.sendFile(path.join(__dirname, '../../web/index.html'));
+  });
+
+  // 全局错误处理中间件 — 捕获路由中未处理的异常，返回统一格式
+  app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error('🔥 Express 全局错误:', err.message);
+    console.error(err.stack);
+
+    const statusCode = (err as any).statusCode || 500;
+    const message = process.env.NODE_ENV === 'production'
+      ? '服务器内部错误'
+      : err.message;
+
+    res.status(statusCode).json({ error: message });
   });
 
   return app;

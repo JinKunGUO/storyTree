@@ -91,6 +91,18 @@ server.listen(PORT, () => {
   console.log(`📦 Version: http://localhost:${PORT}/api/version`);
 });
 
+// 全局未捕获异常处理 — 防止进程静默崩溃
+process.on('uncaughtException', (error) => {
+  console.error('💥 未捕获异常:', error);
+  // 记录后优雅退出，避免不确定状态继续运行
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 未处理的 Promise 拒绝:', reason);
+  console.error('   Promise:', promise);
+});
+
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('🛑 收到SIGTERM信号，开始优雅关闭...');
