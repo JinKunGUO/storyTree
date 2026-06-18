@@ -35,7 +35,9 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+  // 兼容小程序端的 pageSize 参数名
+  const rawLimit = req.query.limit || req.query.pageSize;
+  const limit = Math.min(100, Math.max(1, parseInt(rawLimit as string) || 20));
   const skip = (page - 1) * limit;
 
   try {
