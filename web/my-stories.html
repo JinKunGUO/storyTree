@@ -568,19 +568,7 @@
             }, { title: '退出协作', confirmText: '确认退出' });
         }
 
-        function formatDate(dateStr) {
-            const date = new Date(dateStr);
-            const now = new Date();
-            const diff = now - date;
-            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-            
-            if (days === 0) return '今天';
-            if (days === 1) return '昨天';
-            if (days < 7) return `${days}天前`;
-            if (days < 30) return `${Math.floor(days / 7)}周前`;
-            if (days < 365) return `${Math.floor(days / 30)}个月前`;
-            return `${Math.floor(days / 365)}年前`;
-        }
+        // formatDate 已由 js/utils/format-date.js 全局提供
 
         function showSuccess(message) {
             window.toast ? toast.success(message) : alert(message);
@@ -618,6 +606,7 @@
     <script src="js/onboarding-manager.js?v=3" defer></script>
     <script src="js/page-guide-bridge.js?v=3" defer></script>
     <script src="js/utils/escape.js"></script>
+    <script src="js/utils/format-date.js"></script>
     <!-- 页脚 -->
     <footer style="text-align: center; padding: 20px; margin-top: 40px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
         <p>© 2026 StoryTree. 用心创作每一个故事。</p>

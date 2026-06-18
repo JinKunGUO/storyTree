@@ -1767,36 +1767,7 @@ profileHeader.innerHTML = `
         // escapeHtml 已由 auth.js 全局提供
 
         // 格式化日期
-        function formatDate(dateString) {
-            if (!dateString) return '未知时间';
-            
-            const date = new Date(dateString);
-            
-            // 检查日期是否有效
-            if (isNaN(date.getTime())) {
-                console.warn('无效的日期:', dateString);
-                return '未知时间';
-            }
-            
-            const now = new Date();
-            const diff = now - date;
-            
-            // 如果是未来时间，显示完整日期
-            if (diff < 0) {
-                return date.toLocaleDateString('zh-CN');
-            }
-            
-            const minutes = Math.floor(diff / 60000);
-            const hours = Math.floor(diff / 3600000);
-            const days = Math.floor(diff / 86400000);
-            
-            if (minutes < 1) return '刚刚';
-            if (minutes < 60) return `${minutes}分钟前`;
-            if (hours < 24) return `${hours}小时前`;
-            if (days < 30) return `${days}天前`;
-            
-            return date.toLocaleDateString('zh-CN');
-        }
+        // formatDate 已由 js/utils/format-date.js 全局提供
 
         // 加载关注的故事
         async function loadFollowedStories(userId) {
