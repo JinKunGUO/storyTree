@@ -6,6 +6,15 @@ import { hashPassword, verifyPassword, isValidUsername, isValidPassword } from '
 
 const router = Router();
 
+// 参数预处理：验证 :id 参数为有效正整数
+router.param('id', (req, res, next, value) => {
+  const id = parseInt(value, 10);
+  if (isNaN(id) || id < 1) {
+    return res.status(400).json({ error: '无效的用户ID' });
+  }
+  next();
+});
+
 // 获取动态流（必须在 /:id 之前注册，否则 "feed" 会被当作 :id 参数）
 router.get('/feed/me', authenticateToken, async (req, res) => {
   const userId = getUserId(req);

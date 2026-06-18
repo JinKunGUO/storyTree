@@ -134,9 +134,11 @@ export function getFollowedStories(userId: number, params?: { page?: number; pag
 
 // 搜索故事
 export function searchStories(query: string, params?: { page?: number; pageSize?: number }) {
-  return http.get<{ stories: Story[]; nodes: any[]; total: number }>('/api/search', {
+  return http.get<{ stories: Story[]; nodes: any[]; total: number; page: number; limit: number; hasMore: boolean }>('/api/search', {
     q: query,
     type: 'stories',
+    ...(params?.page && { page: params.page }),
+    ...(params?.pageSize && { pageSize: params.pageSize }),
   } as Record<string, unknown>)
 }
 

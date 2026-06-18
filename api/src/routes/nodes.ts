@@ -8,6 +8,15 @@ import { WORD_REWARD_RATE, MAKEUP_CHANCE_RATE } from '../utils/milestones';
 
 const router = Router();
 
+// 参数预处理：验证 :id 参数为有效正整数，无效时直接返回 400
+router.param('id', (req, res, next, value) => {
+  const id = parseInt(value, 10);
+  if (isNaN(id) || id < 1) {
+    return res.status(400).json({ error: '无效的章节ID' });
+  }
+  next();
+});
+
 // 举报频率限制（简单内存实现，生产环境建议用Redis）
 const reportLimit = new Map<string, { count: number; date: string }>();
 const MAX_REPORTS_PER_DAY = 10;

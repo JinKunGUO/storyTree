@@ -175,6 +175,15 @@ export function createApp() {
 
   // 全局错误处理中间件 — 捕获路由中未处理的异常，返回统一格式
   app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    // Prisma 验证错误（如 parseInt 产生 NaN 传入 where.id）→ 400
+    if (err.constructor?.name === 'PrismaClientValidationError') {
+      return res.status(400).json({ error: '请求参数无效' });
+    }
+    // Prisma 已知请求错误（如记录不存在的 P2025）→ 404/400
+    if ((err as any).code === 'P2025') {
+      return res.status(404).json({ error: '资源不存在' });
+    }
+
     console.error('🔥 Express 全局错误:', err.message);
     console.error(err.stack);
 

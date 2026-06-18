@@ -8,6 +8,15 @@ import { canViewStory, canEditStory, checkViewPermission, checkEditPermission } 
 
 const router = Router();
 
+// 参数预处理：验证 :id 参数为有效正整数，无效时直接返回 400
+router.param('id', (req, res, next, value) => {
+  const id = parseInt(value, 10);
+  if (isNaN(id) || id < 1) {
+    return res.status(400).json({ error: '无效的故事ID' });
+  }
+  next();
+});
+
 // ===== 标签分类体系 API =====
 // GET /api/stories/tags/taxonomy - 返回标签分类配置（供前端动态筛选）
 router.get('/tags/taxonomy', (_req, res) => {

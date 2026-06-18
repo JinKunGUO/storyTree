@@ -6,6 +6,15 @@ import { safeParseId, safeParsePage, safeParsePageSize } from '../utils/middlewa
 
 const router = Router();
 
+// 参数预处理：验证 :commentId 参数为有效正整数
+router.param('commentId', (req, res, next, value) => {
+  const id = parseInt(value, 10);
+  if (isNaN(id) || id < 1) {
+    return res.status(400).json({ error: '无效的评论ID' });
+  }
+  next();
+});
+
 // 获取节点的评论列表（优化版：单次查询 + 内存构建树结构）
 router.get('/nodes/:node_id/comments', async (req, res) => {
   const { node_id } = req.params;
