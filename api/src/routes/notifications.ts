@@ -27,25 +27,41 @@ export async function createNotification(
   }
 }
 
-// 获取用户通知列表
+// 获取用户通知列表（支持分页）
 router.get('/', authenticateToken, async (req, res) => {
   const user_id = getUserId(req);
   if (!user_id) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+  const skip = (page - 1) * limit;
+
   try {
-    const notifications = await prisma.notifications.findMany({
-      where: { user_id },
-      orderBy: { created_at: 'desc' },
-      take: 50
-    });
+    const where = { user_id };
 
-    const unreadCount = await prisma.notifications.count({
-      where: { user_id, is_read: false }
-    });
+    const [notifications, total, unreadCount] = await Promise.all([
+      prisma.notifications.findMany({
+        where,
+        orderBy: { created_at: 'desc' },
+        skip,
+        take: limit
+      }),
+      prisma.notifications.count({ where }),
+      prisma.notifications.count({
+        where: { user_id, is_read: false }
+      })
+    ]);
 
-    res.json({ notifications, unreadCount });
+    res.json({
+      notifications,
+      unreadCount,
+      total,
+      page,
+      limit,
+      hasMore: skip + limit < total
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch notifications' });

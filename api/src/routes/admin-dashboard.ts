@@ -76,14 +76,7 @@ router.get('/user-growth', async (req, res) => {
     startDate.setDate(startDate.getDate() - days);
     startDate.setHours(0, 0, 0, 0);
 
-    // 获取时间段内注册的用户
-    const users = await prisma.users.findMany({
-      where: { createdAt: { gte: startDate } },
-      select: { createdAt: true },
-      orderBy: { createdAt: 'asc' },
-    });
-
-    // 按天分组
+    // 使用 count 按天聚合，避免拉取所有用户记录到内存
     const dailyMap = new Map<string, number>();
     for (let i = 0; i < days; i++) {
       const date = new Date(startDate);
@@ -92,9 +85,19 @@ router.get('/user-growth', async (req, res) => {
       dailyMap.set(key, 0);
     }
 
-    for (const user of users) {
-      const key = user.createdAt.toISOString().split('T')[0];
-      dailyMap.set(key, (dailyMap.get(key) || 0) + 1);
+    // 逐天计数（利用 Prisma count 在数据库层面聚合）
+    const dayPromises = Array.from(dailyMap.keys()).map(async (dateKey) => {
+      const dayStart = new Date(dateKey + 'T00:00:00.000Z');
+      const dayEnd = new Date(dateKey + 'T23:59:59.999Z');
+      const count = await prisma.users.count({
+        where: { createdAt: { gte: dayStart, lte: dayEnd } },
+      });
+      return { date: dateKey, count };
+    });
+
+    const dailyCounts = await Promise.all(dayPromises);
+    for (const { date, count } of dailyCounts) {
+      dailyMap.set(date, count);
     }
 
     const growth = Array.from(dailyMap.entries()).map(([date, count]) => ({
@@ -131,44 +134,28 @@ router.get('/content-stats', async (req, res) => {
     startDate.setDate(startDate.getDate() - days);
     startDate.setHours(0, 0, 0, 0);
 
-    const [stories, nodes] = await Promise.all([
-      prisma.stories.findMany({
-        where: { created_at: { gte: startDate } },
-        select: { created_at: true },
-        orderBy: { created_at: 'asc' },
-      }),
-      prisma.nodes.findMany({
-        where: { created_at: { gte: startDate } },
-        select: { created_at: true },
-        orderBy: { created_at: 'asc' },
-      }),
-    ]);
-
-    // 按天分组
-    const dailyMap = new Map<string, { stories: number; nodes: number }>();
+    // 使用 count 按天聚合，避免拉取所有记录到内存
+    const dateKeys: string[] = [];
     for (let i = 0; i < days; i++) {
       const date = new Date(startDate);
       date.setDate(date.getDate() + i);
-      const key = date.toISOString().split('T')[0];
-      dailyMap.set(key, { stories: 0, nodes: 0 });
+      dateKeys.push(date.toISOString().split('T')[0]);
     }
 
-    for (const story of stories) {
-      const key = story.created_at.toISOString().split('T')[0];
-      const entry = dailyMap.get(key);
-      if (entry) entry.stories++;
-    }
+    const dayPromises = dateKeys.map(async (dateKey) => {
+      const dayStart = new Date(dateKey + 'T00:00:00.000Z');
+      const dayEnd = new Date(dateKey + 'T23:59:59.999Z');
+      const timeRange = { gte: dayStart, lte: dayEnd };
 
-    for (const node of nodes) {
-      const key = node.created_at.toISOString().split('T')[0];
-      const entry = dailyMap.get(key);
-      if (entry) entry.nodes++;
-    }
+      const [storyCount, nodeCount] = await Promise.all([
+        prisma.stories.count({ where: { created_at: timeRange } }),
+        prisma.nodes.count({ where: { created_at: timeRange } }),
+      ]);
 
-    const contentStats = Array.from(dailyMap.entries()).map(([date, counts]) => ({
-      date,
-      ...counts,
-    }));
+      return { date: dateKey, stories: storyCount, nodes: nodeCount };
+    });
+
+    const contentStats = await Promise.all(dayPromises);
 
     res.json({ contentStats });
   } catch (error) {

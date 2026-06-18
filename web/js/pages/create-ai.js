@@ -858,7 +858,7 @@ function renderProjectBrief(brief) {
           <div class="editable-character">
             <div class="editable-character-header">
               <input type="text" class="editable-field" data-field="characterName" data-index="${i}" value="${escapeHtml(c.name || '')}" placeholder="角色名" style="flex:1;">
-              <select class="editable-field" data-field="characterRole" data-index="${i}" style="flex:0 0 auto; width: 90px; padding: 8px;">
+              <select class="editable-field" data-field="characterRole" data-index="${i}" style="flex:0 0 auto; width: 90px; max-width: 100%; padding: 8px;">
                 <option value="protagonist" ${c.role === 'protagonist' ? 'selected' : ''}>主角</option>
                 <option value="antagonist" ${c.role === 'antagonist' ? 'selected' : ''}>反派</option>
                 <option value="supporting" ${c.role === 'supporting' ? 'selected' : ''}>配角</option>
@@ -935,7 +935,7 @@ function renderOutline(outline) {
           <div class="editable-character">
             <div class="editable-character-header">
               <input type="text" class="editable-field" data-field="characterName" data-index="${i}" value="${escapeHtml(c.name || '')}" placeholder="角色名" style="flex:1;">
-              <select class="editable-field" data-field="characterRole" data-index="${i}" style="flex:0 0 auto; width: 90px; padding: 8px;">
+              <select class="editable-field" data-field="characterRole" data-index="${i}" style="flex:0 0 auto; width: 90px; max-width: 100%; padding: 8px;">
                 <option value="protagonist" ${c.role === 'protagonist' ? 'selected' : ''}>主角</option>
                 <option value="antagonist" ${c.role === 'antagonist' ? 'selected' : ''}>反派</option>
                 <option value="supporting" ${c.role === 'supporting' ? 'selected' : ''}>配角</option>
@@ -1033,7 +1033,7 @@ function renderPasticheResult(pastiche) {
           <div class="editable-character">
             <div class="editable-character-header">
               <input type="text" class="editable-field" data-field="characterName" data-index="${i}" value="${escapeHtml(c.name || '')}" placeholder="角色名" style="flex:1;">
-              <select class="editable-field" data-field="characterRole" data-index="${i}" style="flex:0 0 auto; width: 90px; padding: 8px;">
+              <select class="editable-field" data-field="characterRole" data-index="${i}" style="flex:0 0 auto; width: 90px; max-width: 100%; padding: 8px;">
                 <option value="protagonist" ${c.role === 'protagonist' ? 'selected' : ''}>主角</option>
                 <option value="antagonist" ${c.role === 'antagonist' ? 'selected' : ''}>反派</option>
                 <option value="supporting" ${c.role === 'supporting' ? 'selected' : ''}>配角</option>
@@ -1107,7 +1107,7 @@ function renderTemplateResult(template) {
           <div class="editable-character">
             <div class="editable-character-header">
               <input type="text" class="editable-field" data-field="characterName" data-index="${i}" value="${escapeHtml(c.name || '')}" placeholder="角色名" style="flex:1;">
-              <select class="editable-field" data-field="characterRole" data-index="${i}" style="flex:0 0 auto; width: 90px; padding: 8px;">
+              <select class="editable-field" data-field="characterRole" data-index="${i}" style="flex:0 0 auto; width: 90px; max-width: 100%; padding: 8px;">
                 <option value="protagonist" ${c.role === 'protagonist' ? 'selected' : ''}>主角</option>
                 <option value="antagonist" ${c.role === 'antagonist' ? 'selected' : ''}>反派</option>
                 <option value="supporting" ${c.role === 'supporting' ? 'selected' : ''}>配角</option>
@@ -1660,7 +1660,7 @@ function addCharacter() {
   div.innerHTML = `
     <div class="editable-character-header">
       <input type="text" class="editable-field" data-field="characterName" data-index="${index}" value="" placeholder="角色名" style="flex:1;">
-      <select class="editable-field" data-field="characterRole" data-index="${index}" style="flex:0 0 auto; width: 90px; padding: 8px;">
+      <select class="editable-field" data-field="characterRole" data-index="${index}" style="flex:0 0 auto; width: 90px; max-width: 100%; padding: 8px;">
         <option value="protagonist">主角</option>
         <option value="antagonist">反派</option>
         <option value="supporting" selected>配角</option>

@@ -210,6 +210,7 @@
                         <div style="text-align: center; margin: 40px 0;">
                             <img src="${escapeHtml(chapter.image)}" 
                                  alt="章节插图" 
+                                 loading="lazy"
                                  style="max-width: 100%; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1);" 
                                  onerror="this.style.display='none'">
                             <p style="color: #999; font-size: 14px; margin-top: 10px; text-indent: 0;">
