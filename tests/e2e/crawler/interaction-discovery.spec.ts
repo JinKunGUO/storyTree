@@ -2,13 +2,23 @@ import { test, expect } from '../fixtures/auth.fixture';
 import type { Page } from '@playwright/test';
 import { attachErrorCollector } from '../helpers/error-collector';
 
-/** 关闭 driver.js 引导遮罩层（如果存在）— 通过 JS 直接销毁 */
+/** 在导航前标记引导已完成，防止 driver.js tour 启动 */
+async function skipOnboardingTour(page: Page) {
+  await page.evaluate(() => {
+    const progress = { tourCompleted: true, steps: {}, completedAt: new Date().toISOString() };
+    localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
+  });
+}
+
+/** 关闭 driver.js 引导遮罩层（如果仍然存在）— 通过 JS 直接销毁 */
 async function dismissDriverOverlay(page: Page) {
   await page.evaluate(() => {
-    document.querySelectorAll('.driver-overlay, .driver-popover, .driver-popover-arrow').forEach(el => el.remove());
     const w = window as any;
     if (w.driverObj?.destroy) w.driverObj.destroy();
     if (w.driver?.destroy) w.driver.destroy();
+    document.querySelectorAll('.driver-overlay, .driver-popover, .driver-popover-arrow').forEach(el => el.remove());
+    document.body.classList.remove('driver-active', 'driver-fade', 'driver-no-interaction');
+    document.body.style.pointerEvents = '';
   });
   await page.waitForTimeout(300);
 }
@@ -151,6 +161,8 @@ test.describe('个人中心交互发现', () => {
 test.describe('创作页交互发现', () => {
   test('create-ai 页面方法选择无异常', async ({ authenticatedPage }) => {
     const collector = attachErrorCollector(authenticatedPage);
+    await authenticatedPage.goto('/', { waitUntil: 'domcontentloaded' });
+    await skipOnboardingTour(authenticatedPage);
     await authenticatedPage.goto('/create-ai.html', { waitUntil: 'domcontentloaded' });
     await authenticatedPage.waitForTimeout(1500);
     await dismissDriverOverlay(authenticatedPage);

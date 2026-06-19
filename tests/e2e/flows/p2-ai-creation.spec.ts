@@ -15,16 +15,24 @@ import type { Page } from '@playwright/test';
  * 只验证表单提交和 UI 交互无异常。
  */
 
-/** 关闭 driver.js 引导遮罩层（如果存在）— 通过 JS 直接销毁 */
+/** 在导航前标记引导已完成，防止 driver.js tour 启动 */
+async function skipOnboardingTour(page: Page) {
+  await page.evaluate(() => {
+    // 标记 onboarding 已完成，防止 driver.js 引导启动
+    const progress = { tourCompleted: true, steps: {}, completedAt: new Date().toISOString() };
+    localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
+  });
+}
+
+/** 关闭 driver.js 引导遮罩层（如果仍然存在）— 通过 JS 直接销毁 */
 async function dismissDriverOverlay(page: Page) {
   await page.evaluate(() => {
-    // driver.js 在 window 上暴露了 driverObj 或全局实例
-    // 直接移除 DOM 元素是最可靠的方式
-    document.querySelectorAll('.driver-overlay, .driver-popover, .driver-popover-arrow').forEach(el => el.remove());
-    // 如果有全局 driver 实例，调用 destroy
     const w = window as any;
     if (w.driverObj?.destroy) w.driverObj.destroy();
     if (w.driver?.destroy) w.driver.destroy();
+    document.querySelectorAll('.driver-overlay, .driver-popover, .driver-popover-arrow').forEach(el => el.remove());
+    document.body.classList.remove('driver-active', 'driver-fade', 'driver-no-interaction');
+    document.body.style.pointerEvents = '';
   });
   await page.waitForTimeout(300);
 }
@@ -32,6 +40,9 @@ async function dismissDriverOverlay(page: Page) {
 test.describe('P2 AI 辅助创作', () => {
   test('create-ai 页面加载 - 显示创作方式选择', async ({ authenticatedPage }) => {
     const collector = attachErrorCollector(authenticatedPage);
+    // 先设置 localStorage 跳过引导，再导航到目标页
+    await authenticatedPage.goto('/', { waitUntil: 'domcontentloaded' });
+    await skipOnboardingTour(authenticatedPage);
     await authenticatedPage.goto('/create-ai.html', { waitUntil: 'domcontentloaded' });
     await authenticatedPage.waitForTimeout(2000);
     await dismissDriverOverlay(authenticatedPage);
@@ -50,6 +61,8 @@ test.describe('P2 AI 辅助创作', () => {
 
   test('智能导入立项模式 - 表单交互', async ({ authenticatedPage }) => {
     const collector = attachErrorCollector(authenticatedPage);
+    await authenticatedPage.goto('/', { waitUntil: 'domcontentloaded' });
+    await skipOnboardingTour(authenticatedPage);
     await authenticatedPage.goto('/create-ai.html', { waitUntil: 'domcontentloaded' });
     await authenticatedPage.waitForTimeout(2000);
     await dismissDriverOverlay(authenticatedPage);
@@ -79,6 +92,8 @@ test.describe('P2 AI 辅助创作', () => {
 
   test('大纲创作模式 - 表单交互', async ({ authenticatedPage }) => {
     const collector = attachErrorCollector(authenticatedPage);
+    await authenticatedPage.goto('/', { waitUntil: 'domcontentloaded' });
+    await skipOnboardingTour(authenticatedPage);
     await authenticatedPage.goto('/create-ai.html', { waitUntil: 'domcontentloaded' });
     await authenticatedPage.waitForTimeout(2000);
     await dismissDriverOverlay(authenticatedPage);
@@ -99,6 +114,8 @@ test.describe('P2 AI 辅助创作', () => {
 
   test('仿写模式 - 表单交互', async ({ authenticatedPage }) => {
     const collector = attachErrorCollector(authenticatedPage);
+    await authenticatedPage.goto('/', { waitUntil: 'domcontentloaded' });
+    await skipOnboardingTour(authenticatedPage);
     await authenticatedPage.goto('/create-ai.html', { waitUntil: 'domcontentloaded' });
     await authenticatedPage.waitForTimeout(2000);
     await dismissDriverOverlay(authenticatedPage);
@@ -119,6 +136,8 @@ test.describe('P2 AI 辅助创作', () => {
 
   test('模板创作模式 - 表单交互', async ({ authenticatedPage }) => {
     const collector = attachErrorCollector(authenticatedPage);
+    await authenticatedPage.goto('/', { waitUntil: 'domcontentloaded' });
+    await skipOnboardingTour(authenticatedPage);
     await authenticatedPage.goto('/create-ai.html', { waitUntil: 'domcontentloaded' });
     await authenticatedPage.waitForTimeout(2000);
     await dismissDriverOverlay(authenticatedPage);
