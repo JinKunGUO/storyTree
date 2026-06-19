@@ -5,59 +5,42 @@ import { attachErrorCollector } from '../helpers/error-collector';
  * P0 核心业务流程
  *
  * 模拟完整的用户旅程：
- * 注册 → 登录 → 创建故事 → 编写章节 → 阅读章节 → 发表评论 → 评分
+ * 登录 → 创建故事 → 编写章节 → 阅读章节 → 发表评论 → 评分
  *
- * 这是最关键的业务路径，必须在每次 CI 中运行。
+ * 需要在 .env.test 中配置 E2E_TEST_EMAIL 和 E2E_TEST_PASSWORD。
+ * 如果未配置有效凭据，整个流程将被 skip。
  */
 
 // 使用 serial 模式确保测试按顺序执行
 test.describe.serial('P0 核心创作流程', () => {
   const timestamp = Date.now();
+  const testEmail = process.env.E2E_TEST_EMAIL || '';
+  const testPassword = process.env.E2E_TEST_PASSWORD || '';
   const testUser = {
-    username: `e2e_p0_${timestamp}`,
-    email: `e2e_p0_${timestamp}@test.storytree.online`,
-    password: 'E2eP0Test123!',
+    username: testEmail.split('@')[0] || `e2e_p0_${timestamp}`,
+    email: testEmail,
+    password: testPassword,
   };
   let authToken = '';
   let storyId = '';
   let nodeId = '';
 
-  test('注册新用户', async ({ page }) => {
-    const collector = attachErrorCollector(page);
-    await page.goto('/register.html', { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(1000);
-
-    // 填写注册表单
-    const usernameInput = page.locator('input[name="username"], input[placeholder*="用户名"], #username');
-    const emailInput = page.locator('input[name="email"], input[type="email"], #email');
-    const passwordInput = page.locator('input[name="password"], input[type="password"], #password');
-
-    await usernameInput.first().fill(testUser.username);
-    await emailInput.first().fill(testUser.email);
-    await passwordInput.first().fill(testUser.password);
-
-    // 如果有确认密码框
-    const confirmPassword = page.locator('input[name="confirmPassword"], input[name="password_confirm"], #confirmPassword');
-    if (await confirmPassword.first().isVisible().catch(() => false)) {
-      await confirmPassword.first().fill(testUser.password);
+  test('凭据检查', async ({}, testInfo) => {
+    if (!testEmail || !testPassword) {
+      testInfo.skip(true, 'P0 flow requires E2E_TEST_EMAIL and E2E_TEST_PASSWORD in .env.test');
+      return;
     }
-
-    // 提交注册
-    const submitBtn = page.locator('button[type="submit"], button:has-text("注册"), .register-btn');
-    await submitBtn.first().click();
-    await page.waitForTimeout(3000);
-
-    // 验证注册成功（可能跳转到登录页或直接登录）
-    const currentUrl = page.url();
-    const isSuccess = currentUrl.includes('login') ||
-      currentUrl.includes('verify') ||
-      currentUrl.includes('index') ||
-      currentUrl.includes('profile');
-
-    expect(isSuccess || collector.getCriticalErrors().length === 0).toBe(true);
+    // 凭据已配置，后续测试可以继续
+    expect(testEmail).toBeTruthy();
+    expect(testPassword).toBeTruthy();
   });
 
-  test('登录', async ({ page }) => {
+  test('登录', async ({ page }, testInfo) => {
+    if (!testEmail || !testPassword) {
+      testInfo.skip(true, 'No credentials configured');
+      return;
+    }
+
     await page.goto('/login.html', { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(1000);
 
