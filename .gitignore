@@ -50,6 +50,7 @@ coverage/
 test-results/
 test-screenshots/
 playwright-report/
+.auth/
 
 # Temporary files
 tmp/

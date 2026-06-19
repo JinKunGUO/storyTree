@@ -7,7 +7,14 @@
   },
   "scripts": {
     "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test tests/e2e/smoke/",
+    "test:e2e:crawler": "playwright test tests/e2e/crawler/",
+    "test:e2e:flows": "playwright test tests/e2e/flows/",
+    "test:e2e:visual": "playwright test tests/e2e/visual/",
+    "test:e2e:a11y": "playwright test tests/e2e/accessibility/",
+    "test:e2e:update-snapshots": "playwright test tests/e2e/visual/ --update-snapshots",
     "test:e2e:staging": "E2E_BASE_URL=https://staging.storytree.online playwright test",
+    "test:e2e:prod": "E2E_BASE_URL=https://storytree.online playwright test tests/e2e/smoke/",
     "test:smoke": "bash scripts/smoke-test-production.sh"
   },
   "repository": {
@@ -23,6 +30,7 @@
   "homepage": "https://github.com/JinKunGUO/storyTree#readme",
   "description": "",
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.3",
     "@playwright/test": "^1.52.0"
   }
 }
