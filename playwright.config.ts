@@ -1,18 +1,36 @@
 import { defineConfig, devices } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
+
+/**
+ * 自动加载 .env.test 文件中的环境变量（避免每次手动 export）
+ * 优先级：命令行 export > .env.test 文件
+ */
+const envFile = path.join(__dirname, '.env.test');
+if (fs.existsSync(envFile)) {
+  const lines = fs.readFileSync(envFile, 'utf-8').split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const [key, ...rest] = trimmed.split('=');
+    const value = rest.join('=').replace(/^["']|["']$/g, '');
+    if (key && !process.env[key]) {
+      process.env[key] = value;
+    }
+  }
+}
 
 /**
  * StoryTree E2E 测试配置
  *
- * 默认对生产环境运行，无需启动本地服务：
- *   npx playwright test                       # 对生产环境跑
- *   E2E_BASE_URL=http://localhost:3001 npx playwright test  # 对本地跑（需先启动 API）
+ * 使用方式：
+ *   npm run test:e2e:smoke    # 日常使用（推荐）
+ *   npm run test:e2e          # 完整测试（需 .env.test 中配置账号）
  *
- * 按层运行：
- *   npx playwright test tests/e2e/smoke/       # 冒烟测试
- *   npx playwright test tests/e2e/crawler/     # 爬虫发现
- *   npx playwright test tests/e2e/flows/       # 用户流程
- *   npx playwright test tests/e2e/visual/      # 视觉回归
- *   npx playwright test tests/e2e/accessibility/ # 无障碍
+ * 配置文件 .env.test 示例：
+ *   E2E_BASE_URL=https://storytree.online
+ *   E2E_TEST_EMAIL=your-test@example.com
+ *   E2E_TEST_PASSWORD=your-password
  */
 export default defineConfig({
   testDir: './tests/e2e',
