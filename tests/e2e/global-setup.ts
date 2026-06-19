@@ -23,7 +23,7 @@ interface TestUser {
 }
 
 interface TestData {
-  user: TestUser;
+  user: TestUser | null;
   admin: TestUser | null;
   storyId: number | null;
   nodeId: number | null;
@@ -43,30 +43,71 @@ async function apiRequest(baseUrl: string, endpoint: string, options: RequestIni
   return res.json();
 }
 
-async function registerAndLogin(baseUrl: string, suffix: string): Promise<TestUser> {
-  const timestamp = Date.now();
-  const username = `e2e_${suffix}_${timestamp}`;
-  const email = `e2e_${suffix}_${timestamp}@test.storytree.online`;
+async function registerAndLogin(baseUrl: string, suffix: string): Promise<TestUser | null> {
+  // 优先使用环境变量中的固定测试账号（生产环境推荐）
+  const envEmail = process.env.E2E_TEST_EMAIL;
+  const envPassword = process.env.E2E_TEST_PASSWORD;
+
+  if (envEmail && envPassword) {
+    try {
+      const loginRes = await apiRequest(baseUrl, '/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email: envEmail, password: envPassword }),
+      });
+      return {
+        id: loginRes.user?.id,
+        username: loginRes.user?.username || 'e2e-tester',
+        email: envEmail,
+        token: loginRes.token,
+      };
+    } catch (e) {
+      console.warn(`[global-setup] Login with env credentials failed: ${(e as Error).message}`);
+    }
+  }
+
+  // 尝试动态注册（本地环境/无邮箱验证时有效）
+  const ts = Date.now().toString(36).slice(-6);
+  const username = `e2e${suffix}${ts}`;
+  const email = `e2e${suffix}${ts}@test.storytree.online`;
   const password = 'E2eTestPass123!';
 
-  // 注册
-  const registerRes = await apiRequest(baseUrl, '/api/auth/register', {
-    method: 'POST',
-    body: JSON.stringify({ username, email, password }),
-  });
+  try {
+    const registerRes = await apiRequest(baseUrl, '/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ username, email, password }),
+    });
 
-  // 登录
-  const loginRes = await apiRequest(baseUrl, '/api/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ email, password }),
-  });
+    // 如果注册直接返回 token（无邮箱验证）
+    if (registerRes.token) {
+      return {
+        id: registerRes.user?.id,
+        username,
+        email,
+        token: registerRes.token,
+      };
+    }
 
-  return {
-    id: loginRes.user?.id || registerRes.user?.id,
-    username,
-    email,
-    token: loginRes.token,
-  };
+    // 尝试登录（可能本地环境无邮箱验证）
+    try {
+      const loginRes = await apiRequest(baseUrl, '/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+      return {
+        id: loginRes.user?.id,
+        username,
+        email,
+        token: loginRes.token,
+      };
+    } catch {
+      // 登录失败（需要邮箱验证），返回 null
+      console.warn('[global-setup] Registration requires email verification. Set E2E_TEST_EMAIL and E2E_TEST_PASSWORD env vars for production testing.');
+      return null;
+    }
+  } catch (e) {
+    console.warn(`[global-setup] Registration failed: ${(e as Error).message}`);
+    return null;
+  }
 }
 
 async function createTestStory(baseUrl: string, token: string): Promise<number | null> {
@@ -135,18 +176,42 @@ async function globalSetup(config: FullConfig) {
     fs.mkdirSync(AUTH_DIR, { recursive: true });
   }
 
-  // 1. 注册普通测试用户
-  console.log('[global-setup] Registering test user...');
-  const user = await registerAndLogin(baseUrl, 'user');
-  console.log(`[global-setup] User registered: ${user.username}`);
+  // 1. 获取测试用户（优先用环境变量中的固定账号，否则尝试注册）
+  console.log('[global-setup] Obtaining test user...');
+  const user = await registerAndLogin(baseUrl, 'usr');
 
-  // 2. 尝试注册管理员（生产环境可能不允许）
+  if (!user) {
+    console.warn('[global-setup] No authenticated user available. Tests requiring auth will be skipped.');
+    console.warn('[global-setup] To fix: set E2E_TEST_EMAIL and E2E_TEST_PASSWORD environment variables.');
+    // 保存空的测试数据，让测试可以优雅跳过
+    const testData: TestData = { user: null as any, admin: null, storyId: null, nodeId: null };
+    fs.writeFileSync(path.join(AUTH_DIR, 'test-data.json'), JSON.stringify(testData, null, 2));
+    return;
+  }
+
+  console.log(`[global-setup] User ready: ${user.username}`);
+
+  // 2. 尝试获取管理员账号
   let admin: TestUser | null = null;
-  try {
-    admin = await registerAndLogin(baseUrl, 'admin');
-    console.log(`[global-setup] Admin registered: ${admin.username}`);
-  } catch (e) {
-    console.warn('[global-setup] Admin registration skipped:', (e as Error).message);
+  if (process.env.E2E_ADMIN_EMAIL && process.env.E2E_ADMIN_PASSWORD) {
+    try {
+      const loginRes = await apiRequest(baseUrl, '/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: process.env.E2E_ADMIN_EMAIL,
+          password: process.env.E2E_ADMIN_PASSWORD,
+        }),
+      });
+      admin = {
+        id: loginRes.user?.id,
+        username: loginRes.user?.username || 'admin',
+        email: process.env.E2E_ADMIN_EMAIL,
+        token: loginRes.token,
+      };
+      console.log(`[global-setup] Admin ready: ${admin.username}`);
+    } catch (e) {
+      console.warn('[global-setup] Admin login failed:', (e as Error).message);
+    }
   }
 
   // 3. 创建测试故事

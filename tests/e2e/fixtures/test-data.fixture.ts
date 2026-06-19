@@ -3,19 +3,16 @@ import * as path from 'path';
 
 const AUTH_DIR = path.join(process.cwd(), '.auth');
 
+export interface TestUser {
+  id: number;
+  username: string;
+  email: string;
+  token: string;
+}
+
 export interface TestData {
-  user: {
-    id: number;
-    username: string;
-    email: string;
-    token: string;
-  };
-  admin: {
-    id: number;
-    username: string;
-    email: string;
-    token: string;
-  } | null;
+  user: TestUser | null;
+  admin: TestUser | null;
   storyId: number | null;
   nodeId: number | null;
 }
@@ -29,6 +26,18 @@ export function getTestData(): TestData {
     throw new Error('Test data not found. Did global-setup run successfully?');
   }
   return JSON.parse(fs.readFileSync(dataPath, 'utf-8'));
+}
+
+/**
+ * 检查是否有认证用户可用
+ */
+export function hasAuthUser(): boolean {
+  try {
+    const data = getTestData();
+    return data.user !== null && !!data.user.token;
+  } catch {
+    return false;
+  }
 }
 
 /**
