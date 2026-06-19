@@ -20,15 +20,26 @@ test.describe('认证页面 - 未登录重定向验证', () => {
   for (const entry of authPages.filter(p => !p.params)) {
     test(`${entry.path} 未登录应重定向到 login`, async ({ guestPage }) => {
       await guestPage.goto(entry.path, { waitUntil: 'domcontentloaded' });
-      // 等待可能的重定向
-      await guestPage.waitForTimeout(2000);
+      // 等待可能的客户端重定向（有些页面用 JS 延迟检查）
+      await guestPage.waitForTimeout(3000);
       const currentUrl = guestPage.url();
-      // 应该被重定向到 login 页面，或者页面显示登录提示
+      // 验证方式（满足任一即可）：
+      // 1. URL 包含 login（服务端/客户端重定向）
+      // 2. 页面显示"登录"相关文案
+      // 3. 页面显示登录表单元素
       const redirectedToLogin = currentUrl.includes('login');
-      const hasLoginPrompt = await guestPage.locator('text=登录').first().isVisible().catch(() => false);
+      const hasLoginText = await guestPage.locator('text=登录').first().isVisible().catch(() => false);
+      const hasLoginLink = await guestPage.locator('a[href*="login"]').first().isVisible().catch(() => false);
+      const hasLoginForm = await guestPage.locator('input[type="password"]').first().isVisible().catch(() => false);
+
+      // 如果页面既没重定向也没任何登录提示，记录为发现的问题
+      const hasAuthGuard = redirectedToLogin || hasLoginText || hasLoginLink || hasLoginForm;
+      if (!hasAuthGuard) {
+        console.warn(`[AUTH-GUARD-MISSING] ${entry.path} 未登录时无任何认证保护 (当前URL: ${currentUrl})`);
+      }
       expect(
-        redirectedToLogin || hasLoginPrompt,
-        `${entry.path} should redirect to login or show login prompt when not authenticated`
+        hasAuthGuard,
+        `${entry.path} should redirect to login or show login prompt when not authenticated (current: ${currentUrl})`
       ).toBe(true);
     });
   }

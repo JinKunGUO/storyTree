@@ -13,8 +13,8 @@
     "test:e2e:visual": "playwright test tests/e2e/visual/",
     "test:e2e:a11y": "playwright test tests/e2e/accessibility/",
     "test:e2e:update-snapshots": "playwright test tests/e2e/visual/ --update-snapshots",
+    "test:e2e:local": "E2E_BASE_URL=http://localhost:3001 playwright test",
     "test:e2e:staging": "E2E_BASE_URL=https://staging.storytree.online playwright test",
-    "test:e2e:prod": "E2E_BASE_URL=https://storytree.online playwright test tests/e2e/smoke/",
     "test:smoke": "bash scripts/smoke-test-production.sh"
   },
   "repository": {

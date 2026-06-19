@@ -19,8 +19,9 @@ try {
   // axe-core 未安装，测试将被跳过
 }
 
-// 选取不需要参数的页面进行审计
-const AUDIT_PAGES = PAGE_REGISTRY.filter(p => !p.params && !p.admin);
+// 选取不需要参数的页面进行审计（排除会重定向的测试页面）
+const SKIP_PAGES = ['/milestone-test.html'];
+const AUDIT_PAGES = PAGE_REGISTRY.filter(p => !p.params && !p.admin && !SKIP_PAGES.includes(p.path));
 
 test.describe('无障碍审计 (WCAG 2.1 AA)', () => {
   test.beforeEach(async () => {

@@ -51,6 +51,7 @@ test-results/
 test-screenshots/
 playwright-report/
 .auth/
+*-snapshots/
 
 # Temporary files
 tmp/

@@ -56,6 +56,7 @@ export const PAGE_REGISTRY: PageEntry[] = [
 
   // === 商业化页面 ===
   { path: '/membership.html', titleKeyword: '会员', auth: false, category: 'commerce' },
+  // BUG发现: payment.html 缺少认证守卫，未登录时有 "toast is not defined" JS 错误
   { path: '/payment.html', titleKeyword: '支付', auth: true, category: 'commerce' },
   { path: '/points-mall.html', titleKeyword: '积分', auth: false, category: 'commerce' },
 

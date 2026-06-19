@@ -288,5 +288,107 @@ describe('User API', () => {
 
 ---
 
+## 🧪 E2E 自动化测试
+
+项目使用 Playwright 进行端到端自动化测试，覆盖所有页面的可用性、移动端适配、链路爬取、用户流程、视觉回归和无障碍审计。
+
+### 何时运行测试
+
+| 场景 | 命令 | 说明 |
+|------|------|------|
+| **日常开发** | `npx playwright test tests/e2e/smoke/` | 快速验证所有页面可加载、无 JS 错误、移动端无溢出 |
+| **提交前** | `npm run test:e2e:smoke` | 等同上面，推荐 commit 前跑一次 |
+| **完整测试** | `npm run test:e2e` | 全量测试（需要认证环境变量） |
+| **CI 自动触发** | 自动 | PR 时跑 smoke，合并到 main 时跑全量（见 `.github/workflows/test.yml`） |
+
+### 快速开始
+
+```bash
+# 1. 安装 Playwright 浏览器（首次）
+npx playwright install chromium
+
+# 2. 运行公开页面冒烟测试（无需任何配置，直接跑）
+npx playwright test tests/e2e/smoke/public-pages.spec.ts
+
+# 3. 运行全部冒烟测试（含移动端溢出检测）
+npm run test:e2e:smoke
+
+# 4. 查看 HTML 报告
+npx playwright show-report
+```
+
+### 启用认证测试（完整模式）
+
+生产环境需要邮箱验证，因此需要预先创建一个已验证的测试账号：
+
+```bash
+# 设置环境变量后运行完整测试
+export E2E_TEST_EMAIL="your-verified-test@example.com"
+export E2E_TEST_PASSWORD="your-password"
+npm run test:e2e
+```
+
+如果不设置这些变量，需要认证的测试会自动跳过（显示为 skipped），不会报错。
+
+### 本地开发环境测试
+
+```bash
+# 先启动本地 API 服务器
+npm run dev
+
+# 指向本地运行测试（本地环境无邮箱验证，可自动注册）
+E2E_BASE_URL=http://localhost:3001 npm run test:e2e
+```
+
+### 测试层级说明
+
+| 层级 | 目录 | 用途 | 是否需要认证 |
+|------|------|------|:---:|
+| Smoke | `tests/e2e/smoke/` | 页面加载、JS 错误、移动端溢出、认证守卫 | 部分 |
+| Crawler | `tests/e2e/crawler/` | BFS 链路爬取、死链检测、交互发现 | 是 |
+| Flows | `tests/e2e/flows/` | P0-P2 用户流程（注册→创作→社交→支付） | 是 |
+| Visual | `tests/e2e/visual/` | 截图对比回归检测 | 否 |
+| A11y | `tests/e2e/accessibility/` | WCAG 2.1 AA 无障碍审计 | 部分 |
+
+### 可用的 npm scripts
+
+```
+test:e2e          - 运行全部 E2E 测试
+test:e2e:smoke    - 仅冒烟测试（推荐日常使用）
+test:e2e:crawler  - 链路爬取测试
+test:e2e:flows    - 用户流程测试
+test:e2e:visual   - 视觉回归测试
+test:e2e:a11y     - 无障碍审计
+test:e2e:update-snapshots - 更新视觉基线截图
+test:e2e:local    - 指向本地环境运行
+```
+
+### 添加新页面时
+
+在 `tests/e2e/helpers/page-registry.ts` 中添加一行即可自动获得：
+- 公开页面加载测试
+- 移动端溢出检测
+- 无障碍审计
+- 爬虫覆盖率计算
+
+```typescript
+{ path: '/new-page.html', titleKeyword: '页面标题', auth: false, category: 'content' },
+```
+
+### CI/CD 集成
+
+- **PR 提交时**：自动运行 `e2e-smoke` job（公开页面 + 移动端检测），约 30 秒
+- **合并到 main 时**：自动运行 `e2e-full` job（全量测试），约 3 分钟
+- 测试报告和失败截图作为 CI artifact 保存 30 天
+
+### 测试发现的已知问题
+
+运行测试时如果看到以下失败，这些是**真实的产品问题**（非测试 bug）：
+
+1. `/payment.html` - 未登录时缺少认证守卫，且有 `toast is not defined` JS 错误
+2. `/create.html` - 未登录时认证守卫延迟过高（>3s 才重定向）
+
+---
+
 再次感谢你的贡献！让我们一起打造更好的StoryTree！ 🌳✨
 

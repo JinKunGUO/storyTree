@@ -3,10 +3,9 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * StoryTree E2E 测试配置
  *
- * 环境切换：
- *   开发环境：npx playwright test （自动启动本地服务）
- *   Staging：E2E_BASE_URL=https://staging.storytree.online npx playwright test
- *   生产环境：E2E_BASE_URL=https://storytree.online npx playwright test
+ * 默认对生产环境运行，无需启动本地服务：
+ *   npx playwright test                       # 对生产环境跑
+ *   E2E_BASE_URL=http://localhost:3001 npx playwright test  # 对本地跑（需先启动 API）
  *
  * 按层运行：
  *   npx playwright test tests/e2e/smoke/       # 冒烟测试
@@ -29,7 +28,7 @@ export default defineConfig({
   timeout: 60000,
 
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'http://localhost:3001',
+    baseURL: process.env.E2E_BASE_URL || 'https://storytree.online',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -44,14 +43,4 @@ export default defineConfig({
       use: { ...devices['iPhone 14'] },
     },
   ],
-
-  /* 本地开发时自动启动服务 */
-  ...(process.env.E2E_BASE_URL ? {} : {
-    webServer: {
-      command: 'cd api && npm run dev',
-      url: 'http://localhost:3001/api/health',
-      reuseExistingServer: !process.env.CI,
-      timeout: 30000,
-    },
-  }),
 });
