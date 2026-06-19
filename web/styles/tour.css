@@ -50,6 +50,7 @@
   padding: 8px 16px !important;
   font-weight: 600 !important;
   transition: all 0.2s ease !important;
+  text-shadow: none !important;
 }
 
 .driver-popover-prev-btn:hover {
@@ -66,6 +67,7 @@
   font-weight: 600 !important;
   box-shadow: 0 4px 12px rgba(45, 93, 90, 0.3) !important;
   transition: all 0.2s ease !important;
+  text-shadow: none !important;
 }
 
 .driver-popover-next-btn:hover {
@@ -93,6 +95,7 @@
   transition: all 0.2s ease !important;
   border-radius: 6px !important;
   margin-left: 4px !important;
+  text-shadow: none !important;
 }
 
 .st-tour-skip-btn:hover {
