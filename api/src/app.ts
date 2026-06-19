@@ -8,6 +8,7 @@ import nodeRoutes from './routes/nodes';
 import aiRoutes from './routes/ai';
 import aiV2Routes from './routes/ai-v2';
 import aiCreationRoutes from './routes/ai-creation';
+import aiStreamRoutes from './routes/ai-stream';
 import adminRoutes from './routes/admin';
 import userRoutes from './routes/users';
 import uploadRoutes from './routes/upload';
@@ -99,6 +100,7 @@ export function createApp() {
   app.use('/api/nodes', nodeRoutes);
   app.use('/api/ai', aiRoutes);
   app.use('/api/ai/v2', aiV2Routes);
+  app.use('/api/ai/stream', aiStreamRoutes);
   app.use('/api/ai/creation', aiCreationRoutes);
   app.use('/api/admin', adminRoutes);
   app.use('/api/users', userRoutes);
