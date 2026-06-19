@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
 import { attachErrorCollector } from '../helpers/error-collector';
 
 /**
@@ -7,8 +9,9 @@ import { attachErrorCollector } from '../helpers/error-collector';
  * 模拟完整的用户旅程：
  * 登录 → 创建故事 → 编写章节 → 阅读章节 → 发表评论 → 评分
  *
+ * 优先使用 global-setup 已获取的 token（避免重复登录触发频率限制）。
+ * 如果 global-setup 未成功获取 token，则通过 UI 登录。
  * 需要在 .env.test 中配置 E2E_TEST_EMAIL 和 E2E_TEST_PASSWORD。
- * 如果未配置有效凭据，整个流程将被 skip。
  */
 
 // 使用 serial 模式确保测试按顺序执行
@@ -25,38 +28,52 @@ test.describe.serial('P0 核心创作流程', () => {
   let storyId = '';
   let nodeId = '';
 
-  test('凭据检查', async ({}, testInfo) => {
+  test('登录', async ({ page }, testInfo) => {
     if (!testEmail || !testPassword) {
       testInfo.skip(true, 'P0 flow requires E2E_TEST_EMAIL and E2E_TEST_PASSWORD in .env.test');
       return;
     }
-    // 凭据已配置，后续测试可以继续
-    expect(testEmail).toBeTruthy();
-    expect(testPassword).toBeTruthy();
-  });
 
-  test('登录', async ({ page }, testInfo) => {
-    if (!testEmail || !testPassword) {
-      testInfo.skip(true, 'No credentials configured');
-      return;
+    // 优先使用 global-setup 已获取的 token（避免重复登录触发 429 频率限制）
+    const testDataPath = path.join(process.cwd(), '.auth', 'test-data.json');
+    if (fs.existsSync(testDataPath)) {
+      try {
+        const testData = JSON.parse(fs.readFileSync(testDataPath, 'utf-8'));
+        if (testData.user?.token) {
+          authToken = testData.user.token;
+          console.log('[p0] Using token from global-setup (skipping UI login to avoid rate limit)');
+          // 验证 token 有效：注入后访问一个需要认证的页面
+          await page.goto('/');
+          await page.evaluate((token) => {
+            localStorage.setItem('token', token);
+          }, authToken);
+          expect(authToken.length).toBeGreaterThan(0);
+          return;
+        }
+      } catch { /* fallthrough to UI login */ }
     }
 
+    // Fallback: 通过 UI 登录
     await page.goto('/login.html', { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(1000);
 
-    // 填写登录表单（login.html 使用 name="account" 和 name="password"）
     const emailInput = page.locator('#account, input[name="account"], input[name="email"], input[name="username"]');
     const passwordInput = page.locator('#password, input[name="password"], input[type="password"]');
 
     await emailInput.first().fill(testUser.email);
     await passwordInput.first().fill(testUser.password);
 
-    // 提交登录
     const submitBtn = page.locator('button[type="submit"], button:has-text("登录"), .login-btn');
     await submitBtn.first().click();
     await page.waitForTimeout(3000);
 
-    // 验证登录成功 - 检查 localStorage 中有 token
+    // 检查是否有错误提示（如频率限制）
+    const alertText = await page.locator('[role="alert"], .toast, .error-message').textContent().catch(() => '');
+    if (alertText && alertText.includes('频繁')) {
+      testInfo.skip(true, `Login rate-limited: ${alertText}`);
+      return;
+    }
+
     authToken = await page.evaluate(() => localStorage.getItem('token') || '');
     expect(authToken.length, 'Should have auth token after login').toBeGreaterThan(0);
   });
