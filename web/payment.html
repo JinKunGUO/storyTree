@@ -586,6 +586,15 @@
     </div>
 
     <script>
+        // 立即认证检查：未登录直接跳转，不等待后续逻辑
+        (function() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) {
+                window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+                return;
+            }
+        })();
+
         const API_BASE = '/api';
         let currentOrder = null;
         let selectedMethod = 'alipay';
@@ -866,12 +875,14 @@
             stopCountdown();
         });
 
-        // 初始化
-        loadOrderInfo();
     </script>
     <script src="js/toast.js"></script>
     <script src="js/modal.js"></script>
     <script src="js/ws-client.js"></script>
+    <script>
+        // 初始化（toast.js 已加载）
+        loadOrderInfo();
+    </script>
     <script>
         // 初始化 WebSocket 连接
         StoryTreeWS.connect();
