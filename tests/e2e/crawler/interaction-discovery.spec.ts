@@ -2,30 +2,15 @@ import { test, expect } from '../fixtures/auth.fixture';
 import type { Page } from '@playwright/test';
 import { attachErrorCollector } from '../helpers/error-collector';
 
-/** 关闭 driver.js 引导遮罩层（如果存在） */
+/** 关闭 driver.js 引导遮罩层（如果存在）— 通过 JS 直接销毁 */
 async function dismissDriverOverlay(page: Page) {
-  const overlay = page.locator('.driver-overlay, .driver-popover');
-  if (await overlay.first().isVisible({ timeout: 1000 }).catch(() => false)) {
-    const skipBtn = page.locator('.driver-popover-close-btn, button:has-text("跳过"), button:has-text("关闭"), button:has-text("知道了")');
-    if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
-      await skipBtn.first().click();
-      await page.waitForTimeout(300);
-    } else {
-      await page.keyboard.press('Escape');
-      await page.waitForTimeout(300);
-    }
-    for (let i = 0; i < 10; i++) {
-      if (!await overlay.first().isVisible({ timeout: 300 }).catch(() => false)) break;
-      const nextBtn = page.locator('.driver-popover-next-btn, .driver-popover-close-btn');
-      if (await nextBtn.first().isVisible({ timeout: 300 }).catch(() => false)) {
-        await nextBtn.first().click();
-        await page.waitForTimeout(200);
-      } else {
-        await page.keyboard.press('Escape');
-        break;
-      }
-    }
-  }
+  await page.evaluate(() => {
+    document.querySelectorAll('.driver-overlay, .driver-popover, .driver-popover-arrow').forEach(el => el.remove());
+    const w = window as any;
+    if (w.driverObj?.destroy) w.driverObj.destroy();
+    if (w.driver?.destroy) w.driver.destroy();
+  });
+  await page.waitForTimeout(300);
 }
 
 /**

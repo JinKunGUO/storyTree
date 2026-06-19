@@ -15,34 +15,18 @@ import type { Page } from '@playwright/test';
  * 只验证表单提交和 UI 交互无异常。
  */
 
-/** 关闭 driver.js 引导遮罩层（如果存在） */
+/** 关闭 driver.js 引导遮罩层（如果存在）— 通过 JS 直接销毁 */
 async function dismissDriverOverlay(page: Page) {
-  // driver.js 会创建一个 svg.driver-overlay 遮罩
-  const overlay = page.locator('.driver-overlay, .driver-popover');
-  if (await overlay.first().isVisible({ timeout: 1000 }).catch(() => false)) {
-    // 尝试点击"跳过"或"关闭"按钮
-    const skipBtn = page.locator('.driver-popover-close-btn, button:has-text("跳过"), button:has-text("关闭"), button:has-text("知道了")');
-    if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
-      await skipBtn.first().click();
-      await page.waitForTimeout(300);
-    } else {
-      // 按 Escape 关闭
-      await page.keyboard.press('Escape');
-      await page.waitForTimeout(300);
-    }
-    // 如果还有多步引导，持续关闭
-    for (let i = 0; i < 10; i++) {
-      if (!await overlay.first().isVisible({ timeout: 300 }).catch(() => false)) break;
-      const nextBtn = page.locator('.driver-popover-next-btn, .driver-popover-close-btn');
-      if (await nextBtn.first().isVisible({ timeout: 300 }).catch(() => false)) {
-        await nextBtn.first().click();
-        await page.waitForTimeout(200);
-      } else {
-        await page.keyboard.press('Escape');
-        break;
-      }
-    }
-  }
+  await page.evaluate(() => {
+    // driver.js 在 window 上暴露了 driverObj 或全局实例
+    // 直接移除 DOM 元素是最可靠的方式
+    document.querySelectorAll('.driver-overlay, .driver-popover, .driver-popover-arrow').forEach(el => el.remove());
+    // 如果有全局 driver 实例，调用 destroy
+    const w = window as any;
+    if (w.driverObj?.destroy) w.driverObj.destroy();
+    if (w.driver?.destroy) w.driver.destroy();
+  });
+  await page.waitForTimeout(300);
 }
 
 test.describe('P2 AI 辅助创作', () => {
