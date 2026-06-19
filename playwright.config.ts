@@ -62,5 +62,14 @@ export default defineConfig({
         ...devices['Pixel 7'],
       },
     },
+    {
+      name: 'dark-chrome',
+      use: {
+        ...devices['Desktop Chrome'],
+        colorScheme: 'dark',
+      },
+      // 暗黑模式仅跑 smoke 和 P0 核心流程，避免全量重复
+      testMatch: /\/(smoke|p0-).*\.spec\.ts$/,
+    },
   ],
 });

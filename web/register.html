@@ -596,6 +596,53 @@
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
         }
+
+        /* ===== 暗黑模式适配 ===== */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --text-primary: #f0f0f5;
+                --text-secondary: #b8b8c8;
+                --text-muted: #8888a8;
+                --border: #3a3a5c;
+                --border-focus: #818CF8;
+                --bg-input: #2a2a4a;
+                --error: #F87171;
+                --success: #34D399;
+            }
+            html, body {
+                background: linear-gradient(120deg, #1a1a2e 0%, #2d2b55 38%, #3a3870 62%, #1a1a2e 100%);
+            }
+            .form-panel {
+                background: rgba(30, 30, 55, 0.95);
+                border: 1px solid rgba(99, 102, 241, 0.2);
+            }
+            @media (max-width: 900px) {
+                .form-panel {
+                    background: rgba(30, 30, 55, 0.92);
+                }
+            }
+            .field-input {
+                background: var(--bg-input);
+                border-color: var(--border);
+                color: var(--text-primary);
+            }
+            .field-input:focus {
+                background: #1e1e3a;
+                border-color: var(--border-focus);
+                box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.2);
+            }
+            .field-input::placeholder {
+                color: var(--text-muted);
+            }
+            .form-heading h2 { color: var(--text-primary); }
+            .form-heading p { color: var(--text-secondary); }
+            .submit-btn {
+                box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+            }
+            .login-hint { color: var(--text-secondary); }
+            .form-footer { color: var(--text-muted); }
+            .form-footer a { color: var(--text-muted); }
+        }
     </style>
 </head>
 <body>
