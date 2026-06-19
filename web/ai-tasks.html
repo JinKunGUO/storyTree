@@ -446,6 +446,16 @@
     </div>
 
     <script src="auth.js"></script>
+    <script>
+        // 立即认证检查：未登录直接跳转
+        (function() {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) {
+                window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.pathname);
+                return;
+            }
+        })();
+    </script>
     <script src="js/ws-client.js"></script>
     <script>
         let currentFilter = 'all';

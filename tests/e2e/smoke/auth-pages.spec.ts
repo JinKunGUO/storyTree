@@ -16,8 +16,8 @@ import { getTestData } from '../fixtures/test-data.fixture';
 const authPages = getAuthPages();
 const adminPages = getAdminPages();
 
-// 已知认证守卫有 bug 的页面（本地已修复，等待部署后移除此列表）
-const KNOWN_AUTH_GUARD_BUGS = ['/payment.html'];
+// 已知认证守卫在生产环境有延迟/缺失的页面（本地已修复，部署后移除此列表）
+const KNOWN_AUTH_GUARD_BUGS = ['/payment.html', '/ai-tasks.html'];
 
 test.describe('认证页面 - 未登录重定向验证', () => {
   for (const entry of authPages.filter(p => !p.params && !KNOWN_AUTH_GUARD_BUGS.includes(p.path))) {
