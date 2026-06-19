@@ -1135,16 +1135,20 @@
         }
 
         .version-selector select {
-            padding: 3px 6px;
+            padding: 3px 22px 3px 6px;
             border: 1px solid var(--st-gray-200);
             border-radius: 5px;
             font-size: 12px;
             color: var(--st-text-secondary);
             background: var(--st-bg-secondary);
-            max-width: 100px;
+            max-width: 160px;
             line-height: 1.2;
             height: auto;
             vertical-align: middle;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            white-space: nowrap;
+            appearance: auto;
         }
 
         .panel-content {

@@ -348,7 +348,7 @@
                 if (currentUserStr && story) {
                     try {
                         const currentUser = JSON.parse(currentUserStr);
-                        isStoryAuthor = currentUser.id === story.author_id;
+                        isStoryAuthor = String(currentUser.id) === String(story.author_id);
                     } catch(e) { /* 忽略解析错误 */ }
                 }
                 

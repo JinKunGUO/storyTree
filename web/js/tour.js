@@ -301,15 +301,26 @@ class StoryTreeTour {
 
     // 侧边栏在移动端默认隐藏，仅PC端展示此步骤
     if (!isMobile) {
-      steps.push({
-        element: '#writeSidebar',
-        popover: {
-          title: '侧边栏：立项书 & 大纲',
-          description: '左侧侧边栏包含故事立项书和大纲管理，帮助你规划故事结构。',
-          side: 'right',
-          align: 'start'
+      steps.push(
+        {
+          element: '#panelProject',
+          popover: {
+            title: '📋 项目立项书',
+            description: '立项书是故事的"蓝图"——包含故事简介、核心主题、目标读者和风格定位。AI 创作时会自动生成，你也可以随时手动编辑完善。',
+            side: 'right',
+            align: 'start'
+          }
+        },
+        {
+          element: '.sidebar-tab[data-tab="outline"]',
+          popover: {
+            title: '📝 故事大纲',
+            description: '大纲管理故事的章节结构、角色设定和世界观。支持多版本管理，可以在不同构思之间切换。点击此标签即可查看和编辑。',
+            side: 'right',
+            align: 'start'
+          }
         }
-      });
+      );
     }
 
     steps.push(
