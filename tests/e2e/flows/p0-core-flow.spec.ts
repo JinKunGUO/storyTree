@@ -61,9 +61,9 @@ test.describe.serial('P0 核心创作流程', () => {
     await page.goto('/login.html', { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(1000);
 
-    // 填写登录表单
-    const emailInput = page.locator('input[name="email"], input[name="username"], input[type="email"], #loginEmail');
-    const passwordInput = page.locator('input[name="password"], input[type="password"], #loginPassword');
+    // 填写登录表单（login.html 使用 name="account" 和 name="password"）
+    const emailInput = page.locator('#account, input[name="account"], input[name="email"], input[name="username"]');
+    const passwordInput = page.locator('#password, input[name="password"], input[type="password"]');
 
     await emailInput.first().fill(testUser.email);
     await passwordInput.first().fill(testUser.password);
