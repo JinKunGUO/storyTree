@@ -1944,7 +1944,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
             // 根据惊喜时间和发布状态更新加载文本
             const loadingText = document.getElementById('aiChapterLoadingText');
             if (selectedAiSurpriseTime === 'immediate') {
-                loadingText.textContent = 'AI 正在思考中，请稍候...';
+                loadingText.textContent = 'AI 正在创作中...';
             } else {
                 const timeMap = {
                     '1hour': '1 小时后',
@@ -2055,43 +2055,147 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                     console.log('📅 用户本地时间:', localDate.toLocaleString('zh-CN'));
                 }
 
-                // 调用AI v2 API
-                const response = await fetch('/api/ai/v2/continuation/submit', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        storyId: parseInt(story.id),
-                        nodeId: window.aiChapterParentId || null, // 使用选中的节点作为父节点
-                        context: '', // 不需要当前内容，AI会基于前三章生成
-                        style: selectedAiChapterStyle,
-                        count: 3,
-                        mode: 'chapter', // 整章模式
-                        surpriseTime: surpriseTimeToSend !== 'immediate' ? surpriseTimeToSend : null,
-                        publishImmediately: publishImmediately, // 传递发布状态
-                        wordCount: selectedAiWordCount, // 传递期望字数
-                        userPrompt: userPrompt || undefined // 传递用户自定义输入
-                    })
-                });
+                if (surpriseTimeToSend === 'immediate' || !surpriseTimeToSend) {
+                    // ===== 立即模式：使用流式 SSE 接口 =====
+                    loadingText.textContent = 'AI 正在创作中...';
+                    document.getElementById('aiChapterLoading').style.display = 'none';
+                    document.getElementById('aiChapterOptions').style.display = 'block';
 
-                console.log('AI API响应状态:', response.status);
+                    const optionsContainer = document.getElementById('aiChapterOptions');
+                    optionsContainer.innerHTML = `
+                        <div class="ai-chapter-option ai-streaming-card" style="padding: 20px; border: 1px solid var(--st-gray-200); border-radius: 12px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <span style="font-weight: 600; color: var(--st-primary-600);">${selectedAiChapterStyle || 'AI 续写'}</span>
+                                <span class="ai-streaming-indicator" style="font-size: 13px; color: var(--st-text-tertiary);"><i class="fas fa-pen-nib"></i> 正在书写...</span>
+                            </div>
+                            <div id="aiChapterStreamContent" style="line-height: 1.8; color: var(--st-text-primary); max-height: 400px; overflow-y: auto;"></div>
+                            <div style="display: flex; gap: 8px; margin-top: 16px;" id="aiChapterStreamActions">
+                                <button class="btn btn-primary btn-sm" id="aiChapterAcceptBtn" style="display:none;">
+                                    <i class="fas fa-check"></i> 采纳为新章节
+                                </button>
+                                <button class="btn btn-outline btn-sm" id="aiChapterStopBtn">
+                                    <i class="fas fa-stop"></i> 停止生成
+                                </button>
+                            </div>
+                        </div>
+                    `;
 
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.error || `API错误 (${response.status})`);
-                }
+                    const streamContent = document.getElementById('aiChapterStreamContent');
+                    let currentStream = null;
 
-                const data = await response.json();
-                console.log('AI API返回数据:', data);
+                    document.getElementById('aiChapterStopBtn').onclick = () => {
+                        if (currentStream) currentStream.abort();
+                    };
 
-                currentAiChapterTaskId = data.taskId;
+                    currentStream = new SSEStream('/api/ai/stream/continuation', {
+                        body: {
+                            storyId: parseInt(story.id),
+                            nodeId: window.aiChapterParentId || null,
+                            context: '',
+                            style: selectedAiChapterStyle,
+                            mode: 'chapter',
+                            wordCount: selectedAiWordCount,
+                            userPrompt: userPrompt || undefined
+                        },
+                        onChunk: (text, fullText) => {
+                            streamContent.innerHTML = fullText.replace(/\n/g, '<br>');
+                            streamContent.scrollTop = streamContent.scrollHeight;
+                        },
+                        onDone: (result) => {
+                            const indicator = optionsContainer.querySelector('.ai-streaming-indicator');
+                            if (indicator) indicator.innerHTML = '<i class="fas fa-check-circle"></i> 生成完成';
+                            document.getElementById('aiChapterAcceptBtn').style.display = 'inline-flex';
+                            document.getElementById('aiChapterStopBtn').innerHTML = '<i class="fas fa-redo"></i> 重新生成';
+                            document.getElementById('aiChapterStopBtn').onclick = () => { submitAiChapter(); };
 
-                if (selectedAiSurpriseTime === 'immediate') {
-                    // 立即生成：轮询任务状态
-                    await pollAiChapterTaskStatus(data.taskId);
+                            // 绑定采纳按钮
+                            document.getElementById('aiChapterAcceptBtn').onclick = async () => {
+                                try {
+                                    const acceptResp = await fetch('/api/ai/v2/continuation/accept', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                                        body: JSON.stringify({
+                                            storyId: parseInt(story.id),
+                                            parentNodeId: window.aiChapterParentId || null,
+                                            content: result.fullText,
+                                            title: 'AI续写章节',
+                                            publish: publishImmediately
+                                        })
+                                    });
+                                    if (acceptResp.ok) {
+                                        showSuccess(publishImmediately ? '章节已发布！' : '章节已保存为草稿');
+                                        setTimeout(() => location.reload(), 1500);
+                                    } else {
+                                        showError('保存章节失败');
+                                    }
+                                } catch (e) { showError('保存章节失败: ' + e.message); }
+                            };
+                        },
+                        onError: (message) => {
+                            streamContent.innerHTML = `<span style="color: var(--st-error-500);">${message}</span>`;
+                            const indicator = optionsContainer.querySelector('.ai-streaming-indicator');
+                            if (indicator) indicator.innerHTML = '<i class="fas fa-exclamation-circle"></i> 生成失败';
+                        },
+                        onAbort: (partialText) => {
+                            if (partialText) {
+                                const indicator = optionsContainer.querySelector('.ai-streaming-indicator');
+                                if (indicator) indicator.innerHTML = '<i class="fas fa-pause-circle"></i> 已停止';
+                                document.getElementById('aiChapterAcceptBtn').style.display = 'inline-flex';
+                                document.getElementById('aiChapterAcceptBtn').onclick = async () => {
+                                    try {
+                                        const acceptResp = await fetch('/api/ai/v2/continuation/accept', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                                            body: JSON.stringify({
+                                                storyId: parseInt(story.id),
+                                                parentNodeId: window.aiChapterParentId || null,
+                                                content: partialText,
+                                                title: 'AI续写章节(部分)',
+                                                publish: publishImmediately
+                                            })
+                                        });
+                                        if (acceptResp.ok) { showSuccess('章节已保存'); setTimeout(() => location.reload(), 1500); }
+                                    } catch (e) { showError('保存失败'); }
+                                };
+                                document.getElementById('aiChapterStopBtn').innerHTML = '<i class="fas fa-redo"></i> 重新生成';
+                                document.getElementById('aiChapterStopBtn').onclick = () => { submitAiChapter(); };
+                            }
+                        }
+                    });
+
+                    await currentStream.start();
+
                 } else {
+                    // ===== 延迟模式：保持原有队列逻辑 =====
+                    const response = await fetch('/api/ai/v2/continuation/submit', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            storyId: parseInt(story.id),
+                            nodeId: window.aiChapterParentId || null,
+                            context: '',
+                            style: selectedAiChapterStyle,
+                            count: 3,
+                            mode: 'chapter',
+                            surpriseTime: surpriseTimeToSend,
+                            publishImmediately: publishImmediately,
+                            wordCount: selectedAiWordCount,
+                            userPrompt: userPrompt || undefined
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.error || `API错误 (${response.status})`);
+                    }
+
+                    const data = await response.json();
+                    currentAiChapterTaskId = data.taskId;
+
+                    // 以下是原有延迟逻辑（不变）
                     // 延迟生成：显示成功消息并开始轮询
                     document.getElementById('aiChapterLoading').style.display = 'none';
                     const message = publishImmediately 

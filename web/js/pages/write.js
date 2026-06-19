@@ -1433,7 +1433,7 @@
             document.getElementById('aiError').style.display = 'none';
             const loadingText = document.getElementById('aiLoadingText');
             if (selectedSurpriseTime === 'immediate') {
-                loadingText.textContent = 'AI正在思考中，请稍候...';
+                loadingText.textContent = 'AI 正在创作中...';
             } else {
                 const timeMap = {
                     '1hour': '1小时后',
@@ -1450,55 +1450,133 @@
                     throw new Error('请先登录');
                 }
 
-
                 // 获取用户自定义输入
                 const userPromptInput = document.getElementById('userPromptInput');
                 const userPrompt = userPromptInput ? userPromptInput.value.trim() : undefined;
 
-                console.log('调用AI API v2...');
-                console.log('故事ID:', storyId);
-                console.log('当前内容长度:', currentContent.length);
-                console.log('惊喜时间:', selectedSurpriseTime);
-                console.log('风格:', selectedAiStyle);
-                console.log('期望字数:', selectedAiWordCount);
-                console.log('用户自定义输入:', userPrompt || '无');
-
-                // 使用新的AI v2 API
-                const response = await fetch('/api/ai/v2/continuation/submit', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        storyId: parseInt(storyId),
-                        nodeId: window.lastNodeId || null,
-                        context: currentContent,
-                        style: selectedAiStyle,
-                        count: 3,
-                        mode: aiMode, // 'segment' 或 'chapter'
-                        surpriseTime: (aiMode === 'chapter' && selectedSurpriseTime !== 'immediate') ? selectedSurpriseTime : null,
-                        wordCount: selectedAiWordCount, // 传递期望字数
-                        userPrompt: userPrompt || undefined // 传递用户自定义输入
-                    })
-                });
-
-                console.log('AI API响应状态:', response.status);
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.error || `API错误 (${response.status})`);
-                }
-
-                const data = await response.json();
-                console.log('AI API返回数据:', data);
-
-                currentAiTaskId = data.taskId;
+                console.log('调用AI续写...');
+                console.log('故事ID:', storyId, '风格:', selectedAiStyle, '字数:', selectedAiWordCount);
 
                 if (selectedSurpriseTime === 'immediate') {
-                    // 立即生成：轮询任务状态
-                    await pollTaskStatus(data.taskId);
+                    // ===== 立即模式：使用流式 SSE 接口 =====
+                    loadingText.textContent = 'AI 正在创作中...';
+                    
+                    // 显示流式输出容器
+                    document.getElementById('aiLoading').style.display = 'none';
+                    document.getElementById('aiOptions').style.display = 'block';
+                    const optionsContainer = document.getElementById('aiOptions');
+                    optionsContainer.innerHTML = `
+                        <div class="ai-option-card ai-streaming-card">
+                            <div class="ai-option-header">
+                                <span class="ai-option-style">${selectedAiStyle || 'AI 续写'}</span>
+                                <span class="ai-streaming-indicator"><i class="fas fa-pen-nib"></i> 正在书写...</span>
+                            </div>
+                            <div class="ai-stream-content" id="aiStreamContent"></div>
+                            <div class="ai-option-actions" id="aiStreamActions" style="display:none;">
+                                <button class="btn-use" id="aiStreamAcceptBtn">
+                                    <i class="fas fa-check"></i> 插入编辑器
+                                </button>
+                                <button class="btn-preview" id="aiStreamAbortBtn">
+                                    <i class="fas fa-stop"></i> 停止生成
+                                </button>
+                            </div>
+                        </div>
+                    `;
+
+                    const streamContent = document.getElementById('aiStreamContent');
+                    const streamActions = document.getElementById('aiStreamActions');
+                    streamActions.style.display = 'flex';
+
+                    // 停止按钮
+                    let currentStream = null;
+                    document.getElementById('aiStreamAbortBtn').onclick = () => {
+                        if (currentStream) currentStream.abort();
+                    };
+
+                    // 启动流式请求
+                    currentStream = new SSEStream('/api/ai/stream/continuation', {
+                        body: {
+                            storyId: parseInt(storyId),
+                            nodeId: window.lastNodeId || null,
+                            context: currentContent,
+                            style: selectedAiStyle,
+                            mode: aiMode,
+                            wordCount: selectedAiWordCount,
+                            userPrompt: userPrompt || undefined
+                        },
+                        onChunk: (text, fullText) => {
+                            // 逐字渲染（将换行转为 <br>）
+                            streamContent.innerHTML = fullText.replace(/\n/g, '<br>');
+                            streamContent.scrollTop = streamContent.scrollHeight;
+                        },
+                        onDone: (result) => {
+                            // 完成：更新状态
+                            const indicator = optionsContainer.querySelector('.ai-streaming-indicator');
+                            if (indicator) indicator.innerHTML = '<i class="fas fa-check-circle"></i> 生成完成';
+                            
+                            // 保存结果供插入
+                            const finalText = result.fullText;
+                            aiOptions = [{ title: 'AI续写', content: finalText, style: selectedAiStyle || '续写' }];
+                            
+                            // 绑定插入按钮
+                            document.getElementById('aiStreamAcceptBtn').onclick = () => {
+                                useAiSuggestion(0);
+                            };
+                            // 替换停止按钮为重新生成
+                            document.getElementById('aiStreamAbortBtn').innerHTML = '<i class="fas fa-redo"></i> 重新生成';
+                            document.getElementById('aiStreamAbortBtn').onclick = () => {
+                                showAiSuggestions();
+                            };
+                        },
+                        onError: (message) => {
+                            streamContent.innerHTML = `<span style="color: var(--st-error-500);">${message}</span>`;
+                            const indicator = optionsContainer.querySelector('.ai-streaming-indicator');
+                            if (indicator) indicator.innerHTML = '<i class="fas fa-exclamation-circle"></i> 生成失败';
+                        },
+                        onAbort: (partialText) => {
+                            // 用户中断，保留已生成内容
+                            if (partialText) {
+                                aiOptions = [{ title: 'AI续写(部分)', content: partialText, style: selectedAiStyle || '续写' }];
+                                const indicator = optionsContainer.querySelector('.ai-streaming-indicator');
+                                if (indicator) indicator.innerHTML = '<i class="fas fa-pause-circle"></i> 已停止';
+                                document.getElementById('aiStreamAcceptBtn').onclick = () => { useAiSuggestion(0); };
+                                document.getElementById('aiStreamAbortBtn').innerHTML = '<i class="fas fa-redo"></i> 重新生成';
+                                document.getElementById('aiStreamAbortBtn').onclick = () => { showAiSuggestions(); };
+                            }
+                        }
+                    });
+
+                    await currentStream.start();
+
                 } else {
+                    // ===== 延迟模式：保持原有队列逻辑 =====
+                    const response = await fetch('/api/ai/v2/continuation/submit', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            storyId: parseInt(storyId),
+                            nodeId: window.lastNodeId || null,
+                            context: currentContent,
+                            style: selectedAiStyle,
+                            count: 3,
+                            mode: aiMode,
+                            surpriseTime: selectedSurpriseTime,
+                            wordCount: selectedAiWordCount,
+                            userPrompt: userPrompt || undefined
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.error || `API错误 (${response.status})`);
+                    }
+
+                    const data = await response.json();
+                    currentAiTaskId = data.taskId;
+
                     // 延迟生成：显示成功消息
                     document.getElementById('aiLoading').style.display = 'none';
                     showSuccess(data.message || '任务已提交');
@@ -1678,7 +1756,7 @@
                 // 更新加载文案
                 const loadingText = document.getElementById('aiLoadingText');
                 if (loadingText) {
-                    loadingText.textContent = 'AI正在思考中，请稍候...';
+                    loadingText.textContent = 'AI 正在创作中...';
                 }
 
                 // 异步轮询任务状态
@@ -2085,35 +2163,36 @@
                 }
                 // ===============================================
 
-                console.log('调用 AI 润色 API...');
-                const response = await fetch('/api/ai/v2/polish', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        content: originalContent,
-                        style: selectedPolishStyle
-                    })
+                console.log('调用 AI 润色 API (流式)...');
+
+                // 使用流式 SSE 接口
+                const polishLoadingText = document.querySelector('#polishLoading .loading-text, #polishLoading span');
+                if (polishLoadingText) polishLoadingText.textContent = 'AI 正在润色中...';
+
+                await new Promise((resolve, reject) => {
+                    const stream = new SSEStream('/api/ai/stream/polish', {
+                        body: {
+                            content: originalContent,
+                            style: selectedPolishStyle
+                        },
+                        onChunk: (text, fullText) => {
+                            // 实时更新润色结果预览
+                            polishedContent = fullText;
+                            if (polishLoadingText) {
+                                polishLoadingText.textContent = `AI 正在润色中... (${fullText.length}字)`;
+                            }
+                        },
+                        onDone: (result) => {
+                            polishedContent = result.fullText;
+                            displayPolishResult();
+                            resolve();
+                        },
+                        onError: (message) => {
+                            reject(new Error(message));
+                        }
+                    });
+                    stream.start().catch(reject);
                 });
-
-                console.log('润色 API 响应状态:', response.status);
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.error || `API 错误 (${response.status})`);
-                }
-
-                const data = await response.json();
-                console.log('润色 API 返回数据:', data);
-
-                if (data.polished) {
-                    polishedContent = data.polished;
-                    displayPolishResult();
-                } else {
-                    throw new Error('AI 未返回润色结果');
-                }
 
             } catch (error) {
                 console.error('AI 润色错误:', error);
@@ -2550,7 +2629,7 @@
                 loadingElement.innerHTML = `
                     <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: #ff6b6b; margin-bottom: 20px;"></i>
                     <p style="font-size: 18px; color: #333; margin-bottom: 10px;">AI 正在绘制精美插图...</p>
-                    <p style="font-size: 14px; color: #999;">预计需要 30-60 秒，请稍候</p>
+                    <p style="font-size: 14px; color: #999;">图片生成中，请耐心等待</p>
                     <p style="font-size: 13px; color: #666; margin-top: 15px;">
                         <i class="fas fa-info-circle"></i> 你可以关闭窗口继续编辑，完成后会自动插入
                     </p>

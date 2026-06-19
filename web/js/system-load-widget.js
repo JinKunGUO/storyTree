@@ -114,9 +114,9 @@ class SystemLoadWidget {
                         </div>
                     </div>
                     <div style="text-align: right;">
-                        <div style="font-size: 14px; color: var(--st-text-secondary, #666);">预计等待</div>
-                        <div style="font-size: 20px; font-weight: 700; color: ${config.color};">
-                            ~${estimatedWaitMinutes}分钟
+                        <div style="font-size: 14px; color: var(--st-text-secondary, #666);">响应速度</div>
+                        <div style="font-size: 16px; font-weight: 700; color: ${config.color};">
+                            ${loadLevel === 'low' ? '较快' : loadLevel === 'medium' ? '正常' : loadLevel === 'high' ? '较慢' : '拥挤'}
                         </div>
                     </div>
                 </div>

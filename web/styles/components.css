@@ -1733,4 +1733,109 @@
   }
 }
 
+/* ========================================
+   AI 流式输出组件
+   ======================================== */
+
+/* 流式输出卡片（write 页面续写/润色） */
+.ai-streaming-card {
+  background: var(--st-surface-secondary, #f8f9fa);
+  border: 1px solid var(--st-border-color, #e2e8f0);
+  border-radius: var(--st-radius-lg, 12px);
+  padding: var(--st-space-4, 16px);
+  margin-top: var(--st-space-3, 12px);
+  position: relative;
+}
+
+[data-theme="dark"] .ai-streaming-card {
+  background: var(--st-surface-secondary, #1e293b);
+  border-color: var(--st-border-color, #334155);
+}
+
+.ai-streaming-card .ai-stream-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--st-text-secondary, #64748b);
+}
+
+.ai-streaming-card .ai-stream-content {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--st-text-primary, #1e293b);
+  max-height: 400px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+[data-theme="dark"] .ai-streaming-card .ai-stream-content {
+  color: var(--st-text-primary, #e2e8f0);
+}
+
+.ai-streaming-card .ai-stream-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--st-border-color, #e2e8f0);
+}
+
+[data-theme="dark"] .ai-streaming-card .ai-stream-actions {
+  border-top-color: var(--st-border-color, #334155);
+}
+
+/* 流式指示器（脉冲动画） */
+.ai-streaming-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--st-primary, #6366f1);
+  animation: ai-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes ai-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+/* create-ai 流式加载预览 */
+.ai-stream-loading {
+  padding: 20px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.ai-stream-loading .ai-stream-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: var(--st-text-secondary, #64748b);
+}
+
+.ai-stream-loading .ai-stream-preview {
+  background: var(--st-surface-primary, #fff);
+  border: 1px solid var(--st-border-color, #e2e8f0);
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--st-text-secondary, #64748b);
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+[data-theme="dark"] .ai-stream-loading .ai-stream-preview {
+  background: var(--st-surface-secondary, #1e293b);
+  border-color: var(--st-border-color, #334155);
+  color: var(--st-text-secondary, #94a3b8);
+}
 

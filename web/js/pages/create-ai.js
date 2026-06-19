@@ -527,7 +527,15 @@ async function handleGenerate() {
   // 显示加载动画
   methodContent.classList.remove('show');
   loadingContainer.classList.add('active');
+  loadingText.textContent = 'AI 正在创作中...';
 
+  // 对 project 和 outline 使用流式输出
+  if ((state.selectedMethod === 'project' || state.selectedMethod === 'outline') && window.SSEStream) {
+    handleGenerateStreaming();
+    return;
+  }
+
+  // pastiche 和 template 仍使用队列模式
   try {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     const headers = {
@@ -538,30 +546,6 @@ async function handleGenerate() {
     let response;
 
     switch (state.selectedMethod) {
-      case 'project':
-        response = await fetch('/api/ai/creation/generate-project-brief', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            storyIdea: state.formData.storyIdea,
-            genre: state.formData.genre,
-            targetAudience: state.formData.targetAudience,
-            writingStyle: state.formData.writingStyle
-          })
-        });
-        break;
-
-      case 'outline':
-        response = await fetch('/api/ai/creation/generate-outline', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            genre: state.formData.outlineGenre,
-            coreIdea: state.formData.coreIdea
-          })
-        });
-        break;
-
       case 'pastiche':
         response = await fetch('/api/ai/creation/generate-pastiche', {
           method: 'POST',
@@ -607,6 +591,107 @@ async function handleGenerate() {
     loadingContainer.classList.remove('active');
     methodContent.classList.add('show');
   }
+}
+
+// 流式生成（project-brief / outline）
+async function handleGenerateStreaming() {
+  let streamUrl = '';
+  let streamBody = {};
+
+  if (state.selectedMethod === 'project') {
+    streamUrl = '/api/ai/stream/project-brief';
+    streamBody = {
+      storyIdea: state.formData.storyIdea,
+      genre: state.formData.genre,
+      targetAudience: state.formData.targetAudience,
+      writingStyle: state.formData.writingStyle
+    };
+  } else if (state.selectedMethod === 'outline') {
+    streamUrl = '/api/ai/stream/outline';
+    streamBody = {
+      genre: state.formData.outlineGenre,
+      coreIdea: state.formData.coreIdea
+    };
+  }
+
+  // 将 loading 区域改为显示流式内容
+  loadingContainer.innerHTML = `
+    <div class="ai-stream-loading">
+      <div class="ai-stream-header">
+        <span class="ai-streaming-indicator"></span>
+        <span>AI 正在创作中...</span>
+      </div>
+      <div class="ai-stream-preview" id="streamPreview"></div>
+    </div>
+  `;
+
+  const streamPreview = document.getElementById('streamPreview');
+
+  const stream = new SSEStream(streamUrl, {
+    body: streamBody,
+    onStart: () => {
+      streamPreview.textContent = '';
+    },
+    onChunk: (text, fullText) => {
+      // 显示流式文本预览（截取最后 500 字符避免 DOM 过大）
+      const display = fullText.length > 500 ? '...' + fullText.slice(-500) : fullText;
+      streamPreview.textContent = display;
+      streamPreview.scrollTop = streamPreview.scrollHeight;
+    },
+    onDone: (result) => {
+      // 恢复 loading 容器原始内容
+      loadingContainer.innerHTML = `
+        <div class="spinner"></div>
+        <p class="loading-text" id="loadingText">AI 正在创作中...</p>
+      `;
+      loadingText = document.getElementById('loadingText');
+      loadingContainer.classList.remove('active');
+      resultContainer.classList.add('active');
+      methodContent.classList.remove('show');
+
+      // 尝试解析 JSON 结果
+      const fullText = result.fullText || '';
+      let parsed = null;
+      try {
+        // 提取 JSON（可能被 markdown code block 包裹）
+        const jsonMatch = fullText.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, fullText];
+        parsed = JSON.parse(jsonMatch[1].trim());
+      } catch (e) {
+        console.warn('JSON 解析失败，尝试直接解析:', e);
+        try {
+          parsed = JSON.parse(fullText.trim());
+        } catch (e2) {
+          console.error('JSON 解析彻底失败:', e2);
+        }
+      }
+
+      // 生成 sessionId 供后续修改使用
+      state.sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+      if (state.selectedMethod === 'project') {
+        state.generatedData = parsed;
+        renderProjectBrief(parsed);
+      } else if (state.selectedMethod === 'outline') {
+        state.generatedData = parsed;
+        renderOutline(parsed);
+      }
+
+      addChatMessage('assistant', '生成完成！如有不满意的地方，可以提出修改意见。');
+    },
+    onError: (message) => {
+      // 恢复 loading 容器原始内容
+      loadingContainer.innerHTML = `
+        <div class="spinner"></div>
+        <p class="loading-text" id="loadingText">AI 正在创作中...</p>
+      `;
+      loadingText = document.getElementById('loadingText');
+      loadingContainer.classList.remove('active');
+      methodContent.classList.add('show');
+      alert('生成失败：' + message);
+    }
+  });
+
+  await stream.start();
 }
 
 // 监听 AI 创作任务状态（WebSocket 优先，降级轮询兜底）
@@ -1188,6 +1273,13 @@ async function handleSendFeedback() {
   // 禁用发送按钮
   btnSend.disabled = true;
 
+  // 对 project 和 outline 使用流式修改
+  if ((state.selectedMethod === 'project' || state.selectedMethod === 'outline') && window.SSEStream) {
+    handleRevisionStreaming(feedback);
+    return;
+  }
+
+  // 其他类型仍使用队列模式
   try {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     const headers = {
@@ -1223,8 +1315,7 @@ async function handleSendFeedback() {
       throw new Error(data.error || '修改失败');
     }
 
-    // 轮询新结果
-    addChatMessage('assistant', '正在修改中，请稍候...');
+    addChatMessage('assistant', 'AI 正在修改中...');
     pollRevisionStatus(data.taskId);
 
   } catch (error) {
@@ -1232,6 +1323,81 @@ async function handleSendFeedback() {
     addChatMessage('assistant', '修改失败：' + error.message);
     btnSend.disabled = false;
   }
+}
+
+// 流式修改（project-brief / outline）
+async function handleRevisionStreaming(feedback) {
+  // 添加一个流式消息气泡
+  const messageDiv = document.createElement('div');
+  messageDiv.className = 'chat-message assistant';
+  messageDiv.innerHTML = `
+    <div class="chat-avatar">🤖</div>
+    <div class="chat-bubble">
+      <span class="ai-streaming-indicator"></span>
+      <span class="stream-text">AI 正在修改中...</span>
+    </div>
+  `;
+  chatHistory.appendChild(messageDiv);
+  chatHistory.scrollTop = chatHistory.scrollHeight;
+
+  const streamTextEl = messageDiv.querySelector('.stream-text');
+  const type = state.selectedMethod === 'outline' ? 'outline' : 'project-brief';
+
+  const stream = new SSEStream('/api/ai/stream/revise', {
+    body: {
+      type,
+      original: state.generatedData,
+      feedback
+    },
+    onStart: () => {
+      streamTextEl.textContent = '';
+    },
+    onChunk: (text, fullText) => {
+      // 显示最后 200 字符的预览
+      const display = fullText.length > 200 ? '...' + fullText.slice(-200) : fullText;
+      streamTextEl.textContent = display;
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    },
+    onDone: (result) => {
+      const fullText = result.fullText || '';
+      let parsed = null;
+      try {
+        const jsonMatch = fullText.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, fullText];
+        parsed = JSON.parse(jsonMatch[1].trim());
+      } catch (e) {
+        try {
+          parsed = JSON.parse(fullText.trim());
+        } catch (e2) {
+          console.error('修改结果 JSON 解析失败:', e2);
+        }
+      }
+
+      // 更新消息气泡
+      const indicator = messageDiv.querySelector('.ai-streaming-indicator');
+      if (indicator) indicator.remove();
+      streamTextEl.textContent = '修改完成！请查看更新后的内容。';
+
+      // 更新预览
+      if (parsed) {
+        state.generatedData = parsed;
+        if (state.selectedMethod === 'project') {
+          renderProjectBrief(parsed);
+        } else if (state.selectedMethod === 'outline') {
+          renderOutline(parsed);
+        }
+      }
+
+      btnSend.disabled = false;
+    },
+    onError: (message) => {
+      const indicator = messageDiv.querySelector('.ai-streaming-indicator');
+      if (indicator) indicator.remove();
+      streamTextEl.textContent = '修改失败：' + message;
+      btnSend.disabled = false;
+    }
+  });
+
+  await stream.start();
 }
 
 // 轮询修改状态（改为 WebSocket 优先）

@@ -212,8 +212,8 @@ router.post('/project-brief', async (req: Request, res: Response) => {
   const userId = getUserId(req);
   if (!userId) return res.status(401).json({ error: '未登录' });
 
-  const { title, genre, description, targetAudience, additionalInfo } = req.body;
-  if (!title) return res.status(400).json({ error: '标题是必需的' });
+  const { storyIdea, genre, targetAudience, writingStyle } = req.body;
+  if (!storyIdea) return res.status(400).json({ error: '故事想法不能为空' });
 
   try {
     const permission = await canUseAiFeature(userId, 'creation');
@@ -222,11 +222,10 @@ router.post('/project-brief', async (req: Request, res: Response) => {
     const prompt = `你是一位专业的网文编辑和策划人。用户有一个故事想法，需要整理成规范的项目立项书，并基于立项书推导生成故事大纲。
 
 【用户输入】
-标题：${title}
+故事想法：${storyIdea}
 ${genre ? `类型：${genre}` : ''}
-${description ? `简介：${description}` : ''}
 ${targetAudience ? `目标读者：${targetAudience}` : ''}
-${additionalInfo ? `补充信息：${additionalInfo}` : ''}
+${writingStyle ? `写作风格：${writingStyle}` : ''}
 
 请生成一份完整的项目立项书，包含以下内容（使用 JSON 格式输出）：
 {
@@ -268,8 +267,8 @@ router.post('/outline', async (req: Request, res: Response) => {
   const userId = getUserId(req);
   if (!userId) return res.status(401).json({ error: '未登录' });
 
-  const { storyId, projectBrief, chapterCount = 10 } = req.body;
-  if (!projectBrief && !storyId) return res.status(400).json({ error: '需要立项书或storyId' });
+  const { storyId, projectBrief, genre, coreIdea, chapterCount = 10 } = req.body;
+  if (!projectBrief && !storyId && !coreIdea) return res.status(400).json({ error: '需要立项书、storyId 或核心想法' });
 
   try {
     const permission = await canUseAiFeature(userId, 'creation');
@@ -278,6 +277,8 @@ router.post('/outline', async (req: Request, res: Response) => {
     let briefInfo = '';
     if (projectBrief) {
       briefInfo = typeof projectBrief === 'string' ? projectBrief : JSON.stringify(projectBrief, null, 2);
+    } else if (coreIdea) {
+      briefInfo = `核心想法：${coreIdea}${genre ? `\n类型：${genre}` : ''}`;
     } else if (storyId) {
       const story = await prisma.stories.findUnique({ where: { id: parseInt(storyId) } });
       if (story) {
