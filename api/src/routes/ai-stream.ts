@@ -216,7 +216,7 @@ router.post('/project-brief', async (req: Request, res: Response) => {
   if (!storyIdea) return res.status(400).json({ error: '故事想法不能为空' });
 
   try {
-    const permission = await canUseAiFeature(userId, 'creation');
+    const permission = await canUseAiFeature(userId, 'continuation');
     if (!permission.allowed) return res.status(403).json({ error: permission.reason });
 
     const prompt = `你是一位专业的网文编辑和策划人。用户有一个故事想法，需要整理成规范的项目立项书，并基于立项书推导生成故事大纲。
@@ -271,7 +271,7 @@ router.post('/outline', async (req: Request, res: Response) => {
   if (!projectBrief && !storyId && !coreIdea) return res.status(400).json({ error: '需要立项书、storyId 或核心想法' });
 
   try {
-    const permission = await canUseAiFeature(userId, 'creation');
+    const permission = await canUseAiFeature(userId, 'continuation');
     if (!permission.allowed) return res.status(403).json({ error: permission.reason });
 
     let briefInfo = '';
@@ -342,7 +342,7 @@ router.post('/revise', async (req: Request, res: Response) => {
   if (!original || !feedback) return res.status(400).json({ error: '原内容和修改意见是必需的' });
 
   try {
-    const permission = await canUseAiFeature(userId, 'creation');
+    const permission = await canUseAiFeature(userId, 'continuation');
     if (!permission.allowed) return res.status(403).json({ error: permission.reason });
 
     const typeLabel = type === 'outline' ? '故事大纲' : '项目立项书';
