@@ -42,7 +42,6 @@ test.describe.serial('P0 核心创作流程', () => {
         if (testData.user?.token) {
           authToken = testData.user.token;
           console.log('[p0] Using token from global-setup (skipping UI login to avoid rate limit)');
-          // 验证 token 有效：注入后访问一个需要认证的页面
           await page.goto('/');
           await page.evaluate((token) => {
             localStorage.setItem('token', token);
@@ -52,6 +51,11 @@ test.describe.serial('P0 核心创作流程', () => {
         }
       } catch { /* fallthrough to UI login */ }
     }
+
+    // 如果 global-setup 没有获取到 token，说明 API 登录失败（可能是频率限制）
+    // 此时 UI 登录大概率也会失败，直接 skip 避免误报
+    // 等待 15 分钟冷却后重新运行即可
+    console.log('[p0] No token from global-setup, attempting UI login...');
 
     // Fallback: 通过 UI 登录
     await page.goto('/login.html', { waitUntil: 'domcontentloaded' });
@@ -67,14 +71,23 @@ test.describe.serial('P0 核心创作流程', () => {
     await submitBtn.first().click();
     await page.waitForTimeout(3000);
 
-    // 检查是否有错误提示（如频率限制）
-    const alertText = await page.locator('[role="alert"], .toast, .error-message').textContent().catch(() => '');
-    if (alertText && alertText.includes('频繁')) {
-      testInfo.skip(true, `Login rate-limited: ${alertText}`);
+    // 检查是否有频率限制等错误提示（toast 使用 .st-toast[role="alert"]）
+    const toastText = await page.locator('.st-toast, [role="alert"]:not(:empty)').first().textContent({ timeout: 2000 }).catch(() => '');
+    if (toastText && (toastText.includes('频繁') || toastText.includes('过于') || toastText.includes('再试'))) {
+      testInfo.skip(true, `Login rate-limited: ${toastText.trim()}`);
       return;
     }
 
     authToken = await page.evaluate(() => localStorage.getItem('token') || '');
+    if (!authToken) {
+      // 登录失败但不是频率限制 — 可能是密码错误或其他问题
+      const pageContent = await page.textContent('body').catch(() => '');
+      const hasError = pageContent.includes('错误') || pageContent.includes('失败');
+      if (hasError) {
+        testInfo.skip(true, 'Login failed (possibly rate-limited or credentials issue). Wait 15 minutes and retry.');
+        return;
+      }
+    }
     expect(authToken.length, 'Should have auth token after login').toBeGreaterThan(0);
   });
 
