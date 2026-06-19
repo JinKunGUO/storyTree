@@ -5,8 +5,22 @@ import { authenticateToken, optionalAuth, getUserId } from '../utils/middleware'
 import { updateWordCountAndCheckMilestones } from '../utils/milestone-checker';
 import { addPoints } from '../utils/points';
 import { WORD_REWARD_RATE, MAKEUP_CHANCE_RATE } from '../utils/milestones';
+import { getMembershipTier } from '../utils/membership';
 
 const router = Router();
+
+/** 获取用户会员审核选项（轻量级查询） */
+async function getMemberReviewOptions(userId: number) {
+  try {
+    const membership = await getMembershipTier(userId);
+    return {
+      isMember: membership.isActive && membership.tier !== 'free',
+      memberTier: membership.tier
+    };
+  } catch {
+    return { isMember: false, memberTier: 'free' };
+  }
+}
 
 // 参数预处理：验证 :id 参数为有效正整数，无效时直接返回 400
 router.param('id', (req, res, next, value) => {
@@ -72,9 +86,10 @@ router.post('/', authenticateToken, async (req, res) => {
       where: { author_id: userId }
     });
 
-    // 审核检查（只对发布的内容进行审核）
+    // 审核检查（只对发布的内容进行审核，会员可豁免新用户强制审核）
     const shouldPublish = isPublished !== false; // 默认为true以保持向后兼容
-    const reviewCheck = shouldPublish ? needsReview(content, userNodeCount) : { needReview: false, reason: '' };
+    const memberOpts = shouldPublish ? await getMemberReviewOptions(userId) : undefined;
+    const reviewCheck = shouldPublish ? needsReview(content, userNodeCount, memberOpts) : { needReview: false, reason: '', severity: 'none' as const, autoReject: false };
 
     // 如果是第一个节点（没有parentId）
     if (!parentId) {
@@ -374,8 +389,9 @@ router.put('/:id', authenticateToken, async (req, res) => {
       where: { author_id: userId }
     });
 
-    // 审核检查
-    const reviewCheck = needsReview(content, userNodeCount);
+    // 审核检查（含会员豁免）
+    const memberOptsUpdate = await getMemberReviewOptions(userId);
+    const reviewCheck = needsReview(content, userNodeCount, memberOptsUpdate);
 
     // 准备更新数据
     const updateData: any = {
@@ -469,8 +485,9 @@ router.post('/:id/publish', authenticateToken, async (req, res) => {
       where: { author_id: userId, is_published: true }
     });
 
-    // 审核检查
-    const reviewCheck = needsReview(node.content, userNodeCount);
+    // 审核检查（含会员豁免）
+    const memberOptsPublish = await getMemberReviewOptions(userId);
+    const reviewCheck = needsReview(node.content, userNodeCount, memberOptsPublish);
 
     // 更新节点为已发布状态
     const updatedNode = await prisma.nodes.update({
@@ -793,9 +810,9 @@ router.get('/:id', optionalAuth, async (req, res) => {
       }
     }
 
-    // 被驳回/下架节点权限校验：只有节点作者、故事作者、管理员可以访问
+    // 待审核/被驳回/下架节点权限校验：只有节点作者、故事作者、管理员可以访问
     const isAdmin = !!(req as any).isAdmin;
-    if ((node.review_status === 'REJECTED' || node.review_status === 'HIDDEN') && !isAdmin) {
+    if ((node.review_status === 'PENDING' || node.review_status === 'REJECTED' || node.review_status === 'HIDDEN') && !isAdmin) {
       const isNodeAuthor = userId && node.author_id === userId;
       const isStoryAuthor = userId && node.story.author_id === userId;
       if (!isNodeAuthor && !isStoryAuthor) {
@@ -850,7 +867,11 @@ router.get('/:id', optionalAuth, async (req, res) => {
     const branches = await prisma.nodes.findMany({
       where: {
         ...branchFilter,
-        review_status: { notIn: ['REJECTED', 'HIDDEN'] }
+        OR: [
+          { review_status: 'APPROVED' },
+          // PENDING 分支仅作者本人可见
+          ...(userId ? [{ author_id: userId, review_status: 'PENDING' }] : [])
+        ]
       },
       include: {
         author: {
@@ -927,8 +948,9 @@ router.get('/:id/illustrations/count', async (req, res) => {
 });
 
 // Get siblings (同级分支)
-router.get('/:id/siblings', async (req, res) => {
+router.get('/:id/siblings', optionalAuth, async (req, res) => {
   const { id } = req.params;
+  const userId = getUserId(req);
 
   try {
     const node = await prisma.nodes.findUnique({
@@ -950,7 +972,10 @@ router.get('/:id/siblings', async (req, res) => {
       where: {
         parent_id: node.parent_id,
         id: { not: parseInt(id) },
-        review_status: { notIn: ['REJECTED', 'HIDDEN'] }
+        OR: [
+          { review_status: 'APPROVED' },
+          ...(userId ? [{ author_id: userId, review_status: 'PENDING' }] : [])
+        ]
       },
       include: {
         author: {
@@ -1024,9 +1049,10 @@ router.post('/:id/branches', authenticateToken, async (req, res) => {
       where: { author_id: userId }
     });
 
-    // 审核检查（只对发布的内容进行审核）
+    // 审核检查（只对发布的内容进行审核，会员可豁免新用户强制审核）
     const shouldPublish = isPublished !== false; // 默认为true以保持向后兼容
-    const reviewCheck = shouldPublish ? needsReview(content, userNodeCount) : { needReview: false, reason: '' };
+    const memberOpts = shouldPublish ? await getMemberReviewOptions(userId) : undefined;
+    const reviewCheck = shouldPublish ? needsReview(content, userNodeCount, memberOpts) : { needReview: false, reason: '', severity: 'none' as const, autoReject: false };
 
     // Generate path: parent.path + branch number
     const siblingCount = await prisma.nodes.count({
@@ -1261,18 +1287,26 @@ router.post('/:id/report', authenticateToken, async (req, res) => {
       }
     });
 
-    // 如果举报次数 >= 3，自动下架
-    if (node.report_count >= 3) {
+    // 举报阈值处理：
+    // - 3 次举报：进入审核队列（PENDING），等待管理员处理
+    // - 5 次举报：自动下架（HIDDEN），防止恶意内容长期暴露
+    if (node.report_count >= 5) {
       await prisma.nodes.update({
         where: { id: parseInt(id) },
-        data: { review_status: 'HIDDEN' }
+        data: { review_status: 'HIDDEN', review_note: `系统自动下架：累计 ${node.report_count} 次举报` }
+      });
+    } else if (node.report_count >= 3 && node.review_status === 'APPROVED') {
+      await prisma.nodes.update({
+        where: { id: parseInt(id) },
+        data: { review_status: 'PENDING', review_note: `系统自动送审：累计 ${node.report_count} 次举报` }
       });
     }
 
     res.json({
       success: true,
       report,
-      autoHidden: node.report_count >= 3,
+      autoHidden: node.report_count >= 5,
+      autoPending: node.report_count >= 3 && node.report_count < 5,
       remainingReports: MAX_REPORTS_PER_DAY - (reportLimit.get(limitKey)?.count || 0)
     });
   } catch (error) {

@@ -128,3 +128,137 @@ describe('needsReview', () => {
     expect(result.needReview).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// DFA 变体检测（噪声字符跳过）
+// ---------------------------------------------------------------------------
+describe('DFA variant detection', () => {
+  it('detects words with spaces in between', () => {
+    const result = scanSensitiveWords('毒 品');
+    expect(result.found).toBe(true);
+    expect(result.words).toContain('毒品');
+  });
+
+  it('detects words with special chars in between', () => {
+    const result = scanSensitiveWords('毒·品');
+    expect(result.found).toBe(true);
+    expect(result.words).toContain('毒品');
+  });
+
+  it('detects words with multiple noise chars', () => {
+    const result = scanSensitiveWords('赌---博');
+    expect(result.found).toBe(true);
+    expect(result.words).toContain('赌博');
+  });
+
+  it('does not false-positive on unrelated chars', () => {
+    const result = scanSensitiveWords('独立的品味');
+    expect(result.found).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Severity classification
+// ---------------------------------------------------------------------------
+describe('severity classification', () => {
+  it('returns "high" for illegal category', () => {
+    const result = scanSensitiveWords('贩毒走私');
+    expect(result.severity).toBe('high');
+  });
+
+  it('returns "high" for porn category', () => {
+    const result = scanSensitiveWords('色情内容');
+    expect(result.severity).toBe('high');
+  });
+
+  it('returns "high" for political category', () => {
+    const result = scanSensitiveWords('颠覆政权');
+    expect(result.severity).toBe('high');
+  });
+
+  it('returns "medium" for violence category', () => {
+    const result = scanSensitiveWords('血腥暴力');
+    expect(result.severity).toBe('medium');
+  });
+
+  it('returns "low" for spam category', () => {
+    const result = scanSensitiveWords('加微信领奖');
+    expect(result.severity).toBe('low');
+  });
+
+  it('returns "none" for clean text', () => {
+    const result = scanSensitiveWords('美好的一天');
+    expect(result.severity).toBe('none');
+  });
+
+  it('returns highest severity when multiple categories match', () => {
+    // illegal (high) + spam (low) → high
+    const result = scanSensitiveWords('毒品加微信');
+    expect(result.severity).toBe('high');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// autoReject logic
+// ---------------------------------------------------------------------------
+describe('autoReject', () => {
+  it('returns autoReject=true when severity=high and words >= 3', () => {
+    const result = needsReview('毒品冰毒海洛因', 10);
+    expect(result.autoReject).toBe(true);
+    expect(result.severity).toBe('high');
+  });
+
+  it('returns autoReject=false when severity=high but words < 3', () => {
+    const result = needsReview('毒品内容', 10);
+    expect(result.autoReject).toBe(false);
+  });
+
+  it('returns autoReject=false for medium severity', () => {
+    const result = needsReview('杀人分尸碎尸', 10);
+    expect(result.autoReject).toBe(false);
+    expect(result.severity).toBe('medium');
+  });
+
+  it('returns autoReject=false for clean text', () => {
+    const result = needsReview('正常内容', 10);
+    expect(result.autoReject).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Member bypass (P3)
+// ---------------------------------------------------------------------------
+describe('member bypass', () => {
+  it('annual member with nodeCount >= 1 skips new user check', () => {
+    const result = needsReview('正常内容', 1, { isMember: true, memberTier: 'annual' });
+    expect(result.needReview).toBe(false);
+  });
+
+  it('enterprise member with nodeCount >= 1 skips new user check', () => {
+    const result = needsReview('正常内容', 1, { isMember: true, memberTier: 'enterprise' });
+    expect(result.needReview).toBe(false);
+  });
+
+  it('monthly member does NOT skip new user check', () => {
+    const result = needsReview('正常内容', 1, { isMember: true, memberTier: 'monthly' });
+    expect(result.needReview).toBe(true);
+    expect(result.reason).toContain('新用户');
+  });
+
+  it('non-member with nodeCount=0 still requires review', () => {
+    const result = needsReview('正常内容', 0);
+    expect(result.needReview).toBe(true);
+  });
+
+  it('annual member still flagged for sensitive content', () => {
+    const result = needsReview('毒品交易', 10, { isMember: true, memberTier: 'annual' });
+    expect(result.needReview).toBe(true);
+    expect(result.reason).toContain('敏感词');
+  });
+
+  it('member bypass does not apply when nodeCount=0', () => {
+    const result = needsReview('正常内容', 0, { isMember: true, memberTier: 'annual' });
+    expect(result.needReview).toBe(true);
+    expect(result.reason).toContain('新用户');
+  });
+});

@@ -6,6 +6,7 @@
  */
 
 import { Response } from 'express';
+import { scanSensitiveWords, maskSensitiveWords } from './sensitiveWords';
 
 const QWEN_MODEL = process.env.QWEN_MODEL || 'qwen-plus';
 const QWEN_API_KEY = process.env.QWEN_API_KEY;
@@ -162,13 +163,30 @@ export async function streamQwenToClient(res: Response, options: StreamOptions):
       }
     }
 
+    // 后置敏感词扫描
+    const scanResult = scanSensitiveWords(fullText);
+    let safeText = fullText;
+    let contentWarning: { found: boolean; category?: string; masked: boolean } | undefined;
+
+    if (scanResult.found) {
+      // 对命中敏感词的内容进行遮罩处理
+      safeText = maskSensitiveWords(fullText);
+      contentWarning = {
+        found: true,
+        category: scanResult.category,
+        masked: true
+      };
+      console.warn(`[AI 内容安全] 流式输出命中敏感词: ${scanResult.words.join(', ')}`);
+    }
+
     // 发送完成事件
     sendSSE(res, 'done', {
-      fullText,
-      usage: { input: inputTokens, output: outputTokens }
+      fullText: safeText,
+      usage: { input: inputTokens, output: outputTokens },
+      ...(contentWarning ? { contentWarning } : {})
     });
 
-    return fullText;
+    return safeText;
   } catch (error: any) {
     const message = error.name === 'AbortError'
       ? 'AI 连接超时，请稍后重试'

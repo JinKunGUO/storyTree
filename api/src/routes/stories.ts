@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { prisma } from '../index';
 import { needsReview } from '../utils/sensitiveWords';
+import { getMembershipTier } from '../utils/membership';
 import { authenticateToken, optionalAuth, getUserId, safeParsePage, safeParseLimit, safeParsePageSize } from '../utils/middleware';
 import { canViewStory, canEditStory, checkViewPermission, checkEditPermission } from '../utils/permissions';
 
@@ -139,8 +140,12 @@ router.post('/', authenticateToken, async (req, res) => {
         where: { author_id: userId }
       });
 
-      // 审核检查
-      const reviewCheck = needsReview(firstNodeContent, userNodeCount);
+      // 审核检查（含会员豁免）
+      const membership = await getMembershipTier(userId);
+      const memberOpts = (membership.isActive && membership.tier !== 'free')
+        ? { isMember: true, memberTier: membership.tier }
+        : undefined;
+      const reviewCheck = needsReview(firstNodeContent, userNodeCount, memberOpts);
 
       const story = await prisma.stories.create({
         data: {
@@ -575,11 +580,12 @@ router.get('/:id', optionalAuth, async (req, res) => {
       story_id: parseInt(id),
       ...(canSeeDrafts ? {} : { is_published: true })
     };
-    // 非管理员、非作者：过滤掉被驳回和下架的节点
+    // 非管理员、非作者：过滤掉被驳回、下架、以及他人的待审核节点
     if (!isAdmin && !isAuthor) {
       nodeWhereFilter.OR = [
         { review_status: 'APPROVED' },
-        { review_status: 'PENDING' },
+        // PENDING 内容仅作者本人可见
+        ...(userId ? [{ author_id: userId, review_status: 'PENDING' }] : []),
         // 允许节点作者看到自己被驳回的内容（以便修改后重新提交）
         ...(userId ? [{ author_id: userId, review_status: { in: ['REJECTED', 'HIDDEN'] } }] : [])
       ];
