@@ -1,5 +1,6 @@
 import { test, expect } from '../fixtures/auth.fixture';
 import { attachErrorCollector } from '../helpers/error-collector';
+import type { Page } from '@playwright/test';
 
 /**
  * P2 AI 创作流程
@@ -14,11 +15,42 @@ import { attachErrorCollector } from '../helpers/error-collector';
  * 只验证表单提交和 UI 交互无异常。
  */
 
+/** 关闭 driver.js 引导遮罩层（如果存在） */
+async function dismissDriverOverlay(page: Page) {
+  // driver.js 会创建一个 svg.driver-overlay 遮罩
+  const overlay = page.locator('.driver-overlay, .driver-popover');
+  if (await overlay.first().isVisible({ timeout: 1000 }).catch(() => false)) {
+    // 尝试点击"跳过"或"关闭"按钮
+    const skipBtn = page.locator('.driver-popover-close-btn, button:has-text("跳过"), button:has-text("关闭"), button:has-text("知道了")');
+    if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
+      await skipBtn.first().click();
+      await page.waitForTimeout(300);
+    } else {
+      // 按 Escape 关闭
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(300);
+    }
+    // 如果还有多步引导，持续关闭
+    for (let i = 0; i < 10; i++) {
+      if (!await overlay.first().isVisible({ timeout: 300 }).catch(() => false)) break;
+      const nextBtn = page.locator('.driver-popover-next-btn, .driver-popover-close-btn');
+      if (await nextBtn.first().isVisible({ timeout: 300 }).catch(() => false)) {
+        await nextBtn.first().click();
+        await page.waitForTimeout(200);
+      } else {
+        await page.keyboard.press('Escape');
+        break;
+      }
+    }
+  }
+}
+
 test.describe('P2 AI 辅助创作', () => {
   test('create-ai 页面加载 - 显示创作方式选择', async ({ authenticatedPage }) => {
     const collector = attachErrorCollector(authenticatedPage);
     await authenticatedPage.goto('/create-ai.html', { waitUntil: 'domcontentloaded' });
     await authenticatedPage.waitForTimeout(2000);
+    await dismissDriverOverlay(authenticatedPage);
 
     // 验证页面有创作方式选择
     const methods = authenticatedPage.locator(
@@ -36,6 +68,7 @@ test.describe('P2 AI 辅助创作', () => {
     const collector = attachErrorCollector(authenticatedPage);
     await authenticatedPage.goto('/create-ai.html', { waitUntil: 'domcontentloaded' });
     await authenticatedPage.waitForTimeout(2000);
+    await dismissDriverOverlay(authenticatedPage);
 
     // 选择智能导入模式
     const importMethod = authenticatedPage.locator(
@@ -64,6 +97,7 @@ test.describe('P2 AI 辅助创作', () => {
     const collector = attachErrorCollector(authenticatedPage);
     await authenticatedPage.goto('/create-ai.html', { waitUntil: 'domcontentloaded' });
     await authenticatedPage.waitForTimeout(2000);
+    await dismissDriverOverlay(authenticatedPage);
 
     // 选择大纲模式
     const outlineMethod = authenticatedPage.locator(
@@ -83,6 +117,7 @@ test.describe('P2 AI 辅助创作', () => {
     const collector = attachErrorCollector(authenticatedPage);
     await authenticatedPage.goto('/create-ai.html', { waitUntil: 'domcontentloaded' });
     await authenticatedPage.waitForTimeout(2000);
+    await dismissDriverOverlay(authenticatedPage);
 
     // 选择仿写模式
     const pasticheMethod = authenticatedPage.locator(
@@ -102,6 +137,7 @@ test.describe('P2 AI 辅助创作', () => {
     const collector = attachErrorCollector(authenticatedPage);
     await authenticatedPage.goto('/create-ai.html', { waitUntil: 'domcontentloaded' });
     await authenticatedPage.waitForTimeout(2000);
+    await dismissDriverOverlay(authenticatedPage);
 
     // 选择模板模式
     const templateMethod = authenticatedPage.locator(

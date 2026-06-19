@@ -1,5 +1,32 @@
 import { test, expect } from '../fixtures/auth.fixture';
+import type { Page } from '@playwright/test';
 import { attachErrorCollector } from '../helpers/error-collector';
+
+/** 关闭 driver.js 引导遮罩层（如果存在） */
+async function dismissDriverOverlay(page: Page) {
+  const overlay = page.locator('.driver-overlay, .driver-popover');
+  if (await overlay.first().isVisible({ timeout: 1000 }).catch(() => false)) {
+    const skipBtn = page.locator('.driver-popover-close-btn, button:has-text("跳过"), button:has-text("关闭"), button:has-text("知道了")');
+    if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
+      await skipBtn.first().click();
+      await page.waitForTimeout(300);
+    } else {
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(300);
+    }
+    for (let i = 0; i < 10; i++) {
+      if (!await overlay.first().isVisible({ timeout: 300 }).catch(() => false)) break;
+      const nextBtn = page.locator('.driver-popover-next-btn, .driver-popover-close-btn');
+      if (await nextBtn.first().isVisible({ timeout: 300 }).catch(() => false)) {
+        await nextBtn.first().click();
+        await page.waitForTimeout(200);
+      } else {
+        await page.keyboard.press('Escape');
+        break;
+      }
+    }
+  }
+}
 
 /**
  * 交互发现测试
@@ -141,6 +168,7 @@ test.describe('创作页交互发现', () => {
     const collector = attachErrorCollector(authenticatedPage);
     await authenticatedPage.goto('/create-ai.html', { waitUntil: 'domcontentloaded' });
     await authenticatedPage.waitForTimeout(1500);
+    await dismissDriverOverlay(authenticatedPage);
 
     // 找到创作方式选择卡片/按钮
     const methodCards = authenticatedPage.locator('.method-card, .creation-method, [data-method]');
