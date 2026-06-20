@@ -672,6 +672,16 @@ async function handleGenerateStreaming() {
         state.generatedData = parsed;
         renderProjectBrief(parsed);
       } else if (state.selectedMethod === 'outline') {
+        // AI 返回 chapters 字段，统一映射为 chapterOutlines
+        if (parsed && parsed.chapters && !parsed.chapterOutlines) {
+          parsed.chapterOutlines = parsed.chapters.map(c => ({
+            chapter: c.number || c.chapter,
+            title: c.title,
+            summary: c.summary,
+            keyEvents: c.keyEvents,
+            characters: c.characters
+          }));
+        }
         state.generatedData = parsed;
         renderOutline(parsed);
       }
@@ -1653,34 +1663,45 @@ async function handleConfirm() {
       }
     }
 
-    // 如果大纲中有第一章信息，自动创建第一章节点
+    // 统一创建第一章节点（所有模式都生成）
     let firstNodeId = null;
+    let firstChapterTitle = '第一章';
+    let firstChapterContent = '';
+
     if (outlineData && outlineData.chapterOutlines && outlineData.chapterOutlines.length > 0) {
+      // 有大纲时，使用大纲第一章信息
       const firstChapter = outlineData.chapterOutlines[0];
-      try {
-        const nodeResponse = await fetch('/api/nodes', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            storyId: parseInt(storyId),
-            title: firstChapter.title || '第一章',
-            content: firstChapter.summary || '',
-            parentId: null,
-            path: '1',
-            isPublished: false
-          })
-        });
-        if (nodeResponse.ok) {
-          const nodeData = await nodeResponse.json();
-          firstNodeId = nodeData.node?.id || nodeData.id;
-          console.log('已自动创建第一章节点，ID:', firstNodeId);
-        } else {
-          const errData = await nodeResponse.json().catch(() => ({}));
-          console.warn('创建第一章节点失败:', errData.error || nodeResponse.status);
-        }
-      } catch (e) {
-        console.warn('自动创建第一章失败，用户可手动创建:', e);
+      firstChapterTitle = firstChapter.title || '第一章';
+      firstChapterContent = firstChapter.summary || '';
+    } else if (projectBriefData) {
+      // 无大纲但有立项书时，用立项书信息生成第一章开头提示
+      firstChapterTitle = '第一章';
+      firstChapterContent = `【故事开头草稿】\n\n${projectBriefData.synopsis ? '故事梗概：' + projectBriefData.synopsis.substring(0, 200) + '\n\n' : ''}请在此开始创作您的第一章...`;
+    }
+
+    try {
+      const nodeResponse = await fetch('/api/nodes', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          storyId: parseInt(storyId),
+          title: firstChapterTitle,
+          content: firstChapterContent,
+          parentId: null,
+          path: '1',
+          isPublished: false
+        })
+      });
+      if (nodeResponse.ok) {
+        const nodeData = await nodeResponse.json();
+        firstNodeId = nodeData.node?.id || nodeData.id;
+        console.log('已自动创建第一章节点，ID:', firstNodeId);
+      } else {
+        const errData = await nodeResponse.json().catch(() => ({}));
+        console.warn('创建第一章节点失败:', errData.error || nodeResponse.status);
       }
+    } catch (e) {
+      console.warn('自动创建第一章失败，用户可手动创建:', e);
     }
 
     // 标记新手任务：创建第一个故事

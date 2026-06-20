@@ -319,9 +319,8 @@
                 return;
             }
 
-            // storyId 已获取，加载立项书和大纲
+            // storyId 已获取，先加载立项书（不依赖 isStoryAuthor）
             loadProjectBrief();
-            loadOutline();
 
             try {
                 console.log('请求API: /api/stories/' + storyId);
@@ -357,6 +356,9 @@
                 if (editProjectBtn) {
                     editProjectBtn.style.display = isStoryAuthor ? '' : 'none';
                 }
+
+                // isStoryAuthor 已确定，现在加载大纲（编辑按钮依赖此变量）
+                loadOutline();
                 
                 console.log('解析后的story:', story);
                 console.log('故事的章节数:', nodes.length);
