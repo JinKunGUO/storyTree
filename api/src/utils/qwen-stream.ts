@@ -26,6 +26,11 @@ export interface StreamOptions {
  */
 export function sendSSE(res: Response, event: string, data: any) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  // 强制刷新响应缓冲区，确保 SSE 数据立即发送到客户端
+  // Node.js 的 res.write() 可能被内核缓冲，需要显式 flush
+  if (typeof (res as any).flush === 'function') {
+    (res as any).flush();
+  }
 }
 
 /**
@@ -37,6 +42,12 @@ export function initSSEResponse(res: Response) {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no'); // nginx 禁用缓冲
   res.flushHeaders();
+
+  // 禁用 Nagle 算法，确保每个 write() 立即发送
+  const socket = (res as any).socket;
+  if (socket && typeof socket.setNoDelay === 'function') {
+    socket.setNoDelay(true);
+  }
 }
 
 /**
