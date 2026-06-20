@@ -1920,3 +1920,64 @@
   color: var(--st-text-secondary, #94a3b8);
 }
 
+/* Loading tip */
+.ai-loading-tip {
+  font-size: 0.8rem;
+  color: var(--st-text-tertiary, #94a3b8);
+  text-align: center;
+  margin: 0.5rem 0;
+  font-style: italic;
+  transition: opacity 0.3s;
+}
+
+/* Step result cards */
+.ai-step-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.step-result-card {
+  background: var(--st-surface-secondary, #f1f5f9);
+  border: 1px solid var(--st-border-color, #e2e8f0);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.82rem;
+  animation: cardSlideIn 0.3s ease-out;
+}
+
+.step-result-card strong {
+  color: var(--st-text-primary, #1e293b);
+}
+
+.step-card-text {
+  margin: 0.25rem 0 0;
+  color: var(--st-text-secondary, #64748b);
+  line-height: 1.4;
+}
+
+.step-card-badge {
+  display: inline-block;
+  background: var(--st-primary, #6366f1);
+  color: #fff;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  margin-right: 0.4rem;
+}
+
+@keyframes cardSlideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+[data-theme="dark"] .step-result-card {
+  background: var(--st-surface-secondary, #1e293b);
+  border-color: var(--st-border-color, #334155);
+}
+
+[data-theme="dark"] .step-result-card strong {
+  color: var(--st-text-primary, #e2e8f0);
+}
+

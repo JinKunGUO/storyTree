@@ -677,6 +677,18 @@ async function handleGenerateMultiStep() {
     };
   }
 
+  // 加载小贴士
+  const tips = [
+    '正在构思故事框架...',
+    '好故事需要耐心打磨',
+    'AI 正在分析叙事结构...',
+    '精心设计角色关系中...',
+    '即将完成，请稍候...',
+    '创意灵感碰撞中...',
+    '故事的种子正在发芽...'
+  ];
+  let tipIndex = 0;
+
   // 多步骤流式 UI
   loadingContainer.innerHTML = `
     <div class="ai-multistep-loading">
@@ -685,13 +697,23 @@ async function handleGenerateMultiStep() {
         <span class="ai-streaming-indicator"></span>
         <span id="currentStepTitle">准备中...</span>
       </div>
+      <p class="ai-loading-tip" id="loadingTip">${tips[0]}</p>
       <div class="ai-stream-preview" id="stepStreamPreview"></div>
+      <div class="ai-step-results" id="stepResultsArea"></div>
     </div>
   `;
 
   const stepsProgress = document.getElementById('stepsProgress');
   const currentStepTitle = document.getElementById('currentStepTitle');
   const stepStreamPreview = document.getElementById('stepStreamPreview');
+  const loadingTip = document.getElementById('loadingTip');
+  const stepResultsArea = document.getElementById('stepResultsArea');
+
+  // 轮换小贴士
+  const tipTimer = setInterval(() => {
+    tipIndex = (tipIndex + 1) % tips.length;
+    if (loadingTip) loadingTip.textContent = tips[tipIndex];
+  }, 4000);
 
   // 收集各步骤结果
   const stepResults = {};
@@ -699,11 +721,9 @@ async function handleGenerateMultiStep() {
   const stream = new SSEStream(streamUrl, {
     body: streamBody,
     onStep: ({ step, title, total }) => {
-      // 更新步骤进度条
       currentStepTitle.textContent = `步骤 ${step}/${total}：${title}`;
       stepStreamPreview.textContent = '';
 
-      // 构建进度指示器
       let progressHtml = '';
       for (let i = 1; i <= total; i++) {
         const cls = i < step ? 'step-done' : (i === step ? 'step-active' : 'step-pending');
@@ -712,22 +732,23 @@ async function handleGenerateMultiStep() {
       stepsProgress.innerHTML = progressHtml;
     },
     onChunk: (text, fullText) => {
-      // 显示当前步骤的流式文本
-      const display = fullText.length > 400 ? '...' + fullText.slice(-400) : fullText;
+      const display = fullText.length > 300 ? '...' + fullText.slice(-300) : fullText;
       stepStreamPreview.textContent = display;
       stepStreamPreview.scrollTop = stepStreamPreview.scrollHeight;
     },
     onStepDone: ({ step, result }) => {
       stepResults[`step${step}`] = result;
-      // 标记当前步骤完成
+      // 标记步骤完成
       const dots = stepsProgress.querySelectorAll('.step-dot');
       if (dots[step - 1]) {
         dots[step - 1].classList.remove('step-active');
         dots[step - 1].classList.add('step-done');
       }
+      // 立即渲染已完成步骤的摘要卡片
+      renderStepCard(stepResultsArea, step, result);
     },
     onComplete: ({ result }) => {
-      // 恢复 loading 容器
+      clearInterval(tipTimer);
       loadingContainer.innerHTML = `
         <div class="spinner"></div>
         <p class="loading-text" id="loadingText">AI 正在创作中...</p>
@@ -737,7 +758,6 @@ async function handleGenerateMultiStep() {
       resultContainer.classList.add('active');
       methodContent.classList.remove('show');
 
-      // 生成 sessionId
       state.sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
       if (state.selectedMethod === 'pastiche') {
@@ -751,6 +771,7 @@ async function handleGenerateMultiStep() {
       addChatMessage('assistant', '生成完成！如有不满意的地方，可以提出修改意见。');
     },
     onError: (message) => {
+      clearInterval(tipTimer);
       loadingContainer.innerHTML = `
         <div class="spinner"></div>
         <p class="loading-text" id="loadingText">AI 正在创作中...</p>
@@ -763,6 +784,36 @@ async function handleGenerateMultiStep() {
   });
 
   await stream.start();
+}
+
+/** 渲染步骤完成后的即时摘要卡片 */
+function renderStepCard(container, step, result) {
+  const card = document.createElement('div');
+  card.className = 'step-result-card';
+
+  let content = '';
+  if (result.title) {
+    content += `<strong>${result.title}</strong>`;
+  }
+  if (result.synopsis) {
+    content += `<p class="step-card-text">${result.synopsis.substring(0, 100)}${result.synopsis.length > 100 ? '...' : ''}</p>`;
+  } else if (result.projectBrief && result.projectBrief.title) {
+    content += `<strong>${result.projectBrief.title}</strong>`;
+    if (result.projectBrief.synopsis) {
+      content += `<p class="step-card-text">${result.projectBrief.synopsis.substring(0, 80)}...</p>`;
+    }
+  } else if (result.worldBuilding) {
+    content += `<p class="step-card-text">${result.worldBuilding.substring(0, 80)}...</p>`;
+  } else if (result.chapterOutlines) {
+    content += `<p class="step-card-text">${result.chapterOutlines.length} 章大纲已生成</p>`;
+  }
+
+  if (!content) {
+    content = `<p class="step-card-text">步骤 ${step} 完成</p>`;
+  }
+
+  card.innerHTML = `<span class="step-card-badge">步骤${step}</span>${content}`;
+  container.appendChild(card);
 }
 
 // 监听 AI 创作任务状态（WebSocket 优先，降级轮询兜底）
