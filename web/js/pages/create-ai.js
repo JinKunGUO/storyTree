@@ -529,68 +529,20 @@ async function handleGenerate() {
   loadingContainer.classList.add('active');
   loadingText.textContent = 'AI 正在创作中...';
 
-  // 对 project 和 outline 使用流式输出
-  if ((state.selectedMethod === 'project' || state.selectedMethod === 'outline') && window.SSEStream) {
-    handleGenerateStreaming();
+  // 所有模式都使用流式输出
+  if (window.SSEStream) {
+    if (state.selectedMethod === 'project' || state.selectedMethod === 'outline') {
+      handleGenerateStreaming();
+    } else if (state.selectedMethod === 'pastiche' || state.selectedMethod === 'template') {
+      handleGenerateMultiStep();
+    }
     return;
   }
 
-  // pastiche 和 template 仍使用队列模式
-  try {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    };
-
-    let response;
-
-    switch (state.selectedMethod) {
-      case 'pastiche':
-        response = await fetch('/api/ai/creation/generate-pastiche', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            bookName: state.formData.bookName,
-            pasticheType: state.formData.pasticheType,
-            innovation: state.formData.innovation
-          })
-        });
-        break;
-
-      case 'template':
-        response = await fetch('/api/ai/creation/generate-from-template', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            templateId: state.formData.templateId,
-            protagonistName: state.formData.protagonistName,
-            coreConflict: state.formData.coreConflict,
-            setting: state.formData.setting
-          })
-        });
-        break;
-    }
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || '生成失败');
-    }
-
-    // 保存会话和任务 ID
-    state.sessionId = data.sessionId;
-    state.taskId = data.taskId;
-
-    // 监听任务状态（WebSocket 优先，降级轮询兜底）
-    watchCreationTask(state.taskId);
-
-  } catch (error) {
-    console.error('生成失败:', error);
-    alert('生成失败：' + error.message);
-    loadingContainer.classList.remove('active');
-    methodContent.classList.add('show');
-  }
+  // 降级：无 SSEStream 时使用队列模式（不应出现）
+  alert('浏览器不支持流式输出，请刷新页面重试');
+  loadingContainer.classList.remove('active');
+  methodContent.classList.add('show');
 }
 
 // 流式生成（project-brief / outline）
@@ -690,6 +642,115 @@ async function handleGenerateStreaming() {
     },
     onError: (message) => {
       // 恢复 loading 容器原始内容
+      loadingContainer.innerHTML = `
+        <div class="spinner"></div>
+        <p class="loading-text" id="loadingText">AI 正在创作中...</p>
+      `;
+      loadingText = document.getElementById('loadingText');
+      loadingContainer.classList.remove('active');
+      methodContent.classList.add('show');
+      alert('生成失败：' + message);
+    }
+  });
+
+  await stream.start();
+}
+
+// 多步骤流式生成（pastiche / template）
+async function handleGenerateMultiStep() {
+  let streamUrl = '';
+  let streamBody = {};
+
+  if (state.selectedMethod === 'pastiche') {
+    streamUrl = '/api/ai/stream/pastiche';
+    streamBody = {
+      bookName: state.formData.bookName,
+      pasticheType: state.formData.pasticheType,
+      innovation: state.formData.innovation
+    };
+  } else if (state.selectedMethod === 'template') {
+    streamUrl = '/api/ai/stream/template';
+    streamBody = {
+      template: state.formData.templateId,
+      protagonistName: state.formData.protagonistName,
+      coreConflict: state.formData.coreConflict
+    };
+  }
+
+  // 多步骤流式 UI
+  loadingContainer.innerHTML = `
+    <div class="ai-multistep-loading">
+      <div class="ai-steps-progress" id="stepsProgress"></div>
+      <div class="ai-stream-header">
+        <span class="ai-streaming-indicator"></span>
+        <span id="currentStepTitle">准备中...</span>
+      </div>
+      <div class="ai-stream-preview" id="stepStreamPreview"></div>
+    </div>
+  `;
+
+  const stepsProgress = document.getElementById('stepsProgress');
+  const currentStepTitle = document.getElementById('currentStepTitle');
+  const stepStreamPreview = document.getElementById('stepStreamPreview');
+
+  // 收集各步骤结果
+  const stepResults = {};
+
+  const stream = new SSEStream(streamUrl, {
+    body: streamBody,
+    onStep: ({ step, title, total }) => {
+      // 更新步骤进度条
+      currentStepTitle.textContent = `步骤 ${step}/${total}：${title}`;
+      stepStreamPreview.textContent = '';
+
+      // 构建进度指示器
+      let progressHtml = '';
+      for (let i = 1; i <= total; i++) {
+        const cls = i < step ? 'step-done' : (i === step ? 'step-active' : 'step-pending');
+        progressHtml += `<span class="step-dot ${cls}">${i}</span>`;
+      }
+      stepsProgress.innerHTML = progressHtml;
+    },
+    onChunk: (text, fullText) => {
+      // 显示当前步骤的流式文本
+      const display = fullText.length > 400 ? '...' + fullText.slice(-400) : fullText;
+      stepStreamPreview.textContent = display;
+      stepStreamPreview.scrollTop = stepStreamPreview.scrollHeight;
+    },
+    onStepDone: ({ step, result }) => {
+      stepResults[`step${step}`] = result;
+      // 标记当前步骤完成
+      const dots = stepsProgress.querySelectorAll('.step-dot');
+      if (dots[step - 1]) {
+        dots[step - 1].classList.remove('step-active');
+        dots[step - 1].classList.add('step-done');
+      }
+    },
+    onComplete: ({ result }) => {
+      // 恢复 loading 容器
+      loadingContainer.innerHTML = `
+        <div class="spinner"></div>
+        <p class="loading-text" id="loadingText">AI 正在创作中...</p>
+      `;
+      loadingText = document.getElementById('loadingText');
+      loadingContainer.classList.remove('active');
+      resultContainer.classList.add('active');
+      methodContent.classList.remove('show');
+
+      // 生成 sessionId
+      state.sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+      if (state.selectedMethod === 'pastiche') {
+        state.generatedData = result;
+        renderPasticheResult(result);
+      } else if (state.selectedMethod === 'template') {
+        state.generatedData = result;
+        renderTemplateResult(result);
+      }
+
+      addChatMessage('assistant', '生成完成！如有不满意的地方，可以提出修改意见。');
+    },
+    onError: (message) => {
       loadingContainer.innerHTML = `
         <div class="spinner"></div>
         <p class="loading-text" id="loadingText">AI 正在创作中...</p>

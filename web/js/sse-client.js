@@ -139,6 +139,25 @@ class SSEStream {
           });
           break;
 
+        // 多步骤流式事件
+        case 'step':
+          // 新步骤开始，重置当前步骤文本
+          this._stepText = '';
+          this.options.onStep?.(parsed); // { step, title, total }
+          break;
+
+        case 'step_done':
+          // 当前步骤完成
+          this.options.onStepDone?.(parsed); // { step, result }
+          this._stepText = '';
+          this.fullText = ''; // 重置 fullText 供下一步使用
+          break;
+
+        case 'complete':
+          // 多步骤全部完成
+          this.options.onComplete?.(parsed); // { result }
+          break;
+
         case 'error':
           this.options.onError?.(parsed.message || 'AI 生成出错');
           break;

@@ -16,7 +16,7 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../index';
 import { canUseAiFeature, deductPoints, AI_COST } from '../utils/points';
 import { JWT_SECRET } from '../utils/auth';
-import { initSSEResponse, streamQwenToClient } from '../utils/qwen-stream';
+import { initSSEResponse, streamQwenToClient, streamQwenStep, sendSSE } from '../utils/qwen-stream';
 
 const router = Router();
 
@@ -372,6 +372,284 @@ ${feedback}
     console.error('流式修改失败:', error);
     if (!res.headersSent) {
       res.status(500).json({ error: '修改失败' });
+    }
+  }
+});
+
+/**
+ * POST /api/ai/stream/pastiche
+ * 多步骤流式仿写（分析原作 → 生成立项书 → 生成大纲）
+ * 
+ * SSE 额外事件：
+ *   event: step       data: { step: 1, title: "分析原作", total: 3 }
+ *   event: step_done  data: { step: 1, result: {...} }
+ */
+router.post('/pastiche', async (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  if (!userId) return res.status(401).json({ error: '未登录' });
+
+  const { bookName, pasticheType = 'pastiche', innovation } = req.body;
+  if (!bookName) return res.status(400).json({ error: '书名不能为空' });
+
+  try {
+    const permission = await canUseAiFeature(userId, 'continuation');
+    if (!permission.allowed) return res.status(403).json({ error: permission.reason });
+
+    initSSEResponse(res);
+
+    const typeLabel = pasticheType === 'pastiche' ? '仿写' : pasticheType === 'continuation' ? '续写' : '同人创作';
+    let analysisResult = '';
+    let briefResult = '';
+    let outlineResult = '';
+
+    // ===== 步骤 1：分析原作 =====
+    sendSSE(res, 'step', { step: 1, title: '分析原作风格', total: 3 });
+
+    const analysisPrompt = `你是一位专业的文学评论家。请分析《${bookName}》这部作品的写作特点。
+
+输出 JSON 格式：
+{
+  "style": "写作风格特点（100字以内）",
+  "characters": "主要角色及其特征",
+  "plotStructure": "情节结构特点",
+  "themes": "核心主题",
+  "tone": "基调和氛围"
+}
+
+只输出 JSON，不要其他内容。`;
+
+    analysisResult = await streamQwenStep(res, {
+      prompt: analysisPrompt,
+      maxTokens: 1500,
+      temperature: 0.7,
+      timeoutMs: 45000
+    });
+
+    // 解析分析结果
+    let analysis: any = {};
+    try {
+      const jsonMatch = analysisResult.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, analysisResult];
+      analysis = JSON.parse(jsonMatch[1].trim());
+    } catch { try { analysis = JSON.parse(analysisResult.trim()); } catch { analysis = { style: analysisResult }; } }
+
+    sendSSE(res, 'step_done', { step: 1, result: analysis });
+
+    // ===== 步骤 2：生成立项书 =====
+    sendSSE(res, 'step', { step: 2, title: '生成立项书', total: 3 });
+
+    const briefPrompt = `你是一位专业的网文策划人。用户想基于《${bookName}》进行${typeLabel}。
+${innovation ? `创新点：${innovation}` : ''}
+
+【原作分析】
+${JSON.stringify(analysis, null, 2)}
+
+请生成新作的立项书，输出 JSON 格式：
+{
+  "title": "新作标题",
+  "synopsis": "故事梗概（200字）",
+  "coreIdea": "核心创意",
+  "genre": "类型标签",
+  "highlights": ["亮点1", "亮点2", "亮点3"]
+}
+
+只输出 JSON，不要其他内容。`;
+
+    briefResult = await streamQwenStep(res, {
+      prompt: briefPrompt,
+      maxTokens: 1500,
+      temperature: 0.8,
+      timeoutMs: 45000
+    });
+
+    let projectBrief: any = {};
+    try {
+      const jsonMatch = briefResult.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, briefResult];
+      projectBrief = JSON.parse(jsonMatch[1].trim());
+    } catch { try { projectBrief = JSON.parse(briefResult.trim()); } catch { projectBrief = { title: bookName + '·' + typeLabel, synopsis: briefResult }; } }
+
+    sendSSE(res, 'step_done', { step: 2, result: projectBrief });
+
+    // ===== 步骤 3：生成大纲 =====
+    sendSSE(res, 'step', { step: 3, title: '生成故事大纲', total: 3 });
+
+    const outlinePrompt = `你是一位专业的网文策划人。请基于以下立项书生成完整的故事大纲。
+
+【立项书】
+${JSON.stringify(projectBrief, null, 2)}
+
+【参考原作风格】
+${analysis.style || ''}
+
+请输出 JSON 格式：
+{
+  "worldBuilding": "世界观设定（100-200字）",
+  "characters": [
+    { "name": "角色名", "role": "protagonist/antagonist/supporting", "description": "角色描述" }
+  ],
+  "plotStructure": {
+    "act1": "第一幕（开端）",
+    "act2": "第二幕（发展）",
+    "act3": "第三幕（高潮与结局）"
+  },
+  "chapterOutlines": [
+    { "chapter": 1, "title": "章节标题", "summary": "章节梗概（50字）" }
+  ]
+}
+
+生成 5-8 个章节大纲。只输出 JSON，不要其他内容。`;
+
+    outlineResult = await streamQwenStep(res, {
+      prompt: outlinePrompt,
+      maxTokens: 3000,
+      temperature: 0.8,
+      timeoutMs: 60000
+    });
+
+    let outline: any = {};
+    try {
+      const jsonMatch = outlineResult.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, outlineResult];
+      outline = JSON.parse(jsonMatch[1].trim());
+    } catch { try { outline = JSON.parse(outlineResult.trim()); } catch { outline = { worldBuilding: outlineResult }; } }
+
+    sendSSE(res, 'step_done', { step: 3, result: outline });
+
+    // ===== 最终合并结果 =====
+    const finalResult = { analysis, projectBrief, outline };
+    sendSSE(res, 'complete', { result: finalResult });
+    res.end();
+
+    // 扣费（3 步共用一次扣费）
+    await deductPoints(userId, AI_COST.CONTINUATION, 'ai_creation', 'AI仿写创作');
+
+  } catch (error: any) {
+    console.error('流式仿写失败:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: '生成失败' });
+    } else {
+      sendSSE(res, 'error', { message: error.message || '生成失败' });
+      res.end();
+    }
+  }
+});
+
+/**
+ * POST /api/ai/stream/template
+ * 多步骤流式模板生成（填充模板 → 生成立项书 → 生成大纲）
+ */
+router.post('/template', async (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  if (!userId) return res.status(401).json({ error: '未登录' });
+
+  const { template, protagonistName, coreConflict } = req.body;
+  if (!template) return res.status(400).json({ error: '模板不能为空' });
+
+  try {
+    const permission = await canUseAiFeature(userId, 'continuation');
+    if (!permission.allowed) return res.status(403).json({ error: permission.reason });
+
+    initSSEResponse(res);
+
+    let briefResult = '';
+    let outlineResult = '';
+
+    // ===== 步骤 1：生成立项书 =====
+    sendSSE(res, 'step', { step: 1, title: '解析模板生成立项书', total: 2 });
+
+    const templateStr = typeof template === 'string' ? template : JSON.stringify(template, null, 2);
+
+    const briefPrompt = `你是一位专业的网文策划人。用户选择了一个故事模板，请基于模板生成立项书。
+
+【模板框架】
+${templateStr}
+
+${protagonistName ? `【主角姓名】${protagonistName}` : ''}
+${coreConflict ? `【核心冲突】${coreConflict}` : ''}
+
+请输出 JSON 格式的立项书：
+{
+  "title": "故事标题",
+  "synopsis": "故事梗概（200字）",
+  "coreIdea": "核心创意",
+  "genre": "类型标签",
+  "highlights": ["亮点1", "亮点2", "亮点3"]
+}
+
+只输出 JSON，不要其他内容。`;
+
+    briefResult = await streamQwenStep(res, {
+      prompt: briefPrompt,
+      maxTokens: 1500,
+      temperature: 0.8,
+      timeoutMs: 45000
+    });
+
+    let projectBrief: any = {};
+    try {
+      const jsonMatch = briefResult.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, briefResult];
+      projectBrief = JSON.parse(jsonMatch[1].trim());
+    } catch { try { projectBrief = JSON.parse(briefResult.trim()); } catch { projectBrief = { title: '模板故事', synopsis: briefResult }; } }
+
+    sendSSE(res, 'step_done', { step: 1, result: projectBrief });
+
+    // ===== 步骤 2：生成完整大纲 =====
+    sendSSE(res, 'step', { step: 2, title: '生成故事大纲', total: 2 });
+
+    const outlinePrompt = `你是一位专业的网文策划人。请基于以下立项书生成完整的故事大纲。
+
+【立项书】
+${JSON.stringify(projectBrief, null, 2)}
+
+${protagonistName ? `【主角】${protagonistName}` : ''}
+${coreConflict ? `【核心冲突】${coreConflict}` : ''}
+
+请输出 JSON 格式：
+{
+  "worldBuilding": "世界观设定（100-200字）",
+  "characters": [
+    { "name": "角色名", "role": "protagonist/antagonist/supporting", "description": "角色描述" }
+  ],
+  "plotStructure": {
+    "act1": "第一幕（开端）",
+    "act2": "第二幕（发展）",
+    "act3": "第三幕（高潮与结局）"
+  },
+  "chapterOutlines": [
+    { "chapter": 1, "title": "章节标题", "summary": "章节梗概（50字）" }
+  ]
+}
+
+生成 5-8 个章节大纲。只输出 JSON，不要其他内容。`;
+
+    outlineResult = await streamQwenStep(res, {
+      prompt: outlinePrompt,
+      maxTokens: 3000,
+      temperature: 0.8,
+      timeoutMs: 60000
+    });
+
+    let outline: any = {};
+    try {
+      const jsonMatch = outlineResult.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, outlineResult];
+      outline = JSON.parse(jsonMatch[1].trim());
+    } catch { try { outline = JSON.parse(outlineResult.trim()); } catch { outline = { worldBuilding: outlineResult }; } }
+
+    sendSSE(res, 'step_done', { step: 2, result: outline });
+
+    // ===== 最终合并结果 =====
+    const finalResult = { projectBrief, outline };
+    sendSSE(res, 'complete', { result: finalResult });
+    res.end();
+
+    // 扣费
+    await deductPoints(userId, AI_COST.CONTINUATION, 'ai_creation', 'AI模板创作');
+
+  } catch (error: any) {
+    console.error('流式模板生成失败:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: '生成失败' });
+    } else {
+      sendSSE(res, 'error', { message: error.message || '生成失败' });
+      res.end();
     }
   }
 });
