@@ -428,22 +428,20 @@ profileHeader.innerHTML = `
                             ${escapeHtml(user.username)}
                             <button onclick="showEditProfileModal()" style="
                                 background: none;
-                                border: 1px solid var(--st-primary-500);
-                                color: var(--st-primary-500);
-                                border-radius: 20px;
-                                padding: 4px 14px;
-                                font-size: 13px;
-                                font-weight: 600;
+                                border: none;
+                                color: var(--st-text-tertiary);
+                                padding: 2px 6px;
+                                font-size: 12px;
                                 cursor: pointer;
-                                transition: all 0.3s;
+                                transition: all 0.2s;
                                 display: inline-flex;
                                 align-items: center;
-                                gap: 5px;
-                            " onmouseover="this.style.background='var(--st-primary-500)'; this.style.color='white';"
-                               onmouseout="this.style.background='none'; this.style.color='var(--st-primary-500)';">
-                                <i class="fas fa-pen" style="font-size: 11px;"></i> 编辑资料
+                                gap: 3px;
+                            " onmouseover="this.style.color='var(--st-primary-500)';"
+                               onmouseout="this.style.color='var(--st-text-tertiary)';">
+                                <i class="fas fa-pen" style="font-size: 10px;"></i>
                             </button>
-                            <span id="userBadgeContainer" style="margin-left: 10px;">
+                            <span id="userBadgeContainer">
                                 <!-- 徽章将通过 JavaScript 动态插入 -->
                             </span>
                         </div>
@@ -1688,12 +1686,60 @@ profileHeader.innerHTML = `
             }
         }
 
-        // 显示用户故事
+        // 获取可见性徽章
+        function getVisibilityBadge(visibility) {
+            const badges = {
+                'public': '<span class="badge badge-public"><i class="fas fa-globe"></i> 公开</span>',
+                'followers': '<span class="badge badge-friends"><i class="fas fa-user-friends"></i> 关注者可见</span>',
+                'collaborators': '<span class="badge badge-private"><i class="fas fa-users"></i> 仅协作者</span>',
+                'author_only': '<span class="badge badge-private"><i class="fas fa-lock"></i> 私密</span>'
+            };
+            return badges[visibility] || badges['public'];
+        }
+
+        // 查看故事
+        function viewStory(storyId) {
+            window.location.href = `/story.html?id=${storyId}`;
+        }
+
+        // 编辑故事设置
+        function editStory(storyId) {
+            window.location.href = `/story-settings.html?id=${storyId}`;
+        }
+
+        // 删除故事
+        async function deleteStory(storyId, title) {
+            if (window.showDangerConfirm) {
+                showDangerConfirm(`确定要删除故事《${title}》吗？此操作不可恢复！`, async () => {
+                    await doDeleteStory(storyId);
+                }, { title: '删除故事', confirmText: '确认删除' });
+            } else if (confirm(`确定要删除故事《${title}》吗？此操作不可恢复！`)) {
+                await doDeleteStory(storyId);
+            }
+        }
+
+        async function doDeleteStory(storyId) {
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                const response = await fetch(`/api/stories/${storyId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Failed to delete story');
+                showMessage('故事已删除', 'success');
+                loadUserStories(currentUser.id);
+            } catch (error) {
+                console.error('Error deleting story:', error);
+                showMessage('删除失败', 'error');
+            }
+        }
+
+        // 显示用户故事（卡片网格布局）
         function displayUserStories(stories) {
             const storiesList = document.getElementById('storiesList');
-            
+
             console.log('收到的故事数据:', stories);
-            
+
             if (!stories || stories.length === 0) {
                 showEmptyStories();
                 return;
@@ -1704,29 +1750,45 @@ profileHeader.innerHTML = `
             let totalViews = 0;
 
             const storiesHTML = stories.map(story => {
-                // 安全地获取章节数
                 const nodeCount = story._count?.nodes || 0;
-                
-                // 获取点赞数（bookmarks）和浏览量
                 const likeCount = story.likes || story._count?.bookmarks || 0;
                 const viewCount = story.views || 0;
-                
-                // 累加到总数
+
                 totalLikes += likeCount;
                 totalViews += viewCount;
-                
+
                 return `
-                    <div class="story-item" onclick="window.location.href='/story.html?id=${story.id}'">
-                        <div class="story-icon">
-                            <i class="fas fa-book-open"></i>
-                        </div>
-                        <div class="story-details">
+                    <div class="story-card" onclick="viewStory(${story.id})">
+                        <img src="${story.cover_image || '/assets/default-cover.jpg?v=3'}"
+                             alt="${escapeHtml(story.title)}"
+                             class="story-cover">
+                        <div class="story-content">
                             <div class="story-title">${escapeHtml(story.title)}</div>
+                            <div class="story-description">${escapeHtml(story.description || '暂无描述')}</div>
+
+                            <div class="story-badges">
+                                ${getVisibilityBadge(story.visibility)}
+                                ${story.password ? '<span class="badge badge-protected"><i class="fas fa-lock"></i> 密码保护</span>' : ''}
+                            </div>
+
                             <div class="story-meta">
-                                <span><i class="fas fa-file-alt"></i> ${nodeCount} 章节</span>
-                                <span><i class="fas fa-heart"></i> ${likeCount} 点赞</span>
-                                <span><i class="fas fa-eye"></i> ${viewCount} 浏览</span>
-                                <span><i class="fas fa-clock"></i> ${formatDate(story.updated_at || story.createdAt)}</span>
+                                <span><i class="far fa-clock"></i> ${formatDate(story.updated_at || story.createdAt)}</span>
+                                <div class="story-stats">
+                                    <span><i class="far fa-eye"></i> ${viewCount}</span>
+                                    <span><i class="far fa-heart"></i> ${likeCount}</span>
+                                </div>
+                            </div>
+
+                            <div class="story-actions" onclick="event.stopPropagation()">
+                                <button class="action-btn primary" onclick="viewStory(${story.id})">
+                                    <i class="fas fa-book-open"></i> 查看
+                                </button>
+                                <button class="action-btn" onclick="editStory(${story.id})">
+                                    <i class="fas fa-cog"></i> 设置
+                                </button>
+                                <button class="action-btn" onclick="deleteStory(${story.id}, '${escapeHtml(story.title).replace(/'/g, "\\'")}')">
+                                    <i class="fas fa-trash"></i> 删除
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -1769,81 +1831,64 @@ profileHeader.innerHTML = `
         // 格式化日期
         // formatDate 已由 js/utils/format-date.js 全局提供
 
-        // 加载关注的故事
+        // 加载协作的故事
         async function loadFollowedStories(userId) {
             try {
                 const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-                
-                // 1. 获取追更故事
-                const followedResponse = await fetch(`/api/stories/user/${userId}/followed-stories`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                if (!followedResponse.ok) {
-                    throw new Error('加载关注的故事失败');
-                }
-                
-                const followedData = await followedResponse.json();
-                
-                // 2. 获取协作故事
+
                 const collaboratedResponse = await fetch(`/api/users/${userId}/collaborated-stories`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                
-                let collaboratedStories = [];
-                if (collaboratedResponse.ok) {
-                    const collaboratedData = await collaboratedResponse.json();
-                    collaboratedStories = collaboratedData.stories || [];
+
+                if (!collaboratedResponse.ok) {
+                    throw new Error('加载协作故事失败');
                 }
-                
-                // 3. 合并和标记
-                const followedStories = (followedData.follows || []).map(f => ({
-                    ...f.story,
-                    is_collaborated: false,
-                    is_followed: true
-                }));
-                
-                // 标记协作故事
-                const storyMap = new Map();
-                followedStories.forEach(story => {
-                    storyMap.set(story.id, story);
-                });
-                
-                collaboratedStories.forEach(story => {
-                    if (storyMap.has(story.id)) {
-                        // 已存在，标记为协作
-                        storyMap.get(story.id).is_collaborated = true;
-                    } else {
-                        // 新增协作故事
-                        storyMap.set(story.id, {
-                            ...story,
-                            is_collaborated: true,
-                            is_followed: false
-                        });
-                    }
-                });
-                
-                // 4. 转换为数组并排序
-                const allStories = Array.from(storyMap.values());
-                allStories.sort((a, b) => {
-                    // 协作故事优先
-                    if (a.is_collaborated && !b.is_collaborated) return -1;
-                    if (!a.is_collaborated && b.is_collaborated) return 1;
-                    // 按更新时间排序
+
+                const collaboratedData = await collaboratedResponse.json();
+                const collaboratedStories = collaboratedData.stories || [];
+
+                collaboratedStories.sort((a, b) => {
                     return new Date(b.updated_at || b.createdAt) - new Date(a.updated_at || a.createdAt);
                 });
-                
-                displayFollowedStories(allStories);
+
+                displayFollowedStories(collaboratedStories);
             } catch (error) {
-                console.error('加载关注的故事错误:', error);
+                console.error('加载协作故事错误:', error);
                 showEmptyFollowedStories();
             }
         }
 
-        // 显示关注的故事
+        // 退出协作
+        async function leaveCollaboration(storyId) {
+            if (window.showConfirm) {
+                showConfirm('确定要退出此故事的协作吗？', async () => {
+                    await doLeaveCollaboration(storyId);
+                }, { title: '退出协作', confirmText: '确认退出' });
+            } else if (confirm('确定要退出此故事的协作吗？')) {
+                await doLeaveCollaboration(storyId);
+            }
+        }
+
+        async function doLeaveCollaboration(storyId) {
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                const response = await fetch(`/api/stories/${storyId}/collaborators/leave`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Failed to leave collaboration');
+                showMessage('已退出协作', 'success');
+                loadFollowedStories(currentUser.id);
+            } catch (error) {
+                console.error('Error leaving collaboration:', error);
+                showMessage('操作失败', 'error');
+            }
+        }
+
+        // 显示协作的故事（卡片网格布局）
         function displayFollowedStories(stories) {
             const list = document.getElementById('followedStoriesList');
-            
+
             if (!stories || stories.length === 0) {
                 showEmptyFollowedStories();
                 return;
@@ -1851,39 +1896,39 @@ profileHeader.innerHTML = `
 
             const storiesHTML = stories.map(story => {
                 const nodeCount = story._count?.nodes || 0;
-                const followerCount = story._count?.followers || 0;
                 const viewCount = story.views || 0;
+                const likeCount = story.likes || story._count?.bookmarks || 0;
                 const authorName = story.author?.username || '未知作者';
-                
-                // 确定图标和标签
-                let icon, badge, badgeClass, iconClass;
-                if (story.is_collaborated) {
-                    icon = 'fa-users';
-                    badge = '协作中';
-                    badgeClass = 'badge-collaborated';
-                    iconClass = 'icon-collaborated';
-                } else {
-                    icon = 'fa-star';
-                    badge = '追更中';
-                    badgeClass = 'badge-followed';
-                    iconClass = 'icon-followed';
-                }
-                
+
                 return `
-                    <div class="story-item" onclick="window.location.href='/story.html?id=${story.id}'" style="cursor: pointer;">
-                        <div class="story-icon ${iconClass}">
-                            <i class="fas ${icon}"></i>
-                        </div>
-                        <div class="story-details">
-                            <div class="story-title">
-                                ${escapeHtml(story.title)}
-                                <span class="story-badge ${badgeClass}">${badge}</span>
+                    <div class="story-card" onclick="viewStory(${story.id})">
+                        <img src="${story.cover_image || '/assets/default-cover.jpg?v=3'}"
+                             alt="${escapeHtml(story.title)}"
+                             class="story-cover">
+                        <div class="story-content">
+                            <div class="story-title">${escapeHtml(story.title)}</div>
+                            <div class="story-description">${escapeHtml(story.description || '暂无描述')}</div>
+
+                            <div class="story-badges">
+                                ${getVisibilityBadge(story.visibility)}
+                                <span class="badge" style="background: #e8f5e9; color: #2e7d32;"><i class="fas fa-users"></i> 协作</span>
                             </div>
+
                             <div class="story-meta">
                                 <span><i class="fas fa-user"></i> ${escapeHtml(authorName)}</span>
-                                <span><i class="fas fa-file-alt"></i> ${nodeCount} 章节</span>
-                                <span><i class="fas fa-book-reader"></i> ${followerCount} 追更</span>
-                                <span><i class="fas fa-eye"></i> ${viewCount} 浏览</span>
+                                <div class="story-stats">
+                                    <span><i class="far fa-eye"></i> ${viewCount}</span>
+                                    <span><i class="far fa-heart"></i> ${likeCount}</span>
+                                </div>
+                            </div>
+
+                            <div class="story-actions" onclick="event.stopPropagation()">
+                                <button class="action-btn primary" onclick="viewStory(${story.id})">
+                                    <i class="fas fa-book-open"></i> 查看
+                                </button>
+                                <button class="action-btn" onclick="leaveCollaboration(${story.id})">
+                                    <i class="fas fa-sign-out-alt"></i> 退出协作
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -1935,13 +1980,13 @@ profileHeader.innerHTML = `
             }, 3000);
         }
 
-        // 显示空的关注列表
+        // 显示空的协作列表
         function showEmptyFollowedStories() {
             const list = document.getElementById('followedStoriesList');
             list.innerHTML = `
                 <div class="empty-state">
-                    <i class="fas fa-star"></i>
-                    <p>还没有关注任何故事</p>
+                    <i class="fas fa-users"></i>
+                    <p>还没有参与任何协作故事</p>
                     <a href="/discover.html" class="btn btn-primary">
                         <i class="fas fa-search"></i> 去发现故事
                     </a>
