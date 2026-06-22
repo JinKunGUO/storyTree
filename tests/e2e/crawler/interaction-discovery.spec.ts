@@ -35,7 +35,7 @@ async function dismissDriverOverlay(page: Page) {
 test.describe('首页交互发现', () => {
   test('首页所有可见按钮点击无 JS 错误', async ({ authenticatedPage }) => {
     const collector = attachErrorCollector(authenticatedPage);
-    await authenticatedPage.goto('/index.html', { waitUntil: 'networkidle' });
+    await authenticatedPage.goto('/index.html', { waitUntil: 'domcontentloaded' });
     await authenticatedPage.waitForTimeout(1000);
 
     // 获取所有可见按钮

@@ -426,6 +426,14 @@
             } catch (error) {
                 console.error('Error loading stories:', error);
                 showError('加载故事失败');
+                const container = document.getElementById('storiesContainer');
+                const emptyState = document.getElementById('emptyState');
+                if (container) container.style.display = 'none';
+                if (emptyState) {
+                    emptyState.style.display = 'block';
+                    emptyState.querySelector('h3').textContent = '加载失败';
+                    emptyState.querySelector('p').textContent = '请刷新页面重试';
+                }
             }
         }
 

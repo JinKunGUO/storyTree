@@ -469,7 +469,15 @@
                 updateBadge(data.unreadCount || 0);
             } catch (error) {
                 console.error('加载通知失败:', error);
-                document.getElementById('loading').innerHTML = '<p>加载失败，请刷新重试</p>';
+                document.getElementById('loading').style.display = 'none';
+                const list = document.getElementById('notificationsList');
+                list.style.display = 'block';
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>加载失败，请刷新重试</p>
+                    </div>
+                `;
             }
         }
 
