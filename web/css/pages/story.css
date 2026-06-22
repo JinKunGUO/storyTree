@@ -185,20 +185,19 @@
         .story-actions {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
+            gap: 12px;
         }
 
         .btn {
-            padding: 10px 20px;
+            padding: 12px 24px;
             border-radius: 25px;
             border: none;
-            font-size: 14px;
+            font-size: 15px;
             cursor: pointer;
             transition: all 0.3s;
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
             white-space: nowrap;
         }
 
@@ -1660,12 +1659,15 @@
                 -webkit-line-clamp: 3;
             }
 
+            .story-actions {
+                flex-wrap: wrap;
+            }
+
             .story-actions .btn {
-                flex: 1 1 calc(33% - 8px);
+                flex: 1 1 45%;
                 font-size: 13px;
-                padding: 9px 10px;
-                min-height: 40px;
-                justify-content: center;
+                padding: 10px 12px;
+                min-height: 44px;
             }
 
             .chapter-item {
