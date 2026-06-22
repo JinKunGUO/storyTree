@@ -1,0 +1,53 @@
+Business Source License 1.1
+
+License text copyright (c) 2026 JinKun Guo. All rights reserved.
+"License" refers to the Business Source License 1.1.
+"Licensor" refers to the copyright holder, JinKun Guo.
+"Licensed Work" refers to StoryTree, a branch-based AI collaborative fiction platform.
+"Additional Use Grant" refers to the additional permissions described below.
+"Change Date" refers to 2029-06-22 (36 months from the date of this license).
+"Change License" refers to the GNU Affero General Public License v3.0 or later.
+
+Additional Use Grant:
+You may use the Licensed Work without restriction, provided that:
+1. You do not offer the Licensed Work as a commercial service competing with
+   the Licensor's official StoryTree platform (https://storytree.online).
+   Competing uses include, but are not limited to:
+   - Operating a hosted/managed version of StoryTree for third parties
+   - Offering StoryTree as a white-label or OEM product
+   - Using StoryTree's source code to build a competing platform
+2. You may use the Licensed Work for:
+   - Personal, non-commercial use
+   - Internal use within a single organization
+   - Educational and research purposes
+   - Evaluation and testing
+   - Contributing modifications back to the Licensed Work
+
+That said, any permitted use must include attribution to the Licensed Work
+and the Licensor, as well as a copy of this License.
+
+Change Date: 2029-06-22
+
+On or after the Change Date, the Licensed Work will be available under the
+terms of the Change License (GNU Affero General Public License v3.0 or later).
+
+If you wish to use the Licensed Work for purposes not permitted by this
+License (including but not limited to competing commercial use), you must
+obtain a separate commercial license from the Licensor. Contact:
+storytree.license@gmail.com
+
+---
+
+NOTICE:
+
+This License does not grant you any right to use any trade name, trademark,
+service mark, or product name of the Licensor, except as required for
+reasonable and customary use in describing the origin of the Licensed Work.
+
+THE LICENSED WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHOR OR COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE LICENSED WORK OR THE USE OR OTHER DEALINGS
+IN THE LICENSED WORK.
