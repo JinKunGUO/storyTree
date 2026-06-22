@@ -483,7 +483,12 @@
                             const editBtn = document.getElementById('editStoryBtn');
                             editBtn.style.display = 'inline-flex';
                             editBtn.addEventListener('click', () => openEditModal(story));
-                            
+
+                            // 显示"继续创作"按钮
+                            const continueBtn = document.getElementById('continueWriteBtn');
+                            continueBtn.style.display = 'inline-flex';
+                            continueBtn.addEventListener('click', () => navigateToContinueWrite(story.id));
+
                             const settingsBtn = document.getElementById('storySettingsBtn');
                             settingsBtn.style.display = 'inline-flex';
                             settingsBtn.addEventListener('click', () => {
@@ -538,6 +543,13 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                             newApplyBtn.style.color = 'white';
                             newApplyBtn.addEventListener('click', () => quitCollaboration(story.id));
                             
+// 允许续写时，协作者显示"继续创作"按钮
+                            if (roleData.allow_branch) {
+                                const continueBtn = document.getElementById('continueWriteBtn');
+                                continueBtn.style.display = 'inline-flex';
+                                continueBtn.addEventListener('click', () => navigateToContinueWrite(story.id));
+                            }
+
 // 只有在允许续写时，协作者才能使用 AI 续写章节功能
                             if (roleData.allow_branch) {
                                 const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
@@ -954,8 +966,60 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
             });
         });
 
+        // ========== 继续创作 ==========
+
+        function navigateToContinueWrite(storyId) {
+            const userId = window.currentUserId;
+            const treeData = window.treeData;
+
+            // 树数据尚未加载完成时直接跳转到写作页（write.html 会自行处理）
+            if (!treeData) {
+                window.location.href = `/write.html?storyId=${storyId}`;
+                return;
+            }
+
+            // 故事没有任何章节 → 写第一章
+            if (treeData.isVirtualRoot && (!treeData.children || treeData.children.length === 0)) {
+                window.location.href = `/write.html?storyId=${storyId}`;
+                return;
+            }
+
+            // 遍历树找到当前用户创作的最新节点
+            let latestNode = null;
+            function traverse(node) {
+                if (!node) return;
+                if (node.authorId === userId && node.id) {
+                    if (!latestNode || new Date(node.createdAt) > new Date(latestNode.createdAt)) {
+                        latestNode = node;
+                    }
+                }
+                if (node.children) {
+                    node.children.forEach(traverse);
+                }
+            }
+            traverse(treeData);
+
+            if (latestNode) {
+                if (!latestNode.isPublished) {
+                    // 最新节点是草稿 → 继续编辑该草稿
+                    window.location.href = `/write.html?storyId=${storyId}&nodeId=${latestNode.id}&editMode=true`;
+                } else {
+                    // 最新节点已发布 → 从该节点续写新章节
+                    window.location.href = `/write.html?storyId=${storyId}&parentId=${latestNode.id}`;
+                }
+            } else {
+                // 用户未创作过任何节点（可能是刚成为协作者）→ 从根节点续写
+                const rootId = treeData.isVirtualRoot ? (treeData.children[0]?.id) : treeData.id;
+                if (rootId) {
+                    window.location.href = `/write.html?storyId=${storyId}&parentId=${rootId}`;
+                } else {
+                    window.location.href = `/write.html?storyId=${storyId}`;
+                }
+            }
+        }
+
         // ========== 新增：置顶故事功能 ==========
-        
+
         // 打开置顶故事模态框
         async function openPinStoryModal(storyId) {
             window.currentPinStoryId = storyId;
