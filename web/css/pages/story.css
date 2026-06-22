@@ -184,19 +184,22 @@
 
         .story-actions {
             display: flex;
-            gap: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
         }
 
         .btn {
-            padding: 12px 30px;
+            padding: 10px 20px;
             border-radius: 25px;
             border: none;
-            font-size: 16px;
+            font-size: 14px;
             cursor: pointer;
             transition: all 0.3s;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
+            white-space: nowrap;
         }
 
         .btn-primary {
@@ -1657,15 +1660,12 @@
                 -webkit-line-clamp: 3;
             }
 
-            .story-actions {
-                flex-wrap: wrap;
-            }
-
             .story-actions .btn {
-                flex: 1 1 45%;
+                flex: 1 1 calc(33% - 8px);
                 font-size: 13px;
-                padding: 10px 12px;
-                min-height: 44px;
+                padding: 9px 10px;
+                min-height: 40px;
+                justify-content: center;
             }
 
             .chapter-item {
