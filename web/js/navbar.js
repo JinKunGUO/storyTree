@@ -78,6 +78,12 @@
                 if (username && profileLink) {
                     profileLink.innerHTML = `<i class="fas fa-user" aria-hidden="true"></i><span class="nav-username" title="${escapeNavHtml(username)}">${escapeNavHtml(username)}</span>`;
                 }
+            } else if (response.status === 401) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                sessionStorage.removeItem('token');
+                sessionStorage.removeItem('user');
+                checkAuthStatus();
             }
         } catch (e) { /* 静默失败，保持默认"个人中心"文字 */ }
     }
@@ -101,6 +107,13 @@
                     badge.textContent = data.unreadCount > 99 ? '99+' : data.unreadCount;
                     badge.style.display = 'inline-block';
                 }
+            } else if (response.status === 401) {
+                // Token 失效，清除登录态并更新 UI
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                sessionStorage.removeItem('token');
+                sessionStorage.removeItem('user');
+                checkAuthStatus();
             }
         } catch (e) { /* 静默失败 */ }
     }

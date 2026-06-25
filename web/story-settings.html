@@ -559,7 +559,7 @@
 
             <div class="form-group" id="passwordGroup" style="display: none;">
                 <label>密码保护（可选）</label>
-                <input type="password" id="password" placeholder="设置访问密码">
+                <input type="password" id="password" placeholder="设置访问密码" autocomplete="new-password">
                 <div class="help-text">设置后，访问者需要输入密码才能查看</div>
             </div>
         </div>
@@ -660,6 +660,23 @@
             return localStorage.getItem('token') || sessionStorage.getItem('token');
         }
 
+        // 处理认证失败：清除失效 token，跳转登录页
+        function handleAuthError(response) {
+            if (response.status === 401) {
+                // 清除失效的登录态
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                sessionStorage.removeItem('token');
+                sessionStorage.removeItem('user');
+                showToast('登录已过期，请重新登录', true);
+                setTimeout(() => {
+                    window.location.href = `/login.html?redirect=${encodeURIComponent(window.location.href)}`;
+                }, 1500);
+                return true;
+            }
+            return false;
+        }
+
         // 从URL获取故事ID
         const urlParams = new URLSearchParams(window.location.search);
         storyId = urlParams.get('id');
@@ -679,9 +696,7 @@
                 });
 
                 if (!response.ok) {
-                    if (response.status === 401) {
-                        throw new Error('Not authenticated');
-                    }
+                    if (handleAuthError(response)) return;
                     throw new Error('Failed to load story');
                 }
 
@@ -731,14 +746,7 @@
                 }
             } catch (error) {
                 console.error('Load settings error:', error);
-                if (error.message === 'Not authenticated') {
-                    showToast('请先登录', true);
-                    setTimeout(() => {
-                        window.location.href = `/login.html?redirect=${encodeURIComponent(window.location.href)}`;
-                    }, 1500);
-                } else {
-                    showToast('加载设置失败', true);
-                }
+                showToast('加载设置失败', true);
             }
         }
 
@@ -752,9 +760,7 @@
                 });
 
                 if (!response.ok) {
-                    if (response.status === 401) {
-                        throw new Error('Not authenticated');
-                    }
+                    if (handleAuthError(response)) return;
                     throw new Error('Failed to load collaborators');
                 }
 
@@ -862,6 +868,7 @@
                 });
 
                 if (!response.ok) {
+                    if (handleAuthError(response)) return;
                     throw new Error('Failed to load collaboration requests');
                 }
 
@@ -990,7 +997,11 @@
         // 保存设置
         async function saveSettings() {
             const visibility = document.getElementById('visibility').value;
-            const password = document.getElementById('password').value;
+            // 仅在密码组可见时读取密码值，防止浏览器自动填充隐藏的 password input
+            const passwordGroup = document.getElementById('passwordGroup');
+            const password = (passwordGroup && passwordGroup.style.display !== 'none')
+                ? document.getElementById('password').value
+                : null;
             const allowBranch = document.getElementById('allowBranch').checked;
             const allowComment = document.getElementById('allowComment').checked;
             const autoApproveCollaborators = document.getElementById('autoApproveCollaborators').checked;
@@ -1014,9 +1025,7 @@
                 const data = await response.json();
 
                 if (!response.ok) {
-                    if (response.status === 401) {
-                        throw new Error('Not authenticated');
-                    }
+                    if (handleAuthError(response)) return;
                     throw new Error(data.error || 'Failed to save settings');
                 }
 
@@ -1026,14 +1035,7 @@
                 }, 1500);
             } catch (error) {
                 console.error('Save settings error:', error);
-                if (error.message === 'Not authenticated') {
-                    showToast('请先登录', true);
-                    setTimeout(() => {
-                        window.location.href = `/login.html?redirect=${encodeURIComponent(window.location.href)}`;
-                    }, 1500);
-                } else {
-                    showToast(error.message, true);
-                }
+                showToast('保存设置失败', true);
             }
         }
 
