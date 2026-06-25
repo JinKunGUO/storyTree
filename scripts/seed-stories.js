@@ -34,14 +34,13 @@
 const path = require('path');
 const fs = require('fs');
 
-// 将 api/node_modules 加入模块搜索路径，使得 @prisma/client、openai 等可被 require
+// 将 api/node_modules 加入模块搜索路径，使得 @prisma/client 可被 require
 const apiNodeModules = path.join(__dirname, '../api/node_modules');
 if (!module.paths.includes(apiNodeModules)) {
   module.paths.unshift(apiNodeModules);
 }
 
 const { PrismaClient } = require('@prisma/client');
-const OpenAI = require('openai');
 
 // 加载环境变量：优先使用 --env 指定的文件，然后按 NODE_ENV 选择 .env.production 或 .env
 const args = process.argv.slice(2);
@@ -71,14 +70,7 @@ if (envFile) {
 
 const prisma = new PrismaClient();
 
-// AI 客户端（千问 OpenAI 兼容接口）
-const aiClient = new OpenAI({
-  apiKey: process.env.QWEN_API_KEY || process.env.ANTHROPIC_API_KEY || '',
-  baseURL: process.env.QWEN_API_KEY
-    ? 'https://dashscope.aliyuncs.com/compatible-mode/v1'
-    : 'https://api.anthropic.com/v1',
-});
-
+// AI 模型配置（使用原生 fetch 调用，与线上 aiWorker 保持一致）
 let AI_MODEL = process.env.QWEN_MODEL || 'qwen3.7-plus';
 
 // ============================================================
@@ -142,24 +134,78 @@ const STORY_TEMPLATES = [
 // ============================================================
 
 async function generateWithAI(systemPrompt, userPrompt, retries = 3) {
+  const apiKey = process.env.QWEN_API_KEY || process.env.ANTHROPIC_API_KEY || '';
+  const apiBase = process.env.QWEN_API_KEY
+    ? 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+    : 'https://api.anthropic.com/v1';
+
   for (let i = 0; i < retries; i++) {
     try {
-      // 使用流式调用，避免百炼部分模型非流式调用返回 403 "free quota exhausted"
-      const stream = await aiClient.chat.completions.create({
-        model: AI_MODEL,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: 0.85,
-        max_tokens: 4000,
-        stream: true,
+      // 使用原生 fetch + SSE 流式调用，与线上 aiWorker/qwen-stream 保持一致
+      // OpenAI SDK 在百炼平台可能因 SDK 层面的额外 header 或参数触发 403
+      const messages = [];
+      if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
+      messages.push({ role: 'user', content: userPrompt });
+
+      const response = await fetch(`${apiBase}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: AI_MODEL,
+          messages,
+          max_tokens: 4000,
+          temperature: 0.85,
+          top_p: 0.9,
+          stream: true,
+        }),
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API ${response.status}: ${errorText}`);
+      }
+
+      // 解析 SSE 流
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('无法读取响应流');
+
+      const decoder = new TextDecoder('utf-8');
       let fullText = '';
-      for await (const chunk of stream) {
-        const delta = chunk.choices[0]?.delta?.content || '';
-        fullText += delta;
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data:')) continue;
+          const jsonStr = trimmed.slice(5).trim();
+          if (!jsonStr || jsonStr === '[DONE]') continue;
+
+          try {
+            const data = JSON.parse(jsonStr);
+            if (data.error) {
+              throw new Error(`API 错误: ${data.error.code || ''} - ${data.error.message || ''}`);
+            }
+            const delta = data.choices?.[0]?.delta?.content || '';
+            fullText += delta;
+          } catch (parseErr) {
+            if (parseErr.message?.includes('API 错误')) throw parseErr;
+            // 忽略单行解析失败
+          }
+        }
+      }
+
+      if (!fullText.trim()) {
+        throw new Error('AI 返回内容为空');
       }
       return fullText;
     } catch (err) {
