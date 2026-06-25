@@ -58,7 +58,8 @@
             padding: 10px;
             border: 1px solid #ddd;
             border-radius: 6px;
-            font-size: 14px;
+            font-size: 15px;
+            line-height: 1.4;
         }
 
         .form-group .help-text {
@@ -366,6 +367,17 @@
             }
             .settings-section h2 {
                 font-size: 18px;
+            }
+            /* 移动端表单控件：增大字体避免 iOS 自动缩放，提升可读性 */
+            .form-group select,
+            .form-group input[type="text"],
+            .form-group input[type="password"] {
+                font-size: 16px;
+                padding: 12px;
+                line-height: 1.5;
+            }
+            .form-group .help-text {
+                font-size: 13px;
             }
             .add-collaborator-form {
                 flex-direction: column;
