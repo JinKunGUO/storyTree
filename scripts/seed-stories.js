@@ -10,9 +10,15 @@
  *   - 受 max-depth 和 max-nodes 约束，防止失控
  *
  * 用法：
+ *   # 开发环境（自动加载 api/.env）
  *   cd api && node ../scripts/seed-stories.js [选项]
  *
+ *   # 生产环境（设置 NODE_ENV 或指定 env 文件）
+ *   NODE_ENV=production node scripts/seed-stories.js [选项]
+ *   node scripts/seed-stories.js --env .env.production [选项]
+ *
  * 参数：
+ *   --env             指定环境变量文件（相对 api/ 目录，如 .env.production）
  *   --count           生成故事数量（默认 5）
  *   --author-id       故事作者ID（默认 1，即管理员账号）
  *   --dry-run         仅打印生成内容，不写入数据库
@@ -22,9 +28,11 @@
  *   --terminate-prob  叶子节点终止生长的概率（默认 0.15，即 15%）
  *   --min-branches    分叉时最少分支数（默认 2）
  *   --max-branches    分叉时最多分支数（默认 3）
+ *   --model           覆盖 QWEN_MODEL 环境变量（如 qwen-plus, qwen3.7-plus）
  */
 
 const path = require('path');
+const fs = require('fs');
 
 // 将 api/node_modules 加入模块搜索路径，使得 @prisma/client、openai 等可被 require
 const apiNodeModules = path.join(__dirname, '../api/node_modules');
@@ -35,8 +43,31 @@ if (!module.paths.includes(apiNodeModules)) {
 const { PrismaClient } = require('@prisma/client');
 const OpenAI = require('openai');
 
-// 加载 api/.env
-require('dotenv').config({ path: path.join(__dirname, '../api/.env') });
+// 加载环境变量：优先使用 --env 指定的文件，然后按 NODE_ENV 选择 .env.production 或 .env
+const args = process.argv.slice(2);
+const envFile = getArg(args, '--env');
+const apiDir = path.join(__dirname, '../api');
+
+if (envFile) {
+  // 显式指定 env 文件
+  const envPath = path.isAbsolute(envFile) ? envFile : path.join(apiDir, envFile);
+  require('dotenv').config({ path: envPath });
+  console.log(`📦 加载环境变量：${envPath}`);
+} else if (process.env.NODE_ENV === 'production') {
+  // 生产环境优先加载 .env.production
+  const prodEnv = path.join(apiDir, '.env.production');
+  if (fs.existsSync(prodEnv)) {
+    require('dotenv').config({ path: prodEnv });
+    console.log(`📦 加载环境变量：${prodEnv}`);
+  } else {
+    require('dotenv').config({ path: path.join(apiDir, '.env') });
+    console.log(`📦 加载环境变量：${path.join(apiDir, '.env')}（.env.production 不存在）`);
+  }
+} else {
+  // 开发环境加载 .env
+  require('dotenv').config({ path: path.join(apiDir, '.env') });
+  console.log(`📦 加载环境变量：${path.join(apiDir, '.env')}`);
+}
 
 const prisma = new PrismaClient();
 
@@ -48,7 +79,7 @@ const aiClient = new OpenAI({
     : 'https://api.anthropic.com/v1',
 });
 
-const AI_MODEL = process.env.QWEN_MODEL || 'qwen-plus';
+let AI_MODEL = process.env.QWEN_MODEL || 'qwen3.7-plus';
 
 // ============================================================
 // 故事模板定义
@@ -113,7 +144,8 @@ const STORY_TEMPLATES = [
 async function generateWithAI(systemPrompt, userPrompt, retries = 3) {
   for (let i = 0; i < retries; i++) {
     try {
-      const response = await aiClient.chat.completions.create({
+      // 使用流式调用，避免百炼部分模型非流式调用返回 403 "free quota exhausted"
+      const stream = await aiClient.chat.completions.create({
         model: AI_MODEL,
         messages: [
           { role: 'system', content: systemPrompt },
@@ -121,8 +153,15 @@ async function generateWithAI(systemPrompt, userPrompt, retries = 3) {
         ],
         temperature: 0.85,
         max_tokens: 4000,
+        stream: true,
       });
-      return response.choices[0]?.message?.content || '';
+
+      let fullText = '';
+      for await (const chunk of stream) {
+        const delta = chunk.choices[0]?.delta?.content || '';
+        fullText += delta;
+      }
+      return fullText;
     } catch (err) {
       console.error(`  AI 调用失败 (第${i + 1}次):`, err.message);
       if (i < retries - 1) {
@@ -645,6 +684,13 @@ async function main() {
   const terminateProb = parseFloat(getArg(args, '--terminate-prob') || '0.15');
   const minBranches = parseInt(getArg(args, '--min-branches') || '2');
   const maxBranches = parseInt(getArg(args, '--max-branches') || '3');
+
+  // 支持 --model 覆盖 .env 中的 QWEN_MODEL
+  const modelOverride = getArg(args, '--model');
+  if (modelOverride) {
+    AI_MODEL = modelOverride;
+    console.log(`🤖 模型覆盖：${AI_MODEL}`);
+  }
 
   const opts = { maxDepth, maxNodes, branchProb, terminateProb, minBranches, maxBranches };
 
