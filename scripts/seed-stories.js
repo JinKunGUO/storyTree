@@ -703,6 +703,7 @@ async function saveStoryTree(data, template, authorId) {
       ai_creation_method: 'template',
       allow_branch: true,
       allow_comment: true,
+      auto_approve_collaborators: true,
       updated_at: new Date(),
     },
   });
