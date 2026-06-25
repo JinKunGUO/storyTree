@@ -11,10 +11,12 @@
  *
  * 用法：
  *   # 开发环境（自动加载 api/.env）
- *   cd api && node ../scripts/seed-stories.js [选项]
+ *   node scripts/seed-stories.js [选项]
  *
- *   # 生产环境（设置 NODE_ENV 或指定 env 文件）
- *   NODE_ENV=production node scripts/seed-stories.js [选项]
+ *   # 生产环境（自动检测 api/.env.production，无需手动指定 NODE_ENV）
+ *   node scripts/seed-stories.js [选项]
+ *
+ *   # 手动指定 env 文件（可选）
  *   node scripts/seed-stories.js --env .env.production [选项]
  *
  * 参数：
@@ -42,30 +44,39 @@ if (!module.paths.includes(apiNodeModules)) {
 
 const { PrismaClient } = require('@prisma/client');
 
-// 加载环境变量：优先使用 --env 指定的文件，然后按 NODE_ENV 选择 .env.production 或 .env
+// 自动检测并加载环境变量
+// 优先级：--env 手动指定 > NODE_ENV=production > 自动检测
+// 自动检测：api/.env 存在则用（开发），否则用 api/.env.production（生产）
 const args = process.argv.slice(2);
 const envFile = getArg(args, '--env');
 const apiDir = path.join(__dirname, '../api');
+const dotEnvPath = path.join(apiDir, '.env');
+const prodEnvPath = path.join(apiDir, '.env.production');
 
 if (envFile) {
-  // 显式指定 env 文件
+  // 1. 显式指定 env 文件（最高优先级）
   const envPath = path.isAbsolute(envFile) ? envFile : path.join(apiDir, envFile);
-  require('dotenv').config({ path: envPath });
+  require('dotenv').config({ path: envPath, override: true });
   console.log(`📦 加载环境变量：${envPath}`);
 } else if (process.env.NODE_ENV === 'production') {
-  // 生产环境优先加载 .env.production
-  const prodEnv = path.join(apiDir, '.env.production');
-  if (fs.existsSync(prodEnv)) {
-    require('dotenv').config({ path: prodEnv });
-    console.log(`📦 加载环境变量：${prodEnv}`);
+  // 2. NODE_ENV=production 时强制加载 .env.production
+  if (fs.existsSync(prodEnvPath)) {
+    require('dotenv').config({ path: prodEnvPath, override: true });
+    console.log(`📦 加载环境变量：${prodEnvPath}`);
   } else {
-    require('dotenv').config({ path: path.join(apiDir, '.env') });
-    console.log(`📦 加载环境变量：${path.join(apiDir, '.env')}（.env.production 不存在）`);
+    require('dotenv').config({ path: dotEnvPath, override: true });
+    console.log(`📦 加载环境变量：${dotEnvPath}`);
   }
+} else if (fs.existsSync(dotEnvPath)) {
+  // 3. 开发环境：.env 存在则优先使用
+  require('dotenv').config({ path: dotEnvPath, override: true });
+  console.log(`📦 加载环境变量：${dotEnvPath}`);
+} else if (fs.existsSync(prodEnvPath)) {
+  // 4. 生产环境：.env 不存在，使用 .env.production
+  require('dotenv').config({ path: prodEnvPath, override: true });
+  console.log(`📦 加载环境变量：${prodEnvPath}`);
 } else {
-  // 开发环境加载 .env
-  require('dotenv').config({ path: path.join(apiDir, '.env') });
-  console.log(`📦 加载环境变量：${path.join(apiDir, '.env')}`);
+  console.error('❌ 未找到环境变量文件（.env 或 .env.production）');
 }
 
 const prisma = new PrismaClient();
@@ -147,20 +158,22 @@ async function generateWithAI(systemPrompt, userPrompt, retries = 3) {
       if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
       messages.push({ role: 'user', content: userPrompt });
 
+      const requestBody = {
+        model: AI_MODEL,
+        messages,
+        max_tokens: 4000,
+        temperature: 0.85,
+        top_p: 0.9,
+        stream: true,
+      };
+
       const response = await fetch(`${apiBase}/chat/completions`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          model: AI_MODEL,
-          messages,
-          max_tokens: 4000,
-          temperature: 0.85,
-          top_p: 0.9,
-          stream: true,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -323,8 +336,8 @@ async function generateStoryTree(template, opts) {
   "title": "故事标题（8字以内，吸引人）",
   "description": "故事简介（50-100字，交代背景和悬念）",
   "rootChapter": {
-    "title": "第一章标题",
-    "summary": "第一章内容概要（30字）"
+    "title": "章节标题（不要加"第X章"，只写章节名，如"命运的岔路"）",
+    "summary": "章节内容概要（30字）"
   }
 }`;
 
@@ -476,10 +489,11 @@ async function generateContinuation(parentNode, outline, sortOrder) {
 - 承接前文情节，自然推进故事发展
 - 600-1000字
 - 结尾可以留下小悬念或情绪转折
+- 标题只写章节名，不要加"第X章"前缀（如"幽林抉择"而非"第二章 幽林抉择"）
 
 请以 JSON 格式返回（不要加 markdown 代码块标记）：
 {
-  "title": "本章标题",
+  "title": "章节标题（不要加"第X章"，只写章节名）",
   "summary": "本章内容概要（30字）",
   "content": "本章正文（600-1000字）"
 }`;
@@ -506,7 +520,7 @@ async function generateContinuation(parentNode, outline, sortOrder) {
 
   // JSON 解析失败，用原始文本兜底
   return {
-    title: `第${parentNode.depth + 2}章`,
+    title: '续写',
     content: resultText,
     summary: resultText.substring(0, 30),
     path: childPath,
@@ -530,11 +544,13 @@ async function generateBranchOutline(parentNode, outline, branchCount) {
 当前节点：${parentNode.title}
 当前节点概要：${parentNode.summary}
 
+要求：标题只写章节名，不要加"第X章"前缀
+
 请以 JSON 格式返回（不要加 markdown 代码块标记）：
 {
   "branches": [
     ${Array.from({ length: branchCount }, (_, i) => `{
-      "title": "分支${i + 1}标题（简洁有吸引力）",
+      "title": "分支${i + 1}标题（简洁有吸引力，不要加"第X章"）",
       "summary": "分支${i + 1}走向概要（30字）"
     }`).join(',\n    ')}
   ]
@@ -570,10 +586,11 @@ async function generateBranchContent(parentNode, outline, branchInfo, branchInde
 - 有明确的情节推进和情绪转折
 - 600-1000字
 - 结尾可以是一个小高潮或新悬念
+- 标题只写章节名，不要加"第X章"前缀
 
 请以 JSON 格式返回（不要加 markdown 代码块标记）：
 {
-  "title": "本章标题",
+  "title": "章节标题（不要加"第X章"，只写章节名）",
   "summary": "本章内容概要（30字）",
   "content": "本章正文（600-1000字）"
 }`;
