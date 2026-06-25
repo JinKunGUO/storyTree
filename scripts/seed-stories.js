@@ -24,10 +24,10 @@
  *   --count           生成故事数量（默认 5）
  *   --author-id       故事作者ID（默认 1，即管理员账号）
  *   --dry-run         仅打印生成内容，不写入数据库
- *   --max-depth       树的最大深度，不含根节点（默认 3，即最多 4 层）
- *   --max-nodes       单棵树最大节点数（默认 25）
- *   --branch-prob     叶子节点分叉的概率（默认 0.4，即 40%）
- *   --terminate-prob  叶子节点终止生长的概率（默认 0.15，即 15%）
+ *   --max-depth       树的最大深度，不含根节点（默认 5，即最多 6 层）
+ *   --max-nodes       单棵树最大节点数（默认 30）
+ *   --branch-prob     叶子节点分叉的基础概率（默认 0.4，即 40%）
+ *   --terminate-prob  叶子节点终止生长的概率（默认 0.15，即 15%，浅层自动抑制）
  *   --min-branches    分叉时最少分支数（默认 2）
  *   --max-branches    分叉时最多分支数（默认 3）
  *   --model           覆盖 QWEN_MODEL 环境变量（如 qwen-plus, qwen3.7-plus）
@@ -281,12 +281,26 @@ function safeParseJSON(text) {
 
 /**
  * 决定一个叶子节点的生长方式
+ * @param {boolean} hasBranched - 整棵树是否已经出现过至少一次分叉
  * @returns {'terminate'|'continue'|'branch'}
  */
-function decideGrowth(depth, maxDepth, branchProb, terminateProb, currentNodes, maxNodes) {
+function decideGrowth(depth, maxDepth, branchProb, terminateProb, currentNodes, maxNodes, hasBranched) {
   // 硬性约束：达到最大深度或最大节点数
   if (depth >= maxDepth || currentNodes >= maxNodes) {
     return 'terminate';
+  }
+
+  // 浅层保护：深度未过半时不允许终止，保证故事有足够深度
+  const minAliveDepth = Math.ceil(maxDepth / 2);
+  if (depth < minAliveDepth) {
+    // 浅层强制分叉：如果树还没有任何分支，必须分叉
+    if (!hasBranched) {
+      return 'branch';
+    }
+    // 浅层非终止：只可能在 continue 和 branch 之间选择
+    // 提高浅层分叉概率，让树更容易出现分支
+    const boostedBranchProb = Math.min(branchProb * 1.5, 0.7);
+    return Math.random() < boostedBranchProb ? 'branch' : 'continue';
   }
 
   const roll = Math.random();
@@ -297,6 +311,11 @@ function decideGrowth(depth, maxDepth, branchProb, terminateProb, currentNodes, 
   }
 
   // 分叉概率（在非终止的情况下）
+  // 如果树还没有分叉过，强制分叉
+  if (!hasBranched) {
+    return 'branch';
+  }
+
   if (roll < terminateProb + branchProb) {
     return 'branch';
   }
@@ -384,6 +403,7 @@ async function generateStoryTree(template, opts) {
   let totalNodes = 1; // 已有根节点
   let leafQueue = [rootNode]; // 当前层的叶子节点
   let layerIndex = 1;
+  let hasBranched = false; // 追踪整棵树是否已经出现过分支
 
   while (leafQueue.length > 0 && totalNodes < maxNodes) {
     const nextLeaves = [];
@@ -391,14 +411,10 @@ async function generateStoryTree(template, opts) {
     for (const leaf of leafQueue) {
       if (totalNodes >= maxNodes) break;
 
-      // 根节点 (depth=0) 必须生长，不允许终止
-      // 否则故事只有一个根节点，毫无意义
-      let decision;
-      if (leaf.depth === 0) {
-        decision = Math.random() < branchProb ? 'branch' : 'continue';
-      } else {
-        decision = decideGrowth(leaf.depth, maxDepth, branchProb, terminateProb, totalNodes, maxNodes);
-      }
+      const decision = decideGrowth(
+        leaf.depth, maxDepth, branchProb, terminateProb,
+        totalNodes, maxNodes, hasBranched
+      );
 
       if (decision === 'terminate') {
         // 叶子终止生长，不做任何操作
@@ -441,6 +457,7 @@ async function generateStoryTree(template, opts) {
             nextLeaves.push(childNode);
             totalNodes++;
           } else {
+            hasBranched = true; // 标记树已经出现分支
             for (let i = 0; i < branchOutline.branches.length; i++) {
               if (totalNodes >= maxNodes) break;
               await sleep(1200);
@@ -741,8 +758,8 @@ async function main() {
   const count = parseInt(getArg(args, '--count') || '5');
   const authorId = parseInt(getArg(args, '--author-id') || '1');
   const dryRun = args.includes('--dry-run');
-  const maxDepth = parseInt(getArg(args, '--max-depth') || '3');
-  const maxNodes = parseInt(getArg(args, '--max-nodes') || '25');
+  const maxDepth = parseInt(getArg(args, '--max-depth') || '5');
+  const maxNodes = parseInt(getArg(args, '--max-nodes') || '30');
   const branchProb = parseFloat(getArg(args, '--branch-prob') || '0.4');
   const terminateProb = parseFloat(getArg(args, '--terminate-prob') || '0.15');
   const minBranches = parseInt(getArg(args, '--min-branches') || '2');
