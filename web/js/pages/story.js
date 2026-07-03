@@ -3119,11 +3119,11 @@ function getTreeOption(treeData, layout) {
                 tooltipSubText: '#b8b8c8',
                 tooltipMuted: '#8888a0',
                 nodeText: '#f0f0f5',
-                lineColor: '#6366F1',
-                nodeFill: '#1a1a2e',
+                lineColor: '#818CF8',  // 深色模式：更浅的线条颜色
+                nodeFill: '#4338CA',  // 深色模式：靛蓝色-700，更显眼
                 nodeBorder: '#818CF8',
-                leafFill: '#0f2e1b',
-                leafBorder: '#27c563',
+                leafFill: '#3730A3',  // 深色模式：紫色-800
+                leafBorder: '#C4B5FD',
                 badgeBg: '#3d2b0a',
                 badgeText: '#f5aa3d'
             } : {
@@ -3133,14 +3133,147 @@ function getTreeOption(treeData, layout) {
                 tooltipSubText: '#374151',
                 tooltipMuted: '#9CA3AF',
                 nodeText: '#374151',
-                lineColor: '#A5B4FC',
-                nodeFill: '#EEF2FF',
-                nodeBorder: '#818CF8',
-                leafFill: '#F0FDF4',
-                leafBorder: '#4ADE80',
+                lineColor: '#A5B4FC',  // 浅色模式：更浅的线条颜色 (indigo-300)
+                nodeFill: '#6366F1',  // 浅色模式：靛蓝色-500，节点默认显示深色
+                nodeBorder: '#4F46E5',
+                leafFill: '#7C3AED',  // 浅色模式：紫色-600，叶子节点使用紫色
+                leafBorder: '#6D28D9',
                 badgeBg: '#FEF3C7',
                 badgeText: '#D97706'
             };
+
+            // === 用户自定义颜色功能 ===
+            // 作者颜色映射缓存
+            const authorColorCache = new Map();
+            // 用户自定义颜色缓存（从服务端获取）
+            let userCustomColor = null;
+
+            // 多彩的作者颜色 palette - 明亮鲜艳的颜色，适合深色和浅色背景
+            const authorColorPalette = [
+                '#6366F1', // 靛蓝色
+                '#EC4899', // 粉色
+                '#14B8A6', // 青色
+                '#F59E0B', // 琥珀色
+                '#8B5CF6', // 紫色
+                '#EF4444', // 红色
+                '#10B981', // 绿色
+                '#F97316', // 橙色
+                '#06B6D4', // 蓝色
+                '#84CC16', // 青柠色
+                '#E11D48', // 玫瑰色
+                '#0EA5E9', // 天空蓝
+            ];
+
+            // 加载用户自定义颜色偏好
+            async function loadUserCustomColor() {
+                try {
+                    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                    if (!token) return null;
+
+                    const response = await fetch('/api/users/me/node-color', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        userCustomColor = data.nodeColor || null;
+                    }
+                } catch (error) {
+                    console.log('获取用户自定义颜色失败:', error);
+                }
+                return userCustomColor;
+            }
+
+            // 预加载用户自定义颜色
+            loadUserCustomColor();
+
+            // 获取作者的固定颜色
+            function getAuthorColor(authorId, isLeaf = false) {
+                // 如果是当前用户且设置了自定义颜色，使用自定义颜色
+                if (authorId && String(authorId) === String(window.currentUserId) && userCustomColor) {
+                    return isLeaf ? adjustColorBrightness(userCustomColor, -20) : userCustomColor;
+                }
+
+                // 否则使用基于作者的随机颜色
+                if (!authorId) return isLeaf ? colors.leafFill : colors.nodeFill;
+
+                if (!authorColorCache.has(authorId)) {
+                    // 使用 authorId 的哈希值来分配颜色
+                    let hash = 0;
+                    const idStr = String(authorId);
+                    for (let i = 0; i < idStr.length; i++) {
+                        hash = ((hash << 5) - hash) + idStr.charCodeAt(i);
+                        hash = hash & hash;
+                    }
+                    const colorIndex = Math.abs(hash) % authorColorPalette.length;
+                    authorColorCache.set(authorId, authorColorPalette[colorIndex]);
+                }
+
+                const baseColor = authorColorCache.get(authorId);
+                // 叶子节点使用稍深的颜色以区分
+                return isLeaf ? adjustColorBrightness(baseColor, -20) : baseColor;
+            }
+
+            // 调整颜色亮度 (正数变亮，负数变暗)
+            function adjustColorBrightness(hex, percent) {
+                const num = parseInt(hex.replace('#', ''), 16);
+                let r = (num >> 16) + percent;
+                let g = ((num >> 8) & 0x00FF) + percent;
+                let b = (num & 0x0000FF) + percent;
+                r = Math.max(0, Math.min(255, r));
+                g = Math.max(0, Math.min(255, g));
+                b = Math.max(0, Math.min(255, b));
+                return '#' + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1);
+            }
+
+            // 递归为每个节点设置基于作者的颜色
+            function applyAuthorColorToNode(node, isLeaf = false) {
+                if (node && node.name) {
+                    const authorId = node.authorId;
+                    const isNodeLeaf = isLeaf || (node.isLeaf === true);
+                    const authorColor = getAuthorColor(authorId, isNodeLeaf);
+
+                    // 为节点设置 itemStyle
+                    node.itemStyle = {
+                        color: authorColor,
+                        borderColor: adjustColorBrightness(authorColor, 20),
+                        borderWidth: 2,
+                        shadowBlur: 5,
+                        shadowColor: isDarkMode
+                            ? `${authorColor}66`  // 40% opacity in hex
+                            : `${authorColor}40`  // 25% opacity
+                    };
+                }
+
+                // 递归处理子节点
+                if (node.children && node.children.length > 0) {
+                    node.children.forEach(child => applyAuthorColorToNode(child, true));
+                }
+            }
+
+            // 应用作者颜色到整个树（异步加载用户颜色后可能会更新）
+            applyAuthorColorToNode(processedData);
+
+            // 如果用户自定义颜色加载完成后，重新应用颜色
+            setTimeout(async () => {
+                if (userCustomColor === null) {
+                    await loadUserCustomColor();
+                    if (userCustomColor) {
+                        // 重新应用颜色
+                        applyAuthorColorToNode(processedData);
+                        // 更新 ECharts
+                        if (window.storyTreeChart) {
+                            window.storyTreeChart.setOption({
+                                series: [{
+                                    data: [processedData]
+                                }]
+                            }, true);
+                        }
+                    }
+                }
+            }, 100);
 
             return {
                 tooltip: {
@@ -3203,25 +3336,45 @@ function getTreeOption(treeData, layout) {
                         // 节点间距：水平/竖向布局增大间距以减少重叠
                         nodeGap: isRadial ? 14 : (isHorizontal ? 32 : 26),
                         layerPadding: isRadial ? 100 : (isHorizontal ? 150 : 90),
-                        // 禁用 emphasis 内置高亮（使用自定义 itemStyle 方案）
+                        // 悬停时高亮从根节点到当前节点的整个路径
                         emphasis: {
-                            focus: 'none',
-                            disabled: true
+                            focus: 'ancestor',  // 高亮路径
+                            itemStyle: {
+                                // 保持节点原有颜色，只增强边框和阴影效果
+                                borderColor: (params) => {
+                                    const nodeColor = params.data.itemStyle?.color || colors.nodeBorder;
+                                    return adjustColorBrightness(nodeColor, 40); // 更亮的边框
+                                },
+                                borderWidth: 3,
+                                shadowBlur: 12,
+                                shadowColor: (params) => {
+                                    const nodeColor = params.data.itemStyle?.color || colors.nodeFill;
+                                    return `${nodeColor}80`; // 50% opacity
+                                }
+                            },
+                            lineStyle: {
+                                color: (params) => {
+                                    const nodeColor = params.data.itemStyle?.color || colors.lineColor;
+                                    return nodeColor; // 路径颜色与节点一致
+                                },
+                                width: 2.5,
+                                curveness: isRadial ? 0.5 : 0.12  // 更圆滑的曲线
+                            }
                         },
                         expandAndCollapse: true,
                         animationDuration: 400,
                         animationDurationUpdate: 500,
                         lineStyle: {
                             color: colors.lineColor,
-                            width: 1.5,
-                            curveness: isRadial ? 0.3 : 0.05
+                            width: 1.0,  // 细线条
+                            curveness: isRadial ? 0.5 : 0.15  // 更圆滑的曲线
                         },
                         itemStyle: {
-                            color: colors.nodeFill,
+                            // 不设置默认颜色，让每个节点的 itemStyle.color 生效
                             borderColor: colors.nodeBorder,
-                            borderWidth: 1.5,
-                            shadowBlur: 3,
-                            shadowColor: isDarkMode ? 'rgba(99, 102, 241, 0.3)' : 'rgba(99, 102, 241, 0.15)'
+                            borderWidth: 2,
+                            shadowBlur: 5,
+                            shadowColor: isDarkMode ? 'rgba(99, 102, 241, 0.4)' : 'rgba(99, 102, 241, 0.25)'
                         },
                         label: {
                             show: true,
@@ -3256,9 +3409,11 @@ function getTreeOption(treeData, layout) {
                                 }
                             },
                             itemStyle: {
-                                color: colors.leafFill,
+                                // 不设置默认颜色，让每个叶子节点的 itemStyle.color 生效（作者颜色）
                                 borderColor: colors.leafBorder,
-                                borderWidth: 1.5
+                                borderWidth: 2,
+                                shadowBlur: 5,
+                                shadowColor: isDarkMode ? 'rgba(124, 58, 237, 0.5)' : 'rgba(124, 58, 237, 0.3)'
                             }
                         }
                     }

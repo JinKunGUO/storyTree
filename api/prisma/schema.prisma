@@ -251,6 +251,7 @@ model users {
   passwordResetExpires       DateTime?                 @map("password_reset_expires")
   createdAt                  DateTime                  @default(now()) @map("created_at")
   updatedAt                  DateTime                  @map("updated_at")
+  nodeColor                  String?                   @map("node_color") // 用户选择的节点颜色
   ai_tasks                   ai_tasks[]
   ai_usage_logs              ai_usage_logs[]
   bookmarks                  bookmarks[]

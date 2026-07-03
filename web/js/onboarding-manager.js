@@ -207,7 +207,7 @@ class OnboardingManager {
     }
 
     // 场景 3：特定页面首次访问触发概念讲解
-    if (this.currentPage === 'story-tree' || this.currentPage === 'story') {
+    if (this.currentPage === 'story') {
       if (!progress || !progress.conceptGuideSeen) {
         setTimeout(() => {
           if (window.conceptGuide) {
@@ -727,7 +727,7 @@ class OnboardingManager {
       console.log('  快捷测试 URL：');
       console.log('  - 欢迎弹窗：当前页面?welcome=1');
       console.log('  - 分步引导：当前页面?tour=0');
-      console.log('  - 概念讲解：/story-tree.html?guide=concept');
+      console.log('  - 概念讲解：/story.html?guide=concept');
     } catch (error) {
       console.error('[OnboardingManager] 重置失败:', error);
     }

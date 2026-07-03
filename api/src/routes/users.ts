@@ -544,4 +544,55 @@ router.get('/:id/collaborated-stories', optionalAuth, async (req, res) => {
   }
 });
 
+// 获取当前用户的节点颜色偏好
+router.get('/me/node-color', authenticateToken, async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const user = await prisma.users.findUnique({
+      where: { id: userId },
+      select: { nodeColor: true }
+    });
+
+    res.json({ nodeColor: user?.nodeColor || null });
+  } catch (error) {
+    console.error('Get node color error:', error);
+    res.status(500).json({ error: 'Failed to get node color' });
+  }
+});
+
+// 设置当前用户的节点颜色偏好
+router.put('/me/node-color', authenticateToken, async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { nodeColor } = req.body;
+
+  // 验证颜色格式（必须是有效的 hex 颜色）
+  if (nodeColor && !/^#[0-9A-Fa-f]{6}$/.test(nodeColor)) {
+    return res.status(400).json({ error: '无效的颜色格式，请使用 #RRGGBB 格式' });
+  }
+
+  try {
+    const user = await prisma.users.update({
+      where: { id: userId },
+      data: { nodeColor },
+      select: { id: true, username: true, nodeColor: true }
+    });
+
+    res.json({
+      message: nodeColor ? '节点颜色已设置' : '节点颜色已清除',
+      nodeColor: user.nodeColor
+    });
+  } catch (error) {
+    console.error('Set node color error:', error);
+    res.status(500).json({ error: 'Failed to set node color' });
+  }
+});
+
 export default router;

@@ -507,6 +507,45 @@
                 border-top-color: var(--st-gray-300) !important;
             }
         }
+
+        /* 颜色选择器样式 */
+        .color-picker-container {
+            padding: 10px 0;
+        }
+
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(16, 1fr);
+            gap: 6px;
+            max-width: 100%;
+        }
+
+        .color-swatch {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .color-swatch:hover {
+            transform: scale(1.15);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .color-swatch.selected {
+            border-color: #111827;
+            transform: scale(1.1);
+            box-shadow: 0 0 0 2px white, 0 0 0 4px #111827;
+        }
+
+        .color-picker-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
     </style>
 </head>
 <body>
@@ -628,6 +667,24 @@
             <div class="add-collaborator-form">
                 <input type="text" id="collaboratorUsername" placeholder="输入用户名（例如：zhangsan）">
                 <button class="btn-secondary" onclick="addCollaborator()">添加协作者</button>
+            </div>
+        </div>
+
+        <!-- 节点颜色偏好 -->
+        <div class="settings-section">
+            <h2>节点颜色偏好</h2>
+            <p style="color: #888; font-size: 14px; margin-bottom: 15px;">
+                为你的所有节点设置统一的颜色（选择后立即生效）
+            </p>
+
+            <div class="color-picker-container">
+                <div class="color-palette" id="colorPalette">
+                    <!-- 颜色选项将由 JavaScript 动态生成 -->
+                </div>
+                <div class="color-picker-actions" style="margin-top: 15px;">
+                    <button class="btn-secondary" onclick="clearNodeColor()">清除颜色偏好</button>
+                </div>
+                <div id="colorPickerStatus" style="margin-top: 10px; font-size: 13px;"></div>
             </div>
         </div>
 
@@ -1080,9 +1137,169 @@
             }
         }
 
+        // 256色调色板颜色数组
+        const colorPalette = [
+            '#FF0000','#FF1900','#FF3300','#FF4D00','#FF6600','#FF8000','#FF9900','#FFB300',
+            '#FFCC00','#FFE600','#FFFF00','#E6FF00','#CCFF00','#B3FF00','#99FF00','#80FF00',
+            '#66FF00','#4DFF00','#33FF00','#19FF00','#00FF00','#00FF19','#00FF33','#00FF4D',
+            '#00FF66','#00FF80','#00FF99','#00FFB3','#00FFCC','#00FFE6','#00FFFF','#00E6FF',
+            '#00CCFF','#00B3FF','#0099FF','#0080FF','#0066FF','#004DFF','#0033FF','#0019FF',
+            '#0000FF','#1900FF','#3300FF','#4D00FF','#6600FF','#8000FF','#9900FF','#B300FF',
+            '#CC00FF','#E600FF','#FF00FF','#FF00E6','#FF00CC','#FF00B3','#FF0099','#FF0080',
+            '#FF0066','#FF004D','#FF0033','#FF0019','#FF0000','#FF3333','#FF6666','#FF9999',
+            '#FFCCCC','#FFEEEE','#FFFAFA','#FFFFFF','#000000','#333333','#666666','#999999',
+            '#CCCCCC','#EEEEEE','#FAFAFA','#FFF0F0','#FFF5F0','#FFFAF5','#FFFFFF','#F0F0FF',
+            '#F5F5FF','#FAFAFF','#F0FFF0','#F5FFF5','#FAFFFA','#FFF0F5','#FFF5FA','#FFFAFF',
+            '#F0F5F0','#F5F5F5','#FAFAFA','#E0E0FF','#E5E5FF','#EAEAFF','#E0FFE0','#E5FFE5',
+            '#EAFFEA','#FFE0E5','#FFE5EA','#FFEAFF','#E5EAE5','#EAEAEA','#FF6666','#FF9999',
+            '#FFCCCC','#FFAAAA','#FF8888','#FF6666','#FF4444','#FF2222','#FF0000','#CC0000',
+            '#990000','#660000','#330000','#000000','#66FF66','#99FF99','#CCCCFF','#AAAAFF',
+            '#8888FF','#6666FF','#4444FF','#2222FF','#0000FF','#0000CC','#000099','#000066',
+            '#33FFFF','#66FFFF','#99FFFF','#CCFFFF','#FFFF33','#FFFF66','#FFFF99','#FFFFCC',
+            '#00FF00','#00CC00','#009900','#006600','#33FF33','#66FF66','#99FF99','#CCFFCC',
+            '#FF00FF','#CC00CC','#990099','#660066','#33FF00','#66FF00','#99FF00','#CCFF00',
+            '#FF3300','#FF6600','#FF9900','#FFCC00','#00FF33','#00FF66','#00FF99','#00FFCC',
+            '#3300FF','#6600FF','#9900FF','#CC00FF','#FF0033','#FF0066','#FF0099','#FF00CC',
+            '#0033FF','#0066FF','#0099FF','#00CCFF','#330000','#660000','#990000','#CC0000',
+            '#003300','#006600','#009900','#00CC00','#000033','#000066','#000099','#0000CC',
+            '#333300','#666600','#999900','#CCCC00','#003333','#006666','#009999','#00CCCC',
+            '#330033','#660066','#990099','#CC0099','#FF5733','#FF6B6B','#FF8C8C','#FFADAD',
+            '#FFC1C1','#FFD5D5','#FFE9E9','#FFEDED','#FFF0F0','#F0F8FF','#E6E6FA','#D8BFD8',
+            '#DDA0DD','#DA70D6','#EE82EE','#FFD700','#FFA500','#FF8C00','#FF7F50','#FF6347',
+            '#FF4500','#32CD32','#98FB98','#90EE90','#7CFC00','#00FF7F','#00FA9A','#00FF80',
+            '#00FF9F','#00FFBE','#00FFDD','#00FFFC','#00E5FF','#00CEFF','#00B7FF','#00A0FF'
+        ];
+
+        // 初始化颜色选择器
+        function initColorPicker() {
+            const palette = document.getElementById('colorPalette');
+            if (!palette) return;
+
+            // 清空现有内容
+            palette.innerHTML = '';
+
+            // 生成256个颜色方块
+            colorPalette.forEach(color => {
+                const swatch = document.createElement('div');
+                swatch.className = 'color-swatch';
+                swatch.style.backgroundColor = color;
+                swatch.title = color;
+                swatch.dataset.color = color;
+
+                swatch.addEventListener('click', () => selectColor(color));
+
+                palette.appendChild(swatch);
+            });
+
+            // 加载当前用户颜色偏好
+            loadUserNodeColor();
+        }
+
+        // 加载用户节点颜色偏好
+        async function loadUserNodeColor() {
+            try {
+                const response = await fetch('/api/users/me/node-color', {
+                    headers: {
+                        'Authorization': `Bearer ${getToken()}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load node color');
+                }
+
+                const data = await response.json();
+                if (data.nodeColor) {
+                    highlightSelectedColor(data.nodeColor);
+                    document.getElementById('colorPickerStatus').textContent = `当前颜色: ${data.nodeColor}`;
+                    document.getElementById('colorPickerStatus').style.color = data.nodeColor;
+                } else {
+                    document.getElementById('colorPickerStatus').textContent = '未设置颜色偏好';
+                    document.getElementById('colorPickerStatus').style.color = '#888';
+                }
+            } catch (error) {
+                console.error('Load node color error:', error);
+            }
+        }
+
+        // 高亮选中的颜色
+        function highlightSelectedColor(color) {
+            const swatches = document.querySelectorAll('.color-swatch');
+            swatches.forEach(swatch => {
+                if (swatch.dataset.color.toUpperCase() === color.toUpperCase()) {
+                    swatch.classList.add('selected');
+                } else {
+                    swatch.classList.remove('selected');
+                }
+            });
+        }
+
+        // 选择颜色
+        async function selectColor(color) {
+            try {
+                const response = await fetch('/api/users/me/node-color', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getToken()}`
+                    },
+                    body: JSON.stringify({ nodeColor: color })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to save node color');
+                }
+
+                const data = await response.json();
+                highlightSelectedColor(color);
+
+                // 显示成功提示
+                showToast(`节点颜色已设置为 ${color}`, false);
+
+                document.getElementById('colorPickerStatus').textContent = `当前颜色: ${color}`;
+                document.getElementById('colorPickerStatus').style.color = color;
+
+            } catch (error) {
+                console.error('Save node color error:', error);
+                showToast('保存颜色失败', true);
+            }
+        }
+
+        // 清除颜色偏好
+        async function clearNodeColor() {
+            try {
+                const response = await fetch('/api/users/me/node-color', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getToken()}`
+                    },
+                    body: JSON.stringify({ nodeColor: null })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to clear node color');
+                }
+
+                const data = await response.json();
+                highlightSelectedColor(null);
+
+                // 显示成功提示
+                showToast('节点颜色已清除', false);
+
+                document.getElementById('colorPickerStatus').textContent = '未设置颜色偏好';
+                document.getElementById('colorPickerStatus').style.color = '#888';
+
+            } catch (error) {
+                console.error('Clear node color error:', error);
+                showToast('清除颜色失败', true);
+            }
+        }
+
         // 页面加载时
         document.addEventListener('DOMContentLoaded', () => {
             checkAuthStatus();
+            initColorPicker(); // 初始化颜色选择器
             loadSettings().then(() => {
                 // 如果 URL 带有 tab=requests 参数，自动滚动到协作申请区域
                 const tab = urlParams.get('tab');
@@ -1093,7 +1310,7 @@
                     }
                 }
             });
-            
+
             // 监听"允许协作者续写"开关的变化
             document.getElementById('allowBranch').addEventListener('change', updateAutoApproveState);
         });

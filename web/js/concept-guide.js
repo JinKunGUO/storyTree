@@ -1,7 +1,7 @@
 /**
  * StoryTree 故事树概念讲解组件
  * 全屏 Modal 式分步图解，用 CSS 动画 + SVG 图示讲解故事树核心概念
- * 触发时机：首次进入 story-tree 页面
+ * 触发时机：首次进入 story 页面
  */
 
 class ConceptGuide {

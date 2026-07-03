@@ -94,7 +94,6 @@ class StoryTreeTour {
       create: this.getCreateSteps(),
       'create-ai': this.getCreateAiSteps(),
       write: this.getWriteSteps(),
-      'story-tree': this.getStoryTreeSteps(),
       'my-stories': this.getMyStoriesSteps()
     };
 
@@ -530,7 +529,6 @@ class StoryTreeTour {
       discover: '/discover.html',
       create: '/create-ai.html',
       write: '/write.html',
-      'story-tree': '/story-tree.html',
       'my-stories': '/my-stories.html'
     };
 

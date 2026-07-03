@@ -550,6 +550,26 @@ async function handleGenerateStreaming() {
   let streamUrl = '';
   let streamBody = {};
 
+  // 骨架屏字段配置
+  const skeletonFields = {
+    project: [
+      { key: 'title', label: '故事标题' },
+      { key: 'genre', label: '类型' },
+      { key: 'logline', label: '一句话概述' },
+      { key: 'synopsis', label: '故事梗概' },
+      { key: 'theme', label: '核心主题' },
+      { key: 'targetAudience', label: '目标读者' },
+      { key: 'uniqueSellingPoint', label: '独特卖点' },
+      { key: 'tone', label: '风格基调' },
+      { key: 'setting', label: '世界观设定' }
+    ],
+    outline: [
+      { key: 'chapters', label: '章节大纲' },
+      { key: 'characters', label: '角色设定' },
+      { key: 'worldBuilding', label: '世界观' }
+    ]
+  };
+
   if (state.selectedMethod === 'project') {
     streamUrl = '/api/ai/stream/project-brief';
     streamBody = {
@@ -566,31 +586,103 @@ async function handleGenerateStreaming() {
     };
   }
 
-  // 将 loading 区域改为显示流式内容
+  // 将 loading 区域改为显示骨架屏 + thinking 面板
+  const fields = skeletonFields[state.selectedMethod] || [];
+  const skeletonRowsHtml = fields.map(f =>
+    `<div class="ai-skeleton-row" data-key="${f.key}">
+       <span class="ai-skeleton-label">${f.label}</span>
+       <div class="ai-skeleton-bar skeleton"></div>
+       <span class="ai-skeleton-check" style="display:none;">✅</span>
+     </div>`
+  ).join('');
+
   loadingContainer.innerHTML = `
-    <div class="ai-stream-loading">
+    <div class="ai-skeleton-container">
+      <div class="ai-thinking-panel" id="thinkingPanel" style="display:none;">
+        <div class="ai-thinking-header">
+          <span class="ai-thinking-icon"></span>
+          <span>AI 思考中...</span>
+        </div>
+        <div class="ai-thinking-text" id="thinkingText"></div>
+      </div>
       <div class="ai-stream-header">
         <span class="ai-streaming-indicator"></span>
         <span>AI 正在创作中...</span>
       </div>
-      <div class="ai-stream-preview" id="streamPreview"></div>
+      <div class="ai-skeleton-list" id="skeletonList">
+        ${skeletonRowsHtml}
+      </div>
     </div>
   `;
 
-  const streamPreview = document.getElementById('streamPreview');
+  const thinkingPanel = document.getElementById('thinkingPanel');
+  const thinkingText = document.getElementById('thinkingText');
+  const skeletonList = document.getElementById('skeletonList');
+
+  // 独立的定时器控制 thinking 面板内部滚动，避免在 rAF 中操作 scrollTop 影响页面布局
+  let thinkingScrollTimer = null;
+  function startThinkingScroll() {
+    if (thinkingScrollTimer) return;
+    thinkingScrollTimer = setInterval(() => {
+      if (thinkingPanel && thinkingPanel.style.display === 'block') {
+        thinkingPanel.scrollTop = thinkingPanel.scrollHeight;
+      }
+    }, 200);
+  }
+  function stopThinkingScroll() {
+    if (thinkingScrollTimer) {
+      clearInterval(thinkingScrollTimer);
+      thinkingScrollTimer = null;
+    }
+  }
 
   const stream = new SSEStream(streamUrl, {
     body: streamBody,
     onStart: () => {
-      streamPreview.textContent = '';
+      // 骨架屏和 thinking 面板已就绪
+    },
+    onThinking: (text) => {
+      if (thinkingPanel && thinkingText) {
+        if (thinkingPanel.style.display !== 'block') {
+          thinkingPanel.style.display = 'block';
+          startThinkingScroll();
+        }
+        if (!thinkingText._buffer) thinkingText._buffer = '';
+        thinkingText._buffer += text;
+        if (!thinkingText._pendingUpdate) {
+          thinkingText._pendingUpdate = true;
+          requestAnimationFrame(() => {
+            if (thinkingText._buffer) {
+              thinkingText.textContent += thinkingText._buffer;
+              thinkingText._buffer = '';
+            }
+            thinkingText._pendingUpdate = false;
+          });
+        }
+      }
+    },
+    onProgress: (data) => {
+      if (!skeletonList) return;
+      if (data.keys) {
+        data.keys.forEach(key => {
+          const row = skeletonList.querySelector(`[data-key="${key}"]`);
+          if (row) {
+            const bar = row.querySelector('.ai-skeleton-bar');
+            const check = row.querySelector('.ai-skeleton-check');
+            if (bar && !bar.classList.contains('done')) {
+              bar.classList.remove('skeleton');
+              bar.classList.add('done');
+              if (check) check.style.display = 'inline';
+            }
+          }
+        });
+      }
     },
     onChunk: (text, fullText) => {
-      // 显示流式文本预览（截取最后 500 字符避免 DOM 过大）
-      const display = fullText.length > 500 ? '...' + fullText.slice(-500) : fullText;
-      streamPreview.textContent = display;
-      streamPreview.scrollTop = streamPreview.scrollHeight;
+      // 骨架屏已替代文本预览，不再显示原始 JSON
     },
     onDone: (result) => {
+      stopThinkingScroll();
       // 恢复 loading 容器原始内容
       loadingContainer.innerHTML = `
         <div class="spinner"></div>
@@ -641,6 +733,7 @@ async function handleGenerateStreaming() {
       addChatMessage('assistant', '生成完成！如有不满意的地方，可以提出修改意见。');
     },
     onError: (message) => {
+      stopThinkingScroll();
       // 恢复 loading 容器原始内容
       loadingContainer.innerHTML = `
         <div class="spinner"></div>
@@ -697,23 +790,80 @@ async function handleGenerateMultiStep() {
         <span class="ai-streaming-indicator"></span>
         <span id="currentStepTitle">准备中...</span>
       </div>
+      <div class="ai-thinking-panel" id="thinkingPanel" style="display:none;">
+        <div class="ai-thinking-header">
+          <span class="ai-thinking-icon"></span>
+          <span>AI 思考中...</span>
+        </div>
+        <div class="ai-thinking-text" id="thinkingText"></div>
+      </div>
+      <div class="ai-skeleton-list" id="skeletonList"></div>
       <p class="ai-loading-tip" id="loadingTip">${tips[0]}</p>
-      <div class="ai-stream-preview" id="stepStreamPreview"></div>
       <div class="ai-step-results" id="stepResultsArea"></div>
     </div>
   `;
 
   const stepsProgress = document.getElementById('stepsProgress');
   const currentStepTitle = document.getElementById('currentStepTitle');
-  const stepStreamPreview = document.getElementById('stepStreamPreview');
+  const thinkingPanel = document.getElementById('thinkingPanel');
+  const thinkingText = document.getElementById('thinkingText');
+  const skeletonList = document.getElementById('skeletonList');
   const loadingTip = document.getElementById('loadingTip');
   const stepResultsArea = document.getElementById('stepResultsArea');
+
+  // 独立的定时器控制 thinking 面板内部滚动
+  let thinkingScrollTimer = null;
+  function startThinkingScroll() {
+    if (thinkingScrollTimer) return;
+    thinkingScrollTimer = setInterval(() => {
+      if (thinkingPanel && thinkingPanel.style.display === 'block') {
+        thinkingPanel.scrollTop = thinkingPanel.scrollHeight;
+      }
+    }, 200);
+  }
+  function stopThinkingScroll() {
+    if (thinkingScrollTimer) {
+      clearInterval(thinkingScrollTimer);
+      thinkingScrollTimer = null;
+    }
+  }
 
   // 轮换小贴士
   const tipTimer = setInterval(() => {
     tipIndex = (tipIndex + 1) % tips.length;
     if (loadingTip) loadingTip.textContent = tips[tipIndex];
   }, 4000);
+
+  // 骨架屏字段配置（按步骤）
+  const stepSkeletonFields = {
+    pastiche: {
+      1: [
+        { key: 'analysis', label: '原作分析' },
+        { key: 'projectBrief', label: '立项书' }
+      ],
+      2: [
+        { key: 'worldBuilding', label: '世界观' },
+        { key: 'characters', label: '角色设定' },
+        { key: 'plotStructure', label: '情节结构' },
+        { key: 'chapterOutlines', label: '分章大纲' }
+      ]
+    },
+    template: {
+      1: [
+        { key: 'title', label: '故事标题' },
+        { key: 'synopsis', label: '故事梗概' },
+        { key: 'coreIdea', label: '核心创意' },
+        { key: 'genre', label: '类型' },
+        { key: 'highlights', label: '亮点' }
+      ],
+      2: [
+        { key: 'worldBuilding', label: '世界观' },
+        { key: 'characters', label: '角色设定' },
+        { key: 'plotStructure', label: '情节结构' },
+        { key: 'chapterOutlines', label: '分章大纲' }
+      ]
+    }
+  };
 
   // 收集各步骤结果
   const stepResults = {};
@@ -722,7 +872,27 @@ async function handleGenerateMultiStep() {
     body: streamBody,
     onStep: ({ step, title, total }) => {
       currentStepTitle.textContent = `步骤 ${step}/${total}：${title}`;
-      stepStreamPreview.textContent = '';
+
+      // 重置 thinking 面板
+      stopThinkingScroll();
+      if (thinkingPanel) thinkingPanel.style.display = 'none';
+      if (thinkingText) {
+        thinkingText.textContent = '';
+        thinkingText._buffer = '';
+        thinkingText._pendingUpdate = false;
+      }
+
+      // 填充当前步骤的骨架屏
+      if (skeletonList) {
+        const fields = stepSkeletonFields[state.selectedMethod]?.[step] || [];
+        skeletonList.innerHTML = fields.map(f =>
+          `<div class="ai-skeleton-row" data-key="${f.key}">
+             <span class="ai-skeleton-label">${f.label}</span>
+             <div class="ai-skeleton-bar skeleton"></div>
+             <span class="ai-skeleton-check" style="display:none;">✅</span>
+           </div>`
+        ).join('');
+      }
 
       let progressHtml = '';
       for (let i = 1; i <= total; i++) {
@@ -731,10 +901,45 @@ async function handleGenerateMultiStep() {
       }
       stepsProgress.innerHTML = progressHtml;
     },
+    onThinking: (text) => {
+      if (thinkingPanel && thinkingText) {
+        if (thinkingPanel.style.display !== 'block') {
+          thinkingPanel.style.display = 'block';
+          startThinkingScroll();
+        }
+        if (!thinkingText._buffer) thinkingText._buffer = '';
+        thinkingText._buffer += text;
+        if (!thinkingText._pendingUpdate) {
+          thinkingText._pendingUpdate = true;
+          requestAnimationFrame(() => {
+            if (thinkingText._buffer) {
+              thinkingText.textContent += thinkingText._buffer;
+              thinkingText._buffer = '';
+            }
+            thinkingText._pendingUpdate = false;
+          });
+        }
+      }
+    },
+    onProgress: (data) => {
+      if (!skeletonList) return;
+      if (data.keys) {
+        data.keys.forEach(key => {
+          const row = skeletonList.querySelector(`[data-key="${key}"]`);
+          if (row) {
+            const bar = row.querySelector('.ai-skeleton-bar');
+            const check = row.querySelector('.ai-skeleton-check');
+            if (bar && !bar.classList.contains('done')) {
+              bar.classList.remove('skeleton');
+              bar.classList.add('done');
+              if (check) check.style.display = 'inline';
+            }
+          }
+        });
+      }
+    },
     onChunk: (text, fullText) => {
-      const display = fullText.length > 300 ? '...' + fullText.slice(-300) : fullText;
-      stepStreamPreview.textContent = display;
-      stepStreamPreview.scrollTop = stepStreamPreview.scrollHeight;
+      // 骨架屏已替代文本预览
     },
     onStepDone: ({ step, result }) => {
       stepResults[`step${step}`] = result;
@@ -744,11 +949,22 @@ async function handleGenerateMultiStep() {
         dots[step - 1].classList.remove('step-active');
         dots[step - 1].classList.add('step-done');
       }
+      // 标记当前步骤所有字段为已完成
+      if (skeletonList) {
+        skeletonList.querySelectorAll('.ai-skeleton-bar').forEach(bar => {
+          bar.classList.remove('skeleton');
+          bar.classList.add('done');
+        });
+        skeletonList.querySelectorAll('.ai-skeleton-check').forEach(check => {
+          check.style.display = 'inline';
+        });
+      }
       // 立即渲染已完成步骤的摘要卡片
       renderStepCard(stepResultsArea, step, result);
     },
     onComplete: ({ result }) => {
       clearInterval(tipTimer);
+      stopThinkingScroll();
       loadingContainer.innerHTML = `
         <div class="spinner"></div>
         <p class="loading-text" id="loadingText">AI 正在创作中...</p>
@@ -772,6 +988,7 @@ async function handleGenerateMultiStep() {
     },
     onError: (message) => {
       clearInterval(tipTimer);
+      stopThinkingScroll();
       loadingContainer.innerHTML = `
         <div class="spinner"></div>
         <p class="loading-text" id="loadingText">AI 正在创作中...</p>

@@ -19,6 +19,105 @@ export interface StreamOptions {
   temperature?: number;
   topP?: number;
   timeoutMs?: number;
+  enableThinking?: boolean;
+  expectedKeys?: number;
+}
+
+/**
+ * 清理 JSON 字符串中的 <thinking>...</thinking> 标签
+ * 千问模型输出的 JSON 可能包含 thinking 标签，需要清理后再解析
+ */
+export function cleanThinkingTags(text: string): string {
+  return text.replace(/<thinking>[\s\S]*?<\/thinking>/g, '').trim();
+}
+
+/**
+ * Thinking 状态机：解析 <thinking> 标签，分离思考内容和 JSON 内容
+ * 初始状态为 'json'（安全默认值），只有检测到标签才切换
+ */
+class ThinkingParser {
+  private state: 'json' | 'thinking' = 'json';
+  private tagBuffer: string = '';
+  private lastKeys: string[] = [];
+
+  /**
+   * 处理一个 delta chunk，返回 { thinking?, json? }
+   * thinking: 思考过程文本（如果有）
+   * json: JSON 内容文本（如果有）
+   */
+  process(delta: string): { thinking?: string; json?: string } {
+    let combined = this.tagBuffer + delta;
+    this.tagBuffer = '';
+
+    let thinking = '';
+    let json = '';
+
+    while (combined.length > 0) {
+      if (this.state === 'json') {
+        // 查找 <think 或 <thinking 开始标签
+        const openMatch = combined.match(/<think(?:king)?\s*>/i);
+        if (openMatch && openMatch.index !== undefined) {
+          // 标签前的内容是 JSON
+          json += combined.slice(0, openMatch.index);
+          combined = combined.slice(openMatch.index + openMatch[0].length);
+          this.state = 'thinking';
+        } else {
+          // 没有找到开始标签，检查末尾是否有不完整标签
+          const tail = combined.slice(-12);
+          if (/<think(?:king)?\s*$/i.test(tail) || /<thi(?:nk(?:ing)?)?\s*$/i.test(tail) || /<th(?:i)?$/i.test(tail)) {
+            // 末尾可能是不完整的标签，缓存到 tagBuffer
+            json += combined.slice(0, combined.length - tail.length);
+            this.tagBuffer = tail;
+            combined = '';
+          } else {
+            // 全部是 JSON 内容
+            json += combined;
+            combined = '';
+          }
+        }
+      } else {
+        // thinking 状态，查找 </think 或 </thinking 结束标签
+        const closeMatch = combined.match(/<\/think(?:king)?\s*>/i);
+        if (closeMatch && closeMatch.index !== undefined) {
+          thinking += combined.slice(0, closeMatch.index);
+          combined = combined.slice(closeMatch.index + closeMatch[0].length);
+          this.state = 'json';
+        } else {
+          // 没有找到结束标签，检查末尾是否有不完整标签
+          const tail = combined.slice(-13);
+          if (/<\/think(?:king)?\s*$/i.test(tail) || /<\/thi(?:nk(?:ing)?)?\s*$/i.test(tail) || /<\/th(?:i)?$/i.test(tail) || /<\/?$/i.test(tail)) {
+            thinking += combined.slice(0, combined.length - tail.length);
+            this.tagBuffer = tail;
+            combined = '';
+          } else {
+            // 全部是 thinking 内容
+            thinking += combined;
+            combined = '';
+          }
+        }
+      }
+    }
+
+    const result: { thinking?: string; json?: string } = {};
+    if (thinking) result.thinking = thinking;
+    if (json) result.json = json;
+    return result;
+  }
+
+  /**
+   * 从 fullText 中检测 JSON key，返回已完成的 key 和当前正在生成的 key
+   */
+  detectNewKeys(fullText: string, expectedKeys?: number): { keys: string[]; currentKey?: string; totalKeys?: number } | null {
+    const allKeys = [...fullText.matchAll(/"(\w+)"\s*:/g)].map(m => m[1]);
+    const uniqueKeys = [...new Set(allKeys)];
+    const hasNew = uniqueKeys.length > this.lastKeys.length;
+    if (!hasNew) return null;
+    this.lastKeys = uniqueKeys;
+    // 最后一个 key 是当前正在生成的，之前的都是已完成的
+    const completedKeys = uniqueKeys.slice(0, -1);
+    const currentKey = uniqueKeys[uniqueKeys.length - 1];
+    return { keys: completedKeys, currentKey, totalKeys: expectedKeys };
+  }
 }
 
 /**
@@ -63,7 +162,9 @@ export async function streamQwenStep(res: Response, options: StreamOptions): Pro
     maxTokens = 2000,
     temperature = 0.8,
     topP = 0.9,
-    timeoutMs = 60000
+    timeoutMs = 60000,
+    enableThinking = false,
+    expectedKeys
   } = options;
 
   if (!QWEN_API_KEY) {
@@ -90,7 +191,10 @@ export async function streamQwenStep(res: Response, options: StreamOptions): Pro
         max_tokens: maxTokens,
         temperature,
         top_p: topP,
-        stream: true
+        stream: true,
+        ...(enableThinking ? {
+          reasoning_level: { level: 'high' }
+        } : {})
       }),
       signal: controller.signal
     });
@@ -109,6 +213,7 @@ export async function streamQwenStep(res: Response, options: StreamOptions): Pro
     let fullText = '';
     let buffer = '';
     const STREAM_IDLE_TIMEOUT = 60000;
+    const parser = enableThinking ? new ThinkingParser() : null;
 
     while (true) {
       const readPromise = reader.read();
@@ -133,16 +238,43 @@ export async function streamQwenStep(res: Response, options: StreamOptions): Pro
           const data = JSON.parse(jsonStr);
           if (data.error) throw new Error(`千问API错误: ${data.error.code} - ${data.error.message}`);
 
+          // 千问 API 可能先发送 reasoning_content，再发送 content
+          // 需要在 if (delta) 之外单独处理 reasoning_content
+          const reasoning = data.choices?.[0]?.delta?.reasoning_content || '';
+          if (parser && reasoning) {
+            sendSSE(res, 'thinking', { text: reasoning });
+          }
+
           const delta = data.choices?.[0]?.delta?.content || '';
           if (delta) {
-            fullText += delta;
-            sendSSE(res, 'chunk', { text: delta });
+            if (parser) {
+              // 第2层：thinking 标签状态机
+              const parts = parser.process(delta);
+              if (parts.thinking) {
+                sendSSE(res, 'thinking', { text: parts.thinking });
+              }
+              if (parts.json) {
+                fullText += parts.json;
+                sendSSE(res, 'chunk', { text: parts.json });
+              }
+              // progress 检测
+              const keyInfo = parser.detectNewKeys(fullText, expectedKeys);
+              if (keyInfo) {
+                sendSSE(res, 'progress', keyInfo);
+              }
+            } else {
+              fullText += delta;
+              sendSSE(res, 'chunk', { text: delta });
+            }
           }
         } catch (parseError: any) {
           if (parseError.message?.includes('千问API错误')) throw parseError;
         }
       }
     }
+
+    // 清理可能残留的 thinking 标签
+    fullText = fullText.replace(/<thinking>[\s\S]*?<\/thinking>/g, '').trim();
 
     // 敏感词扫描
     const scanResult = scanSensitiveWords(fullText);
@@ -181,7 +313,9 @@ export async function streamQwenToClient(res: Response, options: StreamOptions):
     maxTokens = 2000,
     temperature = 0.8,
     topP = 0.9,
-    timeoutMs = 60000
+    timeoutMs = 60000,
+    enableThinking = false,
+    expectedKeys
   } = options;
 
   if (!QWEN_API_KEY) {
@@ -214,7 +348,10 @@ export async function streamQwenToClient(res: Response, options: StreamOptions):
         max_tokens: maxTokens,
         temperature,
         top_p: topP,
-        stream: true
+        stream: true,
+        ...(enableThinking ? {
+          reasoning_level: { level: 'high' }
+        } : {})
       }),
       signal: controller.signal
     });
@@ -239,6 +376,7 @@ export async function streamQwenToClient(res: Response, options: StreamOptions):
     let outputTokens = 0;
     let buffer = '';
     const STREAM_IDLE_TIMEOUT = 60000;
+    const parser = enableThinking ? new ThinkingParser() : null;
 
     // 发送开始事件
     sendSSE(res, 'start', { model: QWEN_MODEL });
@@ -271,11 +409,34 @@ export async function streamQwenToClient(res: Response, options: StreamOptions):
             throw new Error(`千问API错误: ${data.error.code} - ${data.error.message}`);
           }
 
+          // 千问 API 可能先发送 reasoning_content，再发送 content
+          // 需要在 if (delta) 之外单独处理 reasoning_content
+          const reasoning = data.choices?.[0]?.delta?.reasoning_content || '';
+          if (parser && reasoning) {
+            sendSSE(res, 'thinking', { text: reasoning });
+          }
+
           const delta = data.choices?.[0]?.delta?.content || '';
           if (delta) {
-            fullText += delta;
-            // 逐 chunk 推送给前端
-            sendSSE(res, 'chunk', { text: delta });
+            if (parser) {
+              // 第2层：thinking 标签状态机
+              const parts = parser.process(delta);
+              if (parts.thinking) {
+                sendSSE(res, 'thinking', { text: parts.thinking });
+              }
+              if (parts.json) {
+                fullText += parts.json;
+                sendSSE(res, 'chunk', { text: parts.json });
+              }
+              // progress 检测
+              const keyInfo = parser.detectNewKeys(fullText, expectedKeys);
+              if (keyInfo) {
+                sendSSE(res, 'progress', keyInfo);
+              }
+            } else {
+              fullText += delta;
+              sendSSE(res, 'chunk', { text: delta });
+            }
           }
 
           // usage 信息（通常在最后一条）
@@ -291,8 +452,11 @@ export async function streamQwenToClient(res: Response, options: StreamOptions):
     }
 
     // 后置敏感词扫描
-    const scanResult = scanSensitiveWords(fullText);
+    // 先清理可能残留的 thinking 标签
+    fullText = fullText.replace(/<thinking>[\s\S]*?<\/thinking>/g, '').trim();
     let safeText = fullText;
+
+    const scanResult = scanSensitiveWords(fullText);
     let contentWarning: { found: boolean; category?: string; masked: boolean } | undefined;
 
     if (scanResult.found) {

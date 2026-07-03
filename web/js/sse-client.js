@@ -132,6 +132,16 @@ class SSEStream {
           }
           break;
 
+        case 'thinking':
+          if (parsed.text) {
+            this.options.onThinking?.(parsed.text);
+          }
+          break;
+
+        case 'progress':
+          this.options.onProgress?.(parsed);
+          break;
+
         case 'done':
           this.options.onDone?.({
             fullText: parsed.fullText || this.fullText,
