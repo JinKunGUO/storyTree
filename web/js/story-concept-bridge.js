@@ -160,33 +160,11 @@
   }
 
   /**
-   * 标记概念引导已看过
+   * 标记概念引导已看过 — 委托给 OnboardingManager 统一处理
    */
   async function markConceptGuideSeen() {
-    try {
-      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-      if (!token) return;
-
-      // 更新 onboarding progress
-      const progressStr = localStorage.getItem('st_onboarding_progress');
-      let progress = progressStr ? JSON.parse(progressStr) : {};
-      progress.conceptGuideSeen = true;
-      if (!progress.tasks) progress.tasks = {};
-      progress.tasks.viewedStoryTree = true;
-      progress.lastUpdated = new Date().toISOString();
-      localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
-
-      // 统一通过 OnboardingManager.syncProgress 同步
-      if (window.onboardingManager) {
-        await window.onboardingManager.syncProgress(progress);
-      }
-
-      // 祝贺检查：当前页面不跳转，直接触发检查
-      if (window.onboardingManager) {
-        window.onboardingManager.tryCelebrate(progress, { deferred: false });
-      }
-    } catch (e) {
-      console.warn('[StoryConceptBridge] Failed to mark concept guide seen:', e);
+    if (window.onboardingManager) {
+      await window.onboardingManager.markConceptGuideSeen();
     }
   }
 

@@ -20,7 +20,7 @@ class WelcomeModal {
 
     const progress = window.onboardingManager
       ? window.onboardingManager.getProgress()
-      : this._getDefaultProgress();
+      : { tasks: {} };
 
     this.overlay = document.createElement('div');
     this.overlay.className = 'st-welcome-overlay';
@@ -133,7 +133,7 @@ class WelcomeModal {
         title: '创建第一个故事',
         desc: '开启你的创作之旅',
         completed: !!tasks.createdStory,
-        href: '/create-ai.html?guide=create-ai'
+        href: '/create-ai.html?tour=0'
       },
       {
         key: 'publishedChapter',
@@ -197,11 +197,8 @@ class WelcomeModal {
           }, 300);
         } else if (taskKey === 'viewedStoryTree') {
           this.hide();
-          // 跳转到示例故事页面触发概念引导
           if (window.onboardingManager) {
             window.onboardingManager._redirectToStoryForConcept();
-          } else {
-            this._navigateToStoryForConcept();
           }
         } else if (href) {
           this.hide();
@@ -231,60 +228,6 @@ class WelcomeModal {
       }
     };
     document.addEventListener('keydown', this._escHandler);
-  }
-
-  /**
-   * 跳转到示例故事页面触发概念引导
-   * 逻辑与 tour.js 中 navigateToStoryForConcept 一致
-   */
-  async _navigateToStoryForConcept() {
-    let storyId = null;
-
-    try {
-      const res = await fetch('/api/stories?search=反三国演义&limit=1');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.stories && data.stories.length > 0) {
-          storyId = data.stories[0].id;
-        }
-      }
-
-      if (!storyId) {
-        const res2 = await fetch('/api/stories?limit=1');
-        if (res2.ok) {
-          const data2 = await res2.json();
-          if (data2.stories && data2.stories.length > 0) {
-            storyId = data2.stories[0].id;
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('[WelcomeModal] Failed to fetch example story:', e);
-    }
-
-    if (storyId) {
-      window.location.href = `/story.html?id=${storyId}&guide=concept`;
-    } else {
-      // fallback：在当前页直接触发概念引导
-      if (window.conceptGuide) {
-        window.conceptGuide.show();
-      }
-    }
-  }
-
-  _getDefaultProgress() {
-    return {
-      welcomeSeen: false,
-      tourCompleted: false,
-      conceptGuideSeen: false,
-      tasks: {
-        browsedDiscover: false,
-        createdStory: false,
-        viewedStoryTree: false,
-        publishedChapter: false,
-        completedTour: false
-      }
-    };
   }
 }
 

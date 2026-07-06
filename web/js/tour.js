@@ -101,7 +101,6 @@ class StoryTreeTour {
     const stepsMap = {
       index: this.getIndexSteps(),
       discover: this.getDiscoverSteps(),
-      create: this.getCreateSteps(),
       'create-ai': this.getCreateAiSteps(),
       write: this.getWriteSteps(),
       'my-stories': this.getMyStoriesSteps()
@@ -114,9 +113,10 @@ class StoryTreeTour {
    * 首页引导步骤
    */
   getIndexSteps() {
-    return [
+    const isMobile = window.innerWidth <= 768;
+    const steps = [
       {
-        element: '.navbar',
+        element: '.navbar, .nav, .navbar-content',
         illustration: 'tree-grow',
         popover: {
           title: '欢迎来到 StoryTree！',
@@ -126,7 +126,7 @@ class StoryTreeTour {
         }
       },
       {
-        element: '.hero-actions',
+        element: '.hero-actions, .hero-buttons, .btn-create',
         illustration: 'tree-grow',
         popover: {
           title: '开始创作',
@@ -136,12 +136,12 @@ class StoryTreeTour {
         }
       },
       {
-        element: '#storiesGrid',
+        element: '#storiesGrid, .stories-grid, .story-list',
         illustration: 'explore',
         popover: {
           title: '故事广场',
           description: '这里展示了社区中的精彩故事，您可以浏览和阅读。接下来让我们去发现页看看更多内容。',
-          side: 'top',
+          side: isMobile ? 'bottom' : 'top',
           align: 'center',
           onNextClick: () => {
             // 完成首页引导，增量标记 completedTour
@@ -151,18 +151,21 @@ class StoryTreeTour {
         }
       }
     ];
+
+    return steps;
   }
 
   /**
    * 发现页引导步骤
    */
   getDiscoverSteps() {
+    const isMobile = window.innerWidth <= 768;
     const urlParams = new URLSearchParams(window.location.search);
     const tourStep = parseInt(urlParams.get('tour')) || 0;
 
-    return [
+    const allSteps = [
       {
-        element: '.search-section',
+        element: '.search-section, .search-input, #searchInput',
         illustration: 'explore',
         popover: {
           title: '搜索故事',
@@ -172,12 +175,12 @@ class StoryTreeTour {
         }
       },
       {
-        element: '.filter-tabs',
+        element: '.filter-tabs, .category-tabs, .tabs-container',
         illustration: 'branch-paths',
         popover: {
           title: '筛选分类',
           description: '通过分类标签筛选不同类型的故事。接下来带你了解故事树的核心概念——分支创作！',
-          side: 'bottom',
+          side: isMobile ? 'top' : 'bottom',
           align: 'center',
           onNextClick: () => {
             // 完成发现页引导，增量标记 browsedDiscover
@@ -186,81 +189,24 @@ class StoryTreeTour {
           }
         }
       }
-    ].slice(tourStep);
-  }
+    ];
 
-  /**
-   * 创作页引导步骤
-   */
-  getCreateSteps() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const tourStep = parseInt(urlParams.get('tour')) || 0;
+    if (tourStep >= allSteps.length) {
+      console.warn(`[StoryTreeTour] tour step ${tourStep} exceeds discover steps count ${allSteps.length}, skipping`);
+      return [];
+    }
 
-    return [
-      {
-        element: '.ai-creation-banner',
-        illustration: 'tree-grow',
-        popover: {
-          title: '方式一：AI 辅助创作',
-          description: '点击这里进入 AI 辅助创作页面，支持智能导入立项、生成大纲、经典仿写和故事模板四种方式，适合还没有明确想法的创作者。',
-          side: 'bottom',
-          align: 'center'
-        }
-      },
-      {
-        element: '#title',
-        illustration: 'node-chapter',
-        popover: {
-          title: '方式二：手动创建故事',
-          description: '如果你已经有了想法，可以直接在下方填写故事信息。首先给你的故事起一个吸引人的标题。',
-          side: 'bottom',
-          align: 'center'
-        }
-      },
-      {
-        element: '#description',
-        illustration: 'node-chapter',
-        popover: {
-          title: '故事简介',
-          description: '用几句话描述你的故事核心内容，让读者快速了解故事的主题和看点。',
-          side: 'top',
-          align: 'center'
-        }
-      },
-      {
-        element: '#genre',
-        illustration: 'branch-paths',
-        popover: {
-          title: '选择类型',
-          description: '为故事选择一个类型标签，帮助读者在发现页更快找到你的作品。',
-          side: 'top',
-          align: 'center'
-        }
-      },
-      {
-        element: '#submitBtn',
-        illustration: 'node-chapter',
-        popover: {
-          title: '创建故事',
-          description: '填好信息后点击这里创建故事，创建成功后就可以开始撰写第一个章节了！引导到此结束，祝您创作愉快！',
-          side: 'top',
-          align: 'end',
-          onNextClick: async () => {
-            await this.markTourComplete();
-            this.driver.destroy();
-          }
-        }
-      }
-    ].slice(tourStep);
+    return allSteps.slice(tourStep);
   }
 
   /**
    * AI 辅助创作页引导步骤
    */
   getCreateAiSteps() {
-    return [
+    const isMobile = window.innerWidth <= 768;
+    const steps = [
       {
-        element: '.page-header',
+        element: '.page-header, .create-ai-header, h1',
         illustration: 'tree-grow',
         popover: {
           title: 'AI 辅助创作',
@@ -275,7 +221,7 @@ class StoryTreeTour {
         popover: {
           title: '💡 智能导入立项',
           description: '如果你已经有完整的想法或故事梗概，AI 会帮你整理成规范的项目立项书，并自动推导生成章节大纲。',
-          side: 'bottom',
+          side: isMobile ? 'top' : 'bottom',
           align: 'center'
         }
       },
@@ -285,7 +231,7 @@ class StoryTreeTour {
         popover: {
           title: '📝 AI 辅助大纲',
           description: '只有模糊想法也没关系！告诉 AI 你的灵感片段，它会帮你完善世界观、角色设定和分章大纲。',
-          side: 'bottom',
+          side: isMobile ? 'top' : 'bottom',
           align: 'center'
         }
       },
@@ -318,6 +264,8 @@ class StoryTreeTour {
         }
       }
     ];
+
+    return steps;
   }
 
   /**
@@ -434,59 +382,13 @@ class StoryTreeTour {
   }
 
   /**
-   * 故事树页面引导步骤
-   */
-  getStoryTreeSteps() {
-    return [
-      {
-        element: '.tree-container',
-        popover: {
-          title: '故事树全景',
-          description: '这是故事的树状分支结构图。每个节点代表一个章节，分支代表不同的故事走向。',
-          side: 'bottom',
-          align: 'center'
-        }
-      },
-      {
-        element: '.tree-toolbar',
-        popover: {
-          title: '工具栏',
-          description: '在这里可以切换布局方式（垂直/水平/辐射）、展开折叠节点、缩放画布。',
-          side: 'bottom',
-          align: 'center'
-        }
-      },
-      {
-        element: '#layoutVertical',
-        popover: {
-          title: '布局切换',
-          description: '尝试不同的布局方式，找到最适合你浏览故事树的视角。',
-          side: 'bottom',
-          align: 'start'
-        }
-      },
-      {
-        element: '#zoomIn',
-        popover: {
-          title: '缩放控制',
-          description: '节点太多看不清？用缩放按钮调整画面大小。',
-          side: 'left',
-          align: 'center',
-          onNextClick: async () => {
-            this.driver.destroy();
-          }
-        }
-      }
-    ];
-  }
-
-  /**
    * 我的故事页引导步骤
    */
   getMyStoriesSteps() {
-    return [
+    const isMobile = window.innerWidth <= 768;
+    const steps = [
       {
-        element: '.create-story-btn',
+        element: '.create-story-btn, .btn-create, #createBtn',
         illustration: 'node-chapter',
         popover: {
           title: '创建新故事',
@@ -496,17 +398,17 @@ class StoryTreeTour {
         }
       },
       {
-        element: '.filter-tabs',
+        element: '.filter-tabs, .nav-tabs, .tabs-container',
         illustration: 'branch-paths',
         popover: {
           title: '筛选故事',
           description: '在「我创建的」和「我协作的」之间切换，快速找到你参与的故事。',
-          side: 'bottom',
+          side: isMobile ? 'top' : 'bottom',
           align: 'center'
         }
       },
       {
-        element: '#storiesContainer',
+        element: '#storiesContainer, .story-list, .stories-grid',
         illustration: 'explore',
         popover: {
           title: '故事列表',
@@ -519,6 +421,8 @@ class StoryTreeTour {
         }
       }
     ];
+
+    return steps;
   }
 
   /**
@@ -546,7 +450,8 @@ class StoryTreeTour {
       discover: '/discover.html',
       create: '/create-ai.html',
       write: '/write.html',
-      'my-stories': '/my-stories.html'
+      'my-stories': '/my-stories.html',
+      story: '/story.html'
     };
 
     const url = pageUrls[page];
@@ -706,24 +611,9 @@ class StoryTreeTour {
       localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
 
       // 同步到服务器（页面即将跳转，使用 sendBeacon 确保送达）
+      // syncProgress 会自动更新 userState.onboarding_progress
       if (window.onboardingManager) {
         window.onboardingManager.syncProgress(progress, { fireAndForget: true, useBeacon: true });
-      }
-
-      // 更新本地 userState 缓存
-      const userStateStr = localStorage.getItem('st_user_state');
-      if (userStateStr) {
-        try {
-          const userState = JSON.parse(userStateStr);
-          if (userState.onboarding_progress) {
-            if (!userState.onboarding_progress.tasks) userState.onboarding_progress.tasks = {};
-            userState.onboarding_progress.tasks[taskKey] = true;
-          } else {
-            userState.onboarding_progress = progress;
-          }
-          userState._ts = Date.now();
-          localStorage.setItem('st_user_state', JSON.stringify(userState));
-        } catch (e) { /* ignore */ }
       }
 
       // 祝贺检查：由于 markStepProgress 后通常会跳转页面，设置 pending 标志
@@ -800,13 +690,12 @@ class StoryTreeTour {
         await window.onboardingManager.syncProgress(progress);
       }
 
-      // 更新本地 userState 缓存
-      const userStateStr = localStorage.getItem('st_user_state');
-      if (userStateStr) {
+      // 更新本地 userState 缓存（仅更新 has_seen_tour，onboarding_progress 已由 syncProgress 处理）
+      const userStateStr2 = localStorage.getItem('st_user_state');
+      if (userStateStr2) {
         try {
-          const userState = JSON.parse(userStateStr);
+          const userState = JSON.parse(userStateStr2);
           userState.has_seen_tour = true;
-          userState.onboarding_progress = progress;
           userState._ts = Date.now();
           localStorage.setItem('st_user_state', JSON.stringify(userState));
         } catch (e) { /* ignore */ }
@@ -842,46 +731,6 @@ class StoryTreeTour {
         this.startTour(page);
       }, 500);
       return;
-    }
-
-    // 否则检查用户是否已看过引导
-    if (page === 'index') {
-      const shouldShow = await this.shouldShowTour();
-      if (shouldShow) {
-        this.startTour('index');
-      }
-    }
-  }
-
-  /**
-   * 检查用户是否需要看引导（仅首页调用）
-   */
-  async shouldShowTour() {
-    try {
-      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-      if (!token) {
-        console.log('[StoryTreeTour] No token found, skipping tour check');
-        return false;
-      }
-
-      const response = await fetch('/api/auth/me', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        console.error('[StoryTreeTour] /api/auth/me failed:', response.status, response.statusText);
-        return false;
-      }
-
-      const data = await response.json();
-      const hasSeen = data.user?.has_seen_tour;
-      console.log('[StoryTreeTour] has_seen_tour:', hasSeen);
-      return data.user && !hasSeen;
-    } catch (error) {
-      console.error('[StoryTreeTour] Error checking tour status:', error);
-      return false;
     }
   }
 }

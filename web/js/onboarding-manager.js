@@ -240,7 +240,7 @@ class OnboardingManager {
     // 检查是否有待显示的祝贺弹窗（跨页面跳转后触发）
     if (localStorage.getItem('st_celebration_pending')) {
       localStorage.removeItem('st_celebration_pending');
-      this.checkAndCelebrate();
+      this.tryCelebrate(null, { deferred: false });
     }
 
     // 始终增强空状态
@@ -283,11 +283,24 @@ class OnboardingManager {
    */
   showNavHelpButton(progress) {
     const navActions = document.querySelector('.nav-actions') || document.querySelector('.navbar-content');
-    if (!navActions) return;
+    if (!navActions) {
+      // 导航栏可能动态加载，延迟重试一次
+      setTimeout(() => {
+        const retryNav = document.querySelector('.nav-actions') || document.querySelector('.navbar-content');
+        if (retryNav && !document.querySelector('.st-onboarding-nav-btn')) {
+          this._createNavHelpButton(retryNav, progress);
+        }
+      }, 2000);
+      return;
+    }
 
     // 检查是否已存在
     if (document.querySelector('.st-onboarding-nav-btn')) return;
 
+    this._createNavHelpButton(navActions, progress);
+  }
+
+  _createNavHelpButton(navActions, progress) {
     const allDone = progress && this.allTasksCompleted(progress);
     const btn = document.createElement('button');
     btn.className = 'st-onboarding-nav-btn';
@@ -314,10 +327,10 @@ class OnboardingManager {
    * 增强空状态提示
    */
   enhanceEmptyStates() {
-    // 延迟执行，等待页面动态内容加载
+    // 延迟执行，等待页面动态内容加载，且避开 tour/欢迎弹窗的定时器
     setTimeout(() => {
       this._doEnhanceEmptyStates();
-    }, 2000);
+    }, 3000);
   }
 
   _doEnhanceEmptyStates() {
@@ -493,6 +506,7 @@ class OnboardingManager {
    */
   async markConceptGuideSeen() {
     const progress = this.getProgress();
+    if (progress.conceptGuideSeen) return;
     progress.conceptGuideSeen = true;
     // 同时标记任务完成
     if (!progress.tasks) progress.tasks = this.getDefaultProgress().tasks;
@@ -623,7 +637,8 @@ class OnboardingManager {
   getLocalProgress() {
     try {
       const data = localStorage.getItem('st_onboarding_progress');
-      return data ? JSON.parse(data) : null;
+      const parsed = data ? JSON.parse(data) : null;
+      return (parsed && typeof parsed === 'object') ? parsed : null;
     } catch (e) {
       return null;
     }
@@ -836,10 +851,6 @@ class OnboardingManager {
       localStorage.removeItem('st_celebration_pending');
       setTimeout(() => this.showCompletionCelebration(), 1000);
     }
-  }
-
-  checkAndCelebrate() {
-    this.tryCelebrate(null, { deferred: false });
   }
 
   /**

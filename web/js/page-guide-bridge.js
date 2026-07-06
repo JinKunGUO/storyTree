@@ -78,7 +78,7 @@
         toast.classList.remove('st-next-step-toast--visible');
         setTimeout(() => toast.remove(), 300);
       }
-    }, 8000);
+    }, 15000);
   }
 
   /**
@@ -87,6 +87,7 @@
   function showHighlight(config) {
     if (!window.driver) return;
 
+    let completed = false;
     const driverInstance = window.driver.js.driver({
       showProgress: false,
       allowClose: true,
@@ -95,9 +96,21 @@
       stageRadius: 12,
       popoverOffset: 15,
       popoverClass: 'st-highlight-only',
+      onPopoverRender: (popover) => {
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'st-highlight-next-btn';
+        nextBtn.textContent = '知道了';
+        nextBtn.addEventListener('click', () => {
+          completed = true;
+          driverInstance.destroy();
+        });
+        popover.footerButtons.appendChild(nextBtn);
+      },
       onDestroyed: () => {
-        if (config.taskKey) updateProgress(config.taskKey);
-        if (config.onComplete) config.onComplete();
+        if (completed) {
+          if (config.taskKey) updateProgress(config.taskKey);
+          if (config.onComplete) config.onComplete();
+        }
       }
     });
 
@@ -150,7 +163,9 @@
       description: '这里是你的故事管理页。点击任意故事进入详情页，然后在故事树中添加新章节并发布，让更多人看到你的创作！',
       side: 'top',
       taskKey: null, // 发布章节的标记由实际发布操作完成
-      onComplete: function() {}
+      onComplete: function() {
+        showNextStepToast('点击故事进入详情页，发布一个章节即可完成任务！', null, null);
+      }
     }
   };
 
@@ -160,8 +175,6 @@
   function waitAndTrigger() {
     const config = guideConfigs[guideType];
     if (!config) return;
-
-    clearGuideParam();
 
     let attempts = 0;
     const maxAttempts = 20;
@@ -194,6 +207,7 @@
         }
 
         if (targetElement) {
+          clearGuideParam();
           setTimeout(() => {
             showHighlight({
               element: targetElement,

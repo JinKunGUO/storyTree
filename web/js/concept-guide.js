@@ -61,8 +61,10 @@ class ConceptGuide {
     if (this.overlay) {
       this.overlay.classList.add('st-concept-fade-out');
       setTimeout(() => {
-        this.overlay.remove();
-        this.overlay = null;
+        if (this.overlay) {
+          this.overlay.remove();
+          this.overlay = null;
+        }
       }, 300);
     }
 
@@ -323,7 +325,7 @@ class ConceptGuide {
 
     // ESC 关闭
     this._escHandler = (e) => {
-      if (e.key === 'Escape') this.hide();
+      if (e.key === 'Escape' && this.isVisible) this.hide();
     };
     document.addEventListener('keydown', this._escHandler);
   }
@@ -356,8 +358,7 @@ class ConceptGuide {
     modal.classList.add('st-concept-step-transition');
 
     setTimeout(() => {
-      modal.innerHTML = this._buildHTML().match(/<div class="st-concept-modal">([\s\S]*)<\/div>\s*$/)?.[1]
-        || this._buildModalInner();
+      modal.innerHTML = this._buildModalInner();
 
       modal.classList.remove('st-concept-step-transition');
       this._bindEvents();
