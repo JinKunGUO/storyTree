@@ -56,7 +56,6 @@ class ConceptGuide {
    */
   hide() {
     if (!this.isVisible) return;
-    this.isVisible = false;
 
     if (this.overlay) {
       this.overlay.classList.add('st-concept-fade-out');
@@ -65,7 +64,10 @@ class ConceptGuide {
           this.overlay.remove();
           this.overlay = null;
         }
+        this.isVisible = false;
       }, 300);
+    } else {
+      this.isVisible = false;
     }
 
     // 仅当用户看到最后一步时才标记已看过

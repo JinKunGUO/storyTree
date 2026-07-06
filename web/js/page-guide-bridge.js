@@ -207,7 +207,6 @@
         }
 
         if (targetElement) {
-          clearGuideParam();
           setTimeout(() => {
             showHighlight({
               element: targetElement,
@@ -218,6 +217,7 @@
               taskKey: config.taskKey,
               onComplete: config.onComplete
             });
+            clearGuideParam();
           }, 800);
         }
       }
