@@ -117,7 +117,7 @@ class StoryTreeTour {
     const steps = [
       {
         element: '.navbar, .nav, .navbar-content',
-        illustration: 'tree-grow',
+        illustration: 'nav-compass',
         popover: {
           title: '欢迎来到 StoryTree！',
           description: '这里是导航栏，您可以快速访问各个功能模块。',
@@ -127,7 +127,7 @@ class StoryTreeTour {
       },
       {
         element: '.hero-actions, .hero-buttons, .btn-create',
-        illustration: 'tree-grow',
+        illustration: 'create-start',
         popover: {
           title: '开始创作',
           description: '点击这里可以立即开始创作您的第一个故事。',
@@ -209,7 +209,7 @@ class StoryTreeTour {
     const steps = [
       {
         element: '.page-header, .create-ai-header, h1',
-        illustration: 'tree-grow',
+        illustration: 'ai-spark',
         popover: {
           title: 'AI 辅助创作',
           description: '这里提供了四种 AI 辅助创作方式，根据你的创作阶段选择最合适的方式开始。',
@@ -282,7 +282,7 @@ class StoryTreeTour {
       steps.push(
         {
           element: '#panelProject',
-          illustration: 'tree-grow',
+          illustration: 'node-chapter',
           popover: {
             title: '📋 项目立项书',
             description: '立项书是故事的"蓝图"——包含故事简介、核心主题、目标读者和风格定位。AI 创作时会自动生成，你也可以随时手动编辑完善。',
@@ -496,7 +496,7 @@ class StoryTreeTour {
 
   /**
    * 获取迷你 SVG 插图（概念引导动画风格）
-   * @param {string} type - 插图类型: tree-grow | node-chapter | branch-paths | write-node | explore
+   * @param {string} type - 插图类型: tree-grow | node-chapter | branch-paths | write-node | explore | nav-compass | create-start | ai-spark
    * @returns {string} SVG HTML 字符串
    */
   _getIllustrationSVG(type) {
@@ -578,6 +578,62 @@ class StoryTreeTour {
             <circle cx="120" cy="70" r="4" fill="#00BCD4" opacity="0.7" class="st-svg-stars"/>
             <circle cx="55" cy="60" r="2.5" fill="#00BCD4" opacity="0.4" class="st-svg-stars"/>
             <circle cx="145" cy="55" r="2.5" fill="#00BCD4" opacity="0.4" class="st-svg-stars"/>
+          </g>
+        </g>
+      </svg>`,
+      'nav-compass': `<svg viewBox="0 0 200 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g class="st-anim-explore">
+          <circle cx="100" cy="55" r="38" stroke="#FF7043" stroke-width="2" fill="none" opacity="0.3"/>
+          <circle cx="100" cy="55" r="30" stroke="#FF7043" stroke-width="2" fill="none" opacity="0.5"/>
+          <g class="st-anim-delay-1">
+            <polygon points="100,30 106,55 100,50 94,55" fill="#FF7043"/>
+            <polygon points="100,80 94,55 100,60 106,55" fill="#FFAB91"/>
+          </g>
+          <circle cx="100" cy="55" r="4" fill="#D84315"/>
+          <g class="st-anim-delay-2">
+            <text x="100" y="24" text-anchor="middle" fill="#FF7043" font-size="10" font-weight="bold">N</text>
+            <text x="100" y="104" text-anchor="middle" fill="#FFAB91" font-size="9">S</text>
+            <text x="138" y="59" text-anchor="middle" fill="#FFAB91" font-size="9">E</text>
+            <text x="62" y="59" text-anchor="middle" fill="#FFAB91" font-size="9">W</text>
+          </g>
+        </g>
+      </svg>`,
+      'create-start': `<svg viewBox="0 0 200 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g class="st-anim-write">
+          <rect x="45" y="30" width="110" height="50" rx="25" fill="#4CAF50" opacity="0.15" class="st-svg-write-panel"/>
+          <rect x="45" y="30" width="110" height="50" rx="25" stroke="#4CAF50" stroke-width="2" fill="none"/>
+          <g class="st-anim-delay-1">
+            <text x="100" y="60" text-anchor="middle" fill="#4CAF50" font-size="14" font-weight="bold">✍ 创作</text>
+          </g>
+          <g class="st-anim-delay-2">
+            <circle cx="155" cy="55" r="18" fill="#4CAF50" opacity="0.2" class="st-svg-cursor"/>
+            <circle cx="155" cy="55" r="12" fill="#4CAF50" opacity="0.4" class="st-svg-cursor"/>
+            <circle cx="155" cy="55" r="6" fill="#4CAF50" class="st-svg-cursor"/>
+          </g>
+          <g class="st-anim-delay-3">
+            <path d="M100 85 L100 100" stroke="#4CAF50" stroke-width="2" stroke-dasharray="3 2" opacity="0.5"/>
+            <rect x="80" y="100" width="40" height="3" rx="1.5" fill="#4CAF50" opacity="0.3"/>
+            <rect x="85" y="106" width="30" height="3" rx="1.5" fill="#4CAF50" opacity="0.2"/>
+          </g>
+        </g>
+      </svg>`,
+      'ai-spark': `<svg viewBox="0 0 200 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g class="st-anim-node-pulse">
+          <g class="st-anim-delay-1">
+            <path d="M100 25 L105 45 L125 50 L105 55 L100 75 L95 55 L75 50 L95 45 Z" fill="#7C4DFF" opacity="0.8" class="st-svg-spark"/>
+          </g>
+          <g class="st-anim-delay-2">
+            <circle cx="60" cy="35" r="3" fill="#B388FF" opacity="0.6" class="st-svg-stars"/>
+            <circle cx="140" cy="40" r="4" fill="#B388FF" opacity="0.5" class="st-svg-stars"/>
+            <circle cx="50" cy="70" r="2.5" fill="#B388FF" opacity="0.4" class="st-svg-stars"/>
+            <circle cx="150" cy="75" r="3.5" fill="#B388FF" opacity="0.5" class="st-svg-stars"/>
+            <circle cx="75" cy="90" r="2" fill="#B388FF" opacity="0.3" class="st-svg-stars"/>
+            <circle cx="130" cy="95" r="2" fill="#B388FF" opacity="0.3" class="st-svg-stars"/>
+          </g>
+          <g class="st-anim-delay-3">
+            <rect x="70" y="85" width="60" height="20" rx="4" fill="#7C4DFF" opacity="0.12"/>
+            <rect x="80" y="92" width="40" height="2.5" rx="1" fill="#7C4DFF" opacity="0.4"/>
+            <rect x="80" y="98" width="30" height="2.5" rx="1" fill="#7C4DFF" opacity="0.3"/>
           </g>
         </g>
       </svg>`
