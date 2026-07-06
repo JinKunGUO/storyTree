@@ -24,16 +24,29 @@ class StoryTreeTour {
       stagePadding: 12,
       stageRadius: 10,
       popoverOffset: 15,
-      // 每个步骤渲染时注入"跳过引导"按钮
-      onPopoverRender: (popover) => {
-        const skipBtn = document.createElement('button');
-        skipBtn.className = 'st-tour-skip-btn';
-        skipBtn.textContent = '跳过引导';
-        skipBtn.addEventListener('click', async () => {
-          await self.markTourComplete();
-          self.driver.destroy();
-        });
-        popover.footerButtons.appendChild(skipBtn);
+      // 每个步骤渲染时注入插图 + "跳过引导"按钮
+      onPopoverRender: (popover, { config }) => {
+        const activeStep = config.steps[this.driver.getState().activeIndex];
+        const illustrationType = activeStep?.illustration;
+        if (illustrationType) {
+          const existingIll = popover.wrapper.querySelector('.st-tour-illustration');
+          if (!existingIll) {
+            const illDiv = document.createElement('div');
+            illDiv.className = 'st-tour-illustration';
+            illDiv.innerHTML = self._getIllustrationSVG(illustrationType);
+            popover.wrapper.insertBefore(illDiv, popover.title);
+          }
+        }
+        if (!popover.footerButtons.querySelector('.st-tour-skip-btn')) {
+          const skipBtn = document.createElement('button');
+          skipBtn.className = 'st-tour-skip-btn';
+          skipBtn.textContent = '跳过引导';
+          skipBtn.addEventListener('click', async () => {
+            await self.markTourComplete();
+            self.driver.destroy();
+          });
+          popover.footerButtons.appendChild(skipBtn);
+        }
       },
       onDestroyed: () => {
         // 引导结束时清理 URL 参数
@@ -57,19 +70,16 @@ class StoryTreeTour {
       return;
     }
 
-    // 验证第一步的目标元素是否存在，不存在则延迟重试一次
+    // 验证第一步的目标元素是否存在，不存在则指数退避重试
     const firstEl = steps[0].element;
     if (firstEl && !document.querySelector(firstEl)) {
-      console.warn(`[StoryTreeTour] Target element "${firstEl}" not found, retrying in 1s...`);
-      setTimeout(() => {
-        if (document.querySelector(firstEl)) {
-          this.driver.setSteps(steps);
-          this.driver.drive();
-        } else {
-          console.error(`[StoryTreeTour] Target element "${firstEl}" still not found, aborting tour.`);
-          this.clearTourParam();
-        }
-      }, 1000);
+      this._waitForElement(firstEl, 0, () => {
+        this.driver.setSteps(steps);
+        this.driver.drive();
+      }, () => {
+        console.error(`[StoryTreeTour] Target element "${firstEl}" still not found, aborting tour.`);
+        this.clearTourParam();
+      });
       return;
     }
 
@@ -107,6 +117,7 @@ class StoryTreeTour {
     return [
       {
         element: '.navbar',
+        illustration: 'tree-grow',
         popover: {
           title: '欢迎来到 StoryTree！',
           description: '这里是导航栏，您可以快速访问各个功能模块。',
@@ -116,6 +127,7 @@ class StoryTreeTour {
       },
       {
         element: '.hero-actions',
+        illustration: 'tree-grow',
         popover: {
           title: '开始创作',
           description: '点击这里可以立即开始创作您的第一个故事。',
@@ -125,6 +137,7 @@ class StoryTreeTour {
       },
       {
         element: '#storiesGrid',
+        illustration: 'explore',
         popover: {
           title: '故事广场',
           description: '这里展示了社区中的精彩故事，您可以浏览和阅读。接下来让我们去发现页看看更多内容。',
@@ -150,6 +163,7 @@ class StoryTreeTour {
     return [
       {
         element: '.search-section',
+        illustration: 'explore',
         popover: {
           title: '搜索故事',
           description: '使用搜索功能快速找到您感兴趣的故事。',
@@ -159,6 +173,7 @@ class StoryTreeTour {
       },
       {
         element: '.filter-tabs',
+        illustration: 'branch-paths',
         popover: {
           title: '筛选分类',
           description: '通过分类标签筛选不同类型的故事。接下来带你了解故事树的核心概念——分支创作！',
@@ -184,6 +199,7 @@ class StoryTreeTour {
     return [
       {
         element: '.ai-creation-banner',
+        illustration: 'tree-grow',
         popover: {
           title: '方式一：AI 辅助创作',
           description: '点击这里进入 AI 辅助创作页面，支持智能导入立项、生成大纲、经典仿写和故事模板四种方式，适合还没有明确想法的创作者。',
@@ -193,6 +209,7 @@ class StoryTreeTour {
       },
       {
         element: '#title',
+        illustration: 'node-chapter',
         popover: {
           title: '方式二：手动创建故事',
           description: '如果你已经有了想法，可以直接在下方填写故事信息。首先给你的故事起一个吸引人的标题。',
@@ -202,6 +219,7 @@ class StoryTreeTour {
       },
       {
         element: '#description',
+        illustration: 'node-chapter',
         popover: {
           title: '故事简介',
           description: '用几句话描述你的故事核心内容，让读者快速了解故事的主题和看点。',
@@ -211,6 +229,7 @@ class StoryTreeTour {
       },
       {
         element: '#genre',
+        illustration: 'branch-paths',
         popover: {
           title: '选择类型',
           description: '为故事选择一个类型标签，帮助读者在发现页更快找到你的作品。',
@@ -220,6 +239,7 @@ class StoryTreeTour {
       },
       {
         element: '#submitBtn',
+        illustration: 'node-chapter',
         popover: {
           title: '创建故事',
           description: '填好信息后点击这里创建故事，创建成功后就可以开始撰写第一个章节了！引导到此结束，祝您创作愉快！',
@@ -241,6 +261,7 @@ class StoryTreeTour {
     return [
       {
         element: '.page-header',
+        illustration: 'tree-grow',
         popover: {
           title: 'AI 辅助创作',
           description: '这里提供了四种 AI 辅助创作方式，根据你的创作阶段选择最合适的方式开始。',
@@ -250,6 +271,7 @@ class StoryTreeTour {
       },
       {
         element: '[data-method="project"]',
+        illustration: 'write-node',
         popover: {
           title: '💡 智能导入立项',
           description: '如果你已经有完整的想法或故事梗概，AI 会帮你整理成规范的项目立项书，并自动推导生成章节大纲。',
@@ -259,6 +281,7 @@ class StoryTreeTour {
       },
       {
         element: '[data-method="outline"]',
+        illustration: 'write-node',
         popover: {
           title: '📝 AI 辅助大纲',
           description: '只有模糊想法也没关系！告诉 AI 你的灵感片段，它会帮你完善世界观、角色设定和分章大纲。',
@@ -268,6 +291,7 @@ class StoryTreeTour {
       },
       {
         element: '[data-method="pastiche"]',
+        illustration: 'write-node',
         popover: {
           title: '📚 经典仿写',
           description: '基于已有作品进行仿写、续写或同人创作。AI 会分析原作风格，帮你保持一致的文风。',
@@ -277,6 +301,7 @@ class StoryTreeTour {
       },
       {
         element: '[data-method="template"]',
+        illustration: 'write-node',
         popover: {
           title: '🎯 故事模板',
           description: '新手推荐！使用预制模板快速搭建故事框架，降低创作门槛。选择一个模板即可开始。',
@@ -285,6 +310,10 @@ class StoryTreeTour {
           onNextClick: async () => {
             await this.markTourComplete();
             this.driver.destroy();
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('tour')) {
+              this.navigateToNextPage('write', 4);
+            }
           }
         }
       }
@@ -303,6 +332,7 @@ class StoryTreeTour {
       steps.push(
         {
           element: '#panelProject',
+          illustration: 'tree-grow',
           popover: {
             title: '📋 项目立项书',
             description: '立项书是故事的"蓝图"——包含故事简介、核心主题、目标读者和风格定位。AI 创作时会自动生成，你也可以随时手动编辑完善。',
@@ -312,6 +342,7 @@ class StoryTreeTour {
         },
         {
           element: '.sidebar-tab[data-tab="outline"]',
+          illustration: 'node-chapter',
           popover: {
             title: '📝 故事大纲',
             description: '大纲管理故事的章节结构、角色设定和世界观。支持多版本管理，可以在不同构思之间切换。点击此标签即可查看和编辑。',
@@ -325,6 +356,7 @@ class StoryTreeTour {
     steps.push(
       {
         element: '.chapter-title-input',
+        illustration: 'node-chapter',
         popover: {
           title: '章节标题',
           description: '为你的章节起一个吸引人的标题吧。',
@@ -334,6 +366,7 @@ class StoryTreeTour {
       },
       {
         element: '#editor',
+        illustration: 'write-node',
         popover: {
           title: '编辑器',
           description: '这是你的创作空间。支持富文本编辑，可以直接开始写作。',
@@ -343,6 +376,7 @@ class StoryTreeTour {
       },
       {
         element: '#aiSuggestBtn',
+        illustration: 'write-node',
         popover: {
           title: 'AI 续写',
           description: '写到一半没灵感？点击这里让 AI 帮你续写一小段内容，你可以选择采纳或重新生成。',
@@ -352,6 +386,7 @@ class StoryTreeTour {
       },
       {
         element: '#aiPolishBtn',
+        illustration: 'write-node',
         popover: {
           title: 'AI 润色',
           description: '选中一段文字后点击润色，AI 会优化文笔和表达，让你的文字更加流畅优美。',
@@ -361,6 +396,7 @@ class StoryTreeTour {
       },
       {
         element: '#aiIllustrationBtn',
+        illustration: 'write-node',
         popover: {
           title: 'AI 插图',
           description: '根据当前章节内容自动生成配图，让你的故事图文并茂、更具吸引力。',
@@ -370,17 +406,23 @@ class StoryTreeTour {
       },
       {
         element: '#publishBtn',
+        illustration: 'write-node',
         popover: {
           title: '发布章节',
           description: '满意后点击这里发布章节，让更多读者看到你的故事！引导到此结束，祝您创作愉快！',
           side: 'top',
           align: 'end',
           onNextClick: async () => {
-            // 仅在主 tour 流程中标记完成，独立写作引导不重复标记
             const progressStr = localStorage.getItem('st_onboarding_progress');
             const progress = progressStr ? JSON.parse(progressStr) : {};
-            if (!progress.tasks || !progress.tasks.completedTour) {
+            if (!progress.tasks) progress.tasks = {};
+            if (!progress.tasks.completedTour) {
               await this.markTourComplete();
+            }
+            progress.writeGuideSeen = true;
+            localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
+            if (window.onboardingManager) {
+              await window.onboardingManager.syncProgress(progress);
             }
             this.driver.destroy();
           }
@@ -445,6 +487,7 @@ class StoryTreeTour {
     return [
       {
         element: '.create-story-btn',
+        illustration: 'node-chapter',
         popover: {
           title: '创建新故事',
           description: '点击这里开始创建一个全新的故事。',
@@ -454,6 +497,7 @@ class StoryTreeTour {
       },
       {
         element: '.filter-tabs',
+        illustration: 'branch-paths',
         popover: {
           title: '筛选故事',
           description: '在「我创建的」和「我协作的」之间切换，快速找到你参与的故事。',
@@ -463,6 +507,7 @@ class StoryTreeTour {
       },
       {
         element: '#storiesContainer',
+        illustration: 'explore',
         popover: {
           title: '故事列表',
           description: '你的所有故事都在这里。点击任意故事卡片可以查看详情或继续创作。',
@@ -480,42 +525,14 @@ class StoryTreeTour {
    * 跳转到示例故事页面并触发概念引导
    * 先尝试获取"反三国演义"，失败则取发现页第一本故事
    */
-  async navigateToStoryForConcept() {
+  navigateToStoryForConcept() {
     // 淡出过渡效果
     document.body.style.transition = 'opacity 0.3s ease';
     document.body.style.opacity = '0';
-
-    let storyId = null;
-
-    try {
-      // 尝试搜索"反三国演义"
-      const res = await fetch('/api/stories?search=反三国演义&limit=1');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.stories && data.stories.length > 0) {
-          storyId = data.stories[0].id;
-        }
-      }
-
-      // fallback：获取发现页第一本故事
-      if (!storyId) {
-        const res2 = await fetch('/api/stories?limit=1');
-        if (res2.ok) {
-          const data2 = await res2.json();
-          if (data2.stories && data2.stories.length > 0) {
-            storyId = data2.stories[0].id;
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('[StoryTreeTour] Failed to fetch example story:', e);
-    }
-
     setTimeout(() => {
-      if (storyId) {
-        window.location.href = `/story.html?id=${storyId}&guide=concept`;
+      if (window.onboardingManager) {
+        window.onboardingManager._redirectToStoryForConcept();
       } else {
-        // 最终 fallback：跳转到创建页继续引导
         window.location.href = '/create-ai.html?tour=0';
       }
     }, 300);
@@ -547,6 +564,120 @@ class StoryTreeTour {
   /**
    * 清理 URL 中的 tour 参数
    */
+  /**
+   * 指数退避等待元素出现
+   * @param {string} selector - CSS 选择器
+   * @param {number} attempt - 当前尝试次数（内部使用）
+   * @param {Function} onFound - 找到元素后的回调
+   * @param {Function} onTimeout - 超时回调
+   * @param {number} [maxAttempts=5] - 最大重试次数
+   */
+  _waitForElement(selector, attempt, onFound, onTimeout, maxAttempts = 5) {
+    if (attempt >= maxAttempts) {
+      onTimeout();
+      return;
+    }
+    const delay = Math.min(200 * Math.pow(2, attempt), 5000); // 200ms, 400ms, 800ms, 1600ms, 3200ms
+    setTimeout(() => {
+      if (document.querySelector(selector)) {
+        onFound();
+      } else {
+        this._waitForElement(selector, attempt + 1, onFound, onTimeout, maxAttempts);
+      }
+    }, delay);
+  }
+
+  /**
+   * 获取迷你 SVG 插图（概念引导动画风格）
+   * @param {string} type - 插图类型: tree-grow | node-chapter | branch-paths | write-node | explore
+   * @returns {string} SVG HTML 字符串
+   */
+  _getIllustrationSVG(type) {
+    const illustrations = {
+      'tree-grow': `<svg viewBox="0 0 200 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g class="st-anim-tree-grow">
+          <rect x="96" y="60" width="8" height="50" rx="4" fill="#8B5E3C" class="st-svg-trunk"/>
+          <g class="st-anim-delay-1">
+            <path d="M100 60 Q60 30 30 20" stroke="#4CAF50" stroke-width="4" stroke-linecap="round" class="st-svg-branch"/>
+            <circle cx="30" cy="20" r="8" fill="#66BB6A" class="st-svg-leaf"/>
+          </g>
+          <g class="st-anim-delay-2">
+            <path d="M100 55 Q120 25 160 15" stroke="#4CAF50" stroke-width="4" stroke-linecap="round" class="st-svg-branch"/>
+            <circle cx="160" cy="15" r="8" fill="#66BB6A" class="st-svg-leaf"/>
+          </g>
+          <g class="st-anim-delay-3">
+            <path d="M100 50 Q70 40 50 50" stroke="#4CAF50" stroke-width="3" stroke-linecap="round" class="st-svg-branch"/>
+            <circle cx="50" cy="50" r="6" fill="#81C784" class="st-svg-leaf"/>
+          </g>
+          <g class="st-anim-delay-4">
+            <path d="M100 48 Q140 35 170 45" stroke="#4CAF50" stroke-width="3" stroke-linecap="round" class="st-svg-branch"/>
+            <circle cx="170" cy="45" r="6" fill="#81C784" class="st-svg-leaf"/>
+          </g>
+        </g>
+      </svg>`,
+      'node-chapter': `<svg viewBox="0 0 200 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g class="st-anim-node-pulse">
+          <circle cx="100" cy="55" r="30" fill="#FF9800" opacity="0.15" class="st-svg-pulse"/>
+          <circle cx="100" cy="55" r="22" fill="#FF9800" opacity="0.3" class="st-svg-pulse st-anim-delay-1"/>
+          <circle cx="100" cy="55" r="14" fill="#FF9800" class="st-svg-node"/>
+          <text x="100" y="60" text-anchor="middle" fill="white" font-size="12" font-weight="bold">1</text>
+        </g>
+        <g class="st-anim-delay-2">
+          <line x1="100" y1="85" x2="100" y2="105" stroke="#FF9800" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="100" cy="110" r="5" fill="#FF9800" class="st-svg-new-node"/>
+        </g>
+      </svg>`,
+      'branch-paths': `<svg viewBox="0 0 200 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g class="st-anim-branch-split">
+          <circle cx="100" cy="30" r="8" fill="#2196F3" class="st-svg-node"/>
+          <line x1="100" y1="38" x2="100" y2="55" stroke="#2196F3" stroke-width="3" stroke-linecap="round"/>
+          <g class="st-anim-delay-1">
+            <path d="M100 55 Q70 65 45 85" stroke="#2196F3" stroke-width="3" stroke-linecap="round" class="st-svg-path-a"/>
+            <circle cx="45" cy="85" r="7" fill="#42A5F5" class="st-svg-leaf"/>
+          </g>
+          <g class="st-anim-delay-2">
+            <path d="M100 55 Q130 65 155 85" stroke="#2196F3" stroke-width="3" stroke-linecap="round" class="st-svg-path-b"/>
+            <circle cx="155" cy="85" r="7" fill="#42A5F5" class="st-svg-leaf"/>
+          </g>
+          <g class="st-anim-delay-3">
+            <line x1="100" y1="55" x2="100" y2="85" stroke="#2196F3" stroke-width="3" stroke-linecap="round" class="st-svg-path-c"/>
+            <circle cx="100" cy="85" r="7" fill="#42A5F5" class="st-svg-leaf"/>
+          </g>
+        </g>
+      </svg>`,
+      'write-node': `<svg viewBox="0 0 200 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g class="st-anim-write">
+          <rect x="30" y="20" width="140" height="80" rx="8" fill="#9C27B0" opacity="0.1" class="st-svg-write-panel"/>
+          <rect x="30" y="20" width="140" height="80" rx="8" stroke="#9C27B0" stroke-width="2" fill="none"/>
+          <g class="st-anim-delay-1">
+            <rect x="45" y="35" width="80" height="4" rx="2" fill="#9C27B0" opacity="0.5"/>
+            <rect x="45" y="45" width="110" height="3" rx="1.5" fill="#9C27B0" opacity="0.3"/>
+            <rect x="45" y="53" width="90" height="3" rx="1.5" fill="#9C27B0" opacity="0.3"/>
+            <rect x="45" y="61" width="100" height="3" rx="1.5" fill="#9C27B0" opacity="0.3"/>
+          </g>
+          <g class="st-anim-delay-2">
+            <rect x="135" y="35" width="20" height="4" rx="2" fill="#9C27B0" opacity="0.7" class="st-svg-cursor"/>
+          </g>
+        </g>
+      </svg>`,
+      'explore': `<svg viewBox="0 0 200 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g class="st-anim-explore">
+          <circle cx="100" cy="55" r="35" stroke="#00BCD4" stroke-width="2" stroke-dasharray="4 3" opacity="0.5"/>
+          <circle cx="100" cy="55" r="6" fill="#00BCD4" class="st-svg-person"/>
+          <g class="st-anim-delay-1">
+            <circle cx="70" cy="40" r="4" fill="#00BCD4" opacity="0.7" class="st-svg-stars"/>
+            <circle cx="130" cy="35" r="3" fill="#00BCD4" opacity="0.5" class="st-svg-stars"/>
+            <circle cx="85" cy="75" r="3.5" fill="#00BCD4" opacity="0.6" class="st-svg-stars"/>
+            <circle cx="120" cy="70" r="4" fill="#00BCD4" opacity="0.7" class="st-svg-stars"/>
+            <circle cx="55" cy="60" r="2.5" fill="#00BCD4" opacity="0.4" class="st-svg-stars"/>
+            <circle cx="145" cy="55" r="2.5" fill="#00BCD4" opacity="0.4" class="st-svg-stars"/>
+          </g>
+        </g>
+      </svg>`
+    };
+    return illustrations[type] || '';
+  }
+
   clearTourParam() {
     const url = new URL(window.location.href);
     url.searchParams.delete('tour');
@@ -574,15 +705,10 @@ class StoryTreeTour {
       progress.lastUpdated = new Date().toISOString();
       localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
 
-      // 同步到服务器（异步，不阻塞页面跳转）
-      fetch('/api/auth/onboarding-progress', {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ progress })
-      }).catch(() => {});
+      // 同步到服务器（页面即将跳转，使用 sendBeacon 确保送达）
+      if (window.onboardingManager) {
+        window.onboardingManager.syncProgress(progress, { fireAndForget: true, useBeacon: true });
+      }
 
       // 更新本地 userState 缓存
       const userStateStr = localStorage.getItem('st_user_state');
@@ -601,10 +727,8 @@ class StoryTreeTour {
       }
 
       // 祝贺检查：由于 markStepProgress 后通常会跳转页面，设置 pending 标志
-      const requiredTasks = ['completedTour', 'browsedDiscover', 'viewedStoryTree', 'createdStory', 'publishedChapter'];
-      const allDone = requiredTasks.every(key => progress.tasks[key] === true);
-      if (allDone && !localStorage.getItem('st_celebration_shown')) {
-        localStorage.setItem('st_celebration_pending', 'true');
+      if (window.onboardingManager) {
+        window.onboardingManager.tryCelebrate(progress, { deferred: true });
       }
     } catch (e) {
       console.warn('[StoryTreeTour] markStepProgress failed:', e);
@@ -622,6 +746,30 @@ class StoryTreeTour {
         return;
       }
 
+      // 防重：检查是否已标记过
+      const userStateStr = localStorage.getItem('st_user_state');
+      if (userStateStr) {
+        try {
+          const userState = JSON.parse(userStateStr);
+          if (userState.has_seen_tour) {
+            // 已标记过，仅更新本地 progress，跳过 API 调用
+            const progressStr = localStorage.getItem('st_onboarding_progress');
+            let progress = progressStr ? JSON.parse(progressStr) : {};
+            if (!progress.tasks) progress.tasks = {};
+            progress.tasks.completedTour = true;
+            progress.tourCompleted = true;
+            if (this.currentPage === 'write') {
+              progress.writeGuideSeen = true;
+            }
+            localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
+            if (window.onboardingManager) {
+              await window.onboardingManager.syncProgress(progress);
+            }
+            return;
+          }
+        } catch (e) { /* ignore */ }
+      }
+
       // 1. 标记 has_seen_tour
       const response = await fetch('/api/auth/tour-complete', {
         method: 'POST',
@@ -636,27 +784,21 @@ class StoryTreeTour {
       }
 
       // 2. 同步更新 onboarding progress 中的相关任务
-      // tour 流程经过了 index → discover → story(concept) → create-ai/write
-      // 因此完成 tour 时，browsedDiscover 和 viewedStoryTree 也应标记为完成
+      // 只标记 tour 完成本身，不代标记其他任务（browsedDiscover/viewedStoryTree 等由各自触发点独立标记）
       const progressStr = localStorage.getItem('st_onboarding_progress');
       let progress = progressStr ? JSON.parse(progressStr) : {};
       if (!progress.tasks) progress.tasks = {};
       progress.tasks.completedTour = true;
-      progress.tasks.browsedDiscover = true;
-      progress.tasks.viewedStoryTree = true;
       progress.tourCompleted = true;
-      progress.conceptGuideSeen = true;
+      if (this.currentPage === 'write') {
+        progress.writeGuideSeen = true;
+      }
       localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
 
       // 同步到服务器
-      await fetch('/api/auth/onboarding-progress', {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ progress })
-      });
+      if (window.onboardingManager) {
+        await window.onboardingManager.syncProgress(progress);
+      }
 
       // 更新本地 userState 缓存
       const userStateStr = localStorage.getItem('st_user_state');
@@ -668,6 +810,11 @@ class StoryTreeTour {
           userState._ts = Date.now();
           localStorage.setItem('st_user_state', JSON.stringify(userState));
         } catch (e) { /* ignore */ }
+      }
+
+      // 同步内存中的 userState，使 markTourSeen 的防重检查生效
+      if (window.onboardingManager && window.onboardingManager.userState) {
+        window.onboardingManager.userState.has_seen_tour = true;
       }
     } catch (error) {
       console.error('[StoryTreeTour] Error marking tour complete:', error);

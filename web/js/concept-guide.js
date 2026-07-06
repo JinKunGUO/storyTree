@@ -66,8 +66,8 @@ class ConceptGuide {
       }, 300);
     }
 
-    // 标记已看过
-    if (window.onboardingManager) {
+    // 仅当用户看到最后一步时才标记已看过
+    if (this.currentStep >= this.totalSteps - 1 && window.onboardingManager) {
       window.onboardingManager.markConceptGuideSeen();
     }
   }

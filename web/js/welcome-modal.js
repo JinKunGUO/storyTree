@@ -29,10 +29,10 @@ class WelcomeModal {
     document.body.appendChild(this.overlay);
     this._bindEvents();
 
-    // 仅首次自动弹出时标记 has_seen_tour，防止每次进首页都弹出
+    // 仅首次自动弹出时标记 welcome 已看过，防止每次进首页都弹出
+    // markTourSeen 移至用户点击"开始体验引导"按钮时调用，避免仅看到弹窗就被标记
     if (options.isAutoShow && window.onboardingManager) {
       window.onboardingManager.markWelcomeSeen();
-      window.onboardingManager.markTourSeen();
     }
   }
 
@@ -157,6 +157,10 @@ class WelcomeModal {
     if (startBtn) {
       startBtn.addEventListener('click', () => {
         this.hide();
+        // 用户主动点击"开始体验引导"时才标记 has_seen_tour
+        if (window.onboardingManager) {
+          window.onboardingManager.markTourSeen();
+        }
         // 启动分步高亮引导
         setTimeout(() => {
           if (window.storyTreeTour) {
@@ -171,6 +175,9 @@ class WelcomeModal {
     if (skipBtn) {
       skipBtn.addEventListener('click', () => {
         this.hide();
+        if (window.onboardingManager) {
+          window.onboardingManager.markTourSeen();
+        }
       });
     }
 
@@ -191,7 +198,11 @@ class WelcomeModal {
         } else if (taskKey === 'viewedStoryTree') {
           this.hide();
           // 跳转到示例故事页面触发概念引导
-          this._navigateToStoryForConcept();
+          if (window.onboardingManager) {
+            window.onboardingManager._redirectToStoryForConcept();
+          } else {
+            this._navigateToStoryForConcept();
+          }
         } else if (href) {
           this.hide();
           window.location.href = href;
@@ -203,6 +214,9 @@ class WelcomeModal {
     this.overlay.addEventListener('click', (e) => {
       if (e.target === this.overlay) {
         this.hide();
+        if (window.onboardingManager) {
+          window.onboardingManager.markTourSeen();
+        }
       }
     });
 
@@ -210,6 +224,9 @@ class WelcomeModal {
     this._escHandler = (e) => {
       if (e.key === 'Escape') {
         this.hide();
+        if (window.onboardingManager) {
+          window.onboardingManager.markTourSeen();
+        }
         document.removeEventListener('keydown', this._escHandler);
       }
     };

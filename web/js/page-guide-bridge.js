@@ -31,32 +31,12 @@
       let progress = progressStr ? JSON.parse(progressStr) : {};
       if (!progress.tasks) progress.tasks = {};
       progress.tasks[taskKey] = true;
+      progress.lastUpdated = new Date().toISOString();
       localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
 
-      // 同步到服务器（包裹在 { progress } 中，与 onboarding-manager 格式一致）
-      await fetch('/api/auth/onboarding-progress', {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ progress })
-      });
-
-      // 更新本地 userState 缓存
-      const userStateStr = localStorage.getItem('st_user_state');
-      if (userStateStr) {
-        try {
-          const userState = JSON.parse(userStateStr);
-          if (userState.onboarding_progress) {
-            if (!userState.onboarding_progress.tasks) userState.onboarding_progress.tasks = {};
-            userState.onboarding_progress.tasks[taskKey] = true;
-          } else {
-            userState.onboarding_progress = progress;
-          }
-          userState._ts = Date.now();
-          localStorage.setItem('st_user_state', JSON.stringify(userState));
-        } catch (e) { /* ignore */ }
+      // 统一通过 OnboardingManager.syncProgress 同步
+      if (window.onboardingManager) {
+        await window.onboardingManager.syncProgress(progress);
       }
     } catch (e) {
       console.warn('[PageGuideBridge] Failed to update progress:', e);
@@ -64,7 +44,7 @@
 
     // 检查是否所有任务完成，弹出祝贺
     if (window.onboardingManager) {
-      window.onboardingManager.checkAndCelebrate();
+      window.onboardingManager.tryCelebrate(progress, { deferred: false });
     }
   }
 
@@ -251,14 +231,25 @@
     let progress = progressStr ? JSON.parse(progressStr) : {};
     if (progress.tasks && progress.tasks.browsedDiscover) return;
 
+    let fired = false;
+    let remaining = 8000;
+    let startTime = Date.now();
     let timer = setTimeout(() => {
-      updateProgress('browsedDiscover');
-    }, 8000);
+      if (!fired) { fired = true; updateProgress('browsedDiscover'); }
+    }, remaining);
 
-    // 如果用户离开页面就取消
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) clearTimeout(timer);
-    }, { once: true });
+      if (fired) return;
+      if (document.hidden) {
+        clearTimeout(timer);
+        remaining -= (Date.now() - startTime);
+      } else if (remaining > 0) {
+        startTime = Date.now();
+        timer = setTimeout(() => {
+          if (!fired) { fired = true; updateProgress('browsedDiscover'); }
+        }, remaining);
+      }
+    });
   }
 
   if (document.readyState === 'loading') {

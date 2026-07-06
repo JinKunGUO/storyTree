@@ -18,6 +18,40 @@
   padding: 20px 24px !important;
 }
 
+/* ===== 弹窗内 SVG 插图（混合方案：概念引导风格 mini 版） ===== */
+.st-tour-illustration {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: -8px 0 12px 0;
+  padding: 16px 12px;
+  background: linear-gradient(135deg, #f0f7f6 0%, #e8f0ef 50%, #f5faf9 100%);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.st-tour-illustration svg {
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+}
+
+/* 复用概念引导的动画关键帧 */
+.st-tour-illustration .st-svg-trunk { animation: stSvgDraw 0.8s ease forwards; }
+.st-tour-illustration .st-svg-branch { animation: stSvgDraw 0.8s ease 0.2s forwards; opacity: 0; }
+.st-tour-illustration .st-svg-leaf { animation: stSvgPop 0.4s ease 0.6s forwards; opacity: 0; }
+.st-tour-illustration .st-svg-pulse { animation: stSvgPulse 2s ease-in-out infinite; }
+.st-tour-illustration .st-svg-node-group { animation: stSvgFadeSlide 0.6s ease 0.3s forwards; opacity: 0; }
+.st-tour-illustration .st-svg-path-a { animation: stSvgDraw 0.6s ease 0.4s forwards; opacity: 0; }
+.st-tour-illustration .st-svg-path-b { animation: stSvgDraw 0.6s ease 0.6s forwards; opacity: 0; }
+.st-tour-illustration .st-svg-path-c { animation: stSvgDraw 0.6s ease 0.8s forwards; opacity: 0; }
+.st-tour-illustration .st-svg-new-line { animation: stSvgDraw 0.5s ease 0.3s forwards; opacity: 0; }
+.st-tour-illustration .st-svg-new-node { animation: stSvgPop 0.4s ease 0.6s forwards; opacity: 0; }
+.st-tour-illustration .st-svg-write-panel { animation: stSvgFadeSlide 0.6s ease forwards; }
+.st-tour-illustration .st-svg-cursor { animation: stSvgBlink 1s step-end infinite; }
+.st-tour-illustration .st-svg-stars { animation: stSvgTwinkle 1.5s ease-in-out infinite; }
+.st-tour-illustration .st-svg-person { animation: stSvgFloat 3s ease-in-out infinite; }
+
 /* ===== 弹窗标题 ===== */
 .driver-popover-title {
   font-family: 'Noto Serif SC', 'Source Han Serif SC', serif !important;
@@ -346,5 +380,14 @@
 .driver-popover.st-highlight-only ~ .driver-overlay,
 .driver-popover.st-highlight-only {
   transition-duration: 0.1s !important;
+}
+
+/* ===== 暗色模式适配 ===== */
+[data-theme="dark"] .st-tour-illustration {
+  background: linear-gradient(135deg, #1a2a28 0%, #1e302e 50%, #1a2a28 100%);
+}
+
+[data-theme="dark"] .st-tour-illustration svg text {
+  fill: #e0e0e0;
 }
 

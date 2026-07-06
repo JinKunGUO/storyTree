@@ -62,7 +62,7 @@
 
         if (!alreadyCreated) {
           actionsDiv.innerHTML = `
-            <a href="/create-ai.html?guide=create" class="st-concept-highlight-cta">
+            <a href="/create-ai.html?tour=0" class="st-concept-highlight-cta">
               <i class="fas fa-pen-fancy"></i> 创建第一个故事
             </a>
             <button class="st-concept-highlight-dismiss">稍后再说</button>
@@ -130,7 +130,7 @@
             <strong>概念引导完成！</strong>
             <span>接下来试试创建你的第一个故事？</span>
           </div>
-          <a href="/create-ai.html?guide=create" class="st-next-step-btn">去创建</a>
+          <a href="/create-ai.html?tour=0" class="st-next-step-btn">去创建</a>
           <button class="st-next-step-close" aria-label="关闭">&times;</button>
         </div>
       `;
@@ -173,39 +173,17 @@
       progress.conceptGuideSeen = true;
       if (!progress.tasks) progress.tasks = {};
       progress.tasks.viewedStoryTree = true;
+      progress.lastUpdated = new Date().toISOString();
       localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
 
-      // 同步到服务器
-      await fetch('/api/auth/onboarding-progress', {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ progress })
-      });
-
-      // 更新本地 userState 缓存
-      const userStateStr = localStorage.getItem('st_user_state');
-      if (userStateStr) {
-        try {
-          const userState = JSON.parse(userStateStr);
-          userState.onboarding_progress = progress;
-          userState._ts = Date.now();
-          localStorage.setItem('st_user_state', JSON.stringify(userState));
-        } catch (e) { /* ignore */ }
+      // 统一通过 OnboardingManager.syncProgress 同步
+      if (window.onboardingManager) {
+        await window.onboardingManager.syncProgress(progress);
       }
 
       // 祝贺检查：当前页面不跳转，直接触发检查
-      if (window.onboardingManager && typeof window.onboardingManager.checkAndCelebrate === 'function') {
-        window.onboardingManager.checkAndCelebrate();
-      } else {
-        // fallback: 如果 onboardingManager 不可用，设置 pending 标志
-        const requiredTasks = ['completedTour', 'browsedDiscover', 'viewedStoryTree', 'createdStory', 'publishedChapter'];
-        const allDone = requiredTasks.every(key => progress.tasks[key] === true);
-        if (allDone && !localStorage.getItem('st_celebration_shown')) {
-          localStorage.setItem('st_celebration_pending', 'true');
-        }
+      if (window.onboardingManager) {
+        window.onboardingManager.tryCelebrate(progress, { deferred: false });
       }
     } catch (e) {
       console.warn('[StoryConceptBridge] Failed to mark concept guide seen:', e);
@@ -217,6 +195,9 @@
    */
   function patchConceptGuideHide() {
     if (!window.conceptGuide) return;
+    // 避免与 onboarding-manager 的 patch 冲突
+    if (window.conceptGuide._patchedByManager || window.conceptGuide._patchedByBridge) return;
+    window.conceptGuide._patchedByBridge = true;
 
     const originalHide = window.conceptGuide.hide.bind(window.conceptGuide);
     window.conceptGuide.hide = function() {
@@ -261,6 +242,14 @@
       }
     }, 500);
   }
+
+  // 暴露关键函数供 onboarding-manager 等外部调用
+  window.StoryConceptBridge = {
+    patchConceptGuideHide,
+    highlightTreeChart,
+    showNextStepPrompt,
+    markConceptGuideSeen
+  };
 
   // DOM 就绪后启动
   if (document.readyState === 'loading') {

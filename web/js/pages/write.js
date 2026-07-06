@@ -656,10 +656,8 @@
                           }).catch(() => {});
                         }
                         // 检查是否所有任务完成，标记待显示（跳转后在下一页展示）
-                        if (window.onboardingManager && window.onboardingManager.allTasksCompleted(progress)) {
-                          if (!localStorage.getItem('st_celebration_shown')) {
-                            localStorage.setItem('st_celebration_pending', 'true');
-                          }
+                        if (window.onboardingManager) {
+                          window.onboardingManager.tryCelebrate(progress, { deferred: true });
                         }
                       }
                     } catch (e) { /* ignore */ }
@@ -816,12 +814,8 @@
                             body: JSON.stringify({ progress })
                           }).catch(() => {});
                         }
-                        // 检查是否所有任务完成
-                        if (window.onboardingManager && window.onboardingManager.allTasksCompleted(progress)) {
-                          if (!localStorage.getItem('st_celebration_shown')) {
-                            localStorage.setItem('st_celebration_pending', 'true');
-                          }
-                        }
+                        // 页面即将跳转，defer 祝贺到目标页面
+                        window.onboardingManager && window.onboardingManager.tryCelebrate(progress, { deferred: true });
                       }
                     } catch (e) { /* ignore */ }
 

@@ -438,9 +438,8 @@
                                   body: JSON.stringify({ progress })
                                 }).catch(() => {});
                                 // 页面即将 reload，设置 pending 标志让 reload 后显示祝贺
-                                const allDone = progress.tasks && Object.values(progress.tasks).every(v => v === true);
-                                if (allDone && !localStorage.getItem('st_celebration_shown')) {
-                                  localStorage.setItem('st_celebration_pending', 'true');
+                                if (window.onboardingManager) {
+                                  window.onboardingManager.tryCelebrate(progress, { deferred: true });
                                 }
                               }
                             } catch (e) { /* ignore */ }

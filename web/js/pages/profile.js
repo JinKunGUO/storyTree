@@ -319,6 +319,7 @@
             localStorage.removeItem('st_user_state');
             localStorage.removeItem('st_onboarding_progress');
             localStorage.removeItem('st_celebration_shown');
+            localStorage.removeItem('st_celebration_pending');
             localStorage.removeItem('st_just_registered');
             window.location.href = '/login.html';
         }
