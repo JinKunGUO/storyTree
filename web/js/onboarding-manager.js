@@ -314,6 +314,8 @@ class OnboardingManager {
       if (allDone) {
         // story 页面使用 conceptGuide 而非 driver.js tour
         if (this.currentPage === 'story' && window.conceptGuide) {
+          // 重新 patch hide，确保关闭后能高亮分支图
+          this._patchConceptGuideHideForStory();
           window.conceptGuide.show();
         } else if (window.storyTreeTour) {
           window.storyTreeTour.startTour(this.currentPage);

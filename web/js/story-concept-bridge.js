@@ -10,8 +10,6 @@
   const urlParams = new URLSearchParams(window.location.search);
   const hasGuideParam = urlParams.get('guide');
 
-  if (hasGuideParam !== 'concept') return;
-
   // 清理 URL 中的 guide 参数（保留 id 参数）
   function clearGuideParam() {
     const url = new URL(window.location.href);
@@ -221,13 +219,16 @@
     }, 500);
   }
 
-  // 暴露关键函数供 onboarding-manager 等外部调用
+  // 暴露关键函数供 onboarding-manager 等外部调用（不依赖 guide 参数）
   window.StoryConceptBridge = {
     patchConceptGuideHide,
     highlightTreeChart,
     showNextStepPrompt,
     markConceptGuideSeen
   };
+
+  // 仅在有 guide=concept 参数时自动触发引导流程
+  if (hasGuideParam !== 'concept') return;
 
   // DOM 就绪后启动
   if (document.readyState === 'loading') {
