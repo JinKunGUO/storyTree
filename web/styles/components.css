@@ -2004,8 +2004,8 @@
 }
 
 .ai-skeleton-label {
-  flex: 0 0 auto;
-  max-width: 40%;
+  flex: 1 1 0;
+  min-width: 0;
   font-size: 13px;
   line-height: 20px;
   text-align: center;
@@ -2090,12 +2090,12 @@
 }
 
 [data-theme="dark"] .ai-thinking-panel {
-  background: var(--st-surface-secondary, #1e293b);
+  background: #141426;
   border-color: var(--st-border-color, #334155);
 }
 
 [data-theme="dark"] .ai-thinking-text {
-  color: var(--st-text-secondary, #b8b8c8);
+  color: #d0d0e0;
 }
 
 /* 移动端 thinking 面板 */
