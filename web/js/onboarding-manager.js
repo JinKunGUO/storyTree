@@ -204,9 +204,10 @@ class OnboardingManager {
         if (window.storyTreeTour) {
           window.storyTreeTour.startTour('write');
           // 标记已看过写作引导
-          progress.writeGuideSeen = true;
-          localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
-          this.syncProgress(progress, { fireAndForget: true });
+          const freshProgress = this.getProgress();
+          freshProgress.writeGuideSeen = true;
+          this.saveLocalProgress(freshProgress);
+          this.syncProgress(freshProgress, { fireAndForget: true });
         }
       }, 2000);
       return;
@@ -551,7 +552,8 @@ class OnboardingManager {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        keepalive: true
       });
 
       // 更新本地缓存

@@ -1,10 +1,10 @@
 {
   "name": "storytree",
-  "version": "1.0.307",
+  "version": "1.0.309",
   "codename": "M4-BranchCompare",
   "stage": "MVP+",
-  "buildDate": "2026-07-06T09:56:21.363Z",
-  "commitHash": "1cdc95f",
+  "buildDate": "2026-07-06T12:43:13.309Z",
+  "commitHash": "pending",
   "branch": "main",
   "repository": "storytree",
   "description": "分支式AI协作小说创作平台",
@@ -2002,7 +2002,20 @@
         "版本更新"
       ]
     },
+    "1.0.308": {
+      "date": "2026-07-06",
+      "changes": [
+        "修复新手引导三个bug: welcome-modal任务项点击未调用markTourSeen; tour主流程未调用markTourComplete; 场景4b进度写入模式不一致",
+        "为markTourSeen和markTourComplete的fetch添加keepalive选项,防止页面跳转中断请求"
+      ]
+    },
     "1.0.307": {
+      "date": "2026-07-06",
+      "changes": [
+        "版本更新"
+      ]
+    },
+    "1.0.309": {
       "date": "2026-07-06",
       "changes": [
         "版本更新"

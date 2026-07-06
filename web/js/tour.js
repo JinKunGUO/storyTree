@@ -143,9 +143,10 @@ class StoryTreeTour {
           description: '这里展示了社区中的精彩故事，您可以浏览和阅读。接下来让我们去发现页看看更多内容。',
           side: isMobile ? 'bottom' : 'top',
           align: 'center',
-          onNextClick: () => {
+          onNextClick: async () => {
             // 完成首页引导，增量标记 completedTour
             this.markStepProgress('completedTour');
+            await this.markTourComplete();
             this.navigateToNextPage('discover', 1);
           }
         }
@@ -182,9 +183,10 @@ class StoryTreeTour {
           description: '通过分类标签筛选不同类型的故事。接下来带你了解故事树的核心概念——分支创作！',
           side: isMobile ? 'top' : 'bottom',
           align: 'center',
-          onNextClick: () => {
+          onNextClick: async () => {
             // 完成发现页引导，增量标记 browsedDiscover
             this.markStepProgress('browsedDiscover');
+            await this.markTourComplete();
             this.navigateToStoryForConcept();
           }
         }
@@ -666,7 +668,8 @@ class StoryTreeTour {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        keepalive: true
       });
 
       if (!response.ok) {

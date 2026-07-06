@@ -189,6 +189,9 @@ class WelcomeModal {
         const href = item.dataset.href;
 
         if (taskKey === 'completedTour') {
+          if (window.onboardingManager) {
+            window.onboardingManager.markTourSeen();
+          }
           this.hide();
           setTimeout(() => {
             if (window.storyTreeTour) {
@@ -196,11 +199,17 @@ class WelcomeModal {
             }
           }, 300);
         } else if (taskKey === 'viewedStoryTree') {
+          if (window.onboardingManager) {
+            window.onboardingManager.markTourSeen();
+          }
           this.hide();
           if (window.onboardingManager) {
             window.onboardingManager._redirectToStoryForConcept();
           }
         } else if (href) {
+          if (window.onboardingManager) {
+            window.onboardingManager.markTourSeen();
+          }
           this.hide();
           window.location.href = href;
         }
