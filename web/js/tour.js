@@ -535,20 +535,24 @@ class StoryTreeTour {
         </g>
       </svg>`,
       'branch-paths': `<svg viewBox="0 0 200 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <g class="st-anim-branch-split">
-          <circle cx="100" cy="30" r="8" fill="#2196F3" class="st-svg-node"/>
-          <line x1="100" y1="38" x2="100" y2="55" stroke="#2196F3" stroke-width="3" stroke-linecap="round"/>
+        <g class="st-anim-write">
           <g class="st-anim-delay-1">
-            <path d="M100 55 Q70 65 45 85" stroke="#2196F3" stroke-width="3" stroke-linecap="round" class="st-svg-path-a"/>
-            <circle cx="45" cy="85" r="7" fill="#42A5F5" class="st-svg-leaf"/>
+            <rect x="20" y="35" width="45" height="22" rx="11" fill="#2196F3" opacity="0.15" stroke="#2196F3" stroke-width="1.5"/>
+            <text x="42" y="50" text-anchor="middle" fill="#2196F3" font-size="9" opacity="0.6">全部</text>
           </g>
           <g class="st-anim-delay-2">
-            <path d="M100 55 Q130 65 155 85" stroke="#2196F3" stroke-width="3" stroke-linecap="round" class="st-svg-path-b"/>
-            <circle cx="155" cy="85" r="7" fill="#42A5F5" class="st-svg-leaf"/>
+            <rect x="72" y="35" width="45" height="22" rx="11" fill="#2196F3" class="st-svg-cursor"/>
+            <text x="94" y="50" text-anchor="middle" fill="white" font-size="9" font-weight="bold">奇幻</text>
           </g>
           <g class="st-anim-delay-3">
-            <line x1="100" y1="55" x2="100" y2="85" stroke="#2196F3" stroke-width="3" stroke-linecap="round" class="st-svg-path-c"/>
-            <circle cx="100" cy="85" r="7" fill="#42A5F5" class="st-svg-leaf"/>
+            <rect x="124" y="35" width="45" height="22" rx="11" fill="#2196F3" opacity="0.15" stroke="#2196F3" stroke-width="1.5"/>
+            <text x="146" y="50" text-anchor="middle" fill="#2196F3" font-size="9" opacity="0.6">悬疑</text>
+          </g>
+          <g class="st-anim-delay-1">
+            <line x1="94" y1="62" x2="94" y2="75" stroke="#2196F3" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+            <rect x="65" y="78" width="58" height="14" rx="4" fill="#2196F3" opacity="0.08"/>
+            <rect x="72" y="82" width="44" height="2.5" rx="1" fill="#2196F3" opacity="0.3"/>
+            <rect x="72" y="87" width="30" height="2.5" rx="1" fill="#2196F3" opacity="0.2"/>
           </g>
         </g>
       </svg>`,

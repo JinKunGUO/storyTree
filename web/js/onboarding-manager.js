@@ -312,8 +312,10 @@ class OnboardingManager {
       : '<i class="fas fa-lightbulb"></i><span class="st-onboarding-nav-badge"></span>';
     btn.addEventListener('click', () => {
       if (allDone) {
-        // 所有任务完成后，点击重新查看当前页引导
-        if (window.storyTreeTour) {
+        // story 页面使用 conceptGuide 而非 driver.js tour
+        if (this.currentPage === 'story' && window.conceptGuide) {
+          window.conceptGuide.show();
+        } else if (window.storyTreeTour) {
           window.storyTreeTour.startTour(this.currentPage);
         }
       } else if (window.welcomeModal) {
