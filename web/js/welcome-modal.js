@@ -203,16 +203,11 @@ class WelcomeModal {
           }
           this.hide();
           setTimeout(() => {
-            if (window.storyTreeTour && window.onboardingManager) {
-              const page = window.onboardingManager.currentPage;
-              const steps = window.storyTreeTour.getStepsForPage(page);
-              if (steps && steps.length > 0) {
-                window.storyTreeTour.startTour(page);
-              } else {
-                window.storyTreeTour.startTour('index');
-              }
-            } else if (window.storyTreeTour) {
+            const currentPage = window.onboardingManager?.currentPage;
+            if (currentPage === 'index' && window.storyTreeTour) {
               window.storyTreeTour.startTour('index');
+            } else {
+              window.location.href = '/index.html?tour=0';
             }
           }, 300);
         } else if (taskKey === 'viewedStoryTree') {
