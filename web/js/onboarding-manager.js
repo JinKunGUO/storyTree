@@ -283,11 +283,11 @@ class OnboardingManager {
    * 已登录用户显示；所有任务完成后改为帮助图标，不再显示红点
    */
   showNavHelpButton(progress) {
-    const navActions = document.querySelector('.nav-actions') || document.querySelector('.navbar-content');
+    const navActions = document.querySelector('.nav-menu') || document.querySelector('.nav-actions') || document.querySelector('.navbar-content');
     if (!navActions) {
       // 导航栏可能动态加载，延迟重试一次
       setTimeout(() => {
-        const retryNav = document.querySelector('.nav-actions') || document.querySelector('.navbar-content');
+        const retryNav = document.querySelector('.nav-menu') || document.querySelector('.nav-actions') || document.querySelector('.navbar-content');
         if (retryNav && !document.querySelector('.st-onboarding-nav-btn')) {
           this._createNavHelpButton(retryNav, progress);
         }
@@ -304,12 +304,13 @@ class OnboardingManager {
   _createNavHelpButton(navActions, progress) {
     const allDone = progress && this.allTasksCompleted(progress);
     const btn = document.createElement('button');
-    btn.className = 'st-onboarding-nav-btn';
+    btn.className = 'st-onboarding-nav-btn nav-link';
     btn.title = allDone ? '帮助' : '新手任务';
     btn.setAttribute('aria-label', allDone ? '帮助' : '新手引导帮助');
+    btn.setAttribute('role', 'menuitem');
     btn.innerHTML = allDone
-      ? '<i class="fas fa-question-circle"></i>'
-      : '<i class="fas fa-lightbulb"></i><span class="st-onboarding-nav-badge"></span>';
+      ? '<i class="fas fa-question-circle" aria-hidden="true"></i><span class="nav-help-label">帮助</span>'
+      : '<i class="fas fa-lightbulb" aria-hidden="true"></i><span class="nav-help-label">新手指引</span><span class="st-onboarding-nav-badge"></span>';
     btn.addEventListener('click', () => {
       if (window.welcomeModal) {
         window.welcomeModal.show();
@@ -321,7 +322,13 @@ class OnboardingManager {
       }
     });
 
-    navActions.appendChild(btn);
+    // 插入到"用户"和"退出"之间
+    const logoutLink = navActions.querySelector('#logoutLink');
+    if (logoutLink) {
+      navActions.insertBefore(btn, logoutLink);
+    } else {
+      navActions.appendChild(btn);
+    }
   }
 
   /**

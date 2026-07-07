@@ -212,11 +212,21 @@
   transition: all 0.2s ease;
   font-size: 1.1rem;
   line-height: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--st-space-2);
+  text-decoration: none;
 }
 
 .st-onboarding-nav-btn:hover {
   background: #f0f4f3;
   color: #2d5d5a;
+  text-decoration: none;
+}
+
+/* PC端隐藏文字标签，仅显示图标 */
+.st-onboarding-nav-btn .nav-help-label {
+  display: none;
 }
 
 .st-onboarding-nav-badge {
@@ -527,6 +537,21 @@
   .st-progress-card-action:hover {
     background: #1a2e2d;
     border-color: #2d5d5a;
+  }
+}
+
+/* ===== 导航菜单内帮助按钮的移动端适配 ===== */
+@media (max-width: 1023px) {
+  .nav-menu .st-onboarding-nav-btn {
+    width: 100%;
+    padding: var(--st-space-3) var(--st-space-4);
+    font-size: var(--st-text-base);
+    justify-content: flex-start;
+  }
+
+  /* 移动端展开菜单时显示文字标签 */
+  .nav-menu .st-onboarding-nav-btn .nav-help-label {
+    display: inline;
   }
 }
 
