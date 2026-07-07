@@ -58,13 +58,14 @@ class WelcomeModal {
     const tasks = this._getTaskList(progress);
     const completedCount = tasks.filter(t => t.completed).length;
     const totalCount = tasks.length;
+    const allDone = completedCount === totalCount;
 
     return `
       <div class="st-welcome-modal" role="dialog" aria-labelledby="st-welcome-title" aria-modal="true">
         <div class="st-welcome-header">
           <img src="/assets/logo.png" alt="StoryTree" class="st-welcome-logo" onerror="this.style.display='none'">
-          <h2 class="st-welcome-title" id="st-welcome-title">欢迎来到 StoryTree！</h2>
-          <p class="st-welcome-subtitle">在这里，每个故事都是一棵树。你可以创作、分支、协作，让故事生长出无限可能。</p>
+          <h2 class="st-welcome-title" id="st-welcome-title">${allDone ? '新手任务' : '欢迎来到 StoryTree！'}</h2>
+          <p class="st-welcome-subtitle">${allDone ? `所有任务已完成！点击任务可重新查看对应引导。` : '在这里，每个故事都是一棵树。你可以创作、分支、协作，让故事生长出无限可能。'}</p>
         </div>
 
         <ul class="st-task-list" aria-label="新手任务清单">
@@ -86,7 +87,7 @@ class WelcomeModal {
 
         <div class="st-welcome-footer">
           <button class="st-welcome-btn-primary" id="stWelcomeStart">
-            ${completedCount === 0 ? '开始体验引导' : `继续探索 (${completedCount}/${totalCount})`}
+            ${completedCount === 0 ? '开始体验引导' : allDone ? '重新体验引导' : `继续探索 (${completedCount}/${totalCount})`}
           </button>
           <button class="st-welcome-btn-secondary" id="stWelcomeSkip">
             ${completedCount === 0 ? '跳过，自己探索' : '关闭'}
@@ -161,9 +162,17 @@ class WelcomeModal {
         if (window.onboardingManager) {
           window.onboardingManager.markTourSeen();
         }
-        // 启动分步高亮引导
+        // 启动分步高亮引导：优先启动当前页面的 tour，而非强制跳到 index
         setTimeout(() => {
-          if (window.storyTreeTour) {
+          if (window.storyTreeTour && window.onboardingManager) {
+            const page = window.onboardingManager.currentPage;
+            const steps = window.storyTreeTour.getStepsForPage(page);
+            if (steps && steps.length > 0) {
+              window.storyTreeTour.startTour(page);
+            } else {
+              window.storyTreeTour.startTour('index');
+            }
+          } else if (window.storyTreeTour) {
             window.storyTreeTour.startTour('index');
           }
         }, 300);
@@ -194,7 +203,15 @@ class WelcomeModal {
           }
           this.hide();
           setTimeout(() => {
-            if (window.storyTreeTour) {
+            if (window.storyTreeTour && window.onboardingManager) {
+              const page = window.onboardingManager.currentPage;
+              const steps = window.storyTreeTour.getStepsForPage(page);
+              if (steps && steps.length > 0) {
+                window.storyTreeTour.startTour(page);
+              } else {
+                window.storyTreeTour.startTour('index');
+              }
+            } else if (window.storyTreeTour) {
               window.storyTreeTour.startTour('index');
             }
           }, 300);
