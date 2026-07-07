@@ -256,6 +256,7 @@ class StoryTreeTour {
           side: 'top',
           align: 'center',
           onNextClick: async () => {
+            this.markStepProgress('createdStory');
             await this.markTourComplete();
             this.driver.destroy();
             const urlParams = new URLSearchParams(window.location.search);
@@ -363,16 +364,17 @@ class StoryTreeTour {
           side: 'top',
           align: 'end',
           onNextClick: async () => {
-            const progressStr = localStorage.getItem('st_onboarding_progress');
-            const progress = progressStr ? JSON.parse(progressStr) : {};
-            if (!progress.tasks) progress.tasks = {};
-            if (!progress.tasks.completedTour) {
+            this.markStepProgress('publishedChapter');
+            if (!window.onboardingManager || !window.onboardingManager.getProgress().tasks?.completedTour) {
               await this.markTourComplete();
-            }
-            progress.writeGuideSeen = true;
-            localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
-            if (window.onboardingManager) {
-              await window.onboardingManager.syncProgress(progress);
+            } else {
+              // 已标记过 tour 完成，仅更新 writeGuideSeen
+              if (window.onboardingManager) {
+                const p = window.onboardingManager.getProgress();
+                p.writeGuideSeen = true;
+                window.onboardingManager.saveLocalProgress(p);
+                await window.onboardingManager.syncProgress(p);
+              }
             }
             this.driver.destroy();
           }
@@ -661,8 +663,13 @@ class StoryTreeTour {
       const token = localStorage.getItem('token') || sessionStorage.getItem('token');
       if (!token) return;
 
-      const progressStr = localStorage.getItem('st_onboarding_progress');
-      let progress = progressStr ? JSON.parse(progressStr) : {};
+      // 使用 onboarding-manager 的 getProgress 确保合并 server + local
+      const progress = window.onboardingManager
+        ? window.onboardingManager.getProgress()
+        : (() => {
+            const s = localStorage.getItem('st_onboarding_progress');
+            return s ? JSON.parse(s) : { tasks: {} };
+          })();
       if (!progress.tasks) progress.tasks = {};
 
       // 已标记则跳过
@@ -670,15 +677,16 @@ class StoryTreeTour {
 
       progress.tasks[taskKey] = true;
       progress.lastUpdated = new Date().toISOString();
-      localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
 
-      // 同步到服务器（页面即将跳转，使用 sendBeacon 确保送达）
-      // syncProgress 会自动更新 userState.onboarding_progress
       if (window.onboardingManager) {
-        window.onboardingManager.syncProgress(progress, { fireAndForget: true, useBeacon: true });
+        window.onboardingManager.saveLocalProgress(progress);
+        // 用 fetch + fireAndForget 而非 sendBeacon（sendBeacon 无法设置 Auth header）
+        window.onboardingManager.syncProgress(progress, { fireAndForget: true });
+      } else {
+        localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
       }
 
-      // 祝贺检查：由于 markStepProgress 后通常会跳转页面，设置 pending 标志
+      // 祝贺检查
       if (window.onboardingManager) {
         window.onboardingManager.tryCelebrate(progress, { deferred: true });
       }
@@ -705,17 +713,23 @@ class StoryTreeTour {
           const userState = JSON.parse(userStateStr);
           if (userState.has_seen_tour) {
             // 已标记过，仅更新本地 progress，跳过 API 调用
-            const progressStr = localStorage.getItem('st_onboarding_progress');
-            let progress = progressStr ? JSON.parse(progressStr) : {};
+            const progress = window.onboardingManager
+              ? window.onboardingManager.getProgress()
+              : (() => {
+                  const s = localStorage.getItem('st_onboarding_progress');
+                  return s ? JSON.parse(s) : { tasks: {} };
+                })();
             if (!progress.tasks) progress.tasks = {};
             progress.tasks.completedTour = true;
             progress.tourCompleted = true;
             if (this.currentPage === 'write') {
               progress.writeGuideSeen = true;
             }
-            localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
             if (window.onboardingManager) {
+              window.onboardingManager.saveLocalProgress(progress);
               await window.onboardingManager.syncProgress(progress);
+            } else {
+              localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
             }
             return;
           }
@@ -738,15 +752,23 @@ class StoryTreeTour {
 
       // 2. 同步更新 onboarding progress 中的相关任务
       // 只标记 tour 完成本身，不代标记其他任务（browsedDiscover/viewedStoryTree 等由各自触发点独立标记）
-      const progressStr = localStorage.getItem('st_onboarding_progress');
-      let progress = progressStr ? JSON.parse(progressStr) : {};
+      const progress = window.onboardingManager
+        ? window.onboardingManager.getProgress()
+        : (() => {
+            const s = localStorage.getItem('st_onboarding_progress');
+            return s ? JSON.parse(s) : { tasks: {} };
+          })();
       if (!progress.tasks) progress.tasks = {};
       progress.tasks.completedTour = true;
       progress.tourCompleted = true;
       if (this.currentPage === 'write') {
         progress.writeGuideSeen = true;
       }
-      localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
+      if (window.onboardingManager) {
+        window.onboardingManager.saveLocalProgress(progress);
+      } else {
+        localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
+      }
 
       // 同步到服务器
       if (window.onboardingManager) {

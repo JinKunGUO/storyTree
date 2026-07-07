@@ -370,7 +370,12 @@
         },
         conceptGuideSeen: false
       };
-      localStorage.setItem('st_onboarding_progress', JSON.stringify(defaultProgress));
+      if (window.onboardingManager) {
+        window.onboardingManager.saveLocalProgress(defaultProgress);
+        window.onboardingManager.syncProgress(defaultProgress, { fireAndForget: true });
+      } else {
+        localStorage.setItem('st_onboarding_progress', JSON.stringify(defaultProgress));
+      }
       localStorage.removeItem('st_celebration_shown');
       localStorage.removeItem('st_user_state');
 

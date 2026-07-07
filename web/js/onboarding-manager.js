@@ -671,19 +671,15 @@ class OnboardingManager {
 
     const body = JSON.stringify({ progress });
 
-    if (options.useBeacon && navigator.sendBeacon) {
-      const blob = new Blob([body], { type: 'application/json' });
-      navigator.sendBeacon(`/api/auth/onboarding-progress?token=${encodeURIComponent(token)}`, blob);
-      return Promise.resolve();
-    }
-
+    // 使用 fetch + keepalive 替代 sendBeacon（sendBeacon 无法设置 Auth header）
     const promise = fetch('/api/auth/onboarding-progress', {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
-      body
+      body,
+      keepalive: true
     }).catch(error => {
       console.error('[OnboardingManager] 同步进度失败:', error);
     });

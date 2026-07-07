@@ -423,20 +423,29 @@
 
                             // 标记新手任务：发布第一个章节
                             try {
-                              const progressStr = localStorage.getItem('st_onboarding_progress');
-                              let progress = progressStr ? JSON.parse(progressStr) : {};
+                              const progress = window.onboardingManager
+                                ? window.onboardingManager.getProgress()
+                                : (() => {
+                                    const s = localStorage.getItem('st_onboarding_progress');
+                                    return s ? JSON.parse(s) : { tasks: {} };
+                                  })();
                               if (!progress.tasks) progress.tasks = {};
                               if (!progress.tasks.publishedChapter) {
                                 progress.tasks.publishedChapter = true;
                                 // 发布章节必然意味着已创建故事和了解概念
                                 if (!progress.tasks.createdStory) progress.tasks.createdStory = true;
                                 if (!progress.tasks.viewedStoryTree) progress.tasks.viewedStoryTree = true;
-                                localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
-                                fetch('/api/auth/onboarding-progress', {
-                                  method: 'PUT',
-                                  headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ progress })
-                                }).catch(() => {});
+                                if (window.onboardingManager) {
+                                  window.onboardingManager.saveLocalProgress(progress);
+                                  window.onboardingManager.syncProgress(progress, { fireAndForget: true });
+                                } else {
+                                  localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
+                                  fetch('/api/auth/onboarding-progress', {
+                                    method: 'PUT',
+                                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ progress })
+                                  }).catch(() => {});
+                                }
                                 // 页面即将 reload，设置 pending 标志让 reload 后显示祝贺
                                 if (window.onboardingManager) {
                                   window.onboardingManager.tryCelebrate(progress, { deferred: true });

@@ -1786,17 +1786,26 @@ async function handleManualCreate() {
 
     // 标记新手任务
     try {
-      const progressStr = localStorage.getItem('st_onboarding_progress');
-      let progress = progressStr ? JSON.parse(progressStr) : {};
+      const progress = window.onboardingManager
+        ? window.onboardingManager.getProgress()
+        : (() => {
+            const s = localStorage.getItem('st_onboarding_progress');
+            return s ? JSON.parse(s) : { tasks: {} };
+          })();
       if (!progress.tasks) progress.tasks = {};
       if (!progress.tasks.createdStory) {
         progress.tasks.createdStory = true;
-        localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
-        fetch('/api/auth/onboarding-progress', {
-          method: 'PUT',
-          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ progress })
-        }).catch(() => {});
+        if (window.onboardingManager) {
+          window.onboardingManager.saveLocalProgress(progress);
+          window.onboardingManager.syncProgress(progress, { fireAndForget: true });
+        } else {
+          localStorage.setItem('st_onboarding_progress', JSON.stringify(progress));
+          fetch('/api/auth/onboarding-progress', {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ progress })
+          }).catch(() => {});
+        }
         // 祝贺检查：页面即将跳转，设置 pending
         if (window.onboardingManager) {
           window.onboardingManager.tryCelebrate(progress, { deferred: true });
