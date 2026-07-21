@@ -161,7 +161,7 @@ async function generateWithAI(systemPrompt, userPrompt, retries = 3) {
       const requestBody = {
         model: AI_MODEL,
         messages,
-        max_tokens: 4000,
+        max_tokens: 8000,
         temperature: 0.85,
         top_p: 0.9,
         stream: true,
@@ -355,7 +355,7 @@ async function generateStoryTree(template, opts) {
   "title": "故事标题（8字以内，吸引人）",
   "description": "故事简介（50-100字，交代背景和悬念）",
   "rootChapter": {
-    "title": "章节标题（不要加"第X章"，只写章节名，如"命运的岔路"）",
+    "title": "章节标题（不要加「第X章」，只写章节名，如「命运的岔路」）",
     "summary": "章节内容概要（30字）"
   }
 }`;
@@ -506,11 +506,11 @@ async function generateContinuation(parentNode, outline, sortOrder) {
 - 承接前文情节，自然推进故事发展
 - 600-1000字
 - 结尾可以留下小悬念或情绪转折
-- 标题只写章节名，不要加"第X章"前缀（如"幽林抉择"而非"第二章 幽林抉择"）
+- 标题只写章节名，不要加「第X章」前缀（如「幽林抉择」而非「第二章 幽林抉择」）
 
 请以 JSON 格式返回（不要加 markdown 代码块标记）：
 {
-  "title": "章节标题（不要加"第X章"，只写章节名）",
+  "title": "章节标题（不要加「第X章」，只写章节名）",
   "summary": "本章内容概要（30字）",
   "content": "本章正文（600-1000字）"
 }`;
@@ -561,13 +561,13 @@ async function generateBranchOutline(parentNode, outline, branchCount) {
 当前节点：${parentNode.title}
 当前节点概要：${parentNode.summary}
 
-要求：标题只写章节名，不要加"第X章"前缀
+要求：标题只写章节名，不要加「第X章」前缀
 
 请以 JSON 格式返回（不要加 markdown 代码块标记）：
 {
   "branches": [
     ${Array.from({ length: branchCount }, (_, i) => `{
-      "title": "分支${i + 1}标题（简洁有吸引力，不要加"第X章"）",
+      "title": "分支${i + 1}标题（简洁有吸引力，不要加「第X章」）",
       "summary": "分支${i + 1}走向概要（30字）"
     }`).join(',\n    ')}
   ]
@@ -603,11 +603,11 @@ async function generateBranchContent(parentNode, outline, branchInfo, branchInde
 - 有明确的情节推进和情绪转折
 - 600-1000字
 - 结尾可以是一个小高潮或新悬念
-- 标题只写章节名，不要加"第X章"前缀
+- 标题只写章节名，不要加「第X章」前缀
 
 请以 JSON 格式返回（不要加 markdown 代码块标记）：
 {
-  "title": "章节标题（不要加"第X章"，只写章节名）",
+  "title": "章节标题（不要加「第X章」，只写章节名）",
   "summary": "本章内容概要（30字）",
   "content": "本章正文（600-1000字）"
 }`;
@@ -625,7 +625,7 @@ async function generateBranchContent(parentNode, outline, branchInfo, branchInde
       summary: result.summary || result.content.substring(0, 30),
       path: childPath,
       depth: parentNode.depth + 1,
-      sortOrder: branchIndex - 1,
+      sortOrder: branchIndex,
       parentId: null,
       dbId: null,
       children: [],
@@ -639,7 +639,7 @@ async function generateBranchContent(parentNode, outline, branchInfo, branchInde
     summary: branchInfo.summary,
     path: childPath,
     depth: parentNode.depth + 1,
-    sortOrder: branchIndex - 1,
+    sortOrder: branchIndex,
     parentId: null,
     dbId: null,
     children: [],

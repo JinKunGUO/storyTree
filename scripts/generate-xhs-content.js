@@ -149,7 +149,7 @@ async function generateWithAI(systemPrompt, userPrompt, retries = 3) {
       const requestBody = {
         model: AI_MODEL,
         messages,
-        max_tokens: 2000,
+        max_tokens: 3000,
         temperature: 0.9,
         top_p: 0.95,
         stream: true,
@@ -471,7 +471,17 @@ async function generateStoryRecommendation(story, siteUrl) {
 
 async function generateDailyStory(story, siteUrl) {
   const rootNode = getRootNode(story);
-  const branchCount = new Set(story.nodes.filter(n => n.parent_id).map(n => n.parent_id)).size;
+  // 正确计算分支点数：拥有 2+ 子节点的父节点数量
+  const parentCounts = new Map();
+  for (const n of story.nodes) {
+    if (n.parent_id) {
+      parentCounts.set(n.parent_id, (parentCounts.get(n.parent_id) || 0) + 1);
+    }
+  }
+  let branchCount = 0;
+  for (const [, c] of parentCounts) {
+    if (c >= 2) branchCount++;
+  }
   const storyLink = `${siteUrl}/story.html?id=${story.id}`;
 
   const prompt = `你是一个小红书内容运营专家，擅长写日常更新笔记。
