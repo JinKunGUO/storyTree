@@ -726,10 +726,17 @@
                 
                 // API返回 {story: {...}, nodes: [...]}
                 const chapters = data.nodes;
-                const currentIndex = chapters.findIndex(c => c.id === parseInt(currentChapterId));
+                const currentChapterIdNum = parseInt(currentChapterId);
+                const currentIndex = chapters.findIndex(c => c.id === currentChapterIdNum);
 
-                // 上一章
-                const prevChapter = currentIndex > 0 ? chapters[currentIndex - 1] : null;
+                // 构建树结构，判断当前节点是否有子节点
+                const hasChildren = chapters.some(c => c.parent_id === currentChapterIdNum);
+
+                // 上一章：跳转到父节点（如果存在）
+                const currentNode = chapters[currentIndex];
+                const prevChapter = (currentNode && currentNode.parent_id)
+                    ? chapters.find(c => c.id === currentNode.parent_id)
+                    : null;
                 prevChapterId = prevChapter ? prevChapter.id : null;
                 const prevBtns = [
                     document.getElementById('prevChapterBtn'),
@@ -745,22 +752,36 @@
                     }
                 });
 
-                // 下一章
-                const nextChapter = currentIndex < chapters.length - 1 ? chapters[currentIndex + 1] : null;
-                nextChapterId = nextChapter ? nextChapter.id : null;
+                // 下一章：方案 B — 只有有子节点时才启用，叶子节点禁用
                 const nextBtns = [
                     document.getElementById('nextChapterBtn'),
                     document.getElementById('nextChapterBtnBottom')
                 ];
-                
-                nextBtns.forEach(btn => {
-                    if (nextChapter) {
-                        btn.disabled = false;
-                        btn.onclick = () => window.location.href = `/chapter.html?id=${nextChapter.id}`;
-                    } else {
+
+                if (hasChildren) {
+                    // 有子节点：下一章跳转到第一个子节点
+                    const childNodes = chapters.filter(c => c.parent_id === currentChapterIdNum);
+                    // 按 sort_order 排序
+                    childNodes.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+                    const nextChapter = childNodes[0] || null;
+                    nextChapterId = nextChapter ? nextChapter.id : null;
+                    
+                    nextBtns.forEach(btn => {
+                        if (nextChapter) {
+                            btn.disabled = false;
+                            btn.onclick = () => window.location.href = `/chapter.html?id=${nextChapter.id}`;
+                        } else {
+                            btn.disabled = true;
+                        }
+                    });
+                } else {
+                    // 叶子节点：禁用下一章，显示提示
+                    nextChapterId = null;
+                    nextBtns.forEach(btn => {
                         btn.disabled = true;
-                    }
-                });
+                        btn.title = '已到当前分支结尾，返回分支点可选择其他分支';
+                    });
+                }
 
                 // 返回按钮
                 document.getElementById('backBtn').onclick = () => {
@@ -1716,8 +1737,14 @@
                 if (response.ok) {
                     const data = await response.json();
                     if (data.siblings && data.siblings.length > 0) {
-                        // 有同级分支，显示对比按钮
-                        document.getElementById('compareBranchesBtn').style.display = 'block';
+                        // 有同级分支，显示对比按钮并闪烁
+                        const btn = document.getElementById('compareBranchesBtn');
+                        btn.style.display = 'block';
+                        btn.classList.add('compare-btn-flash');
+                        // 闪烁结束后移除动画类
+                        setTimeout(() => {
+                            btn.classList.remove('compare-btn-flash');
+                        }, 3000);
                     }
                 }
             } catch (error) {

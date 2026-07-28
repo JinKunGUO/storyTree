@@ -153,6 +153,29 @@
             background: var(--st-primary-light);
         }
 
+        .compare-btn-flash {
+            animation: compare-btn-pulse 0.5s ease-in-out 6;
+        }
+
+        @keyframes compare-btn-pulse {
+            0%, 100% {
+                background: none;
+                color: var(--st-gray-500);
+                transform: scale(1);
+            }
+            50% {
+                background: var(--st-primary-light);
+                color: var(--st-primary);
+                transform: scale(1.2);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .compare-btn-flash {
+                animation: none;
+            }
+        }
+
         .toolbar-btn.publish-draft-btn {
             background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%);
             color: white;
