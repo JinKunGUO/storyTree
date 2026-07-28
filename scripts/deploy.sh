@@ -33,6 +33,7 @@ log_info()    { echo -e "${BLUE}[INFO]${NC} $1"; }
 log_success() { echo -e "${GREEN}[OK]${NC} $1"; }
 log_warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error()   { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
+log_error_msg() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # ===================================
 # 环境检查
@@ -325,7 +326,10 @@ health_check() {
     MAX_RETRIES=6
     RETRY=0
     while [ $RETRY -lt $MAX_RETRIES ]; do
-        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:3001/health 2>/dev/null || echo "000")
+        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:3001/health 2>/dev/null)
+        if [ -z "$HTTP_STATUS" ] || [ "$HTTP_STATUS" = "000" ]; then
+            HTTP_STATUS="000"
+        fi
         if [ "$HTTP_STATUS" = "200" ]; then
             log_success "健康检查通过（HTTP $HTTP_STATUS）"
             return 0
@@ -336,9 +340,13 @@ health_check() {
     done
 
     # 最终失败时打印更多诊断信息
-    log_error "健康检查失败！诊断信息："
-    log_error "  curl 响应: $(curl -s --max-time 5 http://localhost:3001/health 2>&1)"
-    log_error "  PM2 状态: $(pm2 show $PM2_APP_NAME 2>&1 | grep -E 'status|uptime|restarts')"
+    log_error_msg "健康检查失败！诊断信息："
+    log_error_msg "  curl 响应: $(curl -s --max-time 5 http://localhost:3001/health 2>&1)"
+    log_error_msg "  PM2 状态: $(pm2 show $PM2_APP_NAME 2>&1 | grep -E 'status|uptime|restarts')"
+    log_error_msg "  PM2 最近日志（最后 30 行）:"
+    pm2 logs $PM2_APP_NAME --nostream --lines 30 2>&1 | while IFS= read -r line; do
+        echo -e "${RED}[ERROR]${NC}   $line"
+    done
     log_error "  请查看完整日志：pm2 logs $PM2_APP_NAME"
 }
 
