@@ -1612,6 +1612,7 @@
             noSiblingsMessage.style.display = 'none';
             selectorContainer.style.display = 'none';
             compareGrid.style.display = 'none';
+            document.getElementById('compareBranchAction').style.display = 'none';
 
             // 显示模态框
             modal.classList.add('active');
@@ -1717,6 +1718,17 @@
 
                 compareGrid.style.opacity = '1';
 
+                // 显示"切换到此分支"按钮
+                const switchAction = document.getElementById('compareBranchAction');
+                const switchBtn = document.getElementById('switchBranchBtn');
+                if (switchAction && switchBtn) {
+                    switchAction.style.display = 'block';
+                    switchBtn.onclick = () => {
+                        closeCompareModal();
+                        window.location.href = `/chapter.html?id=${siblingId}`;
+                    };
+                }
+
             } catch (error) {
                 console.error('加载对比分支错误:', error);
                 showError(error.message);
@@ -1744,7 +1756,7 @@
                         // 闪烁结束后移除动画类
                         setTimeout(() => {
                             btn.classList.remove('compare-btn-flash');
-                        }, 3000);
+                        }, 1500);
                     }
                 }
             } catch (error) {

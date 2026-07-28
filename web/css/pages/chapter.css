@@ -154,7 +154,7 @@
         }
 
         .compare-btn-flash {
-            animation: compare-btn-pulse 0.5s ease-in-out 6;
+            animation: compare-btn-pulse 0.5s ease-in-out 3;
         }
 
         @keyframes compare-btn-pulse {
@@ -1847,5 +1847,40 @@
         body.theme-sepia .pr-indicator-text {
             background: rgba(139, 119, 92, 0.1);
             color: rgba(139, 119, 92, 0.7);
+        }
+
+        /* 切换分支按钮 */
+        .compare-panel-action {
+            padding: 0 16px 16px;
+            text-align: center;
+        }
+
+        .btn-switch-branch {
+            background: linear-gradient(135deg, var(--st-primary-500), var(--st-primary-600));
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: var(--st-radius-full, 9999px);
+            font-size: 14px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-switch-branch:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-switch-branch:active {
+            transform: translateY(0);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .btn-switch-branch {
+                background: linear-gradient(135deg, var(--st-primary-400), var(--st-primary-500));
+            }
         }
 
