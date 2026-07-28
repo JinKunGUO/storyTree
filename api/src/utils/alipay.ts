@@ -21,14 +21,20 @@ const ALIPAY_CONFIG = {
   timeout: 30000, // 30 秒超时
 };
 
-// 初始化 SDK
-const alipaySdk = new AlipaySdk({
-  appId: ALIPAY_CONFIG.appId,
-  privateKey: ALIPAY_CONFIG.privateKey,
-  alipayPublicKey: ALIPAY_CONFIG.alipayPublicKey,
-  gateway: ALIPAY_CONFIG.gateway,
-  timeout: ALIPAY_CONFIG.timeout,
-});
+// 懒加载 SDK 实例（避免模块加载时因缺少 appId 而崩溃）
+let _alipaySdk: AlipaySdk | null = null;
+function getAlipaySdk(): AlipaySdk {
+  if (!_alipaySdk) {
+    _alipaySdk = new AlipaySdk({
+      appId: ALIPAY_CONFIG.appId,
+      privateKey: ALIPAY_CONFIG.privateKey,
+      alipayPublicKey: ALIPAY_CONFIG.alipayPublicKey,
+      gateway: ALIPAY_CONFIG.gateway,
+      timeout: ALIPAY_CONFIG.timeout,
+    });
+  }
+  return _alipaySdk;
+}
 
 /**
  * 创建手机网站支付订单
@@ -62,7 +68,7 @@ export async function createWapPay(params: {
     formData.addField('returnUrl', returnUrl);
     formData.addField('notifyUrl', notifyUrl);
 
-    const result = alipaySdk.pageExec('alipay.trade.wap.pay', {
+    const result = getAlipaySdk().pageExec('alipay.trade.wap.pay', {
       method: 'GET',
       bizContent: {},
       returnUrl,
@@ -91,7 +97,7 @@ export async function createQrPay(params: {
   const { orderId, subject, totalAmount } = params;
 
   try {
-    const result = await alipaySdk.exec('alipay.trade.precreate', {
+    const result = await getAlipaySdk().exec('alipay.trade.precreate', {
       bizContent: {
         outTradeNo: orderId,
         totalAmount: totalAmount.toFixed(2),
@@ -123,7 +129,7 @@ export async function queryOrderStatus(orderId: string): Promise<{
   tradeNo: string;
 } | null> {
   try {
-    const result = await alipaySdk.exec('alipay.trade.query', {
+    const result = await getAlipaySdk().exec('alipay.trade.query', {
       bizContent: {
         outTradeNo: orderId,
       },
@@ -153,7 +159,7 @@ export async function queryOrderStatus(orderId: string): Promise<{
 export function verifyNotify(notifyData: any): boolean {
   try {
     // v3.x checkNotifySign(postData, raw?) - postData 中包含 sign 字段
-    const verifyResult = alipaySdk.checkNotifySign(notifyData);
+    const verifyResult = getAlipaySdk().checkNotifySign(notifyData);
     
     return verifyResult;
   } catch (error) {
@@ -197,7 +203,7 @@ export async function createRefund(params: {
   const { orderId, refundAmount, refundReason } = params;
 
   try {
-    const result = await alipaySdk.exec('alipay.trade.refund', {
+    const result = await getAlipaySdk().exec('alipay.trade.refund', {
       bizContent: {
         outTradeNo: orderId,
         refundAmount: refundAmount.toFixed(2),
