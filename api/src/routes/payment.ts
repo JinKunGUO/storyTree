@@ -3,9 +3,10 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../index';
 import { addPoints } from '../utils/points';
 import crypto from 'crypto';
-import { upgradeMembership } from '../utils/membership';
+import { upgradeMembership, MEMBERSHIP_TIERS } from '../utils/membership';
 import { wsServer } from '../utils/websocket';
 import { JWT_SECRET } from '../utils/auth';
+import { verifyNotify as verifyAlipayNotify } from '../utils/alipay';
 
 const router = Router();
 
@@ -25,59 +26,81 @@ const getUserId = (req: any): number | null => {
 };
 
 /**
- * 会员套餐配置
+ * 支付成功后的订单处理逻辑（mock/wxpay/alipay 三种支付方式共用）
+ * 包含幂等检查：订单状态必须为 pending 才会处理，否则直接返回已处理
+ * @param orderId 商户订单号
+ * @param paymentMethod 支付方式标识 ('mock' | 'wxpay' | 'alipay')
+ * @param transactionId 第三方交易号（可选）
+ * @returns { success: boolean; message: string; alreadyProcessed?: boolean }
  */
-const MEMBERSHIP_PLANS = {
-  trial: {
-    name: '体验会员',
-    price: 9.9,
-    duration: 7, // 天
-    tier: 'trial'
-  },
-  monthly: {
-    name: '月度会员',
-    price: 39,
-    duration: 30,
-    tier: 'monthly'
-  },
-  quarterly: {
-    name: '季度会员',
-    price: 99,
-    duration: 90,
-    tier: 'quarterly'
-  },
-  yearly: {
-    name: '年度会员',
-    price: 388,
-    duration: 365,
-    tier: 'yearly'
-  },
-  enterprise: {
-    name: '企业版/创作团队版',
-    price: 999,
-    duration: 365,
-    tier: 'enterprise',
-    maxAccounts: 5
+async function processPaymentSuccess(
+  orderId: string,
+  paymentMethod: string,
+  transactionId?: string
+): Promise<{ success: boolean; message: string; alreadyProcessed?: boolean }> {
+  const order = await prisma.orders.findUnique({ where: { id: orderId } });
+  if (!order) {
+    return { success: false, message: '订单不存在' };
   }
-};
+
+  if (order.status !== 'pending') {
+    return { success: true, message: '订单已处理', alreadyProcessed: true };
+  }
+
+  await prisma.orders.update({
+    where: { id: orderId },
+    data: {
+      status: 'paid',
+      payment_method: paymentMethod,
+      paid_at: new Date(),
+      transaction_id: transactionId || null,
+    },
+  });
+
+  if (order.type === 'subscription' && order.tier) {
+    await upgradeMembership(
+      order.user_id,
+      order.tier,
+      order.id,
+      order.amount,
+      order.original_amount || order.amount,
+      order.discount_code || undefined,
+    );
+  } else if (order.type === 'points' && order.points) {
+    await addPoints(
+      order.user_id,
+      order.points,
+      'purchase',
+      '充值积分',
+      parseInt(orderId.split('_')[1] || '0', 10),
+    );
+  }
+
+  wsServer.sendToUser(order.user_id, 'payment:status', {
+    orderId,
+    status: 'paid',
+    type: order.type,
+    amount: order.amount,
+    points: order.points,
+  });
+
+  return { success: true, message: '支付成功' };
+}
 
 /**
- * 订阅套餐配置（向后兼容）
+ * 会员套餐配置（从 MEMBERSHIP_TIERS 派生，确保单一数据源）
  */
-const SUBSCRIPTION_PLANS = {
-  monthly: {
-    name: '月度会员',
-    price: 28,
-    duration: 30, // 天
-    bonusPoints: 0
-  },
-  yearly: {
-    name: '年度会员',
-    price: 268,
-    duration: 365,
-    bonusPoints: 1000
-  }
-};
+const MEMBERSHIP_PLANS = Object.fromEntries(
+  Object.entries(MEMBERSHIP_TIERS)
+    .filter(([key]) => key !== 'free')
+    .map(([key, config]) => [key, {
+      name: config.name,
+      price: config.price,
+      duration: config.duration,
+      tier: key,
+      ...(key === 'enterprise' ? { maxAccounts: (config as any).maxAccounts } : {}),
+    }])
+);
 
 /**
  * 积分充值套餐
@@ -105,7 +128,7 @@ const POINTS_PACKAGES = {
  */
 router.get('/plans', (req, res) => {
   res.json({
-    subscriptions: Object.entries(SUBSCRIPTION_PLANS).map(([key, plan]) => ({
+    subscriptions: Object.entries(MEMBERSHIP_PLANS).map(([key, plan]: [string, any]) => ({
       id: key,
       ...plan
     })),
@@ -225,7 +248,8 @@ router.post('/points/create', async (req, res) => {
         amount: pkg.price,
         points: pkg.points,
         status: 'pending',
-        payment_method: null
+        payment_method: null,
+        expires_at: new Date(Date.now() + 30 * 60 * 1000)
       }
     });
 
@@ -294,6 +318,8 @@ router.get('/orders', async (req, res) => {
   }
 
   const { type, status, page = 1, limit = 20 } = req.query;
+  const pageNum = parseInt(page as string) || 1;
+  const limitNum = Math.min(parseInt(limit as string) || 20, 100);
 
   try {
     const where: any = { user_id: userId };
@@ -303,8 +329,8 @@ router.get('/orders', async (req, res) => {
     const orders = await prisma.orders.findMany({
       where,
       orderBy: { created_at: 'desc' },
-      skip: (parseInt(page as string) - 1) * parseInt(limit as string),
-      take: parseInt(limit as string)
+      skip: (pageNum - 1) * limitNum,
+      take: limitNum
     });
 
     const total = await prisma.orders.count({ where });
@@ -320,10 +346,10 @@ router.get('/orders', async (req, res) => {
         paidAt: order.paid_at
       })),
       pagination: {
-        page: parseInt(page as string),
-        limit: parseInt(limit as string),
+        page: pageNum,
+        limit: limitNum,
         total,
-        pages: Math.ceil(total / parseInt(limit as string))
+        pages: Math.ceil(total / limitNum)
       }
     });
   } catch (error) {
@@ -334,112 +360,33 @@ router.get('/orders', async (req, res) => {
 
 /**
  * 模拟支付回调（仅用于开发测试）
- * 生产环境需要替换为真实的支付回调处理
+ * 生产环境禁止调用
  */
 router.post('/callback/mock', async (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ error: '此接口仅限开发环境使用' });
+  }
+
   const { orderId, success = true } = req.body;
 
   try {
-    const order = await prisma.orders.findUnique({
-      where: { id: orderId }
-    });
-
-    if (!order) {
-      return res.status(404).json({ error: '订单不存在' });
-    }
-
-    if (order.status !== 'pending') {
-      return res.status(400).json({ error: '订单状态异常' });
-    }
-
     if (success) {
-      // 更新订单状态
-      await prisma.orders.update({
-        where: { id: orderId },
-        data: {
-          status: 'paid',
-          payment_method: 'mock',
-          paid_at: new Date()
-        }
-      });
-
-      // 处理订单
-      if (order.type === 'subscription') {
-        // 会员订阅订单：使用新的会员系统
-        if (order.tier) {
-          await upgradeMembership(
-            order.user_id,
-            order.tier,
-            order.id,
-            order.amount,
-            order.original_amount || order.amount,
-            order.discount_code || undefined
-          );
-        } else {
-          // 向后兼容旧的订阅系统
-          const plan = Object.entries(SUBSCRIPTION_PLANS).find(
-            ([_, p]) => p.price === order.amount
-          );
-
-          if (plan) {
-            const [planId, planInfo] = plan;
-            const expiresAt = new Date();
-            expiresAt.setDate(expiresAt.getDate() + planInfo.duration);
-
-            await prisma.users.update({
-              where: { id: order.user_id },
-              data: {
-                subscription_type: planId,
-                subscription_expires: expiresAt
-              }
-            });
-
-            // 赠送积分
-            if (planInfo.bonusPoints > 0) {
-              await addPoints(
-                order.user_id,
-                planInfo.bonusPoints,
-                'subscription_bonus',
-                `购买${planInfo.name}赠送积分`,
-                parseInt(orderId.split('_')[1])
-              );
-            }
-          }
-        }
-      } else if (order.type === 'points') {
-        // 积分充值订单：增加积分
-        if (order.points) {
-          await addPoints(
-            order.user_id,
-            order.points,
-            'purchase',
-            `充值积分`,
-            parseInt(orderId.split('_')[1])
-          );
-        }
+      const result = await processPaymentSuccess(orderId, 'mock');
+      if (!result.success && !result.alreadyProcessed) {
+        return res.status(404).json({ error: result.message });
       }
-
-      // WebSocket 实时推送支付成功
-      wsServer.sendToUser(order.user_id, 'payment:status', {
-        orderId,
-        status: 'paid',
-        type: order.type,
-        amount: order.amount,
-        points: order.points
-      });
-
-      res.json({ success: true, message: '支付成功' });
+      res.json({ success: true, message: result.message });
     } else {
       await prisma.orders.update({
         where: { id: orderId },
-        data: { status: 'cancelled' }
+        data: { status: 'cancelled' },
       });
 
-      // WebSocket 实时推送支付取消
-      wsServer.sendToUser(order.user_id, 'payment:status', {
-        orderId,
-        status: 'cancelled'
-      });
+      wsServer.sendToUser(
+        (await prisma.orders.findUnique({ where: { id: orderId } }))?.user_id || 0,
+        'payment:status',
+        { orderId, status: 'cancelled' },
+      );
 
       res.json({ success: false, message: '支付取消' });
     }
@@ -638,46 +585,77 @@ router.post('/wxpay/callback', async (req, res) => {
       return res.status(200).send('<xml><return_code><![CDATA[SUCCESS]]></return_code></xml>');
     }
 
-    // 查找并处理订单（与 mock 回调逻辑复用）
-    const order = await prisma.orders.findUnique({ where: { id: outTradeNo } });
-    if (!order || order.status !== 'pending') {
-      return res.status(200).send('<xml><return_code><![CDATA[SUCCESS]]></return_code></xml>');
+    // 校验支付金额与订单金额一致
+    const totalFeeStr = parseXmlValue(xmlBody, 'total_fee');
+    const paidFee = parseInt(totalFeeStr, 10);
+    const wxOrder = await prisma.orders.findUnique({ where: { id: outTradeNo } });
+    if (!wxOrder) {
+      return res.status(200).send('<xml><return_code><![CDATA[FAIL]]></return_code><return_msg><![CDATA[订单不存在]]></return_msg></xml>');
+    }
+    const expectedFee = Math.round(wxOrder.amount * 100);
+    if (isNaN(paidFee) || paidFee !== expectedFee) {
+      console.error(`微信支付回调金额不匹配: 订单=${outTradeNo} 实付=${paidFee} 期望=${expectedFee}`);
+      return res.status(200).send('<xml><return_code><![CDATA[FAIL]]></return_code><return_msg><![CDATA[金额不匹配]]></return_msg></xml>');
     }
 
-    await prisma.orders.update({
-      where: { id: outTradeNo },
-      data: {
-        status: 'paid',
-        payment_method: 'wxpay',
-        paid_at: new Date(),
-        transaction_id: transactionId,
-      }
-    });
-
-    // 处理会员/积分
-    if (order.type === 'subscription' && order.tier) {
-      await upgradeMembership(
-        order.user_id, order.tier, order.id,
-        order.amount, order.original_amount || order.amount,
-        order.discount_code || undefined
-      );
-    } else if (order.type === 'points' && order.points) {
-      await addPoints(order.user_id, order.points, 'purchase', '充值积分', parseInt(outTradeNo.split('_')[1] || '0'));
+    const result = await processPaymentSuccess(outTradeNo, 'wxpay', transactionId);
+    if (!result.success && !result.alreadyProcessed) {
+      return res.status(200).send('<xml><return_code><![CDATA[FAIL]]></return_code><return_msg><![CDATA[订单处理失败]]></return_msg></xml>');
     }
-
-    // WebSocket 实时推送支付成功
-    wsServer.sendToUser(order.user_id, 'payment:status', {
-      orderId: outTradeNo,
-      status: 'paid',
-      type: order.type,
-      amount: order.amount,
-      points: order.points
-    });
 
     res.status(200).send('<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>');
   } catch (error) {
     console.error('处理微信支付回调失败:', error);
     res.status(200).send('<xml><return_code><![CDATA[FAIL]]></return_code></xml>');
+  }
+});
+
+/**
+ * 支付宝异步通知回调
+ * POST /api/payment/alipay/notify
+ * 由支付宝服务器主动调用，验签后处理订单
+ */
+router.post('/alipay/notify', async (req, res) => {
+  try {
+    const notifyData = req.body;
+
+    // 验证支付宝签名
+    const isVerified = verifyAlipayNotify(notifyData);
+    if (!isVerified) {
+      console.error('支付宝回调签名验证失败');
+      return res.send('fail');
+    }
+
+    const outTradeNo = notifyData.out_trade_no;
+    const tradeNo = notifyData.trade_no;
+    const tradeStatus = notifyData.trade_status;
+    const totalAmount = parseFloat(notifyData.total_amount);
+
+    // 仅处理交易成功状态
+    if (tradeStatus !== 'TRADE_SUCCESS' && tradeStatus !== 'TRADE_FINISHED') {
+      return res.send('success');
+    }
+
+    // 校验支付金额与订单金额一致
+    const order = await prisma.orders.findUnique({ where: { id: outTradeNo } });
+    if (!order) {
+      console.error(`支付宝回调: 订单不存在 ${outTradeNo}`);
+      return res.send('fail');
+    }
+    if (Math.abs(totalAmount - order.amount) > 0.01) {
+      console.error(`支付宝回调金额不匹配: 订单=${outTradeNo} 实付=${totalAmount} 期望=${order.amount}`);
+      return res.send('fail');
+    }
+
+    const result = await processPaymentSuccess(outTradeNo, 'alipay', tradeNo);
+    if (!result.success && !result.alreadyProcessed) {
+      return res.send('fail');
+    }
+
+    res.send('success');
+  } catch (error) {
+    console.error('处理支付宝回调失败:', error);
+    res.send('fail');
   }
 });
 

@@ -33,7 +33,12 @@ vi.mock('../../index', async () => {
 });
 
 vi.mock('../../utils/websocket', () => ({
-  wsServer: { notifyUser: vi.fn() },
+  wsServer: { notifyUser: vi.fn(), sendToUser: vi.fn() },
+}));
+
+vi.mock('../../utils/alipay', () => ({
+  verifyNotify: vi.fn(() => true),
+  default: { verifyNotify: vi.fn(() => true) },
 }));
 
 const authToken = jwt.sign({ userId: 1 }, 'ignored');

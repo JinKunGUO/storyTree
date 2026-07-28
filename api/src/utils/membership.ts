@@ -348,9 +348,16 @@ export async function upgradeMembership(
     }
   }
 
-  // 计算过期时间
+  // 计算过期时间：如果用户当前会员未过期，从旧过期时间开始叠加
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + tierConfig.duration * 24 * 60 * 60 * 1000);
+  const currentUser = await prisma.users.findUnique({
+    where: { id: userId },
+    select: { membership_tier: true, membership_expires_at: true },
+  });
+  const baseTime = (currentUser?.membership_expires_at && new Date(currentUser.membership_expires_at) > now)
+    ? new Date(currentUser.membership_expires_at)
+    : now;
+  const expiresAt = new Date(baseTime.getTime() + tierConfig.duration * 24 * 60 * 60 * 1000);
 
   // 开启事务
   await prisma.$transaction(async (tx) => {

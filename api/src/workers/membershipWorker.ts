@@ -166,48 +166,12 @@ async function processExpiredMemberships() {
     // 处理每个过期会员
     for (const user of expiredMembers) {
       if (user.membership_auto_renew) {
-        // TODO: 实现自动续费逻辑
-        // 这里简单处理：如果开启了自动续费，延长一个月（仅月度会员）
-        if (user.membership_tier === 'monthly') {
-          const newExpiresAt = new Date(user.membership_expires_at!);
-          newExpiresAt.setMonth(newExpiresAt.getMonth() + 1);
-          
-          await prisma.users.update({
-            where: { id: user.id },
-            data: {
-              membership_expires_at: newExpiresAt
-            }
-          });
-          
-          // 创建续费订单记录
-          await prisma.user_subscriptions.create({
-            data: {
-              user_id: user.id,
-              tier: user.membership_tier,
-              status: 'active',
-              started_at: user.membership_expires_at!,
-              expires_at: newExpiresAt,
-              auto_renew: true,
-              original_price: 39,
-              paid_price: 39
-            }
-          });
-          
-          console.log(`🔄 自动续费成功：${user.username}`);
-          
-await createNotification(
-            user.id,
-            'membership_renewed',
-            '会员自动续费成功',
-            `您的${getMembershipName(user.membership_tier)}已自动续费，有效期至${formatDate(newExpiresAt)}`,
-            '/membership.html'
-          );
-          
-          continue;
-        }
+        // 自动续费暂未接入真实扣款，先降级并发送续费提醒通知
+        // 避免免费赠送会员造成收入损失
+        console.log(`⏰ 自动续费待扣款：${user.username}（${user.membership_tier}）`);
       }
       
-      // 没有自动续费或不是月度会员，降级为免费用户
+      // 降级为免费用户
       await prisma.users.update({
         where: { id: user.id },
         data: {
@@ -229,11 +193,13 @@ await createNotification(
       
       console.log(`⬇️ 会员已过期降级：${user.username}`);
       
-await createNotification(
+      await createNotification(
         user.id,
         'membership_expired',
         '会员已到期',
-        `您的${getMembershipName(user.membership_tier)}已到期，已降级为免费用户。重新购买会员可继续享受特权。`,
+        user.membership_auto_renew
+          ? `您的${getMembershipName(user.membership_tier)}已到期，自动续费功能正在开发中，请手动续费以免失去会员权益。`
+          : `您的${getMembershipName(user.membership_tier)}已到期，已降级为免费用户。重新购买会员可继续享受特权。`,
         '/membership.html'
       );
     }
@@ -270,6 +236,30 @@ function formatDate(date: Date): string {
 }
 
 /**
+ * 清理过期的 pending 订单
+ * 将已过期（expires_at < now）的 pending 订单标记为 expired
+ */
+async function processExpiredOrders() {
+  const now = new Date();
+
+  try {
+    const result = await prisma.orders.updateMany({
+      where: {
+        status: 'pending',
+        expires_at: { lt: now },
+      },
+      data: { status: 'expired' },
+    });
+
+    if (result.count > 0) {
+      console.log(`🧹 清理过期订单：${result.count} 个`);
+    }
+  } catch (error) {
+    console.error('清理过期订单失败:', error);
+  }
+}
+
+/**
  * 主函数
  */
 async function runMembershipWorker() {
@@ -278,12 +268,14 @@ async function runMembershipWorker() {
   // 启动时立即执行一次
   await checkExpiringMemberships();
   await processExpiredMemberships();
+  await processExpiredOrders();
   
   // 然后每天执行
   setInterval(async () => {
     console.log('🕐 开始执行会员定时任务...');
     await checkExpiringMemberships();
     await processExpiredMemberships();
+    await processExpiredOrders();
   }, CHECK_INTERVAL);
 }
 
