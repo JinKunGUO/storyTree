@@ -164,9 +164,24 @@
                 transform: scale(1);
             }
             50% {
-                background: var(--st-primary-light);
+                background: var(--st-primary-100);
                 color: var(--st-primary);
                 transform: scale(1.2);
+            }
+        }
+
+        @media (prefers-color-scheme: dark) {
+            @keyframes compare-btn-pulse {
+                0%, 100% {
+                    background: none;
+                    color: var(--st-gray-500);
+                    transform: scale(1);
+                }
+                50% {
+                    background: var(--st-primary-600);
+                    color: var(--st-primary-200);
+                    transform: scale(1.2);
+                }
             }
         }
 
