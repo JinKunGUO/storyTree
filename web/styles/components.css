@@ -1888,6 +1888,7 @@
 .ai-multistep-loading .ai-stream-header {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   margin-bottom: 12px;
   font-size: 14px;
@@ -1993,6 +1994,8 @@
 
 .ai-skeleton-list {
   width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
 }
 
 .ai-skeleton-row {
@@ -2000,6 +2003,7 @@
   flex-wrap: nowrap;
   gap: 8px;
   align-items: center;
+  justify-content: center;
   margin-bottom: 12px;
 }
 
