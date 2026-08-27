@@ -10,6 +10,21 @@ import { wsServer } from '../utils/websocket';
 // 检测使用哪个AI服务
 const USE_QWEN = !!process.env.QWEN_API_KEY;
 const QWEN_MODEL = process.env.QWEN_MODEL || 'qwen-plus';
+const QWEN_WORKSPACE_ID = process.env.QWEN_WORKSPACE_ID || '';
+
+// 根据模型类型选择 API 端点
+function getQwenApiUrl(model: string): string {
+  if (model.startsWith('deepseek-')) {
+    if (!QWEN_WORKSPACE_ID) {
+      console.warn('⚠️  使用 DeepSeek 模型但未配置 QWEN_WORKSPACE_ID，将使用通用域名（可能无法访问）');
+      return 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+    }
+    return `https://${QWEN_WORKSPACE_ID}.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/chat/completions`;
+  }
+  return 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+}
+
+const QWEN_API_URL = getQwenApiUrl(QWEN_MODEL);
 
 /**
  * 安全解析 AI 返回的 JSON 字符串
@@ -267,7 +282,7 @@ async function callQwenAPI(prompt: string, maxTokens: number = 2000, temperature
     }, timeoutMs);
 
     try {
-      const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
+      const response = await fetch(QWEN_API_URL, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${process.env.QWEN_API_KEY}`,
