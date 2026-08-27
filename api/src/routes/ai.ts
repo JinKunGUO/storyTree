@@ -43,10 +43,19 @@ const getUserId = (req: any): number | null => {
   }
 };
 
+// 根据模型类型选择 API 端点
+function getQwenBaseURL(model: string): string {
+  const workspaceId = process.env.QWEN_WORKSPACE_ID || '';
+  if (model.startsWith('deepseek-') && workspaceId) {
+    return `https://${workspaceId}.cn-beijing.maas.aliyuncs.com/compatible-mode/v1`;
+  }
+  return 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+}
+
 // 初始化阿里云千问客户端（使用OpenAI兼容接口）
 const qwenClient = new OpenAI({
   apiKey: process.env.QWEN_API_KEY || '',
-  baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+  baseURL: getQwenBaseURL(process.env.QWEN_MODEL || 'qwen-plus')
 });
 
 // Generate AI continuation options
