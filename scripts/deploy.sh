@@ -153,7 +153,10 @@ update_code() {
 install_deps() {
     log_info "安装 Node.js 依赖..."
     cd "$API_DIR"
-    npm ci
+    # 先安装生产依赖
+    npm ci --only=production --no-audit --no-fund 2>&1 | grep -v "npm warn EBADENGINE" || true
+    # 再单独安装构建所需的 devDependencies（typescript, prisma）
+    npm install --no-save --no-audit --no-fund typescript@^5.3.3 prisma@^5.8.0 2>&1 | grep -v "npm warn EBADENGINE" || true
     log_success "依赖安装完成"
 }
 
