@@ -67,7 +67,14 @@ class WebSocketService {
           return;
         }
 
-        this.wss!.handleUpgrade(request, socket, head, (ws) => {
+        // 竞态条件保护：wss 可能尚未初始化完成
+        if (!this.wss) {
+          socket.write('HTTP/1.1 503 Service Unavailable\r\n\r\n');
+          socket.destroy();
+          return;
+        }
+
+        this.wss.handleUpgrade(request, socket, head, (ws) => {
           (ws as AuthenticatedWebSocket).userId = userId.userId;
           (ws as AuthenticatedWebSocket).username = userId.username;
           this.wss!.emit('connection', ws, request);
