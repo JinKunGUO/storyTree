@@ -1263,29 +1263,34 @@
                 showSuccess('已设置自定义时间：' + selectedTime.toLocaleString('zh-CN'));
             });
 
-            // 初始化AI风格按钮
-            document.querySelectorAll('.ai-style-btn').forEach(btn => {
+            // 初始化AI风格按钮（风格选择器内的按钮）
+            document.querySelectorAll('#aiStyleSelector .ai-style-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    document.querySelectorAll('.ai-style-btn').forEach(b => b.classList.remove('active'));
+                    // 只移除风格选择器内按钮的 active，不影响字数选择器
+                    document.querySelectorAll('#aiStyleSelector .ai-style-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    selectedAiStyle = this.dataset.style;
+                    console.log('选择AI风格:', selectedAiStyle);
+                });
+            });
+
+            // 初始化AI字数按钮（字数选择器内的按钮）
+            document.querySelectorAll('#aiWordCountSelector .ai-style-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // 只移除字数选择器内按钮的 active，不影响风格选择器
+                    document.querySelectorAll('#aiWordCountSelector .ai-style-btn').forEach(b => b.classList.remove('active'));
                     this.classList.add('active');
                     
-                    // 检查是风格按钮还是字数按钮
-                    if (this.dataset.style) {
-                        selectedAiStyle = this.dataset.style;
-                        console.log('选择AI风格:', selectedAiStyle);
-                    } else if (this.dataset.wordcount) {
-                        const wordcount = this.dataset.wordcount;
-                        
-                        if (wordcount === 'custom') {
-                            // 显示自定义输入框
-                            document.getElementById('customWordCountInput').style.display = 'block';
-                            console.log('显示自定义字数输入框');
-                        } else {
-                            // 隐藏自定义输入框
-                            document.getElementById('customWordCountInput').style.display = 'none';
-                            selectedAiWordCount = parseInt(wordcount);
-                            console.log('选择期望字数:', selectedAiWordCount);
-                        }
+                    const wordcount = this.dataset.wordcount;
+                    if (wordcount === 'custom') {
+                        // 显示自定义输入框
+                        document.getElementById('customWordCountInput').style.display = 'block';
+                        console.log('显示自定义字数输入框');
+                    } else {
+                        // 隐藏自定义输入框
+                        document.getElementById('customWordCountInput').style.display = 'none';
+                        selectedAiWordCount = parseInt(wordcount);
+                        console.log('选择期望字数:', selectedAiWordCount);
                     }
                 });
             });
@@ -1497,14 +1502,8 @@
                     const streamActions = document.getElementById('aiStreamActions');
                     streamActions.style.display = 'flex';
 
-                    // 停止按钮
-                    let currentStream = null;
-                    document.getElementById('aiStreamAbortBtn').onclick = () => {
-                        if (currentStream) currentStream.abort();
-                    };
-
                     // 启动流式请求
-                    currentStream = new SSEStream('/api/ai/stream/continuation', {
+                    const currentStream = new SSEStream('/api/ai/stream/continuation', {
                         body: {
                             storyId: parseInt(storyId),
                             nodeId: window.lastNodeId || null,
@@ -1555,6 +1554,11 @@
                             }
                         }
                     });
+
+                    // 绑定停止按钮（在 currentStream 赋值后）
+                    document.getElementById('aiStreamAbortBtn').onclick = () => {
+                        currentStream.abort();
+                    };
 
                     await currentStream.start();
 
