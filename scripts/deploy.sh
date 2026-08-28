@@ -151,12 +151,14 @@ update_code() {
 # 安装依赖
 # ===================================
 install_deps() {
-    log_info "安装 Node.js 依赖..."
+    log_info "安装 Node.js 依赖（使用国内镜像）..."
     cd "$API_DIR"
+    # 设置国内镜像源（淘宝镜像）
+    local NPM_REGISTRY="https://registry.npmmirror.com"
     # 先安装生产依赖
-    npm ci --only=production --no-audit --no-fund 2>&1 | grep -v "npm warn EBADENGINE" || true
+    npm ci --omit=dev --no-audit --no-fund --registry="$NPM_REGISTRY" 2>&1 | grep -v "npm warn EBADENGINE" || true
     # 再单独安装构建所需的 devDependencies（typescript, prisma）
-    npm install --no-save --no-audit --no-fund typescript@^5.3.3 prisma@^5.8.0 2>&1 | grep -v "npm warn EBADENGINE" || true
+    npm install --no-save --no-audit --no-fund --registry="$NPM_REGISTRY" typescript@^5.3.3 prisma@^5.8.0 2>&1 | grep -v "npm warn EBADENGINE" || true
     log_success "依赖安装完成"
 }
 
