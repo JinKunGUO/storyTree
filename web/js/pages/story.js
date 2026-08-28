@@ -2145,13 +2145,8 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                     `;
 
                     const streamContent = document.getElementById('aiChapterStreamContent');
-                    let currentStream = null;
 
-                    document.getElementById('aiChapterStopBtn').onclick = () => {
-                        if (currentStream) currentStream.abort();
-                    };
-
-                    currentStream = new SSEStream('/api/ai/stream/continuation', {
+                    const currentStream = new SSEStream('/api/ai/stream/continuation', {
                         body: {
                             storyId: parseInt(story.id),
                             nodeId: window.aiChapterParentId || null,
@@ -2226,6 +2221,11 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                             }
                         }
                     });
+
+                    // 绑定停止按钮（在 currentStream 赋值后）
+                    document.getElementById('aiChapterStopBtn').onclick = () => {
+                        currentStream.abort();
+                    };
 
                     await currentStream.start();
 
