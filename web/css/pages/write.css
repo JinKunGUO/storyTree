@@ -87,6 +87,10 @@
             word-break: break-word;
         }
 
+        .ql-editor p {
+            text-indent: 2em;
+        }
+
         .ql-toolbar {
             background: var(--st-bg-secondary);
             border: none !important;

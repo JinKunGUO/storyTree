@@ -1368,7 +1368,26 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
             const container = document.getElementById('chaptersList');
             
             // 使用预缓存的用户 ID（由 prefetchCurrentUser 在页面初始化时统一获取）
-            const currentUserId = window.currentUserId;
+            // 兜底：如果预缓存未命中（token 过期/网络失败等），重新获取一次
+            let currentUserId = window.currentUserId;
+            if (!currentUserId) {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                if (token) {
+                    try {
+                        const meRes = await fetch('/api/auth/me', {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        if (meRes.ok) {
+                            const meData = await meRes.json();
+                            currentUserId = meData.user.id;
+                            window.currentUserId = currentUserId;
+                            window.currentUserData = meData.user;
+                        }
+                    } catch (e) {
+                        console.error('获取用户信息失败:', e);
+                    }
+                }
+            }
             
             // 调试：输出章节数据
             console.log('渲染章节列表，章节数量:', chapters.length);
@@ -1392,7 +1411,10 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
             }
 
             const story = window.currentStory;
-            const isStoryAuthor = story && currentUserId && (story.authorId === currentUserId || story.author?.id === currentUserId);
+            // 优先使用后端权威的 isAuthor 标记（由 /api/stories/:id 根据 userId === author_id 计算）
+            // 与树状图节点面板复用 /role 接口的 is_author 逻辑保持一致，避免前端 === 比较在类型/时序上的脆弱
+            const isStoryAuthor = !!(story && (story.isAuthor === true ||
+                (currentUserId && (story.authorId === currentUserId || story.author?.id === currentUserId))));
 
             container.innerHTML = chapters.map((chapter, index) => {
                 // 调试每个章节的 AI 字段
