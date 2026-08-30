@@ -1519,14 +1519,28 @@
                             streamContent.scrollTop = streamContent.scrollHeight;
                         },
                         onDone: (result) => {
-                            // 完成：更新状态
                             const indicator = optionsContainer.querySelector('.ai-streaming-indicator');
+                            const finalText = (result.fullText || '').trim();
+
+                            // 空内容兜底：后端流结束但未产出有效文本时，不显示「生成完成」，
+                            // 改走失败/重试流程，避免用户面对空白结果误以为成功
+                            if (!finalText) {
+                                if (indicator) indicator.innerHTML = '<i class="fas fa-exclamation-circle"></i> 内容为空';
+                                streamContent.innerHTML = '<span style="color: var(--st-error-500);">AI 未返回有效内容，请点击重新生成重试</span>';
+                                document.getElementById('aiStreamAcceptBtn').style.display = 'none';
+                                document.getElementById('aiStreamAbortBtn').innerHTML = '<i class="fas fa-redo"></i> 重新生成';
+                                document.getElementById('aiStreamAbortBtn').onclick = () => {
+                                    showAiSuggestions();
+                                };
+                                return;
+                            }
+
+                            // 完成：更新状态
                             if (indicator) indicator.innerHTML = '<i class="fas fa-check-circle"></i> 生成完成';
-                            
+
                             // 保存结果供插入
-                            const finalText = result.fullText;
                             aiOptions = [{ title: 'AI续写', content: finalText, style: selectedAiStyle || '续写' }];
-                            
+
                             // 绑定插入按钮
                             document.getElementById('aiStreamAcceptBtn').onclick = () => {
                                 useAiSuggestion(0);

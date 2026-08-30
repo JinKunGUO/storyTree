@@ -469,6 +469,14 @@ export async function streamQwenToClient(res: Response, options: StreamOptions):
     // 后置敏感词扫描
     // 先清理可能残留的 thinking 标签
     fullText = fullText.replace(/<thinking>[\s\S]*?<\/thinking>/g, '').trim();
+
+    // 空内容兜底：千问流可能全程未返回有效 content（delta 为空），
+    // 此时不应发 done（会让前端误显示「生成完成」），改发 error 让前端走失败/重试流程
+    if (!fullText) {
+      sendSSE(res, 'error', { message: 'AI 未返回有效内容，请重试' });
+      return '';
+    }
+
     let safeText = fullText;
 
     const scanResult = scanSensitiveWords(fullText);

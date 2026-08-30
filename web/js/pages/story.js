@@ -2184,6 +2184,19 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                         },
                         onDone: (result) => {
                             const indicator = optionsContainer.querySelector('.ai-streaming-indicator');
+                            const finalText = (result.fullText || '').trim();
+
+                            // 空内容兜底：流结束但未产出有效文本时，不显示「生成完成」，
+                            // 隐藏采纳按钮避免提交空章节，引导用户重新生成
+                            if (!finalText) {
+                                if (indicator) indicator.innerHTML = '<i class="fas fa-exclamation-circle"></i> 内容为空';
+                                streamContent.innerHTML = '<span style="color: var(--st-error-500);">AI 未返回有效内容，请点击重新生成重试</span>';
+                                document.getElementById('aiChapterAcceptBtn').style.display = 'none';
+                                document.getElementById('aiChapterStopBtn').innerHTML = '<i class="fas fa-redo"></i> 重新生成';
+                                document.getElementById('aiChapterStopBtn').onclick = () => { submitAiChapter(); };
+                                return;
+                            }
+
                             if (indicator) indicator.innerHTML = '<i class="fas fa-check-circle"></i> 生成完成';
                             document.getElementById('aiChapterAcceptBtn').style.display = 'inline-flex';
                             document.getElementById('aiChapterStopBtn').innerHTML = '<i class="fas fa-redo"></i> 重新生成';
@@ -2198,7 +2211,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                                         body: JSON.stringify({
                                             storyId: parseInt(story.id),
                                             parentNodeId: window.aiChapterParentId || null,
-                                            content: result.fullText,
+                                            content: finalText,
                                             title: 'AI续写章节',
                                             publish: publishImmediately
                                         })
