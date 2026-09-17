@@ -267,7 +267,12 @@ function handleRegister() {
             
             if (response.ok) {
                 console.log('注册响应:', data);
-                
+
+                // 埋点：注册成功
+                if (typeof window.stTrack === 'function') {
+                    window.stTrack('register', { requireVerification: !!data.requireVerification });
+                }
+
                 // 无论是否需要邮箱验证，都清除旧的引导缓存（防止切换账号残留）
                 localStorage.removeItem('st_user_state');
                 localStorage.removeItem('st_onboarding_progress');
@@ -403,9 +408,11 @@ function handleLogin() {
             
             if (response.ok) {
                 console.log('登录成功，开始保存token');
-                console.log('Token:', data.token ? '存在 (长度: ' + data.token.length + ')' : '不存在');
-                console.log('User:', data.user ? data.user.username : '不存在');
-                console.log('记住我:', rememberMe);
+
+                // 埋点：登录成功
+                if (typeof window.stTrack === 'function') {
+                    window.stTrack('login');
+                }
                 
                 // 保存token到localStorage或sessionStorage
                 try {

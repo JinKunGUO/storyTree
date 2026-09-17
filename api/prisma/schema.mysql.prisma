@@ -658,3 +658,24 @@ model story_templates {
   @@index([genre])
 }
 
+// 埋点事件表 - 记录页面访问与关键行为事件，用于渠道归因与转化漏斗分析
+model analytics_events {
+  id           Int      @id @default(autoincrement())
+  event        String   @db.VarChar(50)   // 事件名：page_view/register/story_created/ai_continue 等
+  user_id      Int?                       // 未登录用户为 null
+  page         String?  @db.VarChar(500)  // 页面路径，如 /story?id=1
+  referrer     String?  @db.VarChar(1000) // 来源页面
+  utm_source   String?  @db.VarChar(100)  // 渠道来源，如 xiaohongshu/zhihu
+  utm_medium   String?  @db.VarChar(100)
+  utm_campaign String?  @db.VarChar(100)
+  properties   String?  @db.Text          // 事件附加属性（JSON string）
+  ip           String?  @db.VarChar(45)
+  user_agent   String?  @db.VarChar(500)
+  created_at   DateTime @default(now())
+
+  @@index([event])
+  @@index([created_at])
+  @@index([utm_source])
+  @@index([user_id])
+}
+

@@ -1977,6 +1977,11 @@ async function handleConfirm() {
     }
     console.log('故事创建成功, storyId:', storyId);
 
+    // 埋点：创建故事成功
+    if (typeof window.stTrack === 'function') {
+      window.stTrack('story_created', { storyId, method: state?.creationMethod || 'unknown' });
+    }
+
     // 如果有大纲数据，创建大纲记录
     if (outlineData && (outlineData.chapterOutlines || outlineData.worldBuilding || outlineData.characters)) {
       try {

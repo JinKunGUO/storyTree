@@ -33,6 +33,7 @@ import adminUsersRoutes from './routes/admin-users';
 import adminContentRoutes from './routes/admin-content';
 import adminPointsRoutes from './routes/admin-points';
 import adminDashboardRoutes from './routes/admin-dashboard';
+import analyticsRoutes from './routes/analytics';
 
 /**
  * 转义 HTML 特殊字符，防止注入
@@ -208,6 +209,7 @@ export function createApp() {
   app.use('/api/admin/content', adminContentRoutes);
   app.use('/api/admin/points', adminPointsRoutes);
   app.use('/api/admin/dashboard', adminDashboardRoutes);
+  app.use('/api/analytics', analyticsRoutes);
 
   // 版本信息端点 - 读取 VERSION.json
   app.get('/api/version', (_req, res) => {
