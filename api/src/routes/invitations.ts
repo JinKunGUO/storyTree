@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import { checkCanGenerateInviteCode, generateUserInviteCode } from '../utils/invite-permission-checker';
+import { checkInviteMilestones } from '../utils/invite-milestones';
 import { JWT_SECRET } from '../utils/auth';
 
 const router = Router();
@@ -548,11 +549,23 @@ router.post('/redeem', authenticateToken, async (req: any, res) => {
 
     console.log(`用户 ${userId} 成功兑换邀请码 ${inviteCode.code}，获得 ${result.bonusPoints} 积分`);
 
+    // 邀请阶梯奖励：检查邀请人是否达成里程碑（失败不影响兑换主流程）
+    let milestoneAwards: string[] = [];
+    try {
+      milestoneAwards = await checkInviteMilestones(inviteCode.created_by_id);
+      if (milestoneAwards.length > 0) {
+        console.log(`邀请人 ${inviteCode.created_by_id} 达成里程碑: ${milestoneAwards.join(', ')}`);
+      }
+    } catch (e) {
+      console.error('邀请里程碑奖励发放失败:', e);
+    }
+
     res.json({
       success: true,
       message: '邀请码兑换成功！',
       bonusPoints: result.bonusPoints,
       inviterBonus: result.inviterBonus,
+      inviterMilestones: milestoneAwards,
       code: inviteCode.code,
       invitedBy: inviteCode.created_by.username
     });

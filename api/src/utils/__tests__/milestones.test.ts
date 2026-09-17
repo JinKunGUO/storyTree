@@ -29,9 +29,9 @@ describe('Constants', () => {
 // getAllBadges
 // ---------------------------------------------------------------------------
 describe('getAllBadges', () => {
-  it('returns 7 badges', () => {
+  it('returns 10 badges (7 word + 3 invite)', () => {
     const badges = getAllBadges();
-    expect(badges).toHaveLength(7);
+    expect(badges).toHaveLength(10);
   });
 
   it('each badge has id, name, emoji, and description', () => {

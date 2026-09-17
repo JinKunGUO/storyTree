@@ -60,17 +60,38 @@ export const WORD_REWARD_RATE = 10;
 export const MAKEUP_CHANCE_RATE = 1;
 
 /**
- * 获取所有徽章
+ * 邀请裂变里程碑配置
+ * 邀请人成功邀请满 N 人时触发，发放积分与徽章
+ */
+export interface InviteMilestone {
+  count: number;      // 累计邀请人数
+  reward: number;     // 额外奖励积分
+  badge: Badge | null; // 达成徽章（null 表示仅积分）
+}
+
+export const INVITE_MILESTONES: InviteMilestone[] = [
+  { count: 1, reward: 50, badge: null },
+  { count: 3, reward: 150, badge: { id: 'connector', name: '呼朋引伴', emoji: '🤝', description: '成功邀请 3 位好友' } },
+  { count: 5, reward: 300, badge: { id: 'recruiter', name: '伯乐', emoji: '🌟', description: '成功邀请 5 位好友' } },
+  { count: 10, reward: 600, badge: { id: 'ambassador', name: '星推官', emoji: '🚀', description: '成功邀请 10 位好友' } },
+];
+
+/**
+ * 获取所有徽章（字数里程碑 + 邀请里程碑）
  */
 export function getAllBadges(): Badge[] {
-  return WORD_MILESTONES.map(m => m.badge);
+  const wordBadges = WORD_MILESTONES.map(m => m.badge);
+  const inviteBadges = INVITE_MILESTONES
+    .map(m => m.badge)
+    .filter((b): b is Badge => b !== null);
+  return [...wordBadges, ...inviteBadges];
 }
 
 /**
  * 根据ID获取徽章
  */
 export function getBadgeById(id: string): Badge | undefined {
-  return WORD_MILESTONES.find(m => m.badge.id === id)?.badge;
+  return getAllBadges().find(b => b.id === id);
 }
 
 /**
