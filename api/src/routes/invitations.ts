@@ -499,11 +499,21 @@ router.post('/redeem', authenticateToken, async (req: any, res) => {
 
     // 使用事务处理兑换
     const result = await prisma.$transaction(async (tx) => {
-      // 1. 更新邀请码使用次数
-      await tx.invitation_codes.update({
-        where: { id: inviteCode.id },
-        data: { used_count: inviteCode.used_count + 1 }
-      });
+      // 1. 原子递增使用次数：条件更新防止并发下超量使用（max_uses = -1 表示不限次数）
+      if (inviteCode.max_uses !== -1) {
+        const updated = await tx.invitation_codes.updateMany({
+          where: { id: inviteCode.id, used_count: { lt: inviteCode.max_uses } },
+          data: { used_count: { increment: 1 } }
+        });
+        if (updated.count === 0) {
+          throw new Error('INVITE_CODE_EXHAUSTED');
+        }
+      } else {
+        await tx.invitation_codes.update({
+          where: { id: inviteCode.id },
+          data: { used_count: { increment: 1 } }
+        });
+      }
 
       // 2. 创建邀请记录
       const record = await tx.invitation_records.create({
@@ -547,6 +557,10 @@ router.post('/redeem', authenticateToken, async (req: any, res) => {
       invitedBy: inviteCode.created_by.username
     });
   } catch (error) {
+    // 并发下名额被抢完：条件更新在事务内抛出此错误并回滚
+    if (error instanceof Error && error.message === 'INVITE_CODE_EXHAUSTED') {
+      return res.status(400).json({ error: '邀请码已达到最大使用次数' });
+    }
     console.error('兑换邀请码失败:', error);
     res.status(500).json({ error: '兑换失败，请稍后重试' });
   }

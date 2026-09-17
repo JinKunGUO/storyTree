@@ -9,15 +9,25 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
+// mimetype → 扩展名白名单映射（不信任客户端原始文件名，防 .html/.svg 存储型 XSS）
+const EXT_BY_MIME: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/jpg': '.jpg',
+  'image/png': '.png',
+  'image/gif': '.gif',
+  'image/webp': '.webp',
+};
+
 // 配置存储
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    // 生成唯一文件名：时间戳 + 随机字符串 + 原始扩展名
+    // 生成唯一文件名：时间戳 + 随机字符串 + 白名单扩展名
+    // 扩展名从已校验的 mimetype 映射获取，不使用 file.originalname（可伪造）
     const uniqueSuffix = Date.now() + '-' + crypto.randomBytes(6).toString('hex');
-    const ext = path.extname(file.originalname);
+    const ext = EXT_BY_MIME[file.mimetype] || '.jpg';
     cb(null, `${uniqueSuffix}${ext}`);
   }
 });
@@ -41,9 +51,9 @@ export const upload = multer({
   }
 });
 
-// 删除文件的辅助函数
+// 删除文件的辅助函数（basename 防路径穿越）
 export const deleteFile = (filename: string): void => {
-  const filePath = path.join(uploadDir, filename);
+  const filePath = path.join(uploadDir, path.basename(filename));
   if (fs.existsSync(filePath)) {
     fs.unlinkSync(filePath);
   }

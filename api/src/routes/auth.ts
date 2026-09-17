@@ -53,6 +53,15 @@ const passwordResetLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// 验证邮件重发频率限制（防止刷爆 SMTP 配额）
+const resendVerificationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1小时窗口
+  max: 3, // 每个IP最多3次重发请求
+  message: { error: '验证邮件发送过于频繁，请1小时后再试' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // 用户注册
 router.post('/register', registerLimiter, async (req, res) => {
   const { username, email, password, invitationCode } = req.body;
@@ -605,7 +614,8 @@ router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
     await prisma.users.update({
       where: { id: user.id },
       data: {
-        passwordResetToken: resetToken,
+        // 只存哈希，邮件中发送明文 token；数据库泄露时攻击者无法直接利用
+        passwordResetToken: hashToken(resetToken),
         passwordResetExpires: resetExpires,
       }
     });
@@ -636,7 +646,7 @@ router.post('/reset-password', async (req, res) => {
   try {
     const user = await prisma.users.findFirst({
       where: {
-        passwordResetToken: token,
+        passwordResetToken: hashToken(token),
         passwordResetExpires: {
           gt: new Date()
         }
@@ -720,7 +730,7 @@ router.post('/verify-email', async (req, res) => {
 });
 
 // 重新发送验证邮件
-router.post('/resend-verification', async (req, res) => {
+router.post('/resend-verification', resendVerificationLimiter, async (req, res) => {
   const { email } = req.body;
 
   if (!email) {

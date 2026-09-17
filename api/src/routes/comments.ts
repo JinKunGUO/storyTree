@@ -3,6 +3,7 @@ import { prisma } from '../index';
 import { verifyJWT } from '../utils/auth';
 import { addPoints, POINT_RULES } from '../utils/points';
 import { safeParseId, safeParsePage, safeParsePageSize } from '../utils/middleware';
+import { scanSensitiveWords, maskSensitiveWords } from '../utils/sensitiveWords';
 
 const router = Router();
 
@@ -202,6 +203,13 @@ router.post('/nodes/:node_id/comments', async (req, res) => {
       return res.status(400).json({ error: '评论内容不能超过500字符' });
     }
 
+    // 敏感词过滤：命中词遮罩为 *（comments 表无审核状态字段，与 AI 输出同策略）
+    const scanResult = scanSensitiveWords(content);
+    const sanitizedContent = scanResult.found ? maskSensitiveWords(content) : content;
+    if (scanResult.found) {
+      console.warn(`[评论安全] 用户 ${decoded.userId} 的评论命中敏感词: ${scanResult.words.join(', ')}`);
+    }
+
     const node = await prisma.nodes.findUnique({
       where: { id: parseInt(node_id) },
       include: { story: { select: { id: true, allow_comment: true, author_id: true } } }
@@ -231,7 +239,7 @@ router.post('/nodes/:node_id/comments', async (req, res) => {
 
     const comment = await prisma.comments.create({
       data: {
-        content: content.trim(),
+        content: sanitizedContent.trim(),
         node_id: parseInt(node_id),
         user_id: decoded.userId,
         parent_id: parent_id ? parseInt(parent_id as string) : null,
@@ -388,6 +396,13 @@ router.put('/comments/:commentId', async (req, res) => {
       return res.status(400).json({ error: '评论内容不能超过500字符' });
     }
 
+    // 敏感词过滤：与创建评论同策略，命中词遮罩为 *
+    const scanResult = scanSensitiveWords(content);
+    const sanitizedContent = scanResult.found ? maskSensitiveWords(content) : content;
+    if (scanResult.found) {
+      console.warn(`[评论安全] 用户 ${decoded.userId} 编辑评论命中敏感词: ${scanResult.words.join(', ')}`);
+    }
+
     const comment = await prisma.comments.findUnique({
       where: { id: parseInt(commentId) }
     });
@@ -402,7 +417,7 @@ router.put('/comments/:commentId', async (req, res) => {
 
     const updatedComment = await prisma.comments.update({
       where: { id: parseInt(commentId) },
-      data: { content: content.trim() },
+      data: { content: sanitizedContent.trim() },
       include: {
         user: {
           select: {
