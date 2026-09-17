@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, text as expressText } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../index';
 import { addPoints } from '../utils/points';
@@ -540,7 +540,9 @@ router.post('/wxpay/create', async (req, res) => {
  * POST /api/payment/wxpay/callback
  * 由微信服务器主动调用，验签后处理订单
  */
-router.post('/wxpay/callback', async (req, res) => {
+// 微信支付回调使用 XML 格式（Content-Type: text/xml），全局 express.json() 无法解析，
+// 需要为该路由单独注册 text 解析器，且要在其消费 req.body 之前拿到原始字符串
+router.post('/wxpay/callback', expressText({ type: ['text/xml', 'application/xml', '*/xml'] }), async (req, res) => {
   const apiKey = process.env.WX_PAY_API_KEY;
   if (!apiKey) {
     return res.status(200).send('<xml><return_code><![CDATA[FAIL]]></return_code><return_msg><![CDATA[未配置支付密钥]]></return_msg></xml>');

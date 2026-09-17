@@ -19,6 +19,7 @@ import { Server as HTTPServer, IncomingMessage } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { URL } from 'url';
 import { verifyJWT } from './auth';
+import { prisma } from '../db';
 
 // ==================== 类型定义 ====================
 
@@ -40,6 +41,11 @@ interface AuthenticatedWebSocket extends WebSocket {
 // ==================== WebSocket 服务类 ====================
 
 class WebSocketService {
+  /** 单用户最大并发连接数（防资源耗尽） */
+  private static readonly MAX_CONNECTIONS_PER_USER = 5;
+  /** 全局最大并发连接数 */
+  private static readonly MAX_TOTAL_CONNECTIONS = 1000;
+
   private wss: WebSocketServer | null = null;
   /** userId → 该用户的所有连接 */
   private connections: Map<number, Set<AuthenticatedWebSocket>> = new Map();
@@ -59,25 +65,46 @@ class WebSocketService {
       const pathname = this.getPathname(request);
 
       if (pathname === '/api/ws') {
-        // 鉴权
-        const userId = this.authenticate(request);
-        if (!userId) {
-          socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-          socket.destroy();
-          return;
-        }
+        // 鉴权（异步：需查库校验 active_token）
+        this.authenticate(request).then(auth => {
+          if (!auth) {
+            socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+            socket.destroy();
+            return;
+          }
 
-        // 竞态条件保护：wss 可能尚未初始化完成
-        if (!this.wss) {
-          socket.write('HTTP/1.1 503 Service Unavailable\r\n\r\n');
-          socket.destroy();
-          return;
-        }
+          // H7: 全局连接数上限（防资源耗尽攻击）
+          if (this.getTotalConnectionCount() >= WebSocketService.MAX_TOTAL_CONNECTIONS) {
+            console.warn(`⚠️ WebSocket 全局连接数已达上限 ${WebSocketService.MAX_TOTAL_CONNECTIONS}，拒绝新连接`);
+            socket.write('HTTP/1.1 503 Service Unavailable\r\n\r\n');
+            socket.destroy();
+            return;
+          }
 
-        this.wss.handleUpgrade(request, socket, head, (ws) => {
-          (ws as AuthenticatedWebSocket).userId = userId.userId;
-          (ws as AuthenticatedWebSocket).username = userId.username;
-          this.wss!.emit('connection', ws, request);
+          // H7: 单用户连接数上限
+          const userConns = this.connections.get(auth.userId);
+          if (userConns && userConns.size >= WebSocketService.MAX_CONNECTIONS_PER_USER) {
+            console.warn(`⚠️ WebSocket 用户 ${auth.userId} 连接数已达上限 ${WebSocketService.MAX_CONNECTIONS_PER_USER}，拒绝新连接`);
+            socket.write('HTTP/1.1 429 Too Many Requests\r\n\r\n');
+            socket.destroy();
+            return;
+          }
+
+          // 竞态条件保护：wss 可能尚未初始化完成
+          if (!this.wss) {
+            socket.write('HTTP/1.1 503 Service Unavailable\r\n\r\n');
+            socket.destroy();
+            return;
+          }
+
+          this.wss.handleUpgrade(request, socket, head, (ws) => {
+            (ws as AuthenticatedWebSocket).userId = auth.userId;
+            (ws as AuthenticatedWebSocket).username = auth.username;
+            this.wss!.emit('connection', ws, request);
+          });
+        }).catch(err => {
+          console.error('WebSocket 鉴权异常:', err);
+          socket.destroy();
         });
       }
       // 非 /api/ws 路径不处理，留给其他 upgrade handler
@@ -273,7 +300,7 @@ class WebSocketService {
    *   1. URL 参数: ws://host/api/ws?token=xxx
    *   2. Sec-WebSocket-Protocol 头: token, xxx
    */
-  private authenticate(request: IncomingMessage): { userId: number; username?: string } | null {
+  private async authenticate(request: IncomingMessage): Promise<{ userId: number; username?: string } | null> {
     let token: string | null = null;
 
     // 方式1：URL 参数
@@ -303,7 +330,27 @@ class WebSocketService {
       return null;
     }
 
+    // H14: 校验 active_token，与 REST 中间件行为一致（新登录顶替后旧连接不得建立）
+    // active_token 为 null/空时兼容旧会话（与 middleware.ts 策略相同）
+    const user = await prisma.users.findUnique({
+      where: { id: decoded.userId },
+      select: { active_token: true }
+    });
+    if (!user || (!!user.active_token && user.active_token !== token)) {
+      console.log(`🔒 WebSocket 鉴权失败: token 已被新登录顶替, userId=${decoded.userId}`);
+      return null;
+    }
+
     return { userId: decoded.userId, username: decoded.username };
+  }
+
+  /** 当前全局连接总数 */
+  private getTotalConnectionCount(): number {
+    let total = 0;
+    for (const conns of this.connections.values()) {
+      total += conns.size;
+    }
+    return total;
   }
 
   /**

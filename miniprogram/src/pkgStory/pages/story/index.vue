@@ -830,6 +830,8 @@ onMounted(() => {
 
 onUnmounted(() => {
   uni.$off('user:logged-in', handleLoggedIn)
+  // 页面销毁时停止 AI 任务轮询定时器，防止后台持续轮询泄漏
+  stopPollTask()
 })
 
 // 从 write 页面发布新章节后返回时，刷新章节树（不触发全屏 loading）
