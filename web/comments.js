@@ -76,6 +76,10 @@ class CommentSystem {
         const avatar = comment.user.avatar || '/assets/default-avatar.svg?v=2';
         const isDeleted = comment.is_deleted || false;
         const isPinned = comment.pinned || false;
+
+        // XSS 防护：用户名/头像/回复对象名统一转义（审计 C5）
+        const safeUsername = this.escapeHtml(comment.user.username || '未知用户');
+        const safeAvatar = this.sanitizeUrl(avatar);
         
         // 如果是顶级评论，rootCommentId 就是自己的 ID
         const actualRootId = rootCommentId || comment.id;
@@ -109,7 +113,7 @@ class CommentSystem {
 // 如果是回复评论，使用简化的结构（不再递归，所有回复都在同一层级）
         if (isReply) {
             // 如果有 replyToUsername，说明是回复子评论，需要添加@前缀
-            const contentPrefix = replyToUsername ? `<span class="reply-to">@${replyToUsername}：</span>` : '';
+            const contentPrefix = replyToUsername ? `<span class="reply-to">@${this.escapeHtml(replyToUsername)}：</span>` : '';
             
             // 判断是否可以编辑/删除（复用方法开始处声明的 isStoryAuthor）
             const allowCommentEnabled = !this.storyInfo || this.storyInfo.allow_comment !== false;
@@ -118,18 +122,18 @@ class CommentSystem {
             return `
                 <div class="comment-reply" id="comment-${comment.id}" data-comment-id="${comment.id}" data-root-id="${actualRootId}">
                     <div class="comment-avatar">
-                        <img src="${avatar}" alt="${comment.user.username}">
+                        <img src="${safeAvatar}" alt="${safeUsername}">
                     </div>
                     <div class="comment-content">
                         <div class="comment-header">
-                            <span class="comment-author">${comment.user.username}</span>
+                            <span class="comment-author">${safeUsername}</span>
                             <span class="comment-time">${this.formatTime(comment.created_at)}</span>
                         </div>
                         <div class="comment-text ${isDeleted ? 'deleted-text' : ''}">${contentPrefix}${this.escapeHtml(comment.content)}</div>
                         <div class="comment-actions">
                             ${voteButtons}
                             ${!isDeleted ? `
-                                <button class="btn-reply" data-comment-id="${comment.id}" data-root-id="${actualRootId}" data-author="${comment.user.username}">
+                                <button class="btn-reply" data-comment-id="${comment.id}" data-root-id="${actualRootId}" data-author="${safeUsername}">
                                     <i class="fas fa-reply"></i> 回复
                                 </button>
                             ` : ''}
@@ -178,11 +182,11 @@ class CommentSystem {
         return `
             <div class="comment-item" id="comment-${comment.id}" data-comment-id="${comment.id}" data-created-at="${new Date(comment.created_at).getTime()}">
                 <div class="comment-avatar">
-                    <img src="${avatar}" alt="${comment.user.username}">
+                    <img src="${safeAvatar}" alt="${safeUsername}">
                 </div>
                 <div class="comment-content">
                     <div class="comment-header">
-                        <span class="comment-author">${comment.user.username}</span>
+                        <span class="comment-author">${safeUsername}</span>
                         <span class="comment-time">${this.formatTime(comment.created_at)}</span>
                     </div>
                     <div class="comment-text ${isDeleted ? 'deleted-text' : ''}">${this.escapeHtml(comment.content)}</div>
@@ -191,7 +195,7 @@ class CommentSystem {
                         ${pinButtons}
                         ${voteButtons}
                         ${!isDeleted ? `
-                            <button class="btn-reply" data-comment-id="${comment.id}" data-root-id="${comment.id}" data-author="${comment.user.username}">
+                            <button class="btn-reply" data-comment-id="${comment.id}" data-root-id="${comment.id}" data-author="${safeUsername}">
                                 <i class="fas fa-reply"></i> 回复
                             </button>
                         ` : ''}
@@ -847,6 +851,17 @@ class CommentSystem {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // URL 净化：只允许 http(s)/相对路径/本站静态资源，拦截 javascript: 等危险协议
+    sanitizeUrl(url) {
+        if (!url || typeof url !== 'string') return '/assets/default-avatar.svg?v=2';
+        const trimmed = url.trim();
+        // 危险协议直接回退默认头像
+        if (/^\s*(javascript|data|vbscript|file):/i.test(trimmed)) {
+            return '/assets/default-avatar.svg?v=2';
+        }
+        return this.escapeHtml(trimmed);
     }
 
     // 显示错误消息

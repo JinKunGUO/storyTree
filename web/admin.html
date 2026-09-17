@@ -794,16 +794,16 @@
           <div class="review-item">
             <div class="header">
               <div>
-                <h3>${item.title}</h3>
+                <h3>${escapeHtml(item.title)}</h3>
                 <div class="meta">
-                  作者：${item.author.username} | 
-                  故事：${item.story ? item.story.title : '-'} |
+                  作者：${escapeHtml(item.author.username)} |
+                  故事：${escapeHtml(item.story ? item.story.title : '-')} |
                   创建时间：${new Date(item.created_at).toLocaleString('zh-CN')}
                 </div>
                 ${item.report_count > 0 ? `<div class="reports">⚠️ 被举报 ${item.report_count} 次</div>` : ''}
               </div>
             </div>
-            <div class="content">${item.content ? item.content.substring(0, 200) + (item.content.length > 200 ? '...' : '') : '（无内容）'}</div>
+            <div class="content">${item.content ? escapeHtml(item.content.substring(0, 200)) + (item.content.length > 200 ? '...' : '') : '（无内容）'}</div>
             <div class="actions">
               <button class="btn btn-success" onclick="handleReview(${item.id}, 'approve')">✅ 通过</button>
               <button class="btn btn-danger" onclick="handleReview(${item.id}, 'reject')">❌ 驳回</button>
@@ -843,9 +843,9 @@
         let reportHtml = '<div style="max-height:400px;overflow-y:auto;">';
         res.reports.forEach((report, idx) => {
           reportHtml += `<div style="padding:10px 0;border-bottom:1px solid #eee;">`;
-          reportHtml += `<strong>${idx + 1}. ${report.reporter.username}</strong><br>`;
-          reportHtml += `原因：${report.reason}<br>`;
-          if (report.description) reportHtml += `说明：${report.description}<br>`;
+          reportHtml += `<strong>${idx + 1}. ${escapeHtml(report.reporter.username)}</strong><br>`;
+          reportHtml += `原因：${escapeHtml(report.reason)}<br>`;
+          if (report.description) reportHtml += `说明：${escapeHtml(report.description)}<br>`;
           reportHtml += `时间：${new Date(report.createdAt).toLocaleString('zh-CN')}`;
           reportHtml += `</div>`;
         });
@@ -1068,7 +1068,7 @@
         const data = await apiRequest('GET', `/withdrawals/admin/user-earnings/${userId}`);
         
         let infoHtml = `<div style="line-height:2;">
-          <div><strong>用户：</strong>${data.user.username}</div>
+          <div><strong>用户：</strong>${escapeHtml(data.user.username)}</div>
           <div><strong>收益余额：</strong>${data.earningsBalance} 积分</div>
           <div><strong>总收益：</strong>${data.totalEarnings} 积分</div>
           <div><strong>已提现：</strong>${data.withdrawnAmount} 积分</div>
@@ -1079,8 +1079,8 @@
           infoHtml += `<hr style="margin:10px 0;"><strong>最近解锁记录：</strong><div style="max-height:200px;overflow-y:auto;margin-top:6px;">`;
           data.recentUnlocks.forEach((unlock, idx) => {
             infoHtml += `<div style="padding:4px 0;border-bottom:1px solid #eee;font-size:13px;">`;
-            infoHtml += `${idx + 1}. ${unlock.node.title} — ${unlock.unlock_price}积分<br>`;
-            infoHtml += `&nbsp;&nbsp;解锁人：${unlock.user.username}，${new Date(unlock.unlocked_at).toLocaleString('zh-CN')}`;
+            infoHtml += `${idx + 1}. ${escapeHtml(unlock.node.title)} — ${unlock.unlock_price}积分<br>`;
+            infoHtml += `&nbsp;&nbsp;解锁人：${escapeHtml(unlock.user.username)}，${new Date(unlock.unlocked_at).toLocaleString('zh-CN')}`;
             infoHtml += `</div>`;
           });
           infoHtml += `</div>`;

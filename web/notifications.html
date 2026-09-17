@@ -394,6 +394,8 @@
         </div>
     </div>
 
+    <!-- XSS 防护：通知标题/内容/链接转义 -->
+    <script src="js/utils/escape.js"></script>
     <script>
         let allNotifications = [];
         let currentFilter = 'all';
@@ -504,12 +506,12 @@
             container.innerHTML = filteredNotifications.map(notification => `
                 <div class="notification-item ${notification.is_read ? '' : 'unread'}" data-id="${notification.id}">
                     <div class="notification-header">
-                        <div class="notification-title">${notification.title}</div>
+                        <div class="notification-title">${escapeHtml(notification.title)}</div>
                         <div class="notification-time">${formatTime(notification.created_at)}</div>
                     </div>
-                    <div class="notification-content">${notification.content}</div>
+                    <div class="notification-content">${escapeHtml(notification.content)}</div>
                     <div class="notification-actions">
-                        ${notification.link ? `<button class="notification-action-btn mark-read-btn" onclick="handleNotificationClick(${notification.id}, '${notification.link}')">查看详情</button>` : ''}
+                        ${notification.link ? `<button class="notification-action-btn mark-read-btn" onclick="handleNotificationClick(${notification.id}, '${escapeHtml(notification.link)}')">查看详情</button>` : ''}
                         ${!notification.is_read ? `<button class="notification-action-btn mark-read-btn" onclick="markAsRead(${notification.id})">标为已读</button>` : ''}
                         <button class="notification-action-btn delete-btn" onclick="deleteNotification(${notification.id})">删除</button>
                     </div>

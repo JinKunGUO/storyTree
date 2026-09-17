@@ -151,6 +151,26 @@ function uploadFile(options: {
       formData: options.formData,
       header: token ? { Authorization: `Bearer ${token}` } : {},
       success: (res) => {
+        // 统一 401 拦截：与 request() 主链路行为一致（登出 + 跳登录页）
+        if (res.statusCode === 401) {
+          if (token) {
+            userStore.logout()
+            uni.showModal({
+              title: '登录已过期',
+              content: '登录状态已过期，请重新登录',
+              showCancel: false,
+              confirmText: '重新登录',
+              success: () => {
+                uni.reLaunch({ url: '/pkgAuth/pages/auth/login/index' })
+              }
+            })
+            reject(new Error('登录已过期，请重新登录'))
+          } else {
+            reject(new Error('未登录或登录已过期'))
+          }
+          return
+        }
+
         try {
           const data = JSON.parse(res.data)
           resolve(data)
