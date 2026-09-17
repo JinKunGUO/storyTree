@@ -2,7 +2,7 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { prisma } from '../index';
 import { verifyJWT } from '../utils/auth';
-import { authenticateToken, requireAdmin, safeParsePage, safeParseLimit } from '../utils/middleware';
+import { authenticateToken, requireAdmin } from '../utils/middleware';
 
 const router = Router();
 

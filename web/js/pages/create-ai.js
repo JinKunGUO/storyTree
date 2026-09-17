@@ -1979,7 +1979,7 @@ async function handleConfirm() {
 
     // 埋点：创建故事成功
     if (typeof window.stTrack === 'function') {
-      window.stTrack('story_created', { storyId, method: state?.creationMethod || 'unknown' });
+      window.stTrack('story_created', { storyId, method: state?.selectedMethod || 'unknown' });
     }
 
     // 如果有大纲数据，创建大纲记录

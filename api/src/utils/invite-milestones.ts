@@ -1,4 +1,4 @@
-import { prisma } from '../index';
+import { prisma } from '../db';
 import { addPoints } from './points';
 import { INVITE_MILESTONES } from './milestones';
 

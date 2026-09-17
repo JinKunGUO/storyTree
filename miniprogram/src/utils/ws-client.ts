@@ -81,19 +81,21 @@ function connect(): void {
     return
   }
 
-  // 构建 WebSocket URL
+  // 构建 WebSocket URL（token 走 Authorization 头，不再放 URL，避免写入 Nginx/代理日志）
   const apiBase = import.meta.env.VITE_API_BASE_URL || 'https://your-domain.com'
   // 将 http(s) 替换为 ws(s)
   const wsBase = apiBase.replace(/^http/, 'ws')
-  const wsUrl = `${wsBase}/api/ws?token=${encodeURIComponent(token)}`
+  const wsUrl = `${wsBase}/api/ws`
 
   connecting = true
   manualClose = false
 
-  console.log('[WS] 正在连接...', wsUrl.replace(/token=.*/, 'token=***'))
+  console.log('[WS] 正在连接...', wsUrl)
 
   socketTask = uni.connectSocket({
     url: wsUrl,
+    // token 通过 Authorization 头传递（后端 authenticate 支持该方式）
+    header: { Authorization: `Bearer ${token}` },
     success: () => {
       console.log('[WS] connectSocket 调用成功')
     },

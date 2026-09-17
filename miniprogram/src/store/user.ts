@@ -93,6 +93,9 @@ export const useUserStore = defineStore('user', () => {
     userInfo.value = null
     uni.removeStorageSync(TOKEN_KEY)
     uni.removeStorageSync(USER_KEY)
+    // 断开 WebSocket，防止退出登录后旧会话仍接收推送
+    // 动态导入避免循环依赖（ws-client 反向依赖本 store）
+    import('@/utils/ws-client').then(m => m.mpWsClient.disconnect()).catch(() => {})
   }
 
   // 检查登录状态（用于页面 onShow 时刷新）

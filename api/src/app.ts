@@ -95,10 +95,12 @@ async function serveStoryWithMeta(
 
   try {
     let html = fs.readFileSync(filePath, 'utf8');
-    html = html.replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(title)}</title>`);
+    // 用函数式 replacer：替换串里的内容来自数据库（用户可控），
+    // 字符串 replacer 会把 $&、$' 等当作特殊模式展开，导致标题含 $ 时污染 HTML
+    html = html.replace(/<title>[^<]*<\/title>/, () => `<title>${escapeHtml(title)}</title>`);
     if (ogTags) {
       // 注入到 </head> 之前
-      html = html.replace('</head>', `${ogTags}\n</head>`);
+      html = html.replace('</head>', () => `${ogTags}\n</head>`);
     }
     res.type('html').send(html);
   } catch (error) {
