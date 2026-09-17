@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { upload, getFileUrl } from '../utils/upload';
+import { upload, getFileUrl, validateImageMagicNumber } from '../utils/upload';
 import { prisma } from '../index';
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../utils/auth';
@@ -36,8 +36,13 @@ router.post('/image', upload.single('image'), async (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
+    // M11: 校验文件真实魔数，防伪造 Content-Type 上传恶意文件（如 .html 改头冒充图片）
+    if (!validateImageMagicNumber(req.file.filename, req.file.mimetype)) {
+      return res.status(400).json({ error: '文件内容与声明的图片类型不符，已拒绝' });
+    }
+
     const fileUrl = getFileUrl(req.file.filename);
-    
+
     res.json({
       success: true,
       url: fileUrl,
@@ -60,6 +65,11 @@ router.post('/avatar', upload.single('avatar'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // M11: 校验文件真实魔数，防伪造 Content-Type
+    if (!validateImageMagicNumber(req.file.filename, req.file.mimetype)) {
+      return res.status(400).json({ error: '文件内容与声明的图片类型不符，已拒绝' });
     }
 
     const fileUrl = getFileUrl(req.file.filename);
@@ -96,6 +106,11 @@ router.post('/story/:storyId/cover', upload.single('cover'), async (req, res) =>
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // M11: 校验文件真实魔数，防伪造 Content-Type
+    if (!validateImageMagicNumber(req.file.filename, req.file.mimetype)) {
+      return res.status(400).json({ error: '文件内容与声明的图片类型不符，已拒绝' });
     }
 
     // 检查故事所有权

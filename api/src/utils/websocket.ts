@@ -12,7 +12,6 @@
  *   - task:progress  AI 任务进度更新（队列位置等）
  *   - payment:status 支付状态变更
  *   - tree:update    故事树新章节
- *   - system:load    系统负载更新
  */
 
 import { Server as HTTPServer, IncomingMessage } from 'http';
@@ -51,8 +50,6 @@ class WebSocketService {
   private connections: Map<number, Set<AuthenticatedWebSocket>> = new Map();
   /** 心跳定时器 */
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
-  /** 系统负载推送定时器 */
-  private systemLoadInterval: ReturnType<typeof setInterval> | null = null;
 
   /**
    * 初始化 WebSocket 服务器，挂载到 HTTP Server
@@ -167,8 +164,8 @@ class WebSocketService {
     // 启动心跳检测（每 30 秒）
     this.startHeartbeat();
 
-    // 启动系统负载定时推送（每 30 秒）
-    this.startSystemLoadBroadcast();
+    // 注：system:load 系统负载广播已移除——前端 widget 未被任何页面引用，
+    // 且向所有在线用户广播服务器内存/运行时长属于信息泄露（M5）
 
     console.log('🔌 WebSocket 服务已启动，路径: /api/ws');
   }
@@ -377,39 +374,12 @@ class WebSocketService {
   }
 
   /**
-   * 系统负载定时广播（每 30 秒）
-   */
-  private startSystemLoadBroadcast() {
-    this.systemLoadInterval = setInterval(() => {
-      // 仅当有在线用户时才计算和推送
-      if (this.connections.size === 0) return;
-
-      const memUsage = process.memoryUsage();
-      const loadData = {
-        memory: {
-          rss: Math.round(memUsage.rss / 1024 / 1024),
-          heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
-          heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024),
-        },
-        uptime: Math.round(process.uptime()),
-        wsStats: this.getStats(),
-      };
-
-      this.broadcast('system:load', loadData);
-    }, 30000);
-  }
-
-  /**
    * 优雅关闭
    */
   async close() {
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
       this.heartbeatInterval = null;
-    }
-    if (this.systemLoadInterval) {
-      clearInterval(this.systemLoadInterval);
-      this.systemLoadInterval = null;
     }
 
     // 关闭所有连接

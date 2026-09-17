@@ -188,11 +188,10 @@ export async function sendVerificationEmail(email: string, token: string): Promi
     console.log('收件人:', email);
     console.log('主题:', emailContent.subject);
     console.log('验证链接:', verificationUrl);
-    console.log('Token:', token);
     console.log('================================\n');
     return;
   }
-  
+
   await transporter!.sendMail(emailContent);
 }
 
@@ -269,7 +268,6 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
     console.log('收件人:', email);
     console.log('主题:', emailContent.subject);
     console.log('重置链接:', resetUrl);
-    console.log('Token:', token);
     console.log('================================\n');
     return;
   }

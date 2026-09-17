@@ -1444,7 +1444,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                             ${chapter.isPublished || chapter.is_published ? '已发布' : '草稿'}
                         </div>
                         ${(!chapter.isPublished && !chapter.is_published) && (isChapterAuthor || isStoryAuthor) ? `
-                            <button class="chapter-action-btn" onclick="event.stopPropagation(); publishChapter(${chapter.id}, '${escapeHtml(chapter.title).replace(/'/g, "&#039;")}')}" title="发布草稿" style="
+                            <button class="chapter-action-btn" data-action="publish" data-chapter-id="${chapter.id}" data-chapter-title="${escapeHtml(chapter.title)}" title="发布草稿" style="
                                 padding: 8px 12px;
                                 background: #059669;
                                 color: white;
@@ -1458,7 +1458,7 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                             </button>
                         ` : ''}
                         ${canDelete ? `
-                            <button class="chapter-action-btn" onclick="event.stopPropagation(); deleteChapter(${chapter.id}, '${escapeHtml(chapter.title).replace(/'/g, "&#039;")}')}" title="删除章节" style="
+                            <button class="chapter-action-btn" data-action="delete" data-chapter-id="${chapter.id}" data-chapter-title="${escapeHtml(chapter.title)}" title="删除章节" style="
                                 padding: 8px 12px;
                                 background: #f44336;
                                 color: white;
@@ -1485,6 +1485,20 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
                     }
                     const chapterId = this.dataset.chapterId;
                     window.location.href = `/chapter.html?id=${chapterId}`;
+                });
+            });
+
+            // 发布/删除按钮（M1: 用事件绑定替代 onclick 字符串拼接，标题经 dataset 传递杜绝注入）
+            container.querySelectorAll('.chapter-action-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const chapterId = parseInt(this.dataset.chapterId, 10);
+                    const chapterTitle = this.dataset.chapterTitle || '';
+                    if (this.dataset.action === 'publish') {
+                        publishChapter(chapterId, chapterTitle);
+                    } else if (this.dataset.action === 'delete') {
+                        deleteChapter(chapterId, chapterTitle);
+                    }
                 });
             });
         }

@@ -484,6 +484,15 @@ onMounted(async () => {
 })
 
 onLoad(async (options: any) => {
+  // 登录守卫：写作/编辑页必须登录（M8）。用 redirectTo 替换当前页，避免用户返回到无效编辑页
+  if (!userStore.isLoggedIn) {
+    uni.showToast({ title: '请先登录', icon: 'none', duration: 800 })
+    setTimeout(() => {
+      uni.redirectTo({ url: '/pkgAuth/pages/auth/login/index' })
+    }, 800)
+    return
+  }
+
   if (!options) return
 
   // 兼容旧参数：id 曾被误用为 storyId（create-ai.vue）

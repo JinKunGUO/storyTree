@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../index';
 import { authenticateToken, requireAdmin, safeParsePage, safeParseLimit } from '../utils/middleware';
-import { hashPassword } from '../utils/auth';
+import { hashPassword, isValidPassword } from '../utils/auth';
 
 const router = Router();
 
@@ -276,8 +276,10 @@ router.post('/:id/reset-password', async (req, res) => {
     }
 
     const { newPassword } = req.body;
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({ error: '密码长度至少为 6 位' });
+    // 与用户注册/改密保持同一套强密码策略
+    const passwordValid = isValidPassword(newPassword);
+    if (!passwordValid.valid) {
+      return res.status(400).json({ error: passwordValid.message });
     }
 
     const user = await prisma.users.findUnique({ where: { id: userId } });

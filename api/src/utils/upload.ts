@@ -42,6 +42,48 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCa
   }
 };
 
+// 图片魔数签名（文件头真实字节，客户端无法伪造 Content-Type 绕过）
+const MAGIC_SIGNATURES: Record<string, number[][]> = {
+  'image/jpeg': [[0xff, 0xd8, 0xff]],
+  'image/jpg':  [[0xff, 0xd8, 0xff]],
+  'image/png':  [[0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]],
+  'image/gif':  [[0x47, 0x49, 0x46, 0x38, 0x37, 0x61], [0x47, 0x49, 0x46, 0x38, 0x39, 0x61]], // GIF87a / GIF89a
+  'image/webp': [[0x52, 0x49, 0x46, 0x46]], // 'RIFF'（第 8-11 字节为 'WEBP'，下面单独校验）
+};
+
+/**
+ * 校验已落盘文件的真实魔数是否与声明的 mimetype 匹配（M11：防伪造 Content-Type 上传恶意文件）
+ * 不匹配时删除文件并返回 false
+ */
+export function validateImageMagicNumber(filename: string, declaredMime: string): boolean {
+  const filePath = path.join(uploadDir, path.basename(filename));
+  try {
+    // 只读文件头 12 字节即可判定
+    const fd = fs.openSync(filePath, 'r');
+    const buf = Buffer.alloc(12);
+    fs.readSync(fd, buf, 0, 12, 0);
+    fs.closeSync(fd);
+
+    const signatures = MAGIC_SIGNATURES[declaredMime];
+    if (!signatures) return false;
+
+    let matched = signatures.some(sig => sig.every((b, i) => buf[i] === b));
+
+    // WebP 需额外确认第 8-11 字节是 'WEBP'
+    if (matched && declaredMime === 'image/webp') {
+      matched = buf.slice(8, 12).toString('ascii') === 'WEBP';
+    }
+
+    if (!matched) {
+      fs.unlinkSync(filePath); // 魔数不符，删除已落盘的伪造文件
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // 配置multer
 export const upload = multer({
   storage,

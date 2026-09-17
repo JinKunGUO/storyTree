@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../utils/auth';
+import { safeParseLimit } from '../utils/middleware';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -570,7 +571,8 @@ router.get('/history', authenticateToken, async (req: any, res) => {
 // 获取签到排行榜
 router.get('/leaderboard', async (req, res) => {
   try {
-    const { limit = 50 } = req.query;
+    // 上限 100，防止超大 limit 拖垮数据库
+    const limit = safeParseLimit(req, 50, 100);
 
     const users = await prisma.users.findMany({
       where: {
@@ -588,7 +590,7 @@ router.get('/leaderboard', async (req, res) => {
       orderBy: {
         consecutive_days: 'desc',
       },
-      take: parseInt(limit as string),
+      take: limit,
     });
 
     res.json({
