@@ -702,8 +702,8 @@ async function loadNodeForEdit(id: number) {
 
 // 确保用户信息已加载
 async function ensureUserInfo(): Promise<void> {
-  console.log('[ensureUserInfo] 开始，isLoggedIn:', userStore.isLoggedIn, 'user:', userStore.user)
-  if (userStore.isLoggedIn && !userStore.user) {
+  console.log('[ensureUserInfo] 开始，isLoggedIn:', userStore.isLoggedIn, 'user:', userStore.userInfo)
+  if (userStore.isLoggedIn && !userStore.userInfo) {
     // 直接从存储中读取用户信息
     const storedUser = uni.getStorageSync('st_user')
     if (storedUser) {
@@ -718,15 +718,15 @@ async function ensureUserInfo(): Promise<void> {
         console.log('[ensureUserInfo] 解析失败', e)
       }
     }
-  } else if (userStore.user) {
-    localUserId = userStore.user.id
+  } else if (userStore.userInfo) {
+    localUserId = userStore.userInfo.id
   }
   // 如果仍然没有用户信息，调用 checkLoginStatus
   if (!localUserId && userStore.isLoggedIn) {
     userStore.checkLoginStatus()
     await new Promise(resolve => setTimeout(resolve, 100))
-    if (userStore.user) {
-      localUserId = userStore.user.id
+    if (userStore.userInfo) {
+      localUserId = userStore.userInfo.id
     }
   }
   console.log('[ensureUserInfo] 结束，localUserId:', localUserId)
@@ -737,13 +737,13 @@ async function checkStoryAuthorship(sid: number) {
   // 调试：打印用户登录状态
   console.log('[权限检查] 开始检查权限', {
     isLoggedIn: userStore.isLoggedIn,
-    hasUser: !!userStore.user,
-    userId: userStore.user?.id,
+    hasUser: !!userStore.userInfo,
+    userId: userStore.userInfo?.id,
     localUserId: localUserId
   })
 
   // 优先使用本地变量 localUserId
-  const currentUserId = localUserId || userStore.user?.id
+  const currentUserId = localUserId || userStore.userInfo?.id
 
   // 如果用户仍未登录，不检查权限
   if (!currentUserId) {
@@ -957,7 +957,7 @@ async function loadBrief() {
   if (!storyId.value) return
 
   // 确保用户信息已加载
-  if (userStore.isLoggedIn && !userStore.user) {
+  if (userStore.isLoggedIn && !userStore.userInfo) {
     userStore.checkLoginStatus()
     await new Promise(resolve => setTimeout(resolve, 100))
   }
@@ -967,10 +967,10 @@ async function loadBrief() {
 
   try {
     // 如果还没判断过作者权限，先获取故事信息
-    if (!isStoryAuthor.value && userStore.user) {
+    if (!isStoryAuthor.value && userStore.userInfo) {
       try {
         const storyRes = await http.get(`/api/stories/${storyId.value}`)
-        if (storyRes.story && storyRes.story.author_id === userStore.user.id) {
+        if (storyRes.story && storyRes.story.author_id === userStore.userInfo.id) {
           isStoryAuthor.value = true
           console.log('[立项书] 用户是故事作者')
         }
@@ -1059,7 +1059,7 @@ async function loadOutline() {
   if (!storyId.value) return
 
   // 确保用户信息已加载
-  if (userStore.isLoggedIn && !userStore.user) {
+  if (userStore.isLoggedIn && !userStore.userInfo) {
     userStore.checkLoginStatus()
     await new Promise(resolve => setTimeout(resolve, 100))
   }
@@ -1075,12 +1075,12 @@ async function loadOutline() {
         ? storyRes.story.ai_creation_method
         : null
       // 判断当前用户是否是故事作者或协作者
-      if (userStore.user && storyRes.story.author_id === userStore.user.id) {
+      if (userStore.userInfo && storyRes.story.author_id === userStore.userInfo.id) {
         isStoryAuthor.value = true
         console.log('[大纲] 用户是故事作者')
       }
       // 检查是否是协作者
-      if (userStore.user && !isStoryAuthor.value) {
+      if (userStore.userInfo && !isStoryAuthor.value) {
         try {
           const roleRes = await http.get(`/api/stories/${storyId.value}/role`)
           if (roleRes.is_collaborator) {

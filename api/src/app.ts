@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import * as fs from 'fs';
 import * as path from 'path';
+import { prisma } from './db';
 import authRoutes from './routes/auth';
 import storyRoutes from './routes/stories';
 import nodeRoutes from './routes/nodes';
@@ -32,6 +33,78 @@ import adminUsersRoutes from './routes/admin-users';
 import adminContentRoutes from './routes/admin-content';
 import adminPointsRoutes from './routes/admin-points';
 import adminDashboardRoutes from './routes/admin-dashboard';
+
+/**
+ * 转义 HTML 特殊字符，防止注入
+ */
+function escapeHtml(str: string): string {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * 为 story 页动态注入 OG meta，供搜索引擎和社交分享抓取
+ * 读取故事标题/描述/封面，替换 HTML 中的 <title> 并注入 og:* meta 标签
+ */
+async function serveStoryWithMeta(
+  req: express.Request,
+  res: express.Response,
+  filePath: string,
+): Promise<void> {
+  const host = process.env.API_BASE_URL || 'https://storytree.online';
+  const defaultTitle = '故事详情 - StoryTree';
+  const defaultDesc = '在 StoryTree 阅读并创作分支式互动小说，每个选择都通向不同结局。';
+  const defaultImage = `${host}/assets/logo.png`;
+
+  let ogTags = '';
+  let title = defaultTitle;
+
+  try {
+    const storyId = parseInt(req.query.id as string, 10);
+    if (!Number.isNaN(storyId)) {
+      // 仅公开故事注入 OG meta，避免私密故事标题/描述泄漏给爬虫
+      const story = await prisma.stories.findFirst({
+        where: { id: storyId, visibility: 'public' },
+        select: { title: true, description: true, cover_image: true },
+      });
+      if (story) {
+        title = story.title || defaultTitle;
+        const desc = (story.description || defaultDesc).slice(0, 200);
+        let image = story.cover_image || defaultImage;
+        // 相对路径补全为绝对 URL
+        if (image.startsWith('/')) {
+          image = `${host}${image}`;
+        }
+        ogTags = `
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="${escapeHtml(title)}">
+  <meta property="og:description" content="${escapeHtml(desc)}">
+  <meta property="og:image" content="${escapeHtml(image)}">
+  <meta property="og:url" content="${escapeHtml(`${host}/story?id=${storyId}`)}">
+  <meta name="description" content="${escapeHtml(desc)}">`;
+      }
+    }
+  } catch (error) {
+    console.error('注入 OG meta 失败，回退到默认值:', error);
+  }
+
+  try {
+    let html = fs.readFileSync(filePath, 'utf8');
+    html = html.replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(title)}</title>`);
+    if (ogTags) {
+      // 注入到 </head> 之前
+      html = html.replace('</head>', `${ogTags}\n</head>`);
+    }
+    res.type('html').send(html);
+  } catch (error) {
+    console.error('读取 story.html 失败:', error);
+    res.sendFile(filePath);
+  }
+}
 
 /**
  * 创建并配置 Express 应用实例
@@ -91,6 +164,16 @@ export function createApp() {
   // 静态文件服务 - 提供上传的图片
   app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+  // story 页动态 OG meta 注入（必须注册在 express.static 之前，
+  // 否则 /story.html?id=N 会被静态中间件直接拦截，注入不生效）
+  app.get(['/story', '/story.html'], async (req, res, next) => {
+    const filePath = path.join(__dirname, '../../web', 'story.html');
+    if (!fs.existsSync(filePath)) {
+      return next();
+    }
+    return serveStoryWithMeta(req, res, filePath);
+  });
+
   // 静态文件服务 - 提供前端页面
   app.use(express.static(path.join(__dirname, '../../web')));
 
@@ -149,7 +232,43 @@ export function createApp() {
     }
   });
 
+  // robots.txt - 允许搜索引擎抓取
+  app.get('/robots.txt', (_req, res) => {
+    const host = process.env.API_BASE_URL || 'https://storytree.online';
+    res.type('text/plain');
+    res.send(
+      `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\nDisallow: /profile\nDisallow: /write\n\nSitemap: ${host}/sitemap.xml\n`
+    );
+  });
+
+  // sitemap.xml - 动态生成已发布故事的 URL 列表
+  app.get('/sitemap.xml', async (_req, res) => {
+    try {
+      const host = process.env.API_BASE_URL || 'https://storytree.online';
+      const stories = await prisma.stories.findMany({
+        where: { visibility: 'public', nodes: { some: { parent_id: null } } },
+        select: { id: true, updated_at: true },
+        orderBy: { updated_at: 'desc' },
+        take: 5000,
+      });
+      const urls = stories
+        .map((s) => {
+          const lastmod = s.updated_at ? new Date(s.updated_at).toISOString().slice(0, 10) : '';
+          return `  <url>\n    <loc>${host}/story?id=${s.id}</loc>${lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : ''}\n  </url>`;
+        })
+        .join('\n');
+      res.type('application/xml');
+      res.send(
+        `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>`
+      );
+    } catch (error) {
+      console.error('生成 sitemap 失败:', error);
+      res.status(500).type('application/xml').send('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
+    }
+  });
+
   // SPA路由 - 必须放在最后，处理HTML5路由
+  // 注意：story 页的 OG meta 注入已由 express.static 之前的显式路由处理，此处不再重复
   app.get('*', (req, res) => {
     if (req.path.startsWith('/api/')) {
       return res.status(404).json({ error: 'API not found' });
