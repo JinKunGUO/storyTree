@@ -47,6 +47,18 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#39;');
 }
 
+// story.html 模板内容缓存：避免每次请求同步读盘阻塞事件循环。
+// 静态模板只在部署时变化，而部署会重启进程，因此无需主动失效。
+const storyHtmlCache = new Map<string, string>();
+function readStoryHtml(filePath: string): string {
+  let html = storyHtmlCache.get(filePath);
+  if (html === undefined) {
+    html = fs.readFileSync(filePath, 'utf8');
+    storyHtmlCache.set(filePath, html);
+  }
+  return html;
+}
+
 /**
  * 为 story 页动态注入 OG meta，供搜索引擎和社交分享抓取
  * 读取故事标题/描述/封面，替换 HTML 中的 <title> 并注入 og:* meta 标签
@@ -94,7 +106,7 @@ async function serveStoryWithMeta(
   }
 
   try {
-    let html = fs.readFileSync(filePath, 'utf8');
+    let html = readStoryHtml(filePath);
     // 用函数式 replacer：替换串里的内容来自数据库（用户可控），
     // 字符串 replacer 会把 $&、$' 等当作特殊模式展开，导致标题含 $ 时污染 HTML
     html = html.replace(/<title>[^<]*<\/title>/, () => `<title>${escapeHtml(title)}</title>`);
@@ -246,8 +258,17 @@ export function createApp() {
   });
 
   // sitemap.xml - 动态生成已发布故事的 URL 列表
+  // 5 分钟 TTL 缓存：爬虫频繁抓取时避免每次全量查库
+  const SITEMAP_TTL_MS = 5 * 60 * 1000;
+  let sitemapCache: { xml: string; generatedAt: number } | null = null;
+
   app.get('/sitemap.xml', async (_req, res) => {
+    res.type('application/xml');
     try {
+      if (sitemapCache && Date.now() - sitemapCache.generatedAt < SITEMAP_TTL_MS) {
+        return res.send(sitemapCache.xml);
+      }
+
       const host = process.env.API_BASE_URL || 'https://storytree.online';
       const stories = await prisma.stories.findMany({
         where: { visibility: 'public', nodes: { some: { parent_id: null } } },
@@ -261,13 +282,12 @@ export function createApp() {
           return `  <url>\n    <loc>${host}/story?id=${s.id}</loc>${lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : ''}\n  </url>`;
         })
         .join('\n');
-      res.type('application/xml');
-      res.send(
-        `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>`
-      );
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>`;
+      sitemapCache = { xml, generatedAt: Date.now() };
+      res.send(xml);
     } catch (error) {
       console.error('生成 sitemap 失败:', error);
-      res.status(500).type('application/xml').send('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
+      res.status(500).send('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
     }
   });
 

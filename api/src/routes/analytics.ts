@@ -1,8 +1,7 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { prisma } from '../index';
-import { verifyJWT } from '../utils/auth';
-import { authenticateToken, requireAdmin } from '../utils/middleware';
+import { authenticateToken, requireAdmin, verifyActiveToken } from '../utils/middleware';
 
 const router = Router();
 
@@ -43,11 +42,11 @@ router.post('/track', trackLimiter, async (req, res) => {
       return res.status(400).json({ error: '单次最多上报 20 条事件' });
     }
 
-    // 可选鉴权：有 token 则关联用户
+    // 可选鉴权：有 token 则关联用户（用 verifyActiveToken 与全站鉴权口径一致）
     let userId: number | null = null;
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (token) {
-      const decoded = verifyJWT(token);
+      const decoded = await verifyActiveToken(token);
       userId = decoded?.userId ?? null;
     }
 
