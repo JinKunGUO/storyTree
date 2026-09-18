@@ -136,6 +136,9 @@ export function createApp() {
   app.get('/health', healthHandler);
   app.get('/api/health', healthHandler);
 
+  // Nginx 反向代理下信任 X-Forwarded-For 头，使 express-rate-limit 正确识别用户 IP
+  app.set('trust proxy', 1);
+
   // 安全 HTTP 头（等效 helmet 核心功能）
   app.use((_req: express.Request, res: express.Response, next: express.NextFunction) => {
     // 防止 MIME 类型嗅探

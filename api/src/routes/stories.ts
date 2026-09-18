@@ -132,6 +132,10 @@ router.post('/', authenticateToken, async (req, res) => {
 
   const { title, description, cover_image, firstNodeTitle, firstNodeContent, project_brief, ai_assisted_created, ai_creation_method } = req.body;
 
+  if (!title || typeof title !== 'string' || title.trim().length === 0) {
+    return res.status(400).json({ error: '故事标题不能为空' });
+  }
+
   try {
     // 如果提供了第一章内容，则创建故事和第一章
     if (firstNodeContent) {
