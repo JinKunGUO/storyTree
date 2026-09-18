@@ -1,13 +1,12 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
+import { prisma } from '../db';
 import { checkCanGenerateInviteCode, generateUserInviteCode } from '../utils/invite-permission-checker';
 import { checkInviteMilestones } from '../utils/invite-milestones';
 import { JWT_SECRET } from '../utils/auth';
 import { authenticateToken } from '../utils/middleware';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // 生成随机邀请码
 function generateInviteCode(): string {

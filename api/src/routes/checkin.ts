@@ -1,11 +1,10 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
+import { prisma } from '../db';
 import { JWT_SECRET } from '../utils/auth';
 import { authenticateToken, safeParseLimit } from '../utils/middleware';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // 将 Date 格式化为本地日期字符串 "YYYY-MM-DD"，避免 toISOString() 的 UTC 偏移问题
 function toLocalDateStr(date: Date): string {
