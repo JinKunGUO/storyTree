@@ -16,20 +16,13 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../index';
 import { canUseAiFeature, deductPoints, AI_COST } from '../utils/points';
 import { JWT_SECRET } from '../utils/auth';
+import { getActiveUserIdFromReq } from '../utils/middleware';
 import { initSSEResponse, streamQwenToClient, streamQwenStep, sendSSE, cleanThinkingTags } from '../utils/qwen-stream';
 
 const router = Router();
 
-// JWT 认证
-const getUserId = (req: Request): number | null => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) return null;
-    const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
-    return decoded.userId;
-  } catch { return null; }
-};
+// JWT 认证：委托共享实现，校验 JWT + active_token（单端互踢）
+const getUserId = (req: Request): Promise<number | null> => getActiveUserIdFromReq(req);
 
 // ===================== 润色风格映射 =====================
 const polishStyles: Record<string, string> = {
@@ -58,7 +51,7 @@ const continuationStyles: Record<string, string> = {
  * 流式续写（单方向，逐字输出）
  */
 router.post('/continuation', async (req: Request, res: Response) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) return res.status(401).json({ error: '未登录' });
 
   const { storyId, nodeId, context, style, mode = 'segment', wordCount: rawWordCount = 1500, userPrompt } = req.body;
@@ -156,7 +149,7 @@ ${fullContext.substring(0, 3000)}${fullContext.length > 3000 ? '\n...(内容过�
  * 流式润色
  */
 router.post('/polish', async (req: Request, res: Response) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) return res.status(401).json({ error: '未登录' });
 
   const { content, style = 'elegant' } = req.body;
@@ -209,7 +202,7 @@ ${content}
  * 流式生成立项书
  */
 router.post('/project-brief', async (req: Request, res: Response) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) return res.status(401).json({ error: '未登录' });
 
   const { storyIdea, genre, targetAudience, writingStyle } = req.body;
@@ -268,7 +261,7 @@ ${writingStyle ? `写作风格：${writingStyle}` : ''}
  * 流式生成大纲
  */
 router.post('/outline', async (req: Request, res: Response) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) return res.status(401).json({ error: '未登录' });
 
   const { storyId, projectBrief, genre, coreIdea, chapterCount = 10 } = req.body;
@@ -343,7 +336,7 @@ ${briefInfo}
  * 流式修改（通用：立项书/大纲修改）
  */
 router.post('/revise', async (req: Request, res: Response) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) return res.status(401).json({ error: '未登录' });
 
   const { type, original, feedback } = req.body;
@@ -391,7 +384,7 @@ ${feedback}
  *   步骤2: 生成完整大纲
  */
 router.post('/pastiche', async (req: Request, res: Response) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) return res.status(401).json({ error: '未登录' });
 
   const { bookName, pasticheType = 'pastiche', innovation } = req.body;
@@ -521,7 +514,7 @@ router.post('/pastiche', async (req: Request, res: Response) => {
  *   步骤2: 生成完整大纲
  */
 router.post('/template', async (req: Request, res: Response) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) return res.status(401).json({ error: '未登录' });
 
   const { template, protagonistName, coreConflict } = req.body;

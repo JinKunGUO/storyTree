@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../utils/auth';
-import { safeParseLimit } from '../utils/middleware';
+import { authenticateToken, safeParseLimit } from '../utils/middleware';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -15,22 +15,7 @@ function toLocalDateStr(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-// 验证JWT中间件
-async function authenticateToken(req: any, res: any, next: any) {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-
-  if (!token) {
-    return res.status(401).json({ error: '未提供认证令牌' });
-  }
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
-    req.userId = decoded.userId;
-    next();
-  } catch (error) {
-    return res.status(401).json({ error: '无效的认证令牌' });
-  }
-}
+// authenticateToken 统一从 ../utils/middleware 导入（含 active_token 单端互踢校验）
 
 // 计算签到奖励积分
 function calculateCheckinReward(consecutiveDays: number): number {

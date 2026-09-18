@@ -15,6 +15,7 @@ import {
   isValidUsername,
   JWT_SECRET,
 } from '../utils/auth';
+import { verifyActiveToken } from '../utils/middleware';
 
 const router = Router();
 
@@ -502,7 +503,10 @@ router.get('/me', async (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+    const decoded = await verifyActiveToken(token);
+    if (!decoded) {
+      return res.status(401).json({ error: '无效或已被顶替的认证令牌' });
+    }
     
     const user = await prisma.users.findUnique({
       where: { id: decoded.userId },
@@ -547,7 +551,10 @@ router.post('/tour-complete', async (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+    const decoded = await verifyActiveToken(token);
+    if (!decoded) {
+      return res.status(401).json({ error: '无效或已被顶替的认证令牌' });
+    }
     // 支持 body.reset=true 重置为未完成状态（测试用）
     const value = req.body?.reset === true ? false : true;
 
@@ -572,7 +579,10 @@ router.put('/onboarding-progress', async (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+    const decoded = await verifyActiveToken(token);
+    if (!decoded) {
+      return res.status(401).json({ error: '无效或已被顶替的认证令牌' });
+    }
     const { progress } = req.body;
 
     // progress 可以是 object（正常更新）或 null（重置）
@@ -987,7 +997,10 @@ router.post('/bind-wx', async (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+    const decoded = await verifyActiveToken(token);
+    if (!decoded) {
+      return res.status(401).json({ error: '无效或已被顶替的认证令牌' });
+    }
 
     const wxUrl = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${appSecret}&js_code=${code}&grant_type=authorization_code`;
     const wxRes = await fetch(wxUrl);
@@ -1050,7 +1063,10 @@ router.post('/bind-email', async (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+    const decoded = await verifyActiveToken(token);
+    if (!decoded) {
+      return res.status(401).json({ error: '无效或已被顶替的认证令牌' });
+    }
 
     // 获取当前用户
     const currentUser = await prisma.users.findUnique({
@@ -1287,7 +1303,10 @@ router.delete('/account', async (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+    const decoded = await verifyActiveToken(token);
+    if (!decoded) {
+      return res.status(401).json({ error: '无效或已被顶替的认证令牌' });
+    }
 
     const user = await prisma.users.findUnique({
       where: { id: decoded.userId },

@@ -4,6 +4,7 @@ import { prisma } from '../index';
 import { aiContinuationQueue, aiPolishQueue, aiIllustrationQueue } from '../utils/queue';
 import { canUseAiFeature, getUserMonthlyQuota, getUserLevel, hasEnoughPoints, AI_COST } from '../utils/points';
 import { JWT_SECRET } from '../utils/auth';
+import { getActiveUserIdFromReq } from '../utils/middleware';
 
 const router = Router();
 
@@ -57,25 +58,14 @@ async function checkDuplicateTask(userId: number, taskType: string, nodeId?: num
 }
 
 // JWT认证函数
-const getUserId = (req: any): number | null => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return null;
-    }
-    const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
-    return decoded.userId;
-  } catch (error) {
-    return null;
-  }
-};
+// 委托共享实现：校验 JWT + active_token（单端互踢）
+const getUserId = (req: any): Promise<number | null> => getActiveUserIdFromReq(req);
 
 /**
  * 提交AI续写任务（异步）
  */
 router.post('/continuation/submit', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -330,7 +320,7 @@ router.post('/continuation/submit', async (req, res) => {
  * 先尝试5秒内同步返回结果，超时则返回taskId让前端轮询
  */
 router.post('/polish', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -445,7 +435,7 @@ router.post('/polish', async (req, res) => {
  * 提交AI插图任务（异步）
  */
 router.post('/illustration/submit', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -526,7 +516,7 @@ router.post('/illustration/submit', async (req, res) => {
  * 查询任务状态（含队列位置信息）
  */
 router.get('/tasks/:taskId', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -608,7 +598,7 @@ router.get('/tasks/:taskId', async (req, res) => {
  * 获取我的任务列表
  */
 router.get('/tasks', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -660,7 +650,7 @@ router.get('/tasks', async (req, res) => {
  * 获取用户AI配额信息
  */
 router.get('/quota', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -728,7 +718,7 @@ router.get('/quota', async (req, res) => {
  * @param publishImmediately 是否立即发布（true=发布，false=草稿，默认true）
  */
 router.post('/continuation/accept', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -895,7 +885,7 @@ router.post('/continuation/accept', async (req, res) => {
  * 分析所有分支的质量，推荐最佳分支路径
  */
 router.post('/recommend-branch', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }

@@ -3,30 +3,16 @@ import { upload, getFileUrl, validateImageMagicNumber } from '../utils/upload';
 import { prisma } from '../index';
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../utils/auth';
+import { getActiveUserIdFromReq } from '../utils/middleware';
 
 const router = Router();
 
-// 从Authorization header中获取用户ID
-const getUserId = (req: any): number | null => {
-  const authHeader = req.headers.authorization;
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
-  }
-
-  try {
-    const token = authHeader.substring(7); // 移除 "Bearer " 前缀
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
-    return decoded.userId;
-  } catch (error) {
-    console.error('JWT验证失败:', error);
-    return null;
-  }
-};
+// 委托共享实现：校验 JWT + active_token（单端互踢）
+const getUserId = (req: any): Promise<number | null> => getActiveUserIdFromReq(req);
 
 // 上传图片
 router.post('/image', upload.single('image'), async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
@@ -57,7 +43,7 @@ router.post('/image', upload.single('image'), async (req, res) => {
 
 // 更新用户头像
 router.post('/avatar', upload.single('avatar'), async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
@@ -96,7 +82,7 @@ router.post('/avatar', upload.single('avatar'), async (req, res) => {
 
 // 更新故事封面
 router.post('/story/:storyId/cover', upload.single('cover'), async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }

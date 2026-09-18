@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { checkCanGenerateInviteCode, generateUserInviteCode } from '../utils/invite-permission-checker';
 import { checkInviteMilestones } from '../utils/invite-milestones';
 import { JWT_SECRET } from '../utils/auth';
+import { authenticateToken } from '../utils/middleware';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -18,22 +19,7 @@ function generateInviteCode(): string {
   return code;
 }
 
-// 验证 JWT 中间件
-async function authenticateToken(req: any, res: any, next: any) {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-
-  if (!token) {
-    return res.status(401).json({ error: '未提供认证令牌' });
-  }
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
-    req.userId = decoded.userId;
-    next();
-  } catch (error) {
-    return res.status(401).json({ error: '无效的认证令牌' });
-  }
-}
+// authenticateToken 统一从 ../utils/middleware 导入（含 active_token 单端互踢校验）
 
 // 验证管理员权限
 async function requireAdmin(req: any, res: any, next: any) {

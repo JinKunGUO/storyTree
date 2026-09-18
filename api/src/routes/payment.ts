@@ -7,23 +7,12 @@ import { upgradeMembership, MEMBERSHIP_TIERS } from '../utils/membership';
 import { wsServer } from '../utils/websocket';
 import { JWT_SECRET } from '../utils/auth';
 import { verifyNotify as verifyAlipayNotify } from '../utils/alipay';
+import { getActiveUserIdFromReq } from '../utils/middleware';
 
 const router = Router();
 
-// JWT认证函数
-const getUserId = (req: any): number | null => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return null;
-    }
-    const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
-    return decoded.userId;
-  } catch (error) {
-    return null;
-  }
-};
+// 委托共享实现：校验 JWT + active_token（单端互踢）
+const getUserId = (req: any): Promise<number | null> => getActiveUserIdFromReq(req);
 
 /**
  * 支付成功后的订单处理逻辑（mock/wxpay/alipay 三种支付方式共用）
@@ -146,7 +135,7 @@ router.get('/plans', (req, res) => {
  * 创建会员订阅订单
  */
 router.post('/membership/create', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -225,7 +214,7 @@ router.post('/membership/create', async (req, res) => {
  * 创建积分充值订单
  */
 router.post('/points/create', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -272,7 +261,7 @@ router.post('/points/create', async (req, res) => {
  * 查询订单状态
  */
 router.get('/orders/:orderId', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -312,7 +301,7 @@ router.get('/orders/:orderId', async (req, res) => {
  * 获取用户订单列表
  */
 router.get('/orders', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -402,7 +391,7 @@ router.post('/callback/mock', async (req, res) => {
  * body: { orderId }  (先创建订单，再调此接口获取支付参数)
  */
 router.post('/wxpay/create', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -666,7 +655,7 @@ router.post('/alipay/notify', async (req, res) => {
  * GET /api/payment/wxpay/query/:orderId
  */
 router.get('/wxpay/query/:orderId', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) return res.status(401).json({ error: '未登录' });
 
   const { orderId } = req.params;

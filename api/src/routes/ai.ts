@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../index';
 import OpenAI from 'openai';
 import { JWT_SECRET } from '../utils/auth';
+import { getActiveUserIdFromReq } from '../utils/middleware';
 
 /**
  * @deprecated v1 AI路由（同步模式）—— 所有前端调用已迁移到 ai-v2.ts
@@ -23,25 +24,8 @@ import { JWT_SECRET } from '../utils/auth';
 
 const router = Router();
 
-// JWT认证函数 - 从Authorization header中提取并验证token
-const getUserId = (req: any): number | null => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('❌ 未找到Authorization header或格式错误');
-      return null;
-    }
-
-    const token = authHeader.substring(7); // 移除 "Bearer " 前缀
-
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; username?: string };
-    console.log('✅ Token验证成功，用户ID:', decoded.userId);
-    return decoded.userId;
-  } catch (error) {
-    console.error('❌ Token验证失败:', error instanceof Error ? error.message : 'Unknown error');
-    return null;
-  }
-};
+// 委托共享实现：校验 JWT + active_token（单端互踢）
+const getUserId = (req: any): Promise<number | null> => getActiveUserIdFromReq(req);
 
 // 根据模型类型选择 API 端点
 function getQwenBaseURL(model: string): string {
@@ -61,7 +45,7 @@ const qwenClient = new OpenAI({
 // Generate AI continuation options
 // Generate AI continuation options
 router.post('/generate', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
@@ -347,7 +331,7 @@ XXX` : ''}`;
 
 // Accept an AI-generated branch
 router.post('/accept', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
@@ -444,7 +428,7 @@ function parseAiResponse(response: string): Array<{ title: string; content: stri
 
 // 获取AI使用统计
 router.get('/usage-stats', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }

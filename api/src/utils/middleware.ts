@@ -125,6 +125,44 @@ export function getUserId(req: Request): number | null {
 }
 
 /**
+ * 验证 token 并检查 active_token（单端互踢），返回解码后的完整载荷。
+ * 与 authenticateToken 中间件同策略：active_token 为空时兼容旧会话。
+ * @returns 解码载荷 { userId, username, isAdmin }；token 无效 / 被顶替 / 用户不存在时返回 null
+ */
+export async function verifyActiveToken(
+  token: string | null | undefined
+): Promise<{ userId: number; username?: string; isAdmin?: boolean } | null> {
+  if (!token) return null;
+
+  const decoded = verifyJWT(token);
+  if (!decoded) return null;
+
+  const user = await prisma.users.findUnique({
+    where: { id: decoded.userId },
+    select: { active_token: true }
+  });
+
+  // active_token 为 null/空时兼容旧会话；有值且不匹配则判定被顶替
+  if (!user || (!!user.active_token && user.active_token !== token)) {
+    return null;
+  }
+
+  return decoded;
+}
+
+/**
+ * 验证请求中的 JWT 并检查 active_token（单端互踢）。
+ * 供不使用 authenticateToken 中间件、在 handler 内自行鉴权的路由使用。
+ * @returns 用户ID；token 无效 / 被顶替 / 用户不存在时返回 null
+ */
+export async function getActiveUserIdFromReq(req: Request): Promise<number | null> {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
+  const decoded = await verifyActiveToken(token);
+  return decoded?.userId ?? null;
+}
+
+/**
  * 安全解析整数
  * 解决 parseInt 缺少边界检查的问题
  * @param value - 待解析的值

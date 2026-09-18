@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../db';
 import { canUseAiFeature } from '../utils/points';
 import { JWT_SECRET } from '../utils/auth';
+import { getActiveUserIdFromReq } from '../utils/middleware';
 import { canViewStory, isStoryAuthor, isCollaborator } from '../utils/permissions';
 import { aiProjectBriefQueue, aiOutlineQueue, aiPasticheQueue, aiTemplateQueue, redisClient } from '../utils/queue';
 
@@ -58,20 +59,8 @@ async function checkUserRateLimit(userId: number): Promise<{ allowed: boolean; r
   }
 }
 
-// JWT 认证函数
-const getUserId = (req: any): number | null => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return null;
-    }
-    const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
-    return decoded.userId;
-  } catch (error) {
-    return null;
-  }
-};
+// JWT 认证：委托共享实现，校验 JWT + active_token（单端互踢）
+const getUserId = (req: any): Promise<number | null> => getActiveUserIdFromReq(req);
 
 /**
  * 会话数据结构
@@ -120,7 +109,7 @@ export function updateSessionGeneration(sessionId: string, content: any, userFee
  * 生成项目立项书
  */
 router.post('/generate-project-brief', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -208,7 +197,7 @@ router.post('/generate-project-brief', async (req, res) => {
  * 修改项目立项书（多轮对话）
  */
 router.post('/revise-project-brief', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -278,7 +267,7 @@ router.post('/revise-project-brief', async (req, res) => {
  * 生成故事大纲
  */
 router.post('/generate-outline', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -364,7 +353,7 @@ router.post('/generate-outline', async (req, res) => {
  * 修改故事大纲（多轮对话）
  */
 router.post('/revise-outline', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -434,7 +423,7 @@ router.post('/revise-outline', async (req, res) => {
  * 获取会话详情
  */
 router.get('/sessions/:sessionId', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -476,7 +465,7 @@ router.get('/sessions/:sessionId', async (req, res) => {
  * 获取会话列表
  */
 router.get('/sessions', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -504,7 +493,7 @@ router.get('/sessions', async (req, res) => {
  * 获取项目立项书
  */
 router.get('/stories/:storyId/project-brief', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -560,7 +549,7 @@ router.get('/stories/:storyId/project-brief', async (req, res) => {
  * 更新项目立项书
  */
 router.put('/stories/:storyId/project-brief', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -606,7 +595,7 @@ router.put('/stories/:storyId/project-brief', async (req, res) => {
  * 支持按 root_node_id 过滤分支大纲（query参数：rootNodeId）
  */
 router.get('/stories/:storyId/outlines', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -666,7 +655,7 @@ router.get('/stories/:storyId/outlines', async (req, res) => {
  * 支持按 root_node_id 查询分支大纲（query参数：rootNodeId）
  */
 router.get('/stories/:storyId/outlines/active', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -737,7 +726,7 @@ router.get('/stories/:storyId/outlines/active', async (req, res) => {
  * 支持 rootNodeId 参数，用于创建分支大纲
  */
 router.post('/stories/:storyId/outlines', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -826,7 +815,7 @@ router.post('/stories/:storyId/outlines', async (req, res) => {
  * 支持 rootNodeId 参数，只在同分支范围内切换激活版本
  */
 router.post('/stories/:storyId/outlines/:version/activate', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -899,7 +888,7 @@ router.post('/stories/:storyId/outlines/:version/activate', async (req, res) => 
  * 获取角色列表
  */
 router.get('/stories/:storyId/characters', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -959,7 +948,7 @@ router.get('/stories/:storyId/characters', async (req, res) => {
  * 创建角色
  */
 router.post('/stories/:storyId/characters', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -1011,7 +1000,7 @@ router.post('/stories/:storyId/characters', async (req, res) => {
  * 更新角色
  */
 router.put('/stories/:storyId/characters/:id', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -1064,7 +1053,7 @@ router.put('/stories/:storyId/characters/:id', async (req, res) => {
  * 删除角色（软删除）
  */
 router.delete('/stories/:storyId/characters/:id', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -1108,7 +1097,7 @@ router.delete('/stories/:storyId/characters/:id', async (req, res) => {
  * 搜索外部书籍（豆瓣/维基百科）
  */
 router.post('/search-external', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -1159,7 +1148,7 @@ router.post('/search-external', async (req, res) => {
  * 生成仿写方案
  */
 router.post('/generate-pastiche', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -1245,7 +1234,7 @@ router.post('/generate-pastiche', async (req, res) => {
  * 基于模板生成
  */
 router.post('/generate-from-template', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -1340,7 +1329,7 @@ router.post('/generate-from-template', async (req, res) => {
  * 获取模板列表
  */
 router.get('/templates', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -1371,7 +1360,7 @@ router.get('/templates', async (req, res) => {
  * 新大纲会关联到指定的 rootNodeId，与全局大纲分离管理
  */
 router.post('/stories/:storyId/outlines/branch', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -1462,7 +1451,7 @@ router.post('/stories/:storyId/outlines/branch', async (req, res) => {
  * 只能编辑激活版本的大纲内容
  */
 router.put('/stories/:storyId/outlines/:version', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }

@@ -12,23 +12,12 @@ import {
 } from '../utils/membership';
 import crypto from 'crypto';
 import { JWT_SECRET } from '../utils/auth';
+import { getActiveUserIdFromReq } from '../utils/middleware';
 
 const router = Router();
 
-// JWT 认证函数
-const getUserId = (req: any): number | null => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return null;
-    }
-    const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
-    return decoded.userId;
-  } catch (error) {
-    return null;
-  }
-};
+// 委托共享实现：校验 JWT + active_token（单端互踢）
+const getUserId = (req: any): Promise<number | null> => getActiveUserIdFromReq(req);
 
 /**
  * 获取会员套餐列表
@@ -79,7 +68,7 @@ router.get('/tiers', (req, res) => {
  * 获取我的会员状态
  */
 router.get('/my', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -143,7 +132,7 @@ router.get('/benefits', (req, res) => {
  * 检查功能权限
  */
 router.post('/check-feature', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -167,7 +156,7 @@ router.post('/check-feature', async (req, res) => {
  * 创建会员升级订单
  */
 router.post('/upgrade/create', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -247,7 +236,7 @@ router.post('/upgrade/create', async (req, res) => {
  * 取消自动续费
  */
 router.post('/cancel-renewal', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
@@ -285,7 +274,7 @@ router.post('/cancel-renewal', async (req, res) => {
  * 获取会员统计数据（管理员）
  */
 router.get('/admin/stats', async (req, res) => {
-  const userId = getUserId(req);
+  const userId = await getUserId(req);
   if (!userId) {
     return res.status(401).json({ error: '未登录' });
   }
