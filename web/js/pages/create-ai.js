@@ -1013,14 +1013,14 @@ function renderStepCard(container, step, result) {
     content += `<strong>${result.title}</strong>`;
   }
   if (result.synopsis) {
-    content += `<p class="step-card-text">${result.synopsis.substring(0, 100)}${result.synopsis.length > 100 ? '...' : ''}</p>`;
+    content += `<p class="step-card-text">${escapeHtml(result.synopsis.substring(0, 100))}${result.synopsis.length > 100 ? '...' : ''}</p>`;
   } else if (result.projectBrief && result.projectBrief.title) {
-    content += `<strong>${result.projectBrief.title}</strong>`;
+    content += `<strong>${escapeHtml(result.projectBrief.title)}</strong>`;
     if (result.projectBrief.synopsis) {
-      content += `<p class="step-card-text">${result.projectBrief.synopsis.substring(0, 80)}...</p>`;
+      content += `<p class="step-card-text">${escapeHtml(result.projectBrief.synopsis.substring(0, 80))}...</p>`;
     }
   } else if (result.worldBuilding) {
-    content += `<p class="step-card-text">${result.worldBuilding.substring(0, 80)}...</p>`;
+    content += `<p class="step-card-text">${escapeHtml(result.worldBuilding.substring(0, 80))}...</p>`;
   } else if (result.chapterOutlines) {
     content += `<p class="step-card-text">${result.chapterOutlines.length} 章大纲已生成</p>`;
   }

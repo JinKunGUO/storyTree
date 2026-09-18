@@ -1256,7 +1256,7 @@
             ordersHtml = '<div style="max-height:200px;overflow-y:auto;"><table class="data-table"><thead><tr><th>订单号</th><th>类型</th><th>金额</th><th>状态</th><th>时间</th></tr></thead><tbody>';
             orders.forEach(o => {
               const statusMap = { pending: '待支付', paid: '已支付', failed: '失败', refunded: '已退款' };
-              ordersHtml += `<tr><td>${o.id}</td><td>${o.type || '-'}</td><td>¥${o.amount || 0}</td><td>${statusMap[o.status] || o.status}</td><td>${new Date(o.created_at).toLocaleString('zh-CN')}</td></tr>`;
+              ordersHtml += `<tr><td>${escapeHtml(String(o.id))}</td><td>${escapeHtml(o.type || '-')}</td><td>¥${o.amount || 0}</td><td>${escapeHtml(statusMap[o.status] || o.status)}</td><td>${new Date(o.created_at).toLocaleString('zh-CN')}</td></tr>`;
             });
             ordersHtml += '</tbody></table></div>';
           }

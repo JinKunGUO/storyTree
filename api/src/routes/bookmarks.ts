@@ -1,8 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../index';
-import { verifyJWT } from '../utils/auth';
 import { addPoints, POINT_RULES } from '../utils/points';
-import { safeParsePage, safeParseLimit } from '../utils/middleware';
+import { safeParsePage, safeParseLimit, verifyActiveToken } from '../utils/middleware';
 
 const router = Router();
 
@@ -19,7 +18,7 @@ router.get('/', async (req, res) => {
   }
 
   try {
-    const decoded = verifyJWT(token);
+    const decoded = await verifyActiveToken(token);
     if (!decoded) {
       return res.status(401).json({ error: '无效的Token' });
     }
@@ -75,7 +74,7 @@ router.post('/story/:storyId', async (req, res) => {
   }
 
   try {
-    const decoded = verifyJWT(token);
+    const decoded = await verifyActiveToken(token);
     if (!decoded) {
       return res.status(401).json({ error: '无效的Token' });
     }
@@ -136,7 +135,7 @@ router.post('/node/:nodeId', async (req, res) => {
   }
 
   try {
-    const decoded = verifyJWT(token);
+    const decoded = await verifyActiveToken(token);
     if (!decoded) {
       return res.status(401).json({ error: '无效的Token' });
     }

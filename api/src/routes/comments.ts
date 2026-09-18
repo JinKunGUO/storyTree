@@ -1,8 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../index';
-import { verifyJWT } from '../utils/auth';
 import { addPoints, POINT_RULES } from '../utils/points';
-import { safeParseId, safeParsePage, safeParsePageSize } from '../utils/middleware';
+import { safeParseId, safeParsePage, safeParsePageSize, verifyActiveToken } from '../utils/middleware';
 import { scanSensitiveWords, maskSensitiveWords } from '../utils/sensitiveWords';
 
 const router = Router();
@@ -25,7 +24,7 @@ router.get('/nodes/:node_id/comments', async (req, res) => {
   try {
     let userId = null;
     if (token) {
-      const decoded = verifyJWT(token);
+      const decoded = await verifyActiveToken(token);
       userId = decoded?.userId;
     }
 
@@ -190,7 +189,7 @@ router.post('/nodes/:node_id/comments', async (req, res) => {
   }
 
   try {
-    const decoded = verifyJWT(token);
+    const decoded = await verifyActiveToken(token);
     if (!decoded) {
       return res.status(401).json({ error: '无效的Token' });
     }
@@ -325,7 +324,7 @@ router.delete('/comments/:commentId', async (req, res) => {
   }
 
   try {
-    const decoded = verifyJWT(token);
+    const decoded = await verifyActiveToken(token);
     if (!decoded) {
       return res.status(401).json({ error: '无效的Token' });
     }
@@ -383,7 +382,7 @@ router.put('/comments/:commentId', async (req, res) => {
   }
 
   try {
-    const decoded = verifyJWT(token);
+    const decoded = await verifyActiveToken(token);
     if (!decoded) {
       return res.status(401).json({ error: '无效的Token' });
     }
@@ -446,7 +445,7 @@ router.post('/comments/:commentId/vote', async (req, res) => {
   }
 
   try {
-    const decoded = verifyJWT(token);
+    const decoded = await verifyActiveToken(token);
     if (!decoded) {
       return res.status(401).json({ error: '无效的Token' });
     }
@@ -531,7 +530,7 @@ router.get('/comments/:commentId/votes', async (req, res) => {
 
     let userVote = null;
     if (token) {
-      const decoded = verifyJWT(token);
+      const decoded = await verifyActiveToken(token);
       if (decoded) {
         const vote = await prisma.comment_votes.findUnique({
           where: {

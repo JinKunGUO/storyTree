@@ -1552,7 +1552,7 @@
                             };
                         },
                         onError: (message) => {
-                            streamContent.innerHTML = `<span style="color: var(--st-error-500);">${message}</span>`;
+                            streamContent.innerHTML = `<span style="color: var(--st-error-500);">${escapeHtml(message)}</span>`;
                             const indicator = optionsContainer.querySelector('.ai-streaming-indicator');
                             if (indicator) indicator.innerHTML = '<i class="fas fa-exclamation-circle"></i> 生成失败';
                         },
