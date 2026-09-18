@@ -1,14 +1,10 @@
-import dotenv from 'dotenv';
+import './load-env'; // 必须保持第一个 import：在 db/auth 等模块读取 env 前完成加载
 import { createServer } from 'http';
 export { prisma } from './db';
 import { prisma } from './db';
 import { createApp } from './app';
 import { closeQueues } from './utils/queue';
 import { wsServer } from './utils/websocket';
-
-// 根据 NODE_ENV 加载对应的 .env 文件，fallback 到 .env
-const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
-dotenv.config({ path: envFile });
 
 // ============================================================
 // 安全检查：JWT_SECRET 不能使用默认值
