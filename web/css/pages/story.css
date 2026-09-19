@@ -88,9 +88,11 @@
         }
 
         .story-title {
+            font-family: var(--st-font-serif);
             font-size: 32px;
-            font-weight: bold;
+            font-weight: 900;
             color: var(--st-text-primary);
+            letter-spacing: 0.01em;
             margin-bottom: 15px;
         }
 

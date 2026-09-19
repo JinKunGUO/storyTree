@@ -3299,10 +3299,10 @@ function getTreeOption(treeData, layout) {
                         color: authorColor,
                         borderColor: adjustColorBrightness(authorColor, 20),
                         borderWidth: 2,
-                        shadowBlur: 5,
+                        shadowBlur: 9,
                         shadowColor: isDarkMode
-                            ? `${authorColor}66`  // 40% opacity in hex
-                            : `${authorColor}40`  // 25% opacity
+                            ? `${authorColor}73`  // 45% opacity in hex
+                            : `${authorColor}4D`  // 30% opacity
                     };
                 }
 
