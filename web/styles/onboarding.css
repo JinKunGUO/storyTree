@@ -868,3 +868,19 @@
     stroke: #6ee7b7;
   }
 }
+
+/* 无障碍：减少动画偏好 */
+@media (prefers-reduced-motion: reduce) {
+  .st-welcome-overlay,
+  .st-welcome-content,
+  .st-welcome-task-item,
+  .st-welcome-btn,
+  .st-onboarding-progress-bar-fill,
+  .st-celebration-overlay,
+  .st-celebration-content,
+  .st-celebration-circle,
+  .st-celebration-check {
+    animation: none !important;
+    transition: none !important;
+  }
+}

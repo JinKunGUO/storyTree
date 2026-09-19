@@ -383,12 +383,14 @@
 }
 
 /* ===== 暗色模式适配 ===== */
-[data-theme="dark"] .st-tour-illustration {
-  background: linear-gradient(135deg, #1a2a28 0%, #1e302e 50%, #1a2a28 100%);
-}
+@media (prefers-color-scheme: dark) {
+  .st-tour-illustration {
+    background: linear-gradient(135deg, #1a2a28 0%, #1e302e 50%, #1a2a28 100%);
+  }
 
-[data-theme="dark"] .st-tour-illustration svg text {
-  fill: #e0e0e0;
+  .st-tour-illustration svg text {
+    fill: #e0e0e0;
+  }
 }
 
 /* ===== SVG 插图专用动画关键帧 ===== */

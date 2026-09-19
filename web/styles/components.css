@@ -1747,9 +1747,11 @@
   position: relative;
 }
 
-[data-theme="dark"] .ai-streaming-card {
-  background: var(--st-surface-secondary, #1e293b);
-  border-color: var(--st-border-color, #334155);
+@media (prefers-color-scheme: dark) {
+  .ai-streaming-card {
+    background: var(--st-surface-secondary, #1e293b);
+    border-color: var(--st-border-color, #334155);
+  }
 }
 
 .ai-streaming-card .ai-stream-header {
@@ -1771,8 +1773,10 @@
   word-break: break-word;
 }
 
-[data-theme="dark"] .ai-streaming-card .ai-stream-content {
-  color: var(--st-text-primary, #e2e8f0);
+@media (prefers-color-scheme: dark) {
+  .ai-streaming-card .ai-stream-content {
+    color: var(--st-text-primary, #e2e8f0);
+  }
 }
 
 .ai-streaming-card .ai-stream-actions {
@@ -1783,8 +1787,10 @@
   border-top: 1px solid var(--st-border-color, #e2e8f0);
 }
 
-[data-theme="dark"] .ai-streaming-card .ai-stream-actions {
-  border-top-color: var(--st-border-color, #334155);
+@media (prefers-color-scheme: dark) {
+  .ai-streaming-card .ai-stream-actions {
+    border-top-color: var(--st-border-color, #334155);
+  }
 }
 
 /* 流式指示器（脉冲动画） */
@@ -1833,10 +1839,12 @@
   font-family: 'SF Mono', 'Fira Code', monospace;
 }
 
-[data-theme="dark"] .ai-stream-loading .ai-stream-preview {
-  background: var(--st-surface-secondary, #1e293b);
-  border-color: var(--st-border-color, #334155);
-  color: var(--st-text-secondary, #94a3b8);
+@media (prefers-color-scheme: dark) {
+  .ai-stream-loading .ai-stream-preview {
+    background: var(--st-surface-secondary, #1e293b);
+    border-color: var(--st-border-color, #334155);
+    color: var(--st-text-secondary, #94a3b8);
+  }
 }
 
 /* 多步骤流式进度 */
@@ -1910,15 +1918,19 @@
   color: var(--st-text-secondary, #64748b);
 }
 
-[data-theme="dark"] .step-dot.step-pending {
-  background: var(--st-gray-700, #334155);
-  color: var(--st-gray-400, #94a3b8);
+@media (prefers-color-scheme: dark) {
+  .step-dot.step-pending {
+    background: var(--st-gray-700, #334155);
+    color: var(--st-gray-400, #94a3b8);
+  }
 }
 
-[data-theme="dark"] .ai-multistep-loading .ai-stream-preview {
-  background: var(--st-surface-secondary, #1e293b);
-  border-color: var(--st-border-color, #334155);
-  color: var(--st-text-secondary, #94a3b8);
+@media (prefers-color-scheme: dark) {
+  .ai-multistep-loading .ai-stream-preview {
+    background: var(--st-surface-secondary, #1e293b);
+    border-color: var(--st-border-color, #334155);
+    color: var(--st-text-secondary, #94a3b8);
+  }
 }
 
 /* Loading tip */
@@ -1973,13 +1985,17 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-[data-theme="dark"] .step-result-card {
-  background: var(--st-surface-secondary, #1e293b);
-  border-color: var(--st-border-color, #334155);
+@media (prefers-color-scheme: dark) {
+  .step-result-card {
+    background: var(--st-surface-secondary, #1e293b);
+    border-color: var(--st-border-color, #334155);
+  }
 }
 
-[data-theme="dark"] .step-result-card strong {
-  color: var(--st-text-primary, #e2e8f0);
+@media (prefers-color-scheme: dark) {
+  .step-result-card strong {
+    color: var(--st-text-primary, #e2e8f0);
+  }
 }
 
 /* ========================================
@@ -2093,13 +2109,17 @@
   white-space: pre-wrap;
 }
 
-[data-theme="dark"] .ai-thinking-panel {
-  background: #141426;
-  border-color: var(--st-border-color, #334155);
+@media (prefers-color-scheme: dark) {
+  .ai-thinking-panel {
+    background: #141426;
+    border-color: var(--st-border-color, #334155);
+  }
 }
 
-[data-theme="dark"] .ai-thinking-text {
-  color: #d0d0e0;
+@media (prefers-color-scheme: dark) {
+  .ai-thinking-text {
+    color: #d0d0e0;
+  }
 }
 
 /* 移动端 thinking 面板 */
