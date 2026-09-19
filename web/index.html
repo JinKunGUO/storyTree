@@ -107,6 +107,8 @@
             font-size: clamp(2.2rem, 5.2vw, 3.8rem);
             line-height: 1.22;
             letter-spacing: 0.02em;
+            /* 必须显式覆盖 design-system.css 的 h1-h6 全局 color（直接规则优先于继承） */
+            color: #f5f3ff;
             margin-bottom: var(--st-space-6);
             animation: slideInUp var(--st-duration-slow) var(--st-ease-out) .3s backwards;
         }
