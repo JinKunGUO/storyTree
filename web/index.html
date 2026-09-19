@@ -39,82 +39,109 @@
         }
 
 
-        /* ===== 英雄区域 ===== */
+        /* ===== 英雄区域：夜空生长树（首屏固定深色场景，不跟随系统主题） ===== */
         .hero-section {
             position: relative;
-            min-height: 90vh;
+            min-height: 92vh;
+            min-height: 92svh;
             display: flex;
             align-items: center;
-            justify-content: center;
             overflow: hidden;
             padding-top: 64px;
+            background:
+                radial-gradient(ellipse 80% 50% at 70% 40%, rgba(99, 102, 241, 0.22), transparent 60%),
+                linear-gradient(165deg, #0d0a26 0%, #1e1b4b 45%, #312e81 100%);
+            color: #f5f3ff;
         }
 
-        .hero-bg {
+        .hero-stars {
             position: absolute;
             inset: 0;
-            background: var(--st-gradient-bg);
+            pointer-events: none;
+            background-image:
+                radial-gradient(1.5px 1.5px at 12% 18%, rgba(255,255,255,.8), transparent 100%),
+                radial-gradient(1px 1px at 32% 8%, rgba(255,255,255,.5), transparent 100%),
+                radial-gradient(2px 2px at 55% 15%, rgba(255,255,255,.6), transparent 100%),
+                radial-gradient(1px 1px at 78% 10%, rgba(255,255,255,.5), transparent 100%),
+                radial-gradient(1.5px 1.5px at 90% 28%, rgba(255,255,255,.7), transparent 100%),
+                radial-gradient(1px 1px at 8% 45%, rgba(255,255,255,.4), transparent 100%),
+                radial-gradient(1px 1px at 45% 5%, rgba(255,255,255,.5), transparent 100%);
         }
 
-        .hero-pattern {
-            position: absolute;
-            inset: 0;
-            opacity: 0.06;
-            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        .hero-grid {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: var(--st-container-xl);
+            margin: 0 auto;
+            padding: 0 var(--st-page-padding-x-lg);
+            display: grid;
+            grid-template-columns: 45fr 55fr;
+            gap: var(--st-space-10);
+            align-items: center;
         }
 
         .hero-content {
-            position: relative;
-            z-index: 1;
-            text-align: center;
-            color: white;
-            padding: var(--st-space-12) var(--st-page-padding-x);
-            max-width: 800px;
-            animation: slideInUp var(--st-duration-slow) var(--st-ease-out);
+            min-width: 0;
         }
 
         .hero-badge {
             display: inline-flex;
             align-items: center;
             gap: var(--st-space-2);
-            background: rgba(255, 255, 255, 0.15);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: white;
             padding: var(--st-space-2) var(--st-space-4);
             border-radius: var(--st-radius-full);
+            border: 1px solid rgba(251, 191, 36, 0.4);
+            background: rgba(251, 191, 36, 0.08);
+            color: var(--st-warning-400, #fbbf24);
             font-size: var(--st-text-sm);
-            font-weight: var(--st-font-medium);
-            margin-bottom: var(--st-space-6);
-            backdrop-filter: blur(8px);
+            letter-spacing: 0.08em;
+            margin-bottom: var(--st-space-7, 28px);
+            animation: slideInUp var(--st-duration-slow) var(--st-ease-out) .15s backwards;
         }
+        .hero-badge svg { width: 14px; height: 14px; }
 
         .hero-title {
-            font-family: var(--st-font-display);
-            font-size: clamp(2.5rem, 8vw, 4rem);
-            font-weight: var(--st-font-bold);
-            line-height: 1.1;
+            font-family: var(--st-font-serif);
+            font-weight: 900;
+            font-size: clamp(2.2rem, 5.2vw, 3.8rem);
+            line-height: 1.22;
+            letter-spacing: 0.02em;
             margin-bottom: var(--st-space-6);
+            animation: slideInUp var(--st-duration-slow) var(--st-ease-out) .3s backwards;
         }
 
         .hero-title-highlight {
-            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            background: linear-gradient(120deg, #fde68a 0%, #fbbf24 55%, #f59e0b 100%);
             -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
             background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-title-branch {
+            display: block;
+            font-size: 0.4em;
+            font-weight: 600;
+            font-family: var(--st-font-sans);
+            color: rgba(245, 243, 255, 0.6);
+            letter-spacing: 0.28em;
+            margin-top: var(--st-space-4);
         }
 
         .hero-subtitle {
-            font-size: clamp(1rem, 2.5vw, 1.25rem);
-            opacity: 0.9;
-            margin-bottom: var(--st-space-10);
-            line-height: var(--st-leading-relaxed);
+            font-size: clamp(0.95rem, 1.4vw, 1.1rem);
+            line-height: 1.9;
+            color: rgba(245, 243, 255, 0.72);
+            margin-bottom: var(--st-space-8);
+            max-width: 30em;
+            animation: slideInUp var(--st-duration-slow) var(--st-ease-out) .45s backwards;
         }
 
         .hero-actions {
             display: flex;
             gap: var(--st-space-4);
-            justify-content: center;
             flex-wrap: wrap;
+            animation: slideInUp var(--st-duration-slow) var(--st-ease-out) .6s backwards;
         }
 
         .hero-btn-primary {
@@ -122,28 +149,23 @@
             align-items: center;
             gap: var(--st-space-2);
             padding: var(--st-space-4) var(--st-space-8);
-            background: var(--st-bg-primary, white);
-            color: var(--st-primary-600);
+            background: linear-gradient(135deg, #fde68a, #fbbf24);
+            color: #422006;
             font-size: var(--st-text-base);
-            font-weight: var(--st-font-semibold);
+            font-weight: var(--st-font-bold);
             border: none;
             border-radius: var(--st-radius-full);
             cursor: pointer;
             text-decoration: none;
-            transition: all var(--st-duration-normal) var(--st-ease-bounce);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .hero-btn-primary {
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-            }
+            transition: transform var(--st-duration-normal) var(--st-ease-bounce), box-shadow var(--st-duration-normal) var(--st-ease-bounce);
+            box-shadow: 0 6px 24px rgba(251, 191, 36, 0.35);
+            min-height: 44px;
         }
 
         .hero-btn-primary:hover {
             transform: translateY(-3px);
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
-            color: var(--st-primary-700);
+            box-shadow: 0 10px 32px rgba(251, 191, 36, 0.5);
+            color: #422006;
             text-decoration: none;
         }
 
@@ -152,70 +174,128 @@
             align-items: center;
             gap: var(--st-space-2);
             padding: var(--st-space-4) var(--st-space-8);
-            background: rgba(255, 255, 255, 0.15);
-            color: white;
+            background: transparent;
+            color: #f5f3ff;
             font-size: var(--st-text-base);
             font-weight: var(--st-font-semibold);
-            border: 2px solid rgba(255, 255, 255, 0.4);
+            border: 2px solid rgba(165, 180, 252, 0.5);
             border-radius: var(--st-radius-full);
             cursor: pointer;
             text-decoration: none;
-            transition: all var(--st-duration-normal) var(--st-ease-bounce);
-            backdrop-filter: blur(8px);
+            transition: transform var(--st-duration-normal) var(--st-ease-bounce), border-color var(--st-duration-normal) var(--st-ease-bounce);
+            min-height: 44px;
         }
 
         .hero-btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.25);
-            border-color: rgba(255, 255, 255, 0.6);
+            border-color: rgba(165, 180, 252, 0.9);
             transform: translateY(-3px);
-            color: white;
+            color: #fff;
             text-decoration: none;
         }
 
-        .hero-stats {
+        /* ===== 生长树 SVG ===== */
+        .hero-tree-wrap {
+            position: relative;
             display: flex;
-            gap: var(--st-space-8);
             justify-content: center;
-            margin-top: var(--st-space-12);
-            padding-top: var(--st-space-8);
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
-            padding-bottom: var(--st-space-4);
+            min-width: 0;
+            animation: fadeIn 1s var(--st-ease-out) .8s backwards;
+        }
+        .hero-tree { width: 100%; max-width: 560px; height: auto; display: block; }
+
+        .tree-path {
+            fill: none;
+            stroke-linecap: round;
+            stroke-dasharray: 100;
+            stroke-dashoffset: 100;
+            animation: heroGrow 1s ease-out forwards;
+        }
+        .tp-trunk { stroke-width: 5; stroke: url(#heroTrunkGrad); animation-duration: 1.2s; }
+        .tp-l1 { stroke-width: 3.2; stroke: url(#heroBranchGrad); animation-delay: .95s; animation-duration: .9s; }
+        .tp-l2 { stroke-width: 2.2; stroke: url(#heroBranchGrad); animation-delay: 1.55s; animation-duration: .8s; }
+        .tp-l3 { stroke-width: 1.6; stroke: rgba(165, 180, 252, 0.55); animation-delay: 2.1s; animation-duration: .7s; }
+
+        @keyframes heroGrow { to { stroke-dashoffset: 0; } }
+
+        .tree-node {
+            transform-box: fill-box;
+            transform-origin: center;
+            opacity: 0;
+            animation: heroNodeIn .45s cubic-bezier(.34, 1.56, .64, 1) forwards;
+        }
+        @keyframes heroNodeIn { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
+
+        .node-core-gold { fill: #fbbf24; filter: drop-shadow(0 0 7px rgba(251, 191, 36, .9)); }
+        .node-core-green { fill: #4ade80; filter: drop-shadow(0 0 6px rgba(74, 222, 128, .8)); }
+        .node-core-dim { fill: #c7d2fe; filter: drop-shadow(0 0 4px rgba(199, 210, 254, .6)); }
+
+        .pulse-ring {
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.5;
+            transform-box: fill-box;
+            transform-origin: center;
+            opacity: 0;
+        }
+        /* 入场脉冲仅 2 次，避免全树持续闪烁 */
+        .tree-node.lit .pulse-ring { animation: heroPulse 3.2s ease-out 2; }
+        @keyframes heroPulse {
+            0% { transform: scale(.7); opacity: .7; }
+            70% { transform: scale(2.4); opacity: 0; }
+            100% { transform: scale(2.4); opacity: 0; }
+        }
+        /* 周期性新芽：随机单节点单次强脉冲 */
+        .tree-node.sprout .pulse-ring { animation: heroSprout 1.8s ease-out 1; }
+        @keyframes heroSprout {
+            0% { transform: scale(.8); opacity: .9; }
+            60% { transform: scale(2.8); opacity: 0; }
+            100% { transform: scale(2.8); opacity: 0; }
         }
 
-        .hero-stat {
-            text-align: center;
-        }
-
-        .hero-stat-number {
-            font-family: var(--st-font-display);
-            font-size: var(--st-text-3xl);
-            font-weight: var(--st-font-bold);
-            color: white;
-        }
-
-        .hero-stat-label {
-            font-size: var(--st-text-sm);
-            color: rgba(255, 255, 255, 0.7);
-            margin-top: var(--st-space-1);
-        }
+        .stat-text { opacity: 0; animation: fadeIn .6s ease-out forwards; }
+        .stat-num { font-family: var(--st-font-serif); font-weight: 700; fill: #fff; }
+        .stat-label { font-family: var(--st-font-sans); fill: rgba(245, 243, 255, 0.65); letter-spacing: .12em; }
 
         .hero-scroll-hint {
-            margin-top: var(--st-space-6);
-            color: rgba(255, 255, 255, 0.6);
+            position: absolute;
+            left: 50%;
+            bottom: 22px;
+            transform: translateX(-50%);
+            color: rgba(245, 243, 255, 0.55);
             font-size: var(--st-text-sm);
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: var(--st-space-2);
             animation: bounce 2s infinite;
-            position: relative;
             cursor: pointer;
             transition: color 0.3s;
             -webkit-tap-highlight-color: transparent;
+            letter-spacing: 0.15em;
         }
 
         .hero-scroll-hint:hover {
-            color: rgba(255, 255, 255, 0.9);
+            color: rgba(245, 243, 255, 0.9);
+        }
+
+        @media (max-width: 900px) {
+            .hero-grid {
+                grid-template-columns: 1fr;
+                gap: var(--st-space-6);
+                padding-top: var(--st-space-10);
+                text-align: center;
+            }
+            .hero-subtitle { margin-left: auto; margin-right: auto; }
+            .hero-actions { justify-content: center; }
+            .hero-tree { max-width: 420px; }
+            .hero-scroll-hint { display: none; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .tree-path { animation: none !important; stroke-dashoffset: 0 !important; }
+            .tree-node, .stat-text { animation: none !important; opacity: 1 !important; transform: none !important; }
+            .pulse-ring { display: none; }
+            .hero-badge, .hero-title, .hero-subtitle, .hero-actions, .hero-tree-wrap, .hero-scroll-hint { animation: none !important; }
         }
 
         /* ===== 故事区域 ===== */
@@ -242,9 +322,9 @@
         }
 
         .section-title {
-            font-family: var(--st-font-display);
+            font-family: var(--st-font-serif);
             font-size: var(--st-text-3xl);
-            font-weight: var(--st-font-bold);
+            font-weight: 700;
             color: var(--st-text-primary);
         }
 
@@ -349,7 +429,7 @@
 
         .features-header {
             text-align: center;
-            margin-bottom: var(--st-space-12);
+            margin-bottom: var(--st-space-4);
         }
 
         .features-header-badge {
@@ -360,15 +440,16 @@
             color: var(--st-primary-700);
             padding: var(--st-space-2) var(--st-space-4);
             border-radius: var(--st-radius-full);
-            font-size: var(--st-text-sm);
-            font-weight: var(--st-font-semibold);
+            font-size: var(--st-text-xs);
+            font-weight: var(--st-font-bold);
+            letter-spacing: 0.25em;
             margin-bottom: var(--st-space-4);
         }
 
         .features-header-title {
-            font-family: var(--st-font-display);
+            font-family: var(--st-font-serif);
             font-size: clamp(1.75rem, 4vw, 2.5rem);
-            font-weight: var(--st-font-bold);
+            font-weight: 900;
             color: var(--st-text-primary);
             margin-bottom: var(--st-space-4);
         }
@@ -379,6 +460,28 @@
             max-width: 600px;
             margin: 0 auto;
         }
+
+        /* 连接线：从标题分叉到三张卡片，滚动入视口后生长 */
+        .features-connect {
+            display: block;
+            margin: 0 auto var(--st-space-4);
+            width: min(720px, 100%);
+            height: auto;
+        }
+        .connect-path {
+            fill: none;
+            stroke: var(--st-primary-500);
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-dasharray: 100;
+            stroke-dashoffset: 100;
+            opacity: .55;
+        }
+        .features-section.in-view .connect-path { animation: heroGrow .7s ease-out forwards; }
+        .features-section.in-view .connect-path.cp-2 { animation-delay: .15s; }
+        .features-section.in-view .connect-path.cp-3 { animation-delay: .3s; }
+        .connect-dot { fill: var(--st-primary-500); opacity: 0; }
+        .features-section.in-view .connect-dot { animation: heroNodeIn .4s .6s ease-out forwards; }
 
         .features-grid {
             display: grid;
@@ -393,34 +496,42 @@
             padding: var(--st-space-8);
             border-radius: var(--st-radius-2xl);
             box-shadow: var(--st-shadow-md);
-            text-align: center;
-            transition: all var(--st-duration-slow) var(--st-ease-bounce);
+            text-align: left;
+            transition: transform var(--st-duration-normal) var(--st-ease-out), box-shadow var(--st-duration-normal) var(--st-ease-out), border-color var(--st-duration-normal) var(--st-ease-out);
             border: 1px solid var(--st-gray-100);
+            opacity: 0;
+            transform: translateY(22px);
         }
 
+        .features-section.in-view .feature-card { animation: heroCardIn .6s cubic-bezier(.22,1,.36,1) forwards; }
+        .features-section.in-view .feature-card:nth-child(1) { animation-delay: .45s; }
+        .features-section.in-view .feature-card:nth-child(2) { animation-delay: .6s; }
+        .features-section.in-view .feature-card:nth-child(3) { animation-delay: .75s; }
+        @keyframes heroCardIn { to { opacity: 1; transform: translateY(0); } }
+
         .feature-card:hover {
-            transform: translateY(-8px);
+            transform: translateY(-6px);
             box-shadow: var(--st-shadow-xl);
             border-color: var(--st-primary-200);
         }
 
         .feature-icon-wrap {
-            width: 72px;
-            height: 72px;
+            width: 56px;
+            height: 56px;
             background: var(--st-gradient-brand);
-            border-radius: var(--st-radius-2xl);
+            border-radius: var(--st-radius-xl);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto var(--st-space-5);
-            font-size: 2rem;
+            margin: 0 0 var(--st-space-4);
             color: white;
             box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
         }
 
         .feature-card-title {
+            font-family: var(--st-font-serif);
             font-size: var(--st-text-xl);
-            font-weight: var(--st-font-semibold);
+            font-weight: 700;
             color: var(--st-text-primary);
             margin-bottom: var(--st-space-3);
         }
@@ -430,6 +541,30 @@
             line-height: var(--st-leading-relaxed);
             font-size: var(--st-text-sm);
             margin: 0;
+        }
+
+        .feature-card-tag {
+            display: inline-block;
+            margin-top: var(--st-space-4);
+            font-size: var(--st-text-xs);
+            color: var(--st-primary-600);
+            background: var(--st-primary-100);
+            border-radius: var(--st-radius-full);
+            padding: 3px 12px;
+            letter-spacing: 0.05em;
+        }
+
+        /* 暗色模式补充 */
+        @media (prefers-color-scheme: dark) {
+            .feature-card-tag {
+                color: var(--st-primary-300);
+                background: rgba(99, 102, 241, 0.15);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .connect-path { animation: none !important; stroke-dashoffset: 0 !important; }
+            .connect-dot, .feature-card { animation: none !important; opacity: 1 !important; transform: none !important; }
         }
 
         /* ===== 页脚 ===== */
@@ -499,44 +634,111 @@
     <main id="main">
         <!-- 英雄区域 -->
         <section class="hero-section" aria-label="欢迎区域">
-            <div class="hero-bg" aria-hidden="true"></div>
-            <div class="hero-pattern" aria-hidden="true"></div>
-            <div class="hero-content">
-                <h1 class="hero-title">
-                    <span class="hero-title-highlight">创作</span>属于你的<br>故事宇宙
-                </h1>
-                <p class="hero-subtitle">
-                    在 StoryTree，每个故事都是一片叶子，每个章节都有无限可能。<br>
-                    与全球创作者一起，共同编织属于你的故事森林。
-                </p>
-                <div class="hero-actions">
-                    <a href="/login.html" class="hero-btn-primary" id="startBtn">
-                        <i class="fas fa-pen-nib" aria-hidden="true"></i>
-                        立即开始创作
-                    </a>
-                    <a href="/discover.html" class="hero-btn-secondary">
-                        <i class="fas fa-compass" aria-hidden="true"></i>
-                        探索故事世界
-                    </a>
-                </div>
-                <div class="hero-stats" id="heroStats">
-                    <div class="hero-stat">
-                        <div class="hero-stat-number" id="statStories">--</div>
-                        <div class="hero-stat-label">精彩故事</div>
+            <div class="hero-stars" aria-hidden="true"></div>
+            <div class="hero-grid">
+                <!-- 左：文案 -->
+                <div class="hero-content">
+                    <div class="hero-badge">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                            <path d="M12 22V12M12 12C12 12 7 10 5 4M12 12C12 12 17 10 19 4"/>
+                        </svg>
+                        分支式 AI 协作创作平台
                     </div>
-                    <div class="hero-stat">
-                        <div class="hero-stat-number" id="statAuthors">--</div>
-                        <div class="hero-stat-label">创作者</div>
-                    </div>
-                    <div class="hero-stat">
-                        <div class="hero-stat-number" id="statChapters">--</div>
-                        <div class="hero-stat-label">精彩章节</div>
+                    <h1 class="hero-title">
+                        每个选择，<br>都<span class="hero-title-highlight">长出</span>新的世界
+                        <span class="hero-title-branch">ONE STORY · A THOUSAND ENDINGS</span>
+                    </h1>
+                    <p class="hero-subtitle">
+                        在 StoryTree，故事不再只有一条直线。每个章节都可以分叉，
+                        每位读者都能走向不同的结局——而 AI，是你身边的共同作者。
+                    </p>
+                    <div class="hero-actions">
+                        <a href="/login.html" class="hero-btn-primary" id="startBtn">
+                            <i class="fas fa-pen-nib" aria-hidden="true"></i>
+                            立即开始创作
+                        </a>
+                        <a href="/discover.html" class="hero-btn-secondary">
+                            <i class="fas fa-compass" aria-hidden="true"></i>
+                            探索故事森林
+                        </a>
                     </div>
                 </div>
-                <div class="hero-scroll-hint" aria-hidden="true">
-                    <span>向下探索</span>
-                    <i class="fas fa-chevron-down"></i>
+
+                <!-- 右：生长树（统计数据挂在节点上，ID 供 animateCounter 更新） -->
+                <div class="hero-tree-wrap">
+                    <svg class="hero-tree" viewBox="0 0 600 660" role="img" aria-label="故事树：从主干生长出多个分支，象征故事的多结局">
+                        <defs>
+                            <linearGradient id="heroTrunkGrad" x1="0" y1="1" x2="0" y2="0">
+                                <stop offset="0%" stop-color="#4338ca"/>
+                                <stop offset="100%" stop-color="#818cf8"/>
+                            </linearGradient>
+                            <linearGradient id="heroBranchGrad" x1="0" y1="1" x2="0" y2="0">
+                                <stop offset="0%" stop-color="#6366f1"/>
+                                <stop offset="100%" stop-color="#a5b4fc"/>
+                            </linearGradient>
+                        </defs>
+
+                        <!-- 主干 -->
+                        <path class="tree-path tp-trunk" pathLength="100" d="M300,660 C300,590 294,510 300,420 C300,380 300,320 300,268"/>
+
+                        <!-- 一级分支 -->
+                        <path class="tree-path tp-l1" pathLength="100" d="M300,520 C258,478 208,438 172,392"/>
+                        <path class="tree-path tp-l1" pathLength="100" d="M300,488 C346,448 402,408 438,366"/>
+
+                        <!-- 二级分支 -->
+                        <path class="tree-path tp-l2" pathLength="100" d="M172,392 C156,358 146,326 140,290"/>
+                        <path class="tree-path tp-l2" pathLength="100" d="M172,392 C194,368 210,342 222,310"/>
+                        <path class="tree-path tp-l2" pathLength="100" d="M438,366 C462,342 484,316 500,284"/>
+                        <path class="tree-path tp-l2" pathLength="100" d="M438,366 C428,336 418,310 406,284"/>
+
+                        <!-- 顶部三叉 -->
+                        <path class="tree-path tp-l3" pathLength="100" d="M300,268 C278,238 262,212 250,182"/>
+                        <path class="tree-path tp-l3" pathLength="100" d="M300,268 C322,238 340,210 352,176"/>
+                        <path class="tree-path tp-l3" pathLength="100" d="M300,268 C300,232 300,196 300,158"/>
+
+                        <!-- 大节点 ×3：挂统计 -->
+                        <g class="tree-node" style="animation-delay:2.6s; color:#fbbf24;">
+                            <circle class="pulse-ring" cx="140" cy="290" r="9"/>
+                            <circle class="node-core-gold" cx="140" cy="290" r="9"/>
+                        </g>
+                        <g class="tree-node" style="animation-delay:2.75s; color:#fbbf24;">
+                            <circle class="pulse-ring" cx="500" cy="284" r="9"/>
+                            <circle class="node-core-gold" cx="500" cy="284" r="9"/>
+                        </g>
+                        <g class="tree-node" style="animation-delay:2.9s; color:#fbbf24;">
+                            <circle class="pulse-ring" cx="300" cy="158" r="10"/>
+                            <circle class="node-core-gold" cx="300" cy="158" r="10"/>
+                        </g>
+
+                        <!-- 小节点 -->
+                        <g class="tree-node" style="animation-delay:3.05s; color:#4ade80;"><circle class="pulse-ring" cx="222" cy="310" r="5"/><circle class="node-core-green" cx="222" cy="310" r="5"/></g>
+                        <g class="tree-node" style="animation-delay:3.15s; color:#4ade80;"><circle class="pulse-ring" cx="406" cy="284" r="5"/><circle class="node-core-green" cx="406" cy="284" r="5"/></g>
+                        <g class="tree-node" style="animation-delay:3.25s; color:#4ade80;"><circle class="pulse-ring" cx="250" cy="182" r="5"/><circle class="node-core-green" cx="250" cy="182" r="5"/></g>
+                        <g class="tree-node" style="animation-delay:3.35s; color:#4ade80;"><circle class="pulse-ring" cx="352" cy="176" r="5"/><circle class="node-core-green" cx="352" cy="176" r="5"/></g>
+                        <g class="tree-node" style="animation-delay:3.45s; color:#c7d2fe;"><circle class="pulse-ring" cx="172" cy="392" r="4"/><circle class="node-core-dim" cx="172" cy="392" r="4"/></g>
+                        <g class="tree-node" style="animation-delay:3.55s; color:#c7d2fe;"><circle class="pulse-ring" cx="438" cy="366" r="4"/><circle class="node-core-dim" cx="438" cy="366" r="4"/></g>
+                        <g class="tree-node" style="animation-delay:3.65s; color:#c7d2fe;"><circle class="pulse-ring" cx="300" cy="420" r="4"/><circle class="node-core-dim" cx="300" cy="420" r="4"/></g>
+
+                        <!-- 统计（挂在三个大节点旁） -->
+                        <g class="stat-text" style="animation-delay:3.3s;">
+                            <text class="stat-num" id="statStories" x="122" y="282" text-anchor="end" font-size="26">--</text>
+                            <text class="stat-label" x="122" y="304" text-anchor="end" font-size="12">个故事宇宙</text>
+                        </g>
+                        <g class="stat-text" style="animation-delay:3.45s;">
+                            <text class="stat-num" id="statAuthors" x="518" y="276" text-anchor="start" font-size="26">--</text>
+                            <text class="stat-label" x="518" y="298" text-anchor="start" font-size="12">位共同作者</text>
+                        </g>
+                        <g class="stat-text" style="animation-delay:3.6s;">
+                            <text class="stat-num" id="statChapters" x="300" y="132" text-anchor="middle" font-size="28">--</text>
+                            <text class="stat-label" x="300" y="188" text-anchor="middle" font-size="12">条故事分支</text>
+                        </g>
+                    </svg>
                 </div>
+            </div>
+
+            <div class="hero-scroll-hint" aria-hidden="true">
+                <span>向下探索</span>
+                <i class="fas fa-chevron-down"></i>
             </div>
         </section>
 
@@ -583,36 +785,50 @@
         </section>
 
         <!-- 功能特性 -->
-        <section class="features-section" aria-labelledby="featuresTitle">
+        <section class="features-section" id="featuresSection" aria-labelledby="featuresTitle">
             <div class="features-header">
                 <div class="features-header-badge">
-                    <i class="fas fa-star" aria-hidden="true"></i>
-                    平台特色
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 22V12M12 12C12 12 7 10 5 4M12 12C12 12 17 10 19 4"/></svg>
+                    WHY STORYTREE
                 </div>
-                <h2 class="features-header-title" id="featuresTitle">为什么选择 StoryTree？</h2>
-                <p class="features-header-desc">我们提供最完整的故事创作与阅读体验</p>
+                <h2 class="features-header-title" id="featuresTitle">一个故事，千百种结局</h2>
+                <p class="features-header-desc">分叉、续写、共创——故事在这里是活的。</p>
             </div>
+
+            <!-- 连接线：从标题分叉到三张卡片 -->
+            <svg class="features-connect" viewBox="0 0 720 90" aria-hidden="true">
+                <path class="connect-path cp-1" pathLength="100" d="M360,0 L360,28 C360,52 120,52 120,82 L120,90"/>
+                <path class="connect-path cp-2" pathLength="100" d="M360,0 L360,90"/>
+                <path class="connect-path cp-3" pathLength="100" d="M360,0 L360,28 C360,52 600,52 600,82 L600,90"/>
+                <circle class="connect-dot" cx="120" cy="90" r="4"/>
+                <circle class="connect-dot" cx="360" cy="90" r="4"/>
+                <circle class="connect-dot" cx="600" cy="90" r="4"/>
+            </svg>
+
             <div class="features-grid">
                 <div class="feature-card">
-                    <div class="feature-icon-wrap">
-                        <i class="fas fa-pen-fancy" aria-hidden="true"></i>
+                    <div class="feature-icon-wrap" aria-hidden="true">
+                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22V10M12 10C12 10 6 8 4 2M12 10C12 10 18 8 20 2"/></svg>
                     </div>
-                    <h3 class="feature-card-title">自由创作</h3>
-                    <p class="feature-card-desc">创建属于你自己的故事，每个章节都可以有无限可能，让想象力自由飞翔，构建独特的故事世界。</p>
+                    <h3 class="feature-card-title">自由分叉</h3>
+                    <p class="feature-card-desc">每个章节都能长出新的分支。写一个转折点，让角色走向完全不同的命运——你的故事，不止一种讲法。</p>
+                    <span class="feature-card-tag">章节分叉</span>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon-wrap" style="background: linear-gradient(135deg, var(--st-primary-500, #8B5CF6) 0%, var(--st-error-400, #EC4899) 100%);">
-                        <i class="fas fa-robot" aria-hidden="true"></i>
+                    <div class="feature-icon-wrap" style="background: linear-gradient(135deg, var(--st-primary-500, #8B5CF6) 0%, var(--st-error-400, #EC4899) 100%);" aria-hidden="true">
+                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v4M12 7c-4 0-6 3-6 7v7h12v-7c0-4-2-7-6-7zM9 14h.01M15 14h.01"/></svg>
                     </div>
-                    <h3 class="feature-card-title">AI 辅助创作</h3>
-                    <p class="feature-card-desc">使用 AI 智能续写功能，为你的故事提供灵感和创意，让创作更加轻松，突破写作瓶颈。</p>
+                    <h3 class="feature-card-title">AI 共同作者</h3>
+                    <p class="feature-card-desc">卡在情节转折点？AI 沿任意分支续写三种走向，你挑选、修改、再分叉——瓶颈变成岔路口。</p>
+                    <span class="feature-card-tag">AI 续写</span>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon-wrap" style="background: linear-gradient(135deg, var(--st-success-500, #22C55E) 0%, var(--st-success-600, #16A34A) 100%);">
-                        <i class="fas fa-comments" aria-hidden="true"></i>
+                    <div class="feature-icon-wrap" style="background: linear-gradient(135deg, var(--st-success-500, #22C55E) 0%, var(--st-success-600, #16A34A) 100%);" aria-hidden="true">
+                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M3 20c0-3 2.5-5 5-5s5 2 5 5M11 20c0-3 2.5-5 5-5s5 2 5 5"/></svg>
                     </div>
-                    <h3 class="feature-card-title">社区互动</h3>
-                    <p class="feature-card-desc">与读者和作者互动，评论、点赞、分享，共同构建活跃的故事社区，发现志同道合的创作伙伴。</p>
+                    <h3 class="feature-card-title">读者共创</h3>
+                    <p class="feature-card-desc">读者可以在喜欢的章节接上自己的分支，优质分支被作者收录进主线——读者也是作者。</p>
+                    <span class="feature-card-tag">协作收录</span>
                 </div>
             </div>
         </section>
@@ -887,10 +1103,59 @@
             }
         });
 
+        // ===== 首屏树动画：节点点亮 + 周期性新芽 =====
+        function initHeroTree() {
+            const nodes = document.querySelectorAll('.tree-node');
+            if (!nodes.length) return;
+            const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (reduce) return;
+
+            nodes.forEach((n) => {
+                const delay = parseFloat(getComputedStyle(n).animationDelay) * 1000 || 0;
+                setTimeout(() => n.classList.add('lit'), delay + 500);
+            });
+
+            // 周期性新芽：仅小节点参与，每次随机 1 个，间隔 7~12s
+            const smallNodes = Array.prototype.filter.call(nodes, (n) => !n.querySelector('.node-core-gold'));
+            function scheduleSprout() {
+                const wait = 7000 + Math.random() * 5000;
+                setTimeout(() => {
+                    const pick = smallNodes[Math.floor(Math.random() * smallNodes.length)];
+                    if (pick && pick.classList.contains('lit')) {
+                        pick.classList.add('sprout');
+                        setTimeout(() => pick.classList.remove('sprout'), 1900);
+                    }
+                    scheduleSprout();
+                }, wait);
+            }
+            setTimeout(scheduleSprout, 6000);
+        }
+
+        // ===== 功能区滚动触发 =====
+        function initFeaturesObserver() {
+            const section = document.getElementById('featuresSection');
+            if (!section) return;
+            if ('IntersectionObserver' in window) {
+                const obs = new IntersectionObserver((entries) => {
+                    entries.forEach((e) => {
+                        if (e.isIntersecting) {
+                            section.classList.add('in-view');
+                            obs.disconnect();
+                        }
+                    });
+                }, { threshold: 0.2 });
+                obs.observe(section);
+            } else {
+                section.classList.add('in-view');
+            }
+        }
+
         // ===== 初始化 =====
         document.addEventListener('DOMContentLoaded', () => {
             checkAuthStatus();
             loadStories();
+            initHeroTree();
+            initFeaturesObserver();
             // 新手引导初始化
             if (window.onboardingManager) {
                 window.onboardingManager.init('index');

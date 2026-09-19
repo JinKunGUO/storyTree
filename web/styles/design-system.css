@@ -151,6 +151,7 @@
      如需启用，请在 HTML <head> 中添加 Google Fonts <link> 标签。 */
   --st-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
   --st-font-display: 'Nunito', var(--st-font-sans);
+  --st-font-serif: 'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', 'Source Han Serif SC', serif;
   --st-font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 
   /* ----------------------------------------
