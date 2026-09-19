@@ -45,38 +45,73 @@
         }
 
 
-        /* ===== 页面头部 Hero ===== */
+        /* ===== 页面头部 Hero：夜空（与首页同色系，固定深色不跟随系统主题） ===== */
         .discover-hero {
             position: relative;
             padding: calc(64px + var(--st-space-16)) var(--st-page-padding-x-lg) var(--st-space-16);
-            background: var(--st-gradient-bg);
+            background:
+                radial-gradient(ellipse 70% 60% at 50% 30%, rgba(99, 102, 241, 0.18), transparent 60%),
+                linear-gradient(165deg, #0d0a26 0%, #1e1b4b 50%, #312e81 100%);
             overflow: hidden;
             text-align: center;
         }
+        /* 星点背景 */
         .discover-hero::before {
             content: '';
             position: absolute;
             inset: 0;
-            opacity: 0.06;
-            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            pointer-events: none;
+            background-image:
+                radial-gradient(1.5px 1.5px at 15% 20%, rgba(255,255,255,.7), transparent 100%),
+                radial-gradient(1px 1px at 35% 10%, rgba(255,255,255,.5), transparent 100%),
+                radial-gradient(2px 2px at 60% 18%, rgba(255,255,255,.6), transparent 100%),
+                radial-gradient(1px 1px at 80% 12%, rgba(255,255,255,.5), transparent 100%),
+                radial-gradient(1.5px 1.5px at 92% 30%, rgba(255,255,255,.6), transparent 100%),
+                radial-gradient(1px 1px at 10% 50%, rgba(255,255,255,.4), transparent 100%),
+                radial-gradient(1px 1px at 70% 45%, rgba(255,255,255,.35), transparent 100%),
+                radial-gradient(1.2px 1.2px at 25% 40%, rgba(255,255,255,.5), transparent 100%);
         }
         .discover-hero-content {
             position: relative;
             z-index: 1;
             max-width: 700px;
             margin: 0 auto;
-            color: white;
+            color: #f5f3ff;
             animation: slideInUp var(--st-duration-slow) var(--st-ease-out);
         }
         .discover-hero-title {
-            font-family: var(--st-font-display);
+            font-family: var(--st-font-serif);
             font-size: clamp(2rem, 6vw, 3rem);
-            font-weight: var(--st-font-bold);
+            font-weight: 900;
+            /* 显式覆盖 design-system.css 全局 h1 颜色（直接规则优先于继承） */
+            color: #f5f3ff;
+            letter-spacing: 0.02em;
             margin-bottom: var(--st-space-4);
+        }
+        .discover-hero-title i {
+            color: var(--st-warning-400, #fbbf24);
+            margin-right: var(--st-space-2);
+        }
+        /* 分叉装饰线：标题与搜索框之间的视觉过渡 */
+        .discover-hero-branch {
+            display: block;
+            margin: 0 auto var(--st-space-4);
+            width: 120px;
+            height: 24px;
+        }
+        .discover-hero-branch path {
+            stroke: var(--st-warning-400, #fbbf24);
+            stroke-width: 2;
+            stroke-linecap: round;
+            fill: none;
+            opacity: 0.8;
+        }
+        .discover-hero-branch circle {
+            fill: var(--st-warning-400, #fbbf24);
         }
         .discover-hero-desc {
             font-size: var(--st-text-lg);
-            opacity: 0.9;
+            color: rgba(245, 243, 255, 0.85);
             margin-bottom: var(--st-space-8);
         }
 
@@ -753,6 +788,13 @@
                     <i class="fas fa-compass" aria-hidden="true"></i>
                     发现精彩故事
                 </h1>
+                <!-- 分叉装饰：呼应故事树概念 -->
+                <svg class="discover-hero-branch" viewBox="0 0 120 24" aria-hidden="true">
+                    <path pathLength="100" d="M60,22 L60,12 M60,12 C60,6 30,6 24,2 M60,12 C60,6 90,6 96,2"/>
+                    <circle cx="24" cy="2" r="2.5"/>
+                    <circle cx="60" cy="12" r="2.5"/>
+                    <circle cx="96" cy="2" r="2.5"/>
+                </svg>
                 <p class="discover-hero-desc">探索无限可能的故事世界，找到你的下一本最爱</p>
 
                 <!-- 搜索框 -->
