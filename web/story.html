@@ -140,7 +140,7 @@
                                 <i class="fas fa-book-open"></i>
                                 开始阅读
                             </button>
-                            <button class="btn btn-primary" id="pinStoryBtn" style="display: none; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                            <button class="btn btn-primary" id="pinStoryBtn" style="display: none; background: linear-gradient(135deg, var(--st-primary-300, #f093fb) 0%, var(--st-error-400, #f5576c) 100%);">
                                 <i class="fas fa-thumbtack"></i>
                                 置顶故事
                             </button>
@@ -277,7 +277,7 @@
                                     <i class="fas fa-book-open"></i>
                                     阅读章节
                                 </button>
-                                <button class="detail-btn" id="publishDraftNode" style="display: none; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+                                <button class="detail-btn" id="publishDraftNode" style="display: none; background: linear-gradient(135deg, var(--st-success-500, #10b981) 0%, var(--st-success-600, #059669) 100%); color: white;">
                                     <i class="fas fa-paper-plane"></i>
                                     发布草稿
                                 </button>
@@ -285,11 +285,11 @@
                                     <i class="fas fa-pen"></i>
                                     续写分支
                                 </button>
-                                <button class="detail-btn" id="editNodeBtn" style="display: none; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white;">
+                                <button class="detail-btn" id="editNodeBtn" style="display: none; background: linear-gradient(135deg, var(--st-info-500, #3b82f6) 0%, var(--st-info-700, #1d4ed8) 100%); color: white;">
                                     <i class="fas fa-edit"></i>
                                     修改章节
                                 </button>
-                                <button class="detail-btn" id="aiCreateChapterBtn" style="display: none; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); position: relative;">
+                                <button class="detail-btn" id="aiCreateChapterBtn" style="display: none; background: linear-gradient(135deg, var(--st-primary-300, #f093fb) 0%, var(--st-error-400, #f5576c) 100%); position: relative;">
                                     <i class="fas fa-robot"></i>
                                     AI 创作章节
                                     <span class="ai-quota-badge" id="aiChapterQuota" title="剩余配额" style="position: absolute; top: -8px; right: -8px; background: linear-gradient(135deg, var(--st-primary-500) 0%, var(--st-primary-700) 100%); color: white; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 12px; min-width: 18px; text-align: center; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);">
@@ -444,7 +444,7 @@
                             " onclick="this.showPicker()">
                             <button id="confirmCustomAiTime" style="
                                 padding: 10px 20px;
-                                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                                background: linear-gradient(135deg, var(--st-primary-300, #f093fb) 0%, var(--st-error-400, #f5576c) 100%);
                                 color: white;
                                 border: none;
                                 border-radius: 8px;
@@ -589,7 +589,7 @@
 
                 <!-- 开始生成按钮 -->
                 <div class="ai-generate-actions">
-                    <button class="btn-save" id="startAiChapterGenerationDraft" style="background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%);">
+                    <button class="btn-save" id="startAiChapterGenerationDraft" style="background: linear-gradient(135deg, var(--st-warning-400, #ffa726) 0%, var(--st-warning-600, #fb8c00) 100%);">
                         <i class="fas fa-save"></i>
                         生成后保存为草稿
                     </button>
@@ -612,7 +612,7 @@
 
                 <!-- 错误提示 -->
                 <div id="aiChapterError" style="display: none; text-align: center; padding: 40px;">
-                    <i class="fas fa-exclamation-circle" style="font-size: 48px; color: #ff6b6b; margin-bottom: 20px;"></i>
+                    <i class="fas fa-exclamation-circle" style="font-size: 48px; color: var(--st-error-400, #ff6b6b); margin-bottom: 20px;"></i>
                     <p id="aiChapterErrorMessage" style="color: #666; font-size: 16px;">生成失败</p>
                 </div>
             </div>
@@ -676,7 +676,7 @@
                                border-radius: 8px;
                                font-size: 16px;
                            ">
-                    <div class="form-hint" style="margin-top: 10px; color: #f5576c;">
+                    <div class="form-hint" style="margin-top: 10px; color: var(--st-error-400, #f5576c);">
                         <i class="fas fa-coins"></i>
                         消耗积分：<span id="pinPointsCost" style="font-weight: 600;">350</span> 积分 
                         （<span id="pinDailyCost" style="font-weight: 600;">50</span> 积分/天 × <span id="pinDaysDisplay">7</span> 天）
@@ -705,7 +705,7 @@
             <div class="edit-modal-footer">
                 <button class="btn-cancel" id="cancelPinStory">取消</button>
                 <button class="btn-save" id="confirmPinStory" style="
-                    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                    background: linear-gradient(135deg, var(--st-primary-300, #f093fb) 0%, var(--st-error-400, #f5576c) 100%);
                 ">
                     <i class="fas fa-thumbtack"></i>
                     确认置顶
@@ -739,7 +739,7 @@
       });
     </script>
     <!-- 页脚 -->
-    <footer style="text-align: center; padding: 20px; margin-top: 40px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
+    <footer style="text-align: center; padding: 20px; margin-top: 40px; border-top: 1px solid var(--st-gray-200, #e5e7eb); color: var(--st-text-secondary, #6b7280); font-size: 14px;">
         <p>© 2026 StoryTree. 用心创作每一个故事。</p>
         <p><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">浙ICP 备 2026023946 号 -2</a>
             <span style="margin: 0 8px;">|</span>
