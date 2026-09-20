@@ -44,7 +44,6 @@ export const PAGE_REGISTRY: PageEntry[] = [
   { path: '/ai-tasks.html', titleKeyword: 'AI', auth: true, category: 'user' },
 
   // === 创作页面（需登录 + 参数） ===
-  { path: '/create.html', titleKeyword: '创作', auth: true, category: 'creation' },
   { path: '/create-ai.html', titleKeyword: 'AI', auth: true, category: 'creation' },
   { path: '/write.html', titleKeyword: '撰写', auth: true, params: { id: '$STORY_ID' }, category: 'creation' },
   { path: '/story-settings.html', titleKeyword: '设置', auth: true, params: { id: '$STORY_ID' }, category: 'creation' },

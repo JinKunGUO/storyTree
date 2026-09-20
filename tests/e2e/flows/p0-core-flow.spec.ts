@@ -99,14 +99,22 @@ test.describe.serial('P0 核心创作流程', () => {
       localStorage.setItem('user', JSON.stringify(user));
     }, { token: authToken, user: { username: testUser.username, email: testUser.email } });
 
-    await page.goto('/create.html', { waitUntil: 'domcontentloaded' });
+    // create.html 已删除，统一使用 create-ai.html 的「直接创建」（manual）流程
+    await page.goto('/create-ai.html', { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(1500);
 
     const collector = attachErrorCollector(page);
 
+    // 选择「直接创建」方式，展开手动表单
+    const manualCard = page.locator('[data-method="manual"]');
+    if (await manualCard.isVisible().catch(() => false)) {
+      await manualCard.click();
+      await page.waitForTimeout(500);
+    }
+
     // 填写故事创建表单
-    const titleInput = page.locator('input[name="title"], input[placeholder*="标题"], #storyTitle, .story-title-input');
-    const descInput = page.locator('textarea[name="description"], textarea[placeholder*="描述"], #storyDescription, .story-desc-input');
+    const titleInput = page.locator('#manualTitle');
+    const descInput = page.locator('#manualDescription');
 
     if (await titleInput.first().isVisible().catch(() => false)) {
       await titleInput.first().fill(`E2E Test Story ${timestamp}`);
@@ -116,22 +124,22 @@ test.describe.serial('P0 核心创作流程', () => {
     }
 
     // 提交创建
-    const submitBtn = page.locator('button[type="submit"], button:has-text("创建"), button:has-text("开始"), .create-btn');
+    const submitBtn = page.locator('#btnManualCreate');
     if (await submitBtn.first().isVisible().catch(() => false)) {
       await submitBtn.first().click();
       await page.waitForTimeout(3000);
     }
 
-    // 尝试从 URL 或页面中获取 storyId
+    // 尝试从 URL 或页面中获取 storyId（manual 流程跳转到 /write.html?storyId=N）
     const currentUrl = page.url();
-    const idMatch = currentUrl.match(/[?&]id=(\d+)/);
+    const idMatch = currentUrl.match(/[?&](?:storyId|id)=(\d+)/);
     if (idMatch) {
       storyId = idMatch[1];
     } else {
       // 尝试从页面数据中获取
       storyId = await page.evaluate(() => {
         const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get('id') || '';
+        return urlParams.get('storyId') || urlParams.get('id') || '';
       });
     }
 
