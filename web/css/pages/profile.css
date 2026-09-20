@@ -80,7 +80,11 @@
             border-radius: 20px;
             font-size: 16px;
             font-weight: 600;
-            /* 与首页故事树金色节点呼应的呼吸光晕 */
+            box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+        }
+
+        /* 等级图标金色呼吸光晕（#userLevelIcon 由 profile.js 动态渲染，内联样式未设 animation/box-shadow，此处可生效） */
+        #userLevelIcon {
             box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
             animation: levelBadgeGlow 3s ease-in-out infinite;
         }
@@ -91,7 +95,7 @@
         }
 
         @media (prefers-reduced-motion: reduce) {
-            .level-badge { animation: none !important; }
+            #userLevelIcon { animation: none !important; }
         }
 
         .profile-points {
