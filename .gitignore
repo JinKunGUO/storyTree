@@ -74,3 +74,6 @@ api/scripts/seed-data/raw/
 .parcel-cache/
 
 .monitor-state.json
+
+# 设计预览稿（本地参考，不入库不部署）
+web/preview-home-redesign.html
