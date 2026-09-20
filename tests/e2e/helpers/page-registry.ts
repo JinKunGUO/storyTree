@@ -61,9 +61,7 @@ export const PAGE_REGISTRY: PageEntry[] = [
 
   // === 管理后台 ===
   { path: '/admin.html', titleKeyword: '管理', auth: true, admin: true, category: 'admin' },
-
-  // === 测试页面 ===
-  { path: '/milestone-test.html', titleKeyword: '里程碑', auth: false, category: 'static' },
+  // milestone-test.html 已删除（开发调试页，零业务引用）
 ];
 
 /**
