@@ -354,34 +354,6 @@ class OnboardingManager {
     if (enhancer) enhancer();
   }
 
-  _enhanceMyStoriesEmpty() {
-    const emptyEl = document.querySelector('.empty-state, .no-stories');
-    if (!emptyEl) return;
-    if (emptyEl.querySelector('.st-empty-guide')) return; // 已增强
-
-    const guide = document.createElement('div');
-    guide.className = 'st-empty-guide';
-    guide.innerHTML = `
-      <p class="st-empty-guide-title">三步开始你的创作之旅</p>
-      <div class="st-empty-guide-steps">
-        <div class="st-empty-guide-step">
-          <span class="st-empty-guide-step-num">1</span>
-          <span class="st-empty-guide-step-text">创建故事</span>
-        </div>
-        <div class="st-empty-guide-step">
-          <span class="st-empty-guide-step-num">2</span>
-          <span class="st-empty-guide-step-text">撰写章节</span>
-        </div>
-        <div class="st-empty-guide-step">
-          <span class="st-empty-guide-step-num">3</span>
-          <span class="st-empty-guide-step-text">邀请协作</span>
-        </div>
-      </div>
-      <a href="/create-ai.html" class="st-empty-guide-cta">创建第一个故事</a>
-    `;
-    emptyEl.appendChild(guide);
-  }
-
   _enhanceDiscoverEmpty() {
     const emptyEl = document.querySelector('.no-results, .empty-state');
     if (!emptyEl || emptyEl.querySelector('.st-empty-guide')) return;

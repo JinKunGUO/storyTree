@@ -386,50 +386,6 @@ class StoryTreeTour {
   }
 
   /**
-   * 我的故事页引导步骤
-   */
-  getMyStoriesSteps() {
-    const isMobile = window.innerWidth <= 768;
-    const steps = [
-      {
-        element: '.create-story-btn, .btn-create, #createBtn',
-        illustration: 'node-chapter',
-        popover: {
-          title: '创建新故事',
-          description: '点击这里开始创建一个全新的故事。',
-          side: 'bottom',
-          align: 'center'
-        }
-      },
-      {
-        element: '.filter-tabs, .nav-tabs, .tabs-container',
-        illustration: 'branch-paths',
-        popover: {
-          title: '筛选故事',
-          description: '在「我创建的」和「我协作的」之间切换，快速找到你参与的故事。',
-          side: isMobile ? 'top' : 'bottom',
-          align: 'center'
-        }
-      },
-      {
-        element: '#storiesContainer, .story-list, .stories-grid',
-        illustration: 'explore',
-        popover: {
-          title: '故事列表',
-          description: '你的所有故事都在这里。点击任意故事卡片可以查看详情或继续创作。',
-          side: 'top',
-          align: 'center',
-          onNextClick: async () => {
-            this.driver.destroy();
-          }
-        }
-      }
-    ];
-
-    return steps;
-  }
-
-  /**
    * 跳转到示例故事页面并触发概念引导
    * 先尝试获取"反三国演义"，失败则取发现页第一本故事
    */
@@ -454,7 +410,8 @@ class StoryTreeTour {
       discover: '/discover.html',
       create: '/create-ai.html',
       write: '/write.html',
-      'my-stories': '/profile.html#stories',
+      // 不带 hash：navigateToNextPage 会拼接 ?tour=${step}，hash 必须在 query 之后
+      'my-stories': '/profile.html',
       story: '/story.html'
     };
 

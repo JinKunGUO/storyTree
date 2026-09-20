@@ -142,7 +142,7 @@ class WelcomeModal {
         title: '发布第一个章节',
         desc: '让你的故事被更多人看到',
         completed: !!tasks.publishedChapter,
-        href: '/profile.html#stories'
+        href: '/profile.html?guide=publish#stories'
       }
     ];
   }

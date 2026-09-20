@@ -13,6 +13,10 @@
     <link rel="stylesheet" href="styles/responsive.css">
     <link href="libs/fontawesome/css/all.min.css" rel="stylesheet">
 <link rel="stylesheet" href="css/pages/profile.css">
+    <!-- 新手引导（page-guide-bridge 依赖 driver.js 高亮 + 引导样式） -->
+    <link rel="stylesheet" href="libs/driver.js/driver.css">
+    <link rel="stylesheet" href="styles/tour.css">
+    <link rel="stylesheet" href="styles/onboarding.css">
 </head>
 <body>
     <!-- 导航栏 -->
@@ -348,6 +352,9 @@
 <script src="js/utils/escape.js"></script>
 <script src="js/utils/format-date.js"></script>
 <script src="js/pages/profile.js"></script>
+    <!-- 新手引导桥接（仅在 ?guide=publish 时激活，对日常访问零影响） -->
+    <script src="libs/driver.js/driver.js.iife.js" defer></script>
+    <script src="js/page-guide-bridge.js?v=3" defer></script>
     <script src="js/loading.js"></script>
     <script src="js/toast.js"></script>
     <script src="js/modal.js"></script>

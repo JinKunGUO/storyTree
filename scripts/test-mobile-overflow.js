@@ -153,7 +153,6 @@ const PAGES = [
   '/write.html?tour=3',
   '/story-tree.html?guide=concept',
   '/story-tree.html?tour=4',
-  '/profile.html?tour=5',
 ];
 
 // 需要登录才能正常渲染的页面（可能重定向到 login）

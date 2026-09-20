@@ -1266,10 +1266,10 @@
                 }
             });
             // 如果颜色不在预设色板中（自定义颜色），取消所有高亮
-            // 自定义颜色输入框会自行显示当前值
+            // 自定义颜色输入框会自行显示当前值；清除时重置为默认色
             const customInput = document.getElementById('customColorInput');
-            if (customInput && color) {
-                customInput.value = color;
+            if (customInput) {
+                customInput.value = color || '#6366F1';
             }
         }
 
