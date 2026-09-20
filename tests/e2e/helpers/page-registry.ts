@@ -23,7 +23,7 @@ export interface PageEntry {
 export const PAGE_REGISTRY: PageEntry[] = [
   // === 公开页面（无需登录） ===
   { path: '/index.html', titleKeyword: 'StoryTree', auth: false, category: 'public' },
-  { path: '/landing.html', titleKeyword: '故事', auth: false, category: 'public' },
+  // landing.html 已删除（孤儿产品介绍页，无入口，功能被首页取代）
   { path: '/discover.html', titleKeyword: '发现', auth: false, category: 'public' },
   { path: '/about.html', titleKeyword: '关于', auth: false, category: 'static' },
   { path: '/privacy.html', titleKeyword: '隐私', auth: false, category: 'static' },
