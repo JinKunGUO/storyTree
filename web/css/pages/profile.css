@@ -96,6 +96,17 @@
 
         @media (prefers-reduced-motion: reduce) {
             #userLevelIcon { animation: none !important; }
+            .badge-display { animation: none !important; }
+        }
+
+        /* 里程碑徽章金色呼吸光晕（与等级图标同款，徽章由 profile.js getBadgeDisplay 动态渲染，
+           内联 box-shadow 无 animation，CSS 动画可生效并覆盖阴影） */
+        .badge-display {
+            animation: badgeDisplayGlow 3s ease-in-out infinite;
+        }
+        @keyframes badgeDisplayGlow {
+            0%, 100% { box-shadow: 0 2px 8px rgba(255, 215, 0, 0.25); }
+            50% { box-shadow: 0 2px 14px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.2); }
         }
 
         .profile-points {
