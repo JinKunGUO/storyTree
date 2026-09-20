@@ -39,7 +39,7 @@ export const PAGE_REGISTRY: PageEntry[] = [
 
   // === 用户中心（需登录） ===
   { path: '/profile.html', titleKeyword: '个人', auth: true, category: 'user' },
-  { path: '/my-stories.html', titleKeyword: '我的故事', auth: true, category: 'user' },
+  // my-stories.html 已删除（功能被 profile.html 的故事列表区域完全覆盖）
   { path: '/notifications.html', titleKeyword: '通知', auth: true, category: 'user' },
   { path: '/ai-tasks.html', titleKeyword: 'AI', auth: true, category: 'user' },
 

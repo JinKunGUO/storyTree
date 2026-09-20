@@ -453,14 +453,6 @@ p, h1, h2, h3, h4, h5, h6, li, td, th, span, a, label {
 }
 
 /* ======================================================
-   Section 3f: 页面级响应式 - 我的故事 (my-stories)
-   ====================================================== */
-
-.my-stories-grid {
-  grid-template-columns: 1fr;
-}
-
-/* ======================================================
    Section 3g: 页面级响应式 - 会员/支付
    ====================================================== */
 
@@ -530,10 +522,6 @@ p, h1, h2, h3, h4, h5, h6, li, td, th, span, a, label {
   .modal-body {
     width: min(90vw, 500px);
     margin: auto;
-  }
-
-  .my-stories-grid {
-    grid-template-columns: repeat(2, 1fr);
   }
 
   .story-cover {
@@ -749,11 +737,6 @@ p, h1, h2, h3, h4, h5, h6, li, td, th, span, a, label {
     overflow-x: visible;
   }
 
-  /* 我的故事 */
-  .my-stories-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
   /* 会员卡片 */
   .membership-cards,
   .pricing-grid {
@@ -831,11 +814,6 @@ p, h1, h2, h3, h4, h5, h6, li, td, th, span, a, label {
     line-height: 1.8;
   }
 
-  /* 我的故事 */
-  .my-stories-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
   /* 会员 */
   .membership-cards,
   .pricing-grid {
@@ -849,10 +827,6 @@ p, h1, h2, h3, h4, h5, h6, li, td, th, span, a, label {
 
 @media (min-width: 1280px) {
   .stories-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-
-  .my-stories-grid {
     grid-template-columns: repeat(4, 1fr);
   }
 

@@ -157,8 +157,8 @@
       }
     },
     publish: {
-      waitFor: '.my-stories-container, #storiesContainer, .stories-grid',
-      element: '#storiesContainer, .stories-grid, .my-stories-container',
+      waitFor: '#storiesList, #storiesContainer, .stories-grid',
+      element: '#storiesList, #storiesContainer, .stories-grid',
       title: '发布你的第一个章节',
       description: '这里是你的故事管理页。点击任意故事进入详情页，然后在故事树中添加新章节并发布，让更多人看到你的创作！',
       side: 'top',

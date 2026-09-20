@@ -5,7 +5,7 @@
  * 使用方式：在 HTML 中引入 <script src="js/utils/escape.js"></script>
  * 然后调用 escapeHtml(text) 即可
  * 
- * 注意：此文件供没有引入 auth.js 的页面使用（如 admin.html, discover.html, index.html, my-stories.html）
+ * 注意：此文件供没有引入 auth.js 的页面使用（如 admin.html, discover.html, index.html）
  * 引入了 auth.js 的页面已自带 escapeHtml，无需重复引入此文件
  */
 function escapeHtml(text) {

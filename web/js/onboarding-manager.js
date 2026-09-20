@@ -343,7 +343,6 @@ class OnboardingManager {
 
   _doEnhanceEmptyStates() {
     const pageEnhancements = {
-      'my-stories': () => this._enhanceMyStoriesEmpty(),
       'discover': () => this._enhanceDiscoverEmpty(),
       'index': () => this._enhanceIndexEmpty(),
       'write': () => this._enhanceWriteEmpty(),

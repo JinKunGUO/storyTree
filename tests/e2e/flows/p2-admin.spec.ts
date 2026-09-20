@@ -95,7 +95,8 @@ test.describe('P2 管理后台', () => {
 
   test('我的故事页面 - 列表加载', async ({ authenticatedPage }) => {
     const collector = attachErrorCollector(authenticatedPage);
-    await authenticatedPage.goto('/my-stories.html', { waitUntil: 'domcontentloaded' });
+    // my-stories.html 已删除，故事列表功能已合入 profile.html
+    await authenticatedPage.goto('/profile.html#stories', { waitUntil: 'domcontentloaded' });
     await authenticatedPage.waitForTimeout(2000);
 
     // 验证故事列表或空状态

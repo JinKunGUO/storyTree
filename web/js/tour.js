@@ -103,7 +103,7 @@ class StoryTreeTour {
       discover: this.getDiscoverSteps(),
       'create-ai': this.getCreateAiSteps(),
       write: this.getWriteSteps(),
-      'my-stories': this.getMyStoriesSteps()
+      // my-stories 引导已移除，功能由 profile.html#stories 覆盖
     };
 
     return stepsMap[page] || [];
@@ -454,7 +454,7 @@ class StoryTreeTour {
       discover: '/discover.html',
       create: '/create-ai.html',
       write: '/write.html',
-      'my-stories': '/my-stories.html',
+      'my-stories': '/profile.html#stories',
       story: '/story.html'
     };
 
