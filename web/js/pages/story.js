@@ -2964,6 +2964,37 @@ const aiCreateBtn = document.getElementById('aiCreateChapterBtn');
             const option = getTreeOption(window.treeData, currentLayout);
             treeChart.setOption(option);
 
+            // 树图首次交互提示（一次性，localStorage 记录已读）
+            (function showTreeInteractionHint() {
+                const hint = document.getElementById('treeInteractionHint');
+                if (!hint) return;
+                if (localStorage.getItem('st_tree_hint_seen')) {
+                    hint.remove();
+                    return;
+                }
+                setTimeout(() => hint.classList.add('visible'), 600);
+                let dismissed = false;
+                function dismiss() {
+                    if (dismissed) return;
+                    dismissed = true;
+                    localStorage.setItem('st_tree_hint_seen', '1');
+                    hint.classList.remove('visible');
+                    hint.classList.add('hiding');
+                    setTimeout(() => hint.remove(), 350);
+                }
+                hint.addEventListener('click', dismiss);
+                const closeBtn = hint.querySelector('.hint-close');
+                if (closeBtn) {
+                    closeBtn.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            dismiss();
+                        }
+                    });
+                }
+                setTimeout(dismiss, 6000); // 6秒自动淡出
+            })();
+
             // 点击事件 - 传入鼠标坐标，用于定位浮层
             treeChart.on('click', function(params) {
                 if (params.data && (params.data.id || params.data.isVirtualRoot)) {

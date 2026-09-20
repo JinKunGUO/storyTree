@@ -1136,6 +1136,59 @@
             position: relative;
         }
 
+        /* 树图首次交互提示（一次性，localStorage 记录已读） */
+        .tree-interaction-hint {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: rgba(15, 23, 42, 0.82);
+            color: #f1f5f9;
+            font-size: 13px;
+            line-height: 1.4;
+            border-radius: 10px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+            cursor: pointer;
+            opacity: 0;
+            transform: translateY(-6px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            max-width: min(320px, calc(100% - 24px));
+        }
+        .tree-interaction-hint.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .tree-interaction-hint.hiding {
+            opacity: 0;
+            transform: translateY(-6px);
+        }
+        .tree-interaction-hint i {
+            color: var(--st-warning-400, #fbbf24);
+            flex-shrink: 0;
+        }
+        .tree-interaction-hint .hint-close {
+            flex-shrink: 0;
+            margin-left: 4px;
+            opacity: 0.7;
+            font-size: 15px;
+        }
+        .tree-interaction-hint .hint-close:hover {
+            opacity: 1;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .tree-interaction-hint {
+                transition: none;
+                transform: none;
+            }
+            .tree-interaction-hint.hiding {
+                transform: none;
+            }
+        }
+
         .tree-chart {
             width: 100%;
             height: 100%;

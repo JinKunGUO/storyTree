@@ -262,6 +262,12 @@
                     </div>
                     <div class="tree-chart-container">
                         <div class="tree-chart" id="treeChart"></div>
+                        <!-- 树图首次交互提示（一次性，localStorage 记录已读） -->
+                        <div class="tree-interaction-hint" id="treeInteractionHint" role="note">
+                            <i class="fas fa-lightbulb" aria-hidden="true"></i>
+                            <span>拖动探索分支 · 滚轮缩放 · 点击节点阅读</span>
+                            <i class="fas fa-xmark hint-close" role="button" aria-label="关闭提示" tabindex="0"></i>
+                        </div>
                         <!-- 节点详情浮层（绝对定位，跟随节点位置） -->
                         <div class="node-detail" id="nodeDetail">
                             <div class="node-detail-header">

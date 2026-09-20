@@ -503,6 +503,18 @@
             await saveChapter(false); // false = 保存草稿，不跳转
         });
 
+        // Ctrl+S / Cmd+S 快捷保存草稿（写作场景的肌肉记忆）
+        document.addEventListener('keydown', async function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                e.preventDefault(); // 阻止浏览器"保存网页"对话框
+                // 保存中（按钮已禁用）时不重复触发
+                const saveDraftBtn = document.getElementById('saveDraftBtn');
+                if (saveDraftBtn && !saveDraftBtn.disabled) {
+                    await saveChapter(false);
+                }
+            }
+        });
+
         // 发布章节
         document.getElementById('publishBtn').addEventListener('click', async function() {
             await saveChapter(true); // true = 发布并跳转
