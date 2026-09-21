@@ -701,6 +701,14 @@
         async function proceedToPayment() {
             if (!currentOrder) return;
 
+            // 防重复点击：禁用支付按钮
+            const btn = document.querySelector('#paymentMethodCard .btn-primary');
+            if (btn && btn.disabled) return;
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 处理中...';
+            }
+
             try {
                 // 这里调用后端 API 获取支付链接或二维码
                 const paymentInfo = await apiRequest(`/payment/alipay/create`, {
@@ -722,6 +730,11 @@
             } catch (error) {
                 console.error('创建支付失败:', error);
                 toast.error('创建支付失败：' + error.message);
+                // 失败时恢复支付按钮
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-lock"></i> 立即支付';
+                }
             }
         }
 

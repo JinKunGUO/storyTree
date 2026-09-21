@@ -1770,6 +1770,41 @@
             margin-bottom: 10px;
         }
 
+        /* 骨架屏（模拟 story-card 结构：封面 + 标题 + 描述 + 元信息） */
+        .skeleton-card {
+            background: var(--st-bg-primary);
+            border-radius: var(--st-radius-xl, 16px);
+            overflow: hidden;
+            border: 1px solid var(--st-gray-100);
+            box-shadow: var(--st-shadow-sm);
+        }
+        .skeleton-cover {
+            height: 180px;
+            background: linear-gradient(90deg, var(--st-gray-100) 25%, var(--st-gray-200) 50%, var(--st-gray-100) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+        }
+        .skeleton-body { padding: 20px; }
+        .skeleton-line {
+            height: 14px;
+            border-radius: var(--st-radius-sm);
+            margin-bottom: 12px;
+            background: linear-gradient(90deg, var(--st-gray-100) 25%, var(--st-gray-200) 50%, var(--st-gray-100) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+        }
+        .skeleton-line.short { width: 60%; }
+        .skeleton-line.medium { width: 80%; }
+        .skeleton-line.full { width: 100%; }
+        .skeleton-line.title { height: 18px; width: 70%; }
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .skeleton-cover, .skeleton-line { animation: none; }
+        }
+
         .story-card {
             background: var(--st-bg-primary);
             border-radius: var(--st-radius-xl, 16px);

@@ -1163,18 +1163,34 @@
             return cardsPerRow * 3;
         }
 
+        // 生成骨架屏 HTML（与初始静态结构一致）
+        function getSkeletonCardsHTML(count = 3) {
+            return Array.from({ length: count }, () => `
+                <div class="skeleton-card" aria-hidden="true">
+                    <div class="skeleton-cover"></div>
+                    <div class="skeleton-body">
+                        <div class="skeleton-line medium"></div>
+                        <div class="skeleton-line full"></div>
+                        <div class="skeleton-line short"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
         async function loadStories(reset = true) {
             if (isLoading) return;
             if (!reset && !hasMore) return;
-            
+
             isLoading = true;
-            
+
             if (reset) {
                 currentPage = 1;
                 hasMore = true;
                 allStories = [];
                 // 首次加载时根据屏幕计算 pageSize
                 pageSize = calculatePageSize();
+                // 重新加载时恢复骨架屏（避免旧内容残留造成的布局跳动）
+                document.getElementById('storiesGrid').innerHTML = getSkeletonCardsHTML();
             }
             
             try {

@@ -401,6 +401,14 @@ class CommentSystem {
             return;
         }
 
+        // 防重复点击：禁用提交按钮
+        const submitBtn = document.getElementById('submit-comment');
+        if (submitBtn && submitBtn.disabled) return;
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = '发表中...';
+        }
+
         try {
             const response = await fetch(`/api/comments/nodes/${this.nodeId}/comments`, {
                 method: 'POST',
@@ -426,6 +434,11 @@ class CommentSystem {
         } catch (error) {
             console.error('发表评论错误:', error);
             this.showError(error.message || '发表失败，请稍后重试');
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '发表评论';
+            }
         }
     }
 
