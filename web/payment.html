@@ -743,6 +743,12 @@
             document.getElementById('qrPaymentCard').style.display = 'none';
             document.getElementById('paymentMethodCard').style.display = 'block';
             stopPaymentPolling();
+            // 恢复支付按钮（proceedToPayment 成功进入二维码页时按钮被禁用）
+            const btn = document.querySelector('#paymentMethodCard .btn-primary');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-lock"></i> 立即支付';
+            }
         }
 
         // 监听支付状态（WebSocket 优先，降级轮询兜底）
