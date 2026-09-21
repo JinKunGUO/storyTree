@@ -214,6 +214,98 @@
             color: var(--st-text-primary);
             box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
         }
+
+        /* ===== 搜索建议下拉（历史记录 + 热门关键词） ===== */
+        .search-suggestions {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            z-index: 50;
+            background: var(--st-bg-primary);
+            border: 1px solid var(--st-gray-200);
+            border-radius: var(--st-radius-lg);
+            box-shadow: var(--st-shadow-lg);
+            max-height: 320px;
+            overflow-y: auto;
+            padding: var(--st-space-2);
+        }
+        .search-suggestions[hidden] { display: none; }
+        .search-suggestion-group + .search-suggestion-group {
+            margin-top: var(--st-space-2);
+            padding-top: var(--st-space-2);
+            border-top: 1px solid var(--st-gray-100);
+        }
+        .search-suggestion-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--st-space-1) var(--st-space-3);
+            font-size: var(--st-text-xs);
+            color: var(--st-text-tertiary);
+        }
+        .search-suggestion-clear {
+            background: none;
+            border: none;
+            color: var(--st-text-tertiary);
+            font-size: var(--st-text-xs);
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: var(--st-radius-sm);
+        }
+        .search-suggestion-clear:hover {
+            color: var(--st-text-primary);
+            background: var(--st-gray-100);
+        }
+        .search-suggestion-item {
+            display: flex;
+            align-items: center;
+            gap: var(--st-space-2);
+            width: 100%;
+            padding: var(--st-space-2) var(--st-space-3);
+            text-align: left;
+            font-size: var(--st-text-sm);
+            color: var(--st-text-primary);
+            cursor: pointer;
+            border-radius: var(--st-radius-md);
+        }
+        .search-suggestion-item:hover,
+        .search-suggestion-item.active {
+            background: var(--st-gray-100);
+        }
+        /* 覆盖 .search-input-wrap i 的绝对定位（该规则作用于容器内所有 i） */
+        .search-suggestion-item i {
+            position: static;
+            transform: none;
+            color: var(--st-gray-400);
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+        .search-suggestion-text {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .search-suggestion-remove {
+            display: flex;
+            align-items: center;
+            background: none;
+            border: none;
+            color: var(--st-gray-400);
+            cursor: pointer;
+            padding: 2px 4px;
+            border-radius: var(--st-radius-sm);
+            flex-shrink: 0;
+        }
+        .search-suggestion-remove:hover {
+            color: var(--st-text-primary);
+            background: var(--st-gray-200);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .search-suggestions { transition: none; }
+        }
         /* ===== 猜你喜欢网格布局 ===== */
         .recommend-grid {
             display: grid;
@@ -867,7 +959,14 @@
                                 id="searchInput"
                                 placeholder="搜索故事标题、作者..."
                                 aria-label="搜索故事"
+                                role="combobox"
+                                aria-expanded="false"
+                                aria-controls="searchSuggestions"
+                                aria-autocomplete="list"
+                                autocomplete="off"
                             >
+                            <!-- 搜索建议下拉（历史记录 + 热门关键词） -->
+                            <div class="search-suggestions" id="searchSuggestions" role="listbox" aria-label="搜索建议" hidden></div>
                         </div>
                         <button class="btn btn-primary" onclick="searchStories()" aria-label="搜索">
                             <i class="fas fa-search" aria-hidden="true"></i>
@@ -1443,6 +1542,8 @@
                     // 隐藏加载更多按钮
                     const loadMoreContainer = document.getElementById('loadMoreContainer');
                     if (loadMoreContainer) loadMoreContainer.style.display = 'none';
+                    // 搜索成功后记录历史
+                    addSearchHistory(term);
                 }
             } catch (e) {
                 // 降级到前端过滤
@@ -1455,6 +1556,189 @@
                 displayStories(filtered);
                 document.getElementById('hotStoriesSection').style.display = 'none';
             }
+        }
+
+        // ===== 搜索建议（历史记录 + 热门关键词） =====
+        const SEARCH_HISTORY_KEY = 'st_search_history';
+        const MAX_SEARCH_HISTORY = 8;
+        let hotKeywords = []; // 复用 taxonomy genre tags（loadTagTaxonomy 中填充）
+        let suggestionActiveIndex = -1;
+
+        function getSearchHistory() {
+            try {
+                const arr = JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]');
+                return Array.isArray(arr) ? arr.filter(t => typeof t === 'string') : [];
+            } catch { return []; }
+        }
+
+        function addSearchHistory(term) {
+            if (!term) return;
+            let history = getSearchHistory().filter(t => t !== term);
+            history.unshift(term);
+            if (history.length > MAX_SEARCH_HISTORY) history = history.slice(0, MAX_SEARCH_HISTORY);
+            try { localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history)); } catch {}
+        }
+
+        function removeSearchHistoryItem(term) {
+            const history = getSearchHistory().filter(t => t !== term);
+            try { localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history)); } catch {}
+        }
+
+        function clearSearchHistory() {
+            try { localStorage.removeItem(SEARCH_HISTORY_KEY); } catch {}
+        }
+
+        function hideSuggestions() {
+            const container = document.getElementById('searchSuggestions');
+            const input = document.getElementById('searchInput');
+            if (container) container.hidden = true;
+            if (input) input.setAttribute('aria-expanded', 'false');
+            suggestionActiveIndex = -1;
+        }
+
+        function renderSuggestions() {
+            const container = document.getElementById('searchSuggestions');
+            const input = document.getElementById('searchInput');
+            if (!container || !input) return;
+
+            const query = input.value.trim().toLowerCase();
+            const history = getSearchHistory();
+            const filteredHistory = query
+                ? history.filter(t => t.toLowerCase().includes(query))
+                : history;
+
+            let html = '';
+            if (filteredHistory.length > 0) {
+                html += `
+                    <div class="search-suggestion-group" role="group" aria-label="搜索历史">
+                        <div class="search-suggestion-header">
+                            <span>搜索历史</span>
+                            <button type="button" class="search-suggestion-clear" data-action="clear-history">清空</button>
+                        </div>
+                        ${filteredHistory.map((term, i) => `
+                            <div class="search-suggestion-item" role="option" aria-selected="false" id="suggestion-item-${i}" data-value="${escapeHtml(term)}">
+                                <i class="fas fa-clock-rotate-left" aria-hidden="true"></i>
+                                <span class="search-suggestion-text">${escapeHtml(term)}</span>
+                                <button type="button" class="search-suggestion-remove" data-action="remove-item" data-value="${escapeHtml(term)}" aria-label="删除历史记录" tabindex="-1">
+                                    <i class="fas fa-xmark" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            // 热门关键词：仅在未输入时显示（输入时用户已有明确意图）
+            if (!query && hotKeywords.length > 0) {
+                html += `
+                    <div class="search-suggestion-group" role="group" aria-label="热门搜索">
+                        <div class="search-suggestion-header"><span>热门搜索</span></div>
+                        ${hotKeywords.map((kw, i) => `
+                            <div class="search-suggestion-item" role="option" aria-selected="false" id="suggestion-hot-${i}" data-value="${escapeHtml(kw)}">
+                                <i class="fas fa-fire" aria-hidden="true"></i>
+                                <span class="search-suggestion-text">${escapeHtml(kw)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            if (!html) {
+                hideSuggestions();
+                return;
+            }
+
+            container.innerHTML = html;
+            container.hidden = false;
+            input.setAttribute('aria-expanded', 'true');
+            suggestionActiveIndex = -1;
+        }
+
+        function selectSuggestion(value) {
+            const input = document.getElementById('searchInput');
+            if (!input) return;
+            input.value = value;
+            hideSuggestions();
+            searchStories();
+        }
+
+        function updateActiveSuggestion(items) {
+            const input = document.getElementById('searchInput');
+            items.forEach((item, i) => {
+                const active = i === suggestionActiveIndex;
+                item.classList.toggle('active', active);
+                item.setAttribute('aria-selected', active ? 'true' : 'false');
+            });
+            if (input) {
+                const activeItem = items[suggestionActiveIndex];
+                if (activeItem) {
+                    input.setAttribute('aria-activedescendant', activeItem.id);
+                    activeItem.scrollIntoView({ block: 'nearest' });
+                } else {
+                    input.removeAttribute('aria-activedescendant');
+                }
+            }
+        }
+
+        function initSearchSuggestions() {
+            const input = document.getElementById('searchInput');
+            const container = document.getElementById('searchSuggestions');
+            if (!input || !container) return;
+
+            input.addEventListener('focus', () => renderSuggestions());
+            input.addEventListener('input', () => {
+                if (!container.hidden) renderSuggestions();
+            });
+
+            input.addEventListener('keydown', e => {
+                if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    if (container.hidden) {
+                        renderSuggestions();
+                        if (container.hidden) return; // 无内容可显示
+                    }
+                    const items = container.querySelectorAll('.search-suggestion-item');
+                    if (!items.length) return;
+                    e.preventDefault();
+                    if (e.key === 'ArrowDown') {
+                        suggestionActiveIndex = (suggestionActiveIndex + 1) % items.length;
+                    } else {
+                        suggestionActiveIndex = (suggestionActiveIndex - 1 + items.length) % items.length;
+                    }
+                    updateActiveSuggestion(items);
+                } else if (e.key === 'Escape') {
+                    if (!container.hidden) {
+                        e.preventDefault();
+                        hideSuggestions();
+                    }
+                }
+            });
+
+            input.addEventListener('blur', () => {
+                // 延迟关闭，让 mousedown 先触发
+                setTimeout(() => hideSuggestions(), 150);
+            });
+
+            // mousedown 而非 click：避免 input blur 先触发导致下拉消失
+            container.addEventListener('mousedown', e => {
+                e.preventDefault();
+                const removeBtn = e.target.closest('[data-action="remove-item"]');
+                const clearBtn = e.target.closest('[data-action="clear-history"]');
+                const item = e.target.closest('.search-suggestion-item');
+
+                if (removeBtn) {
+                    removeSearchHistoryItem(removeBtn.dataset.value);
+                    renderSuggestions();
+                    return;
+                }
+                if (clearBtn) {
+                    clearSearchHistory();
+                    renderSuggestions();
+                    return;
+                }
+                if (item) {
+                    selectSuggestion(item.dataset.value);
+                }
+            });
         }
 
         // ===== 筛选 =====
@@ -1536,8 +1820,23 @@
             loadStories();
 
             document.getElementById('searchInput').addEventListener('keydown', e => {
-                if (e.key === 'Enter') searchStories();
+                if (e.key === 'Enter') {
+                    // 下拉打开且有高亮建议时，Enter 选择建议而非直接搜索
+                    const container = document.getElementById('searchSuggestions');
+                    if (container && !container.hidden && suggestionActiveIndex >= 0) {
+                        const items = container.querySelectorAll('.search-suggestion-item');
+                        if (items[suggestionActiveIndex]) {
+                            e.preventDefault();
+                            selectSuggestion(items[suggestionActiveIndex].dataset.value);
+                            return;
+                        }
+                    }
+                    searchStories();
+                }
             });
+
+            // 搜索建议（历史记录 + 热门关键词）
+            initSearchSuggestions();
 
             document.querySelectorAll('.filter-tab').forEach(tab => {
                 tab.addEventListener('click', () => applyFilter(tab.dataset.filter));
@@ -1564,6 +1863,8 @@
                 const taxonomy = await resp.json();
                 const genreChips = document.getElementById('genreFilterChips');
                 if (!genreChips || !taxonomy.dimensions?.genre) return;
+                // 缓存前 8 个类型标签作为热门搜索建议
+                hotKeywords = taxonomy.dimensions.genre.tags.slice(0, 8);
                 // 只取前 12 个类型标签避免过长
                 const tags = taxonomy.dimensions.genre.tags.slice(0, 12);
                 tags.forEach(tag => {
