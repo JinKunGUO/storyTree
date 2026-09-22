@@ -697,6 +697,9 @@
             event.currentTarget.classList.add('selected');
         }
 
+        // 子订单拆分状态（超限套餐时使用）
+        let splitPaymentState = null;
+
         // 进入支付
         async function proceedToPayment() {
             if (!currentOrder) return;
@@ -710,7 +713,6 @@
             }
 
             try {
-                // 这里调用后端 API 获取支付链接或二维码
                 const paymentInfo = await apiRequest(`/payment/alipay/create`, {
                     method: 'POST',
                     body: JSON.stringify({
@@ -718,14 +720,20 @@
                     })
                 });
 
-                // 显示二维码
-                document.getElementById('paymentMethodCard').style.display = 'none';
-                document.getElementById('qrPaymentCard').style.display = 'block';
-                document.getElementById('qrCodeImage').src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(paymentInfo.qrCode)}`;
-                document.getElementById('qrMethodName').textContent = selectedMethod === 'alipay' ? '支付宝' : '微信';
-
-                // 轮询支付状态
-                startPaymentPolling();
+                if (paymentInfo.splitPayment) {
+                    // 超限套餐：拆分为多笔子订单，依次支付
+                    splitPaymentState = {
+                        parentOrderId: currentOrder.orderId,
+                        subOrders: paymentInfo.subOrders,
+                        currentIndex: 0,
+                    };
+                    toast.info(`订单金额超过单笔限额，已拆分为 ${paymentInfo.totalSubOrders} 笔支付，请依次完成`);
+                    // 跳转第一笔支付
+                    window.location.href = paymentInfo.payUrl;
+                } else {
+                    // 未超限：直接跳转支付宝收银台
+                    window.location.href = paymentInfo.payUrl;
+                }
 
             } catch (error) {
                 console.error('创建支付失败:', error);
@@ -735,6 +743,32 @@
                     btn.disabled = false;
                     btn.innerHTML = '<i class="fas fa-lock"></i> 立即支付';
                 }
+            }
+        }
+
+        // 检查是否需要支付下一笔子订单（从支付宝返回后调用）
+        async function checkNextSubOrder() {
+            if (!splitPaymentState) return;
+
+            try {
+                const result = await apiRequest(`/payment/alipay/next-sub`, {
+                    method: 'POST',
+                    body: JSON.stringify({ parentOrderId: splitPaymentState.parentOrderId })
+                });
+
+                if (result.allPaid) {
+                    toast.success('所有支付已完成！');
+                    splitPaymentState = null;
+                    startPaymentPolling();
+                } else {
+                    toast.info(`还需支付 ${result.remainingSubOrders} 笔，即将跳转...`);
+                    setTimeout(() => {
+                        window.location.href = result.payUrl;
+                    }, 2000);
+                }
+            } catch (error) {
+                console.error('检查子订单失败:', error);
+                toast.error('检查支付状态失败，请刷新页面重试');
             }
         }
 
@@ -902,6 +936,19 @@
     <script>
         // 初始化（toast.js 已加载）
         loadOrderInfo();
+
+        // 从支付宝返回后，检查是否有子订单需要继续支付
+        const urlParams = new URLSearchParams(window.location.search);
+        const returnStatus = urlParams.get('status');
+        if (returnStatus === 'return' || returnStatus === 'sub-return') {
+            // 从支付宝同步回调返回，检查子订单
+            const parentOrderId = urlParams.get('orderId');
+            if (parentOrderId) {
+                // 恢复拆分状态并检查下一笔
+                splitPaymentState = { parentOrderId: parentOrderId, subOrders: [], currentIndex: 0 };
+                setTimeout(() => checkNextSubOrder(), 1500);
+            }
+        }
     </script>
     <script>
         // 初始化 WebSocket 连接

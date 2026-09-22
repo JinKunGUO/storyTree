@@ -6,8 +6,11 @@ import crypto from 'crypto';
 import { upgradeMembership, MEMBERSHIP_TIERS } from '../utils/membership';
 import { wsServer } from '../utils/websocket';
 import { JWT_SECRET } from '../utils/auth';
-import { verifyNotify as verifyAlipayNotify } from '../utils/alipay';
+import { verifyNotify as verifyAlipayNotify, createPagePay } from '../utils/alipay';
 import { getActiveUserIdFromReq } from '../utils/middleware';
+
+// 个人支付宝电脑网站支付单笔限额（元）
+const ALIPAY_SINGLE_LIMIT = 50;
 
 const router = Router();
 
@@ -254,6 +257,185 @@ router.post('/points/create', async (req, res) => {
   } catch (error) {
     console.error('创建订单失败:', error);
     res.status(500).json({ error: '创建订单失败' });
+  }
+});
+
+/**
+ * 支付宝电脑网站支付 - 创建支付链接
+ * POST /api/payment/alipay/create
+ * body: { orderId }
+ * 返回支付宝收银台 URL，前端浏览器跳转完成支付
+ * 个人支付宝单笔限额 50 元，超限自动拆分为多笔子订单
+ */
+router.post('/alipay/create', async (req, res) => {
+  const userId = await getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: '未登录' });
+  }
+
+  const { orderId } = req.body;
+  if (!orderId) {
+    return res.status(400).json({ error: '缺少 orderId' });
+  }
+
+  try {
+    const order = await prisma.orders.findUnique({ where: { id: orderId } });
+    if (!order) {
+      return res.status(404).json({ error: '订单不存在' });
+    }
+    if (order.user_id !== userId) {
+      return res.status(403).json({ error: '无权操作此订单' });
+    }
+    if (order.status !== 'pending') {
+      return res.status(400).json({ error: '订单状态异常' });
+    }
+
+    const frontendUrl = process.env.FRONTEND_URL || 'https://storytree.online';
+    const notifyUrl = `${frontendUrl.replace(/\/$/, '')}/api/payment/alipay/notify`;
+    const returnUrl = `${frontendUrl}/payment.html?orderId=${orderId}&status=return`;
+
+    // 个人支付宝单笔限额检查
+    if (order.amount > ALIPAY_SINGLE_LIMIT) {
+      // 超限：拆分为多笔子订单，每笔 ≤ ALIPAY_SINGLE_LIMIT
+      const subOrders: { orderId: string; amount: number }[] = [];
+      let remaining = order.amount;
+      let index = 0;
+
+      while (remaining > 0) {
+        const subAmount = Math.min(remaining, ALIPAY_SINGLE_LIMIT);
+        const subOrderId = `${orderId}_SUB${index}`;
+
+        // 创建子订单记录
+        await prisma.orders.create({
+          data: {
+            id: subOrderId,
+            user_id: userId,
+            type: order.type,
+            tier: order.tier,
+            amount: subAmount,
+            points: index === 0 ? order.points : null, // 积分只在第一笔关联
+            original_amount: subAmount,
+            status: 'pending',
+            payment_method: null,
+            expires_at: order.expires_at,
+          }
+        });
+
+        subOrders.push({ orderId: subOrderId, amount: subAmount });
+        remaining -= subAmount;
+        index++;
+      }
+
+      // 只返回第一笔子订单的支付链接（用户依次支付）
+      const firstSub = subOrders[0];
+      const payUrl = await createPagePay({
+        orderId: firstSub.orderId,
+        subject: `${order.type === 'subscription' ? '会员订阅' : '积分充值'} (${firstSub.amount}元)`,
+        totalAmount: firstSub.amount,
+        returnUrl,
+        notifyUrl,
+      });
+
+      return res.json({
+        payUrl,
+        splitPayment: true,
+        totalSubOrders: subOrders.length,
+        currentSubOrder: 1,
+        remainingSubOrders: subOrders.length - 1,
+        subOrders: subOrders.map((s, i) => ({
+          orderId: s.orderId,
+          amount: s.amount,
+          isPaid: false,
+        })),
+      });
+    }
+
+    // 未超限：直接创建支付链接
+    const payUrl = await createPagePay({
+      orderId,
+      subject: order.type === 'subscription'
+        ? `会员订阅 - ${order.tier}`
+        : `积分充值 - ${order.amount}元`,
+      totalAmount: order.amount,
+      returnUrl,
+      notifyUrl,
+    });
+
+    res.json({
+      payUrl,
+      splitPayment: false,
+    });
+  } catch (error) {
+    console.error('创建支付宝支付失败:', error);
+    res.status(500).json({ error: '创建支付失败' });
+  }
+});
+
+/**
+ * 支付宝子订单支付 - 获取下一笔待支付子订单的支付链接
+ * POST /api/payment/alipay/next-sub
+ * body: { parentOrderId }
+ */
+router.post('/alipay/next-sub', async (req, res) => {
+  const userId = await getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: '未登录' });
+  }
+
+  const { parentOrderId } = req.body;
+  if (!parentOrderId) {
+    return res.status(400).json({ error: '缺少 parentOrderId' });
+  }
+
+  try {
+    // 查找所有子订单
+    const subOrders = await prisma.orders.findMany({
+      where: {
+        id: { startsWith: `${parentOrderId}_SUB` },
+        user_id: userId,
+      },
+      orderBy: { id: 'asc' },
+    });
+
+    if (subOrders.length === 0) {
+      return res.status(404).json({ error: '未找到子订单' });
+    }
+
+    // 找到第一笔未支付的子订单
+    const nextUnpaid = subOrders.find(o => o.status === 'pending');
+    if (!nextUnpaid) {
+      // 所有子订单已支付，将父订单标记为已支付
+      const parentOrder = await prisma.orders.findUnique({ where: { id: parentOrderId } });
+      if (parentOrder && parentOrder.status === 'pending') {
+        await processPaymentSuccess(parentOrderId, 'alipay', `SPLIT_${subOrders.length}`);
+      }
+      return res.json({ allPaid: true, message: '所有子订单已支付完成' });
+    }
+
+    const frontendUrl = process.env.FRONTEND_URL || 'https://storytree.online';
+    const notifyUrl = `${frontendUrl.replace(/\/$/, '')}/api/payment/alipay/notify`;
+    const returnUrl = `${frontendUrl}/payment.html?orderId=${parentOrderId}&status=sub-return`;
+
+    const payUrl = await createPagePay({
+      orderId: nextUnpaid.id,
+      subject: `子订单支付 (${nextUnpaid.amount}元)`,
+      totalAmount: nextUnpaid.amount,
+      returnUrl,
+      notifyUrl,
+    });
+
+    const paidCount = subOrders.filter(o => o.status === 'paid').length;
+
+    res.json({
+      payUrl,
+      allPaid: false,
+      currentSubOrder: paidCount + 1,
+      totalSubOrders: subOrders.length,
+      remainingSubOrders: subOrders.length - paidCount - 1,
+    });
+  } catch (error) {
+    console.error('获取下一笔子订单支付链接失败:', error);
+    res.status(500).json({ error: '获取支付链接失败' });
   }
 });
 

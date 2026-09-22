@@ -118,6 +118,51 @@ export async function createQrPay(params: {
 }
 
 /**
+ * 创建电脑网站支付订单（个人支付宝电脑网站支付）
+ * @param orderId 订单 ID
+ * @param subject 订单标题
+ * @param totalAmount 订单金额（元，单笔不超过 50 元）
+ * @param returnUrl 同步跳转地址
+ * @param notifyUrl 异步通知地址
+ * @returns 支付宝收银台 URL（浏览器跳转）
+ */
+export async function createPagePay(params: {
+  orderId: string;
+  subject: string;
+  totalAmount: number;
+  returnUrl: string;
+  notifyUrl: string;
+}): Promise<string> {
+  const { orderId, subject, totalAmount, returnUrl, notifyUrl } = params;
+
+  try {
+    const formData = new AliPayForm();
+    formData.setMethod('get');
+    formData.addField('bizContent', {
+      outTradeNo: orderId,
+      productCode: 'FAST_INSTANT_TRADE_PAY',
+      totalAmount: totalAmount.toFixed(2),
+      subject: subject,
+      timeoutExpress: '30m',
+    });
+    formData.addField('returnUrl', returnUrl);
+    formData.addField('notifyUrl', notifyUrl);
+
+    const result = getAlipaySdk().pageExec('alipay.trade.page.pay', {
+      method: 'GET',
+      bizContent: {},
+      returnUrl,
+      notifyUrl,
+    });
+
+    return result;
+  } catch (error) {
+    console.error('创建电脑网站支付订单失败:', error);
+    throw new Error('创建支付订单失败');
+  }
+}
+
+/**
  * 查询订单状态
  * @param orderId 订单 ID
  * @returns 订单状态信息
@@ -228,6 +273,7 @@ export async function createRefund(params: {
 
 export default {
   createWapPay,
+  createPagePay,
   createQrPay,
   queryOrderStatus,
   verifyNotify,
