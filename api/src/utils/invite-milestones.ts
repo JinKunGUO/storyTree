@@ -54,6 +54,32 @@ export async function checkInviteMilestones(inviterId: number): Promise<string[]
       }
     }
 
+    // 发放 AI 配额奖励（写入 point_transactions 做幂等记录）
+    if (milestone.aiBonus) {
+      const existingBonus = await prisma.point_transactions.findFirst({
+        where: {
+          user_id: inviterId,
+          type: 'invite_ai_bonus',
+          reference_id: milestone.count,
+        }
+      });
+      if (!existingBonus) {
+        const bonusParts: string[] = [];
+        if (milestone.aiBonus.continuation) bonusParts.push(`续写+${milestone.aiBonus.continuation}`);
+        if (milestone.aiBonus.polish) bonusParts.push(`润色+${milestone.aiBonus.polish}`);
+        if (milestone.aiBonus.illustration) bonusParts.push(`插图+${milestone.aiBonus.illustration}`);
+        await prisma.point_transactions.create({
+          data: {
+            user_id: inviterId,
+            amount: 0,
+            type: 'invite_ai_bonus',
+            description: `邀请满${milestone.count}人AI配额奖励（${bonusParts.join('、')}）`,
+            reference_id: milestone.count,
+          }
+        });
+      }
+    }
+
     awarded.push(milestone.badge?.name ?? `邀请满${milestone.count}人`);
   }
 

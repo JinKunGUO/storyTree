@@ -67,13 +67,21 @@ export interface InviteMilestone {
   count: number;      // 累计邀请人数
   reward: number;     // 额外奖励积分
   badge: Badge | null; // 达成徽章（null 表示仅积分）
+  aiBonus?: {         // 达成时额外赠送的 AI 配额（当月有效）
+    continuation?: number;  // 额外续写次数
+    polish?: number;        // 额外润色次数
+    illustration?: number;  // 额外插图张数
+  };
 }
 
 export const INVITE_MILESTONES: InviteMilestone[] = [
   { count: 1, reward: 50, badge: null },
-  { count: 3, reward: 150, badge: { id: 'connector', name: '呼朋引伴', emoji: '🤝', description: '成功邀请 3 位好友' } },
-  { count: 5, reward: 300, badge: { id: 'recruiter', name: '伯乐', emoji: '🌟', description: '成功邀请 5 位好友' } },
-  { count: 10, reward: 600, badge: { id: 'ambassador', name: '星推官', emoji: '🚀', description: '成功邀请 10 位好友' } },
+  { count: 3, reward: 150, badge: { id: 'connector', name: '呼朋引伴', emoji: '🤝', description: '成功邀请 3 位好友' },
+    aiBonus: { continuation: 5, polish: 10, illustration: 2 } },
+  { count: 5, reward: 300, badge: { id: 'recruiter', name: '伯乐', emoji: '🌟', description: '成功邀请 5 位好友' },
+    aiBonus: { continuation: 10, polish: 20, illustration: 5 } },
+  { count: 10, reward: 600, badge: { id: 'ambassador', name: '星推官', emoji: '🚀', description: '成功邀请 10 位好友' },
+    aiBonus: { continuation: 20, polish: 50, illustration: 10 } },
 ];
 
 /**

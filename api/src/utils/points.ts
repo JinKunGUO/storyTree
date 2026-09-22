@@ -354,10 +354,35 @@ export async function getUserMonthlyQuota(userId: number): Promise<{
   const levelInfo = getUserLevel(user.points);
   const quotas = levelInfo.quotas;
 
-  // 获取本月使用量
+  // 获取本月起始日（bonus 查询和用量统计共用）
   const now = new Date();
   const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
+  // 查询邀请里程碑达成的 AI 配额奖励（累积叠加，当月有效）
+  const aiBonuses = await prisma.point_transactions.findMany({
+    where: {
+      user_id: userId,
+      type: 'invite_ai_bonus',
+      created_at: { gte: firstDayOfMonth },
+    },
+    select: { description: true }
+  });
+
+  let bonusContinuation = 0;
+  let bonusPolish = 0;
+  let bonusIllustration = 0;
+  for (const bonus of aiBonuses) {
+    // 从 description 解析配额："邀请满3人AI配额奖励（续写+5、润色+10、插图+2）"
+    const desc = bonus.description;
+    const contMatch = desc.match(/续写\+(\d+)/);
+    const polishMatch = desc.match(/润色\+(\d+)/);
+    const illMatch = desc.match(/插图\+(\d+)/);
+    if (contMatch) bonusContinuation += parseInt(contMatch[1]);
+    if (polishMatch) bonusPolish += parseInt(polishMatch[1]);
+    if (illMatch) bonusIllustration += parseInt(illMatch[1]);
+  }
+
+  // 获取本月使用量
   const monthlyUsage = await prisma.ai_tasks.groupBy({
     by: ['task_type'],
     where: {
@@ -373,21 +398,26 @@ export async function getUserMonthlyQuota(userId: number): Promise<{
     usageMap[item.task_type] = item._count;
   });
 
+  // 叠加邀请里程碑 AI 配额奖励
+  const contLimit = quotas.continuation === -1 ? -1 : quotas.continuation + bonusContinuation;
+  const polishLimit = quotas.polish === -1 ? -1 : quotas.polish + bonusPolish;
+  const illLimit = quotas.illustration === -1 ? -1 : quotas.illustration + bonusIllustration;
+
   return {
     continuation: {
       used: usageMap['continuation'] || 0,
-      limit: quotas.continuation,
-      unlimited: quotas.continuation === -1
+      limit: contLimit,
+      unlimited: contLimit === -1
     },
     polish: {
       used: usageMap['polish'] || 0,
-      limit: quotas.polish,
-      unlimited: quotas.polish === -1
+      limit: polishLimit,
+      unlimited: polishLimit === -1
     },
     illustration: {
       used: usageMap['illustration'] || 0,
-      limit: quotas.illustration,
-      unlimited: quotas.illustration === -1
+      limit: illLimit,
+      unlimited: illLimit === -1
     }
   };
 }
