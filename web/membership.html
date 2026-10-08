@@ -232,6 +232,24 @@
             color: #666;
         }
 
+        .tier-price-anchor {
+            font-size: 0.85em;
+            color: #888;
+            margin-top: 6px;
+            font-weight: normal;
+        }
+
+        .tier-save {
+            display: inline-block;
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin-left: 6px;
+        }
+
         .tier-duration {
             text-align: center;
             color: #666;
@@ -774,6 +792,13 @@
                         <div class="tier-header">
                             <div class="tier-name">${tier.name}</div>
                             <div class="tier-price">¥${tier.price}<small>${tier.duration === 0 ? '' : tier.duration === 365 ? '/年' : tier.duration === 90 ? '/季' : tier.duration === 30 ? '/月' : `/${tier.duration}天`}</small></div>
+                            ${tier.duration > 30 ? `
+                                <div class="tier-price-anchor">
+                                    相当于 ¥${(tier.price / (tier.duration / 30)).toFixed(1)}/月
+                                    ${tier.duration === 365 ? `<span class="tier-save">省 ¥${(39 * 12 - tier.price).toFixed(0)}</span>` : ''}
+                                    ${tier.duration === 90 ? `<span class="tier-save">省 ¥${(39 * 3 - tier.price).toFixed(0)}</span>` : ''}
+                                </div>
+                            ` : ''}
                         </div>
                         <div class="tier-duration">${tier.durationText}</div>
                         <ul class="tier-benefits">
