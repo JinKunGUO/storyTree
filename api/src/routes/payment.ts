@@ -825,6 +825,25 @@ router.post('/alipay/notify', async (req, res) => {
       return res.send('fail');
     }
 
+    // 子订单支付成功后，检查父订单的所有子订单是否已全部支付，是则自动完成父订单
+    if (outTradeNo.includes('_SUB')) {
+      const parentOrderId = outTradeNo.split('_SUB')[0];
+      const subOrders = await prisma.orders.findMany({
+        where: {
+          id: { startsWith: `${parentOrderId}_SUB` },
+          user_id: order.user_id,
+        },
+      });
+      const allPaid = subOrders.length > 0 && subOrders.every(o => o.status === 'paid');
+      if (allPaid) {
+        const parentOrder = await prisma.orders.findUnique({ where: { id: parentOrderId } });
+        if (parentOrder && parentOrder.status === 'pending') {
+          await processPaymentSuccess(parentOrderId, 'alipay', `SPLIT_${subOrders.length}`);
+          console.log(`✅ 父订单 ${parentOrderId} 所有子订单已支付，自动完成`);
+        }
+      }
+    }
+
     res.send('success');
   } catch (error) {
     console.error('处理支付宝回调失败:', error);

@@ -596,8 +596,8 @@
                     <li><i class="fas fa-check"></i> 或 5 张 AI 插图</li>
                     <li><i class="fas fa-check"></i> 永久有效</li>
                 </ul>
-                <button class="btn-buy" disabled style="background: var(--st-gray-200, #e0e0e0); color: var(--st-text-disabled, #999); cursor: not-allowed; opacity: 0.8;" title="积分充值功能即将开放">
-                    <i class="fas fa-clock"></i> 敬请期待
+                <button class="btn-buy" onclick="buyPackage('basic', 100, 9.9)">
+                    <i class="fas fa-shopping-cart"></i> 立即充值
                 </button>
             </div>
 
@@ -617,8 +617,8 @@
                     <li><i class="fas fa-check"></i> 永久有效</li>
                     <li><i class="fas fa-star" style="color: var(--st-warning-500, #ff9800);"></i> 节省 5 元</li>
                 </ul>
-                <button class="btn-buy" disabled style="background: var(--st-gray-200, #e0e0e0); color: var(--st-text-disabled, #999); cursor: not-allowed; opacity: 0.8;" title="积分充值功能即将开放">
-                    <i class="fas fa-clock"></i> 敬请期待
+                <button class="btn-buy" onclick="buyPackage('value', 500, 45)">
+                    <i class="fas fa-shopping-cart"></i> 立即充值
                 </button>
             </div>
 
@@ -637,8 +637,8 @@
                     <li><i class="fas fa-check"></i> 永久有效</li>
                     <li><i class="fas fa-star" style="color: var(--st-warning-500, #ff9800);"></i> 节省 15 元</li>
                 </ul>
-                <button class="btn-buy" disabled style="background: var(--st-gray-200, #e0e0e0); color: var(--st-text-disabled, #999); cursor: not-allowed; opacity: 0.8;" title="积分充值功能即将开放">
-                    <i class="fas fa-clock"></i> 敬请期待
+                <button class="btn-buy" onclick="buyPackage('premium', 1000, 85)">
+                    <i class="fas fa-shopping-cart"></i> 立即充值
                 </button>
             </div>
 
@@ -657,13 +657,13 @@
                     <li><i class="fas fa-check"></i> 永久有效</li>
                     <li><i class="fas fa-star" style="color: var(--st-warning-500, #ff9800);"></i> 节省 40 元</li>
                 </ul>
-                <button class="btn-buy" disabled style="background: var(--st-gray-200, #e0e0e0); color: var(--st-text-disabled, #999); cursor: not-allowed; opacity: 0.8;" title="积分充值功能即将开放">
-                    <i class="fas fa-clock"></i> 敬请期待
+                <button class="btn-buy" onclick="buyPackage('premium', 2000, 160)">
+                    <i class="fas fa-shopping-cart"></i> 立即充值
                 </button>
             </div>
         </div>
-        <!-- 支付方式（暂时隐藏，付费功能即将开放） -->
-        <div class="payment-methods" style="display: none;">
+        <!-- 支付方式 -->
+        <div class="payment-methods">
             <div class="payment-title">
                 <i class="fas fa-wallet" style="color: var(--st-primary-500);"></i>
                 选择支付方式
@@ -706,8 +706,8 @@
         ">
             <div style="font-size: 24px; flex-shrink: 0; margin-top: 2px;">💡</div>
             <div style="color: var(--st-warning-700, #856404); font-size: 15px; line-height: 1.8;">
-                <strong style="display: block; font-size: 16px; margin-bottom: 6px; color: var(--st-warning-800, #664d03);">积分充值功能即将开放</strong>
-                目前可通过以下方式免费获取积分：<br>
+                <strong style="display: block; font-size: 16px; margin-bottom: 6px; color: var(--st-warning-800, #664d03);">积分充值已开放</strong>
+                支持支付宝安全支付，也可通过以下方式免费获取积分：<br>
                 <span style="margin-right: 20px;">📅 <strong>每日签到</strong> — 连续签到最高每天 +57 积分</span>
                 <span>✍️ <strong>创作码字</strong> — 每码字 1000 字获得积分奖励</span>
             </div>
@@ -970,38 +970,73 @@
             element.classList.add('selected');
         }
 
-        // 确认购买
+        // 购买积分套餐（直接创建订单并跳转支付）
+        async function buyPackage(packageId, points, price) {
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                if (!token) {
+                    window.toast ? toast.warning('请先登录') : alert('请先登录');
+                    window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.pathname);
+                    return;
+                }
+
+                const response = await fetch('/api/payment/points/create', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ packageId })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    window.toast ? toast.success('订单创建成功！即将跳转支付页面...') : alert('订单创建成功！即将跳转支付页面...');
+                    setTimeout(() => {
+                        window.location.href = `/payment.html?orderId=${data.orderId}`;
+                    }, 800);
+                } else {
+                    window.toast ? toast.error(data.error || '创建订单失败') : alert(data.error || '创建订单失败');
+                }
+            } catch (error) {
+                console.error('创建订单失败:', error);
+                window.toast ? toast.error('创建订单失败，请稍后重试') : alert('创建订单失败，请稍后重试');
+            }
+        }
+
+        // 确认购买（旧流程，保留兼容）
         async function confirmPurchase(points, price) {
             if (!selectedPaymentMethod) {
                 window.toast ? toast.warning('请选择支付方式') : alert('请选择支付方式');
                 return;
             }
-            
+
             try {
                 const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-                
-                // TODO: 调用后端 API 创建充值订单
-                const response = await fetch('/api/points/recharge', {
+
+                const response = await fetch('/api/payment/points/create', {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        points,
-                        amount: price,
-                        paymentMethod: selectedPaymentMethod
+                        packageId: 'custom',
+                        customPoints: points,
+                        customAmount: price
                     })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (response.ok) {
-                    window.toast ? toast.success('订单创建成功！即将跳转支付页面...') : alert('✅ 订单创建成功！即将跳转支付页面...');
-                    // TODO: 跳转到支付页面
-                    // window.location.href = data.paymentUrl;
+                    window.toast ? toast.success('订单创建成功！即将跳转支付页面...') : alert('订单创建成功！即将跳转支付页面...');
+                    setTimeout(() => {
+                        window.location.href = `/payment.html?orderId=${data.orderId}`;
+                    }, 800);
                 } else {
-                    window.toast ? toast.error(data.error || '创建订单失败') : alert('❌ ' + (data.error || '创建订单失败'));
+                    window.toast ? toast.error(data.error || '创建订单失败') : alert(data.error || '创建订单失败');
                 }
             } catch (error) {
                 console.error('创建订单失败:', error);

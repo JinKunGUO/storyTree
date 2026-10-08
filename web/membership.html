@@ -354,49 +354,6 @@
             color: #664d03;
         }
 
-        /* 「即将开放」角标 */
-        .coming-soon-badge {
-            position: absolute;
-            top: 20px;
-            left: -32px;
-            background: linear-gradient(135deg, #ff9800, #ffa726);
-            color: white;
-            padding: 5px 40px;
-            transform: rotate(-45deg);
-            font-size: 0.75em;
-            font-weight: bold;
-            letter-spacing: 1px;
-            z-index: 1;
-        }
-
-        /* 价格改为免费样式 */
-        .tier-price-free {
-            font-size: 2em;
-            font-weight: bold;
-            color: #4caf50;
-        }
-
-        .tier-price-original {
-            font-size: 0.9em;
-            color: #bbb;
-            text-decoration: line-through;
-            display: block;
-            margin-top: 2px;
-        }
-
-        /* 不可点击的按钮样式 */
-        .btn-coming-soon {
-            background: #e0e0e0;
-            color: #999;
-            cursor: not-allowed;
-            opacity: 0.8;
-        }
-
-        .btn-coming-soon:hover {
-            transform: none !important;
-            box-shadow: none !important;
-        }
-
         /* === 响应式适配 === */
         @media (max-width: 768px) {
             .tiers-grid {
@@ -566,12 +523,12 @@
         <div id="loading" class="loading">加载中...</div>
         <div id="error" class="error" style="display: none;"></div>
 
-        <!-- 内测免费公告 -->
+        <!-- 会员服务公告 -->
         <div class="beta-notice">
-            <div class="beta-notice-icon">🎉</div>
+            <div class="beta-notice-icon">💎</div>
             <div class="beta-notice-text">
-                <strong>平台内测期间，所有会员功能限时免费开放！</strong>
-                无需付费即可享受全部会员权益。付费功能将在正式上线后开放，届时提前注册的用户将享有专属优惠。
+                <strong>会员服务已正式开放！</strong>
+                升级会员解锁更多 AI 创作特权，支持支付宝安全支付。
             </div>
         </div>
 
@@ -814,11 +771,9 @@
                 tiersGrid.innerHTML = response.tiers.map(tier => `
                     <div class="tier-card ${tier.isPopular ? 'popular' : ''}">
                         ${tier.isPopular ? '<span class="popular-badge">热门</span>' : ''}
-                        <span class="coming-soon-badge">即将开放</span>
                         <div class="tier-header">
                             <div class="tier-name">${tier.name}</div>
-                            <div class="tier-price-free">限时免费</div>
-                            <span class="tier-price-original">原价 ¥${tier.price}${tier.duration === 0 ? '' : tier.duration === 365 ? '/年' : tier.duration === 90 ? '/季' : tier.duration === 30 ? '/月' : `/${tier.duration}天`}</span>
+                            <div class="tier-price">¥${tier.price}<small>${tier.duration === 0 ? '' : tier.duration === 365 ? '/年' : tier.duration === 90 ? '/季' : tier.duration === 30 ? '/月' : `/${tier.duration}天`}</small></div>
                         </div>
                         <div class="tier-duration">${tier.durationText}</div>
                         <ul class="tier-benefits">
@@ -828,8 +783,8 @@
                             <strong>AI 配额:</strong><br>
                             ${tier.quotaDescription.split('\n').map(line => line.trim() ? `${line}<br>` : '').join('')}
                         </div>
-                        <button class="tier-action btn-coming-soon" disabled title="付费功能即将开放">
-                            <i class="fas fa-clock"></i> 即将开放
+                        <button class="tier-action btn-upgrade" data-tier="${tier.id}" onclick="purchaseMembership('${tier.id}')">
+                            <i class="fas fa-arrow-up"></i> 立即升级
                         </button>
                     </div>
                 `).join('');
