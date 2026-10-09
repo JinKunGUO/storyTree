@@ -553,7 +553,9 @@
                 </div>
 
                 <!-- 支付宝 -->
-                <div class="payment-option selected" onclick="selectPaymentMethod('alipay')">
+                <div class="payment-option selected" onclick="selectPaymentMethod('alipay')"
+                     role="radio" aria-checked="true" tabindex="0"
+                     onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectPaymentMethod('alipay')}">
                     <div class="payment-option-icon alipay">
                         <i class="fab fa-alipay"></i>
                     </div>
@@ -565,7 +567,9 @@
                 </div>
 
                 <!-- 微信支付 -->
-                <div class="payment-option" onclick="selectPaymentMethod('wechat')">
+                <div class="payment-option" onclick="selectPaymentMethod('wechat')"
+                     role="radio" aria-checked="false" tabindex="0"
+                     onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectPaymentMethod('wechat')}">
                     <div class="payment-option-icon wechat">
                         <i class="fab fa-weixin"></i>
                     </div>
@@ -632,13 +636,8 @@
                     <div class="status-icon" id="resultIcon"></div>
                     <div class="status-title" id="resultTitle"></div>
                     <div class="status-message" id="resultMessage"></div>
-                    <div>
-                        <a href="/membership.html" class="btn btn-primary">
-                            <i class="fas fa-arrow-left"></i> 返回会员中心
-                        </a>
-                        <button class="btn btn-secondary" onclick="window.close()">
-                            <i class="fas fa-times"></i> 关闭
-                        </button>
+                    <div id="resultActions">
+                        <!-- 动态生成引导按钮 -->
                     </div>
                 </div>
             </div>
@@ -748,12 +747,14 @@
         // 选择支付方式
         function selectPaymentMethod(method) {
             selectedMethod = method;
-            
+
             document.querySelectorAll('.payment-option').forEach(option => {
                 option.classList.remove('selected');
+                option.setAttribute('aria-checked', 'false');
             });
-            
+
             event.currentTarget.classList.add('selected');
+            event.currentTarget.setAttribute('aria-checked', 'true');
         }
 
         // 子订单拆分状态（超限套餐时使用）
@@ -929,6 +930,7 @@
             const icon = document.getElementById('resultIcon');
             const resultTitle = document.getElementById('resultTitle');
             const resultMessage = document.getElementById('resultMessage');
+            const resultActions = document.getElementById('resultActions');
 
             if (status === 'success') {
                 icon.className = 'status-icon success';
@@ -943,6 +945,56 @@
 
             resultTitle.textContent = title;
             resultMessage.textContent = message;
+
+            // 根据订单类型生成"下一步"引导按钮
+            if (status === 'success' && currentOrder) {
+                const orderType = currentOrder.type || 'subscription';
+                let actionHtml = '';
+
+                if (orderType === 'subscription') {
+                    // 会员订阅成功 → 引导去创作
+                    actionHtml = `
+                        <a href="/create-ai.html" class="btn btn-primary">
+                            <i class="fas fa-magic"></i> 开始创作
+                        </a>
+                        <a href="/membership.html" class="btn btn-secondary">
+                            <i class="fas fa-crown"></i> 查看会员权益
+                        </a>
+                    `;
+                } else if (orderType === 'points') {
+                    // 积分充值成功 → 引导去使用积分
+                    actionHtml = `
+                        <a href="/write.html" class="btn btn-primary">
+                            <i class="fas fa-pen"></i> 去写作
+                        </a>
+                        <a href="/points-mall.html" class="btn btn-secondary">
+                            <i class="fas fa-coins"></i> 查看积分
+                        </a>
+                    `;
+                } else {
+                    // 默认
+                    actionHtml = `
+                        <a href="/membership.html" class="btn btn-primary">
+                            <i class="fas fa-arrow-left"></i> 返回会员中心
+                        </a>
+                        <button class="btn btn-secondary" onclick="window.close()">
+                            <i class="fas fa-times"></i> 关闭
+                        </button>
+                    `;
+                }
+
+                resultActions.innerHTML = actionHtml;
+            } else {
+                // 失败或默认情况
+                resultActions.innerHTML = `
+                    <a href="/membership.html" class="btn btn-primary">
+                        <i class="fas fa-arrow-left"></i> 返回会员中心
+                    </a>
+                    <button class="btn btn-secondary" onclick="window.close()">
+                        <i class="fas fa-times"></i> 关闭
+                    </button>
+                `;
+            }
 
             stopCountdown();
         }

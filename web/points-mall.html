@@ -72,6 +72,82 @@
             font-weight: 700;
         }
 
+        /* 积分用途说明卡片 */
+        .points-usage-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .usage-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--st-text-primary, #333);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .usage-title i {
+            color: var(--st-warning-400, #ffd700);
+        }
+
+        .usage-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .usage-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--st-gray-50, #f8f9fa);
+            border-radius: 10px;
+        }
+
+        .usage-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--st-primary-500, #667eea), var(--st-primary-700, #764ba2));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .usage-text {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .usage-text strong {
+            font-size: 14px;
+            color: var(--st-text-primary, #333);
+        }
+
+        .usage-text span {
+            font-size: 12px;
+            color: var(--st-text-secondary, #666);
+        }
+
+        @media (max-width: 640px) {
+            .usage-grid {
+                grid-template-columns: 1fr;
+            }
+            .usage-item {
+                padding: 10px;
+            }
+        }
+
         .points-packages {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -573,6 +649,34 @@
             <div class="user-points-card">
                 <div class="user-points-label">我的积分</div>
                 <div class="user-points-value" id="userPoints">加载中...</div>
+            </div>
+        </div>
+
+        <!-- 积分用途说明 -->
+        <div class="points-usage-card">
+            <div class="usage-title"><i class="fas fa-lightbulb"></i> 积分能做什么？</div>
+            <div class="usage-grid">
+                <div class="usage-item">
+                    <div class="usage-icon"><i class="fas fa-pen-fancy"></i></div>
+                    <div class="usage-text">
+                        <strong>AI 续写</strong>
+                        <span>10 积分/次 · 帮你写完一个章节</span>
+                    </div>
+                </div>
+                <div class="usage-item">
+                    <div class="usage-icon"><i class="fas fa-magic"></i></div>
+                    <div class="usage-text">
+                        <strong>AI 润色</strong>
+                        <span>3 积分/次 · 让文字更流畅</span>
+                    </div>
+                </div>
+                <div class="usage-item">
+                    <div class="usage-icon"><i class="fas fa-image"></i></div>
+                    <div class="usage-text">
+                        <strong>AI 插图</strong>
+                        <span>20 积分/张 · 为故事配精美封面</span>
+                    </div>
+                </div>
             </div>
         </div>
 
