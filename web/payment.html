@@ -280,6 +280,71 @@
             margin-bottom: 30px;
         }
 
+        /* 骨架屏样式 */
+        .skeleton-order {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .skeleton-line {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+
+        .skeleton-title {
+            height: 28px;
+            width: 40%;
+            margin: 0 auto 8px;
+        }
+
+        .skeleton-subtitle {
+            height: 16px;
+            width: 60%;
+            margin: 0 auto 24px;
+        }
+
+        .skeleton-order-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .skeleton-row {
+            height: 16px;
+            width: 100%;
+        }
+
+        .skeleton-row.skeleton-amount {
+            height: 24px;
+            width: 50%;
+            margin-left: auto;
+        }
+
+        .skeleton-button {
+            height: 48px;
+            width: 200px;
+            margin: 0 auto;
+            border-radius: 10px;
+        }
+
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .skeleton-line {
+                animation: none;
+            }
+        }
+
         .btn {
             padding: 15px 40px;
             border: none;
@@ -500,8 +565,20 @@
         <a href="/membership.html" class="back-link">← 返回会员中心</a>
 
         <div id="loading" class="loading">
-            <div class="spinner"></div>
-            <p style="color: white; font-size: 16px;">加载订单信息...</p>
+            <!-- 骨架屏：模拟订单信息结构 -->
+            <div class="skeleton-order">
+                <div class="skeleton-line skeleton-title"></div>
+                <div class="skeleton-line skeleton-subtitle"></div>
+                <div class="skeleton-order-info">
+                    <div class="skeleton-line skeleton-row"></div>
+                    <div class="skeleton-line skeleton-row"></div>
+                    <div class="skeleton-line skeleton-row"></div>
+                    <div class="skeleton-line skeleton-row skeleton-amount"></div>
+                    <div class="skeleton-line skeleton-row"></div>
+                    <div class="skeleton-line skeleton-row"></div>
+                </div>
+                <div class="skeleton-line skeleton-button"></div>
+            </div>
         </div>
 
         <div id="paymentContent" style="display: none;">
