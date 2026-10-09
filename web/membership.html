@@ -794,7 +794,10 @@
                 const response = await apiRequest('/membership/tiers');
                 const tiersGrid = document.getElementById('tiersGrid');
                 
-                tiersGrid.innerHTML = response.tiers.map(tier => `
+                // 过滤掉免费套餐（free），只显示付费套餐
+                const paidTiers = response.tiers.filter(tier => tier.id !== 'free');
+
+                tiersGrid.innerHTML = paidTiers.map(tier => `
                     <div class="tier-card ${tier.isPopular ? 'popular' : ''}">
                         ${tier.isPopular ? '<span class="popular-badge">热门</span>' : ''}
                         <div class="tier-header">

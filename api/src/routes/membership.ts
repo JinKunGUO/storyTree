@@ -163,7 +163,8 @@ router.post('/upgrade/create', async (req, res) => {
 
   const { tier, discountCode } = req.body;
 
-  if (!tier || !MEMBERSHIP_TIERS[tier as keyof typeof MEMBERSHIP_TIERS]) {
+  // 过滤免费套餐（free），免费套餐无需支付
+  if (!tier || tier === 'free' || !MEMBERSHIP_TIERS[tier as keyof typeof MEMBERSHIP_TIERS]) {
     return res.status(400).json({ error: '无效的会员等级' });
   }
 
