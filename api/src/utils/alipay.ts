@@ -70,7 +70,13 @@ export async function createWapPay(params: {
 
     const result = getAlipaySdk().pageExec('alipay.trade.wap.pay', {
       method: 'GET',
-      bizContent: {},
+      bizContent: {
+        outTradeNo: orderId,
+        productCode: 'QUICK_WAP_WAY',
+        totalAmount: totalAmount.toFixed(2),
+        subject: subject,
+        timeoutExpress: '30m',
+      },
       returnUrl,
       notifyUrl,
     });
@@ -150,7 +156,13 @@ export async function createPagePay(params: {
 
     const result = getAlipaySdk().pageExec('alipay.trade.page.pay', {
       method: 'GET',
-      bizContent: {},
+      bizContent: {
+        outTradeNo: orderId,
+        productCode: 'FAST_INSTANT_TRADE_PAY',
+        totalAmount: totalAmount.toFixed(2),
+        subject: subject,
+        timeoutExpress: '30m',
+      },
       returnUrl,
       notifyUrl,
     });
