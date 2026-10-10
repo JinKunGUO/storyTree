@@ -774,10 +774,29 @@
         async function loadOrderInfo() {
             const urlParams = new URLSearchParams(window.location.search);
             const orderId = urlParams.get('orderId');
+            const isMock = urlParams.get('mock') === '1';
 
             if (!orderId) {
                 toast.warning('订单号不能为空');
                 window.location.href = '/membership.html';
+                return;
+            }
+
+            // mock 模式：显示模拟支付按钮
+            if (isMock) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('paymentContent').style.display = 'block';
+                document.getElementById('paymentMethodCard').innerHTML = `
+                    <div class="payment-method-title">
+                        <i class="fas fa-flask"></i> 模拟支付（开发模式）
+                    </div>
+                    <div style="text-align: center; padding: 20px; color: #666;">
+                        <p>当前为本地开发模式，点击按钮模拟支付成功</p>
+                        <button class="btn btn-primary" onclick="mockPaySuccess()" style="margin-top: 20px;">
+                            <i class="fas fa-check"></i> 模拟支付成功
+                        </button>
+                    </div>
+                `;
                 return;
             }
 
@@ -836,6 +855,25 @@
 
         // 子订单拆分状态（超限套餐时使用）
         let splitPaymentState = null;
+
+        // mock 模式：模拟支付成功
+        async function mockPaySuccess() {
+            if (!currentOrder) return;
+
+            try {
+                // 调用后端 mock 回调接口
+                await apiRequest('/payment/callback/mock', {
+                    method: 'POST',
+                    body: JSON.stringify({ orderId: currentOrder.orderId })
+                });
+
+                // 显示支付成功
+                showPaymentResult('success', '支付成功', '模拟支付完成，权益已到账');
+            } catch (error) {
+                console.error('模拟支付失败:', error);
+                toast.error('模拟支付失败：' + error.message);
+            }
+        }
 
         // 进入支付
         async function proceedToPayment() {

@@ -13,13 +13,26 @@ import AliPayForm from 'alipay-sdk/lib/form';
  */
 
 // 支付宝配置
+// ALIPAY_MODE: mock（本地开发，不调用真实支付宝）| sandbox（沙箱联调）| production（生产）
+const ALIPAY_MODE = process.env.ALIPAY_MODE || (process.env.NODE_ENV === 'production' ? 'production' : 'mock');
+
 const ALIPAY_CONFIG = {
   appId: process.env.ALIPAY_APP_ID || '',
   privateKey: process.env.ALIPAY_PRIVATE_KEY || '',
   alipayPublicKey: process.env.ALIPAY_PUBLIC_KEY || '',
-  gateway: process.env.ALIPAY_GATEWAY || 'https://openapi.alipay.com/gateway.do',
+  gateway: process.env.ALIPAY_GATEWAY || (ALIPAY_MODE === 'sandbox' ? 'https://openapi-sandbox.dl.alipaydev.com/gateway.do' : 'https://openapi.alipay.com/gateway.do'),
   timeout: 30000, // 30 秒超时
 };
+
+// 是否为 mock 模式（本地开发，不调用真实支付宝）
+export function isMockMode(): boolean {
+  return ALIPAY_MODE === 'mock';
+}
+
+// 是否为沙箱模式
+export function isSandboxMode(): boolean {
+  return ALIPAY_MODE === 'sandbox';
+}
 
 // 懒加载 SDK 实例（避免模块加载时因缺少 appId 而崩溃）
 let _alipaySdk: AlipaySdk | null = null;
@@ -140,6 +153,12 @@ export async function createPagePay(params: {
   notifyUrl: string;
 }): Promise<string> {
   const { orderId, subject, totalAmount, returnUrl, notifyUrl } = params;
+
+  // mock 模式：直接返回本地 mock 支付页面链接
+  if (isMockMode()) {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+    return `${frontendUrl}/payment.html?orderId=${orderId}&mock=1`;
+  }
 
   try {
     const formData = new AliPayForm();
