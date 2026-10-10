@@ -788,10 +788,11 @@
                 document.getElementById('paymentContent').style.display = 'block';
                 document.getElementById('paymentMethodCard').innerHTML = `
                     <div class="payment-method-title">
-                        <i class="fas fa-flask"></i> 模拟支付（开发模式）
+                        <i class="fas fa-flask"></i> 模拟支付（Mock 模式）
                     </div>
                     <div style="text-align: center; padding: 20px; color: var(--st-text-secondary, #666);">
-                        <p>当前为本地开发模式，点击按钮模拟支付成功</p>
+                        <p style="margin-bottom: 8px;">当前为 <strong>Mock 模式</strong>（本地开发，不调用真实支付宝）</p>
+                        <p style="font-size: 13px; opacity: 0.8;">点击按钮模拟支付成功，验证业务逻辑</p>
                         <button class="btn btn-primary" onclick="mockPaySuccess()" style="margin-top: 20px;">
                             <i class="fas fa-check"></i> 模拟支付成功
                         </button>

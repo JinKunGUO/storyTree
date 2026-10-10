@@ -34,6 +34,9 @@ export function isSandboxMode(): boolean {
   return ALIPAY_MODE === 'sandbox';
 }
 
+// 启动时打印当前支付模式（方便开发者确认）
+console.log(`💳 支付宝支付模式: ${ALIPAY_MODE}${ALIPAY_MODE === 'mock' ? '（本地开发，不调用真实支付宝）' : ALIPAY_MODE === 'sandbox' ? '（沙箱联调）' : '（生产环境）'}`);
+
 // 懒加载 SDK 实例（避免模块加载时因缺少 appId 而崩溃）
 let _alipaySdk: AlipaySdk | null = null;
 function getAlipaySdk(): AlipaySdk {
