@@ -99,19 +99,24 @@ const MEMBERSHIP_PLANS = Object.fromEntries(
  */
 const POINTS_PACKAGES = {
   basic: {
-    name: '基础包',
-    price: 10,
+    name: '小额套餐',
+    price: 9.9,
     points: 100
   },
   value: {
-    name: '超值包',
-    price: 50,
-    points: 600
+    name: '中额套餐',
+    price: 45,
+    points: 500
   },
   premium: {
-    name: '豪华包',
-    price: 100,
-    points: 1500
+    name: '大额套餐',
+    price: 85,
+    points: 1000
+  },
+  super: {
+    name: '超值套餐',
+    price: 160,
+    points: 2000
   }
 };
 
