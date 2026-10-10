@@ -64,7 +64,7 @@ async function processPaymentSuccess(
       order.points,
       'purchase',
       '充值积分',
-      parseInt(orderId.split('_')[1] || '0', 10),
+      // reference_id 为 null（积分充值无需关联其他实体）
     );
   }
 
@@ -563,7 +563,9 @@ router.post('/callback/mock', async (req, res) => {
     }
   } catch (error) {
     console.error('处理支付回调失败:', error);
-    res.status(500).json({ error: '处理失败' });
+    console.error('订单ID:', orderId, '错误详情:', error instanceof Error ? error.message : error);
+    console.error('错误堆栈:', error instanceof Error ? error.stack : '无');
+    res.status(500).json({ error: '处理失败', detail: error instanceof Error ? error.message : String(error) });
   }
 });
 
