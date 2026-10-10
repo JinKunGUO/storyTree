@@ -782,43 +782,24 @@
                 return;
             }
 
-            // mock 模式：显示模拟支付按钮
-            if (isMock) {
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('paymentContent').style.display = 'block';
-                document.getElementById('paymentMethodCard').innerHTML = `
-                    <div class="payment-method-title">
-                        <i class="fas fa-flask"></i> 模拟支付（Mock 模式）
-                    </div>
-                    <div style="text-align: center; padding: 20px; color: var(--st-text-secondary, #666);">
-                        <p style="margin-bottom: 8px;">当前为 <strong>Mock 模式</strong>（本地开发，不调用真实支付宝）</p>
-                        <p style="font-size: 13px; opacity: 0.8;">点击按钮模拟支付成功，验证业务逻辑</p>
-                        <button class="btn btn-primary" onclick="mockPaySuccess()" style="margin-top: 20px;">
-                            <i class="fas fa-check"></i> 模拟支付成功
-                        </button>
-                    </div>
-                `;
-                return;
-            }
-
             try {
                 currentOrder = await apiRequest(`/payment/orders/${orderId}`);
-                
+
                 // 更新订单信息
                 document.getElementById('orderId').textContent = currentOrder.orderId;
-                document.getElementById('productName').textContent = 
+                document.getElementById('productName').textContent =
                     currentOrder.type === 'subscription' ? '会员订阅' : '积分充值';
-                document.getElementById('orderType').textContent = 
+                document.getElementById('orderType').textContent =
                     currentOrder.type === 'subscription' ? '会员订阅订单' : '积分充值订单';
                 document.getElementById('orderAmount').textContent = `¥${currentOrder.amount.toFixed(2)}`;
                 document.getElementById('createTime').textContent = new Date(currentOrder.createdAt).toLocaleString('zh-CN');
-                
+
                 // 如果订单已支付
                 if (currentOrder.status === 'paid') {
                     showPaymentResult('success', '支付成功', '订单已支付成功，权益已到账');
                     return;
                 }
-                
+
                 // 如果订单已取消或过期
                 if (currentOrder.status === 'cancelled' || currentOrder.status === 'expired') {
                     showPaymentResult('failed', '支付失败', '订单已取消或过期');
@@ -833,6 +814,22 @@
                 // 显示内容
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('paymentContent').style.display = 'block';
+
+                // mock 模式：替换支付方式区域为模拟支付按钮
+                if (isMock) {
+                    document.getElementById('paymentMethodCard').innerHTML = `
+                        <div class="payment-method-title">
+                            <i class="fas fa-flask"></i> 模拟支付（Mock 模式）
+                        </div>
+                        <div style="text-align: center; padding: 20px; color: var(--st-text-secondary, #666);">
+                            <p style="margin-bottom: 8px;">当前为 <strong>Mock 模式</strong>（本地开发，不调用真实支付宝）</p>
+                            <p style="font-size: 13px; opacity: 0.8;">点击按钮模拟支付成功，验证业务逻辑</p>
+                            <button class="btn btn-primary" onclick="mockPaySuccess()" style="margin-top: 20px;">
+                                <i class="fas fa-check"></i> 模拟支付成功
+                            </button>
+                        </div>
+                    `;
+                }
 
             } catch (error) {
                 console.error('加载订单失败:', error);
@@ -868,7 +865,7 @@
                     body: JSON.stringify({ orderId: currentOrder.orderId })
                 });
 
-                // 显示支付成功
+                // 显示支付成功（mock 模式下 currentOrder 已加载，会显示正确的引导按钮）
                 showPaymentResult('success', '支付成功', '模拟支付完成，权益已到账');
             } catch (error) {
                 console.error('模拟支付失败:', error);
@@ -1093,9 +1090,9 @@
                         <a href="/membership.html" class="btn btn-primary">
                             <i class="fas fa-arrow-left"></i> 返回会员中心
                         </a>
-                        <button class="btn btn-secondary" onclick="window.close()">
-                            <i class="fas fa-times"></i> 关闭
-                        </button>
+                        <a href="/" class="btn btn-secondary">
+                            <i class="fas fa-home"></i> 返回首页
+                        </a>
                     `;
                 }
 
@@ -1106,9 +1103,9 @@
                     <a href="/membership.html" class="btn btn-primary">
                         <i class="fas fa-arrow-left"></i> 返回会员中心
                     </a>
-                    <button class="btn btn-secondary" onclick="window.close()">
-                        <i class="fas fa-times"></i> 关闭
-                    </button>
+                    <a href="/" class="btn btn-secondary">
+                        <i class="fas fa-home"></i> 返回首页
+                    </a>
                 `;
             }
 
