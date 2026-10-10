@@ -220,10 +220,11 @@
             flex-wrap: wrap;
             padding: 16px 20px;
             margin-top: 20px;
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--st-bg-elevated, #f8f9fa);
+            border: 1px solid var(--st-gray-200, #e0e0e0);
             border-radius: 10px;
             font-size: 13px;
-            color: rgba(255, 255, 255, 0.9);
+            color: var(--st-text-secondary, #666);
         }
 
         .trust-item {
@@ -233,7 +234,7 @@
         }
 
         .trust-item i {
-            color: #4caf50;
+            color: var(--st-success-500, #4caf50);
             font-size: 14px;
         }
 
