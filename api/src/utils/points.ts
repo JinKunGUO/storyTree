@@ -14,9 +14,9 @@ export const LEVEL_CONFIG = {
     minPoints: 0,
     maxPoints: 99,
     quotas: {
-      continuation: 5,   // 每月AI续写次数
-      polish: 10,        // 每月AI润色次数
-      illustration: 2    // 每月AI插图张数
+      continuation: 3,   // 每月AI续写次数
+      polish: 5,         // 每月AI润色次数
+      illustration: 1    // 每月AI插图张数
     }
   },
   2: {
@@ -24,9 +24,9 @@ export const LEVEL_CONFIG = {
     minPoints: 100,
     maxPoints: 499,
     quotas: {
-      continuation: 15,
-      polish: 30,
-      illustration: 5
+      continuation: 10,
+      polish: 20,
+      illustration: 3
     }
   },
   3: {
@@ -34,9 +34,9 @@ export const LEVEL_CONFIG = {
     minPoints: 500,
     maxPoints: 1999,
     quotas: {
-      continuation: 30,
-      polish: 60,
-      illustration: 10
+      continuation: 20,
+      polish: 40,
+      illustration: 6
     }
   },
   4: {
@@ -44,9 +44,9 @@ export const LEVEL_CONFIG = {
     minPoints: 2000,
     maxPoints: Infinity,
     quotas: {
-      continuation: 50,   // 作为会员配额的基准值
-      polish: 100,        // 作为会员配额的基准值
-      illustration: 20    // 作为会员配额的基准值
+      continuation: 30,   // 作为会员配额的基准值
+      polish: 60,         // 作为会员配额的基准值
+      illustration: 10    // 作为会员配额的基准值
     }
   }
 };

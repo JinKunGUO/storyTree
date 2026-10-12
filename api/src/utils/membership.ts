@@ -16,10 +16,10 @@ export const MEMBERSHIP_TIERS = {
     name: '体验会员',
     price: 9.9,
     duration: 7, // 天
-    quotaMultiplier: 1.2, // Lv3 配额 + 20%
+    quotaMultiplier: 1.7, // Lv4 配额 × 1.7（50/100/15）
     benefits: [
       '会员徽章 (铜色)',
-      'AI 配额提升 20%',
+      'AI 配额提升 70%',
       '7 天体验期'
     ]
   },
@@ -27,10 +27,10 @@ export const MEMBERSHIP_TIERS = {
     name: '月度会员',
     price: 39,
     duration: 30,
-    quotaMultiplier: 1.5, // Lv4 配额 + 50%
+    quotaMultiplier: 3.3, // Lv4 配额 × 3.3（100/200/30）
     benefits: [
       '会员徽章 (银色)',
-      'AI 配额提升 50%',
+      'AI 配额提升 230%',
       '30 天有效期'
     ]
   },
@@ -38,10 +38,10 @@ export const MEMBERSHIP_TIERS = {
     name: '季度会员',
     price: 99,
     duration: 90,
-    quotaMultiplier: 1.8, // Lv4 配额 + 80%
+    quotaMultiplier: 6.7, // Lv4 配额 × 6.7（200/400/50）
     benefits: [
       '会员徽章 (银色)',
-      'AI 配额提升 80%',
+      'AI 配额提升 570%',
       '90 天有效期'
     ]
   },
@@ -49,10 +49,10 @@ export const MEMBERSHIP_TIERS = {
     name: '年度会员',
     price: 388,
     duration: 365,
-    quotaMultiplier: -1, // 无限
+    quotaMultiplier: 16.7, // Lv4 配额 × 16.7（500/1000/100）
     benefits: [
       '会员徽章 (金色)',
-      '无限 AI 配额',
+      'AI 配额提升 1570%',
       '每月赠送 500 积分',
       '365 天有效期'
     ]
@@ -62,12 +62,10 @@ export const MEMBERSHIP_TIERS = {
     price: 999,
     duration: 365,
     quotaMultiplier: -1, // 无限
-    maxAccounts: 5,
     benefits: [
       '会员徽章 (钻石)',
       '无限 AI 配额',
       '每月赠送 500 积分',
-      '5 账号共享',
       '365 天有效期'
     ]
   }
