@@ -19,8 +19,8 @@ export const MEMBERSHIP_TIERS = {
     quotaMultiplier: 1.2, // Lv3 配额 + 20%
     benefits: [
       '会员徽章 (铜色)',
-      'AI 响应速度优先',
-      '去除广告'
+      'AI 配额提升 20%',
+      '7 天体验期'
     ]
   },
   monthly: {
@@ -30,10 +30,8 @@ export const MEMBERSHIP_TIERS = {
     quotaMultiplier: 1.5, // Lv4 配额 + 50%
     benefits: [
       '会员徽章 (银色)',
-      'AI 模型选择',
-      '高级编辑器功能',
-      '批量操作功能',
-      '优先客服支持'
+      'AI 配额提升 50%',
+      '30 天有效期'
     ]
   },
   quarterly: {
@@ -42,10 +40,9 @@ export const MEMBERSHIP_TIERS = {
     duration: 90,
     quotaMultiplier: 1.8, // Lv4 配额 + 80%
     benefits: [
-      '月度会员全部特权',
-      '导出功能 (PDF/EPUB/DOCX)',
-      '数据分析报表',
-      '粉丝画像分析'
+      '会员徽章 (银色)',
+      'AI 配额提升 80%',
+      '90 天有效期'
     ]
   },
   yearly: {
@@ -54,12 +51,10 @@ export const MEMBERSHIP_TIERS = {
     duration: 365,
     quotaMultiplier: -1, // 无限
     benefits: [
-      '季度会员全部特权',
       '会员徽章 (金色)',
-      '版本历史功能',
-      '敏感词审核优先通过',
-      '专属客服通道',
-      '每月赠送 500 积分'
+      '无限 AI 配额',
+      '每月赠送 500 积分',
+      '365 天有效期'
     ]
   },
   enterprise: {
@@ -69,13 +64,11 @@ export const MEMBERSHIP_TIERS = {
     quotaMultiplier: -1, // 无限
     maxAccounts: 5,
     benefits: [
-      '年度会员全部特权',
       '会员徽章 (钻石)',
-      '团队协作增强功能',
-      '多账号管理面板',
-      '品牌定制选项',
-      '优先功能体验资格',
-      '专属客服经理'
+      '无限 AI 配额',
+      '每月赠送 500 积分',
+      '5 账号共享',
+      '365 天有效期'
     ]
   }
 };
