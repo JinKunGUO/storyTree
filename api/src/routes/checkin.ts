@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../db';
 import { JWT_SECRET } from '../utils/auth';
 import { authenticateToken, safeParseLimit } from '../utils/middleware';
+import { getMembershipTier } from '../utils/membership';
 
 const router = Router();
 
@@ -90,8 +91,18 @@ router.post('/daily', authenticateToken, async (req: any, res) => {
       newConsecutiveDays = user.consecutive_days + 1;
     }
 
-    // 计算奖励积分
-    const pointsEarned = calculateCheckinReward(newConsecutiveDays);
+    // 计算奖励积分（基础奖励）
+    const basePoints = calculateCheckinReward(newConsecutiveDays);
+
+    // 根据会员档位应用积分倍数
+    const membership = await getMembershipTier(userId);
+    let pointsMultiplier = 1;
+    if (membership.tier === 'trial' || membership.tier === 'monthly') {
+      pointsMultiplier = 2; // 体验/月度会员双倍积分
+    } else if (membership.tier === 'quarterly' || membership.tier === 'yearly' || membership.tier === 'enterprise') {
+      pointsMultiplier = 3; // 季度/年度/企业版三倍积分
+    }
+    const pointsEarned = Math.floor(basePoints * pointsMultiplier);
 
     // 使用事务处理签到
     const result = await prisma.$transaction(async (tx) => {

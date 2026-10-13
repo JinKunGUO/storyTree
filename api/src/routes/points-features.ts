@@ -2,6 +2,17 @@ import express from 'express';
 import { prisma } from '../index';
 import { authenticateToken, getUserId } from '../utils/middleware';
 import { deductPoints, addPoints, POINTS_COST } from '../utils/points';
+import { getMembershipTier } from '../utils/membership';
+
+// 会员档位置顶次数限制（每月）
+const PIN_LIMITS: Record<string, { storyPin: number; commentPin: number }> = {
+  free: { storyPin: 0, commentPin: 0 },
+  trial: { storyPin: 1, commentPin: 2 },
+  monthly: { storyPin: 3, commentPin: 5 },
+  quarterly: { storyPin: 5, commentPin: 10 },
+  yearly: { storyPin: 10, commentPin: 20 },
+  enterprise: { storyPin: -1, commentPin: -1 }, // -1 表示无限
+};
 
 const router = express.Router();
 
@@ -31,6 +42,33 @@ router.post('/stories/:storyId/pin', authenticateToken, async (req, res) => {
 
     if (!story || story.author_id !== userId) {
       return res.status(404).json({ error: '故事不存在或您无权操作' });
+    }
+
+    // 检查会员档位置顶次数限制
+    const membership = await getMembershipTier(userId);
+    const limits = PIN_LIMITS[membership.tier] || PIN_LIMITS.free;
+
+    if (limits.storyPin === 0) {
+      return res.status(403).json({ error: '免费用户无法使用置顶功能，升级会员解锁' });
+    }
+
+    if (limits.storyPin > 0) {
+      // 查询本月已使用的置顶次数
+      const now = new Date();
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const usedCount = await prisma.point_transactions.count({
+        where: {
+          user_id: userId,
+          type: 'story_pin',
+          created_at: { gte: firstDayOfMonth }
+        }
+      });
+
+      if (usedCount >= limits.storyPin) {
+        return res.status(403).json({
+          error: `本月置顶次数已用完（${usedCount}/${limits.storyPin}），升级会员获得更多次数`
+        });
+      }
     }
 
     // 计算所需积分
@@ -332,6 +370,33 @@ router.post('/comments/:commentId/pin', authenticateToken, async (req, res) => {
     // 检查是否是故事作者
     if (comment.node.story.author_id !== userId) {
       return res.status(403).json({ error: '只有故事作者可以置顶评论' });
+    }
+
+    // 检查会员档位评论置顶次数限制
+    const membership = await getMembershipTier(userId);
+    const limits = PIN_LIMITS[membership.tier] || PIN_LIMITS.free;
+
+    if (limits.commentPin === 0) {
+      return res.status(403).json({ error: '免费用户无法使用评论置顶功能，升级会员解锁' });
+    }
+
+    if (limits.commentPin > 0) {
+      // 查询本月已使用的评论置顶次数
+      const now = new Date();
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const usedCount = await prisma.point_transactions.count({
+        where: {
+          user_id: userId,
+          type: 'comment_pin',
+          created_at: { gte: firstDayOfMonth }
+        }
+      });
+
+      if (usedCount >= limits.commentPin) {
+        return res.status(403).json({
+          error: `本月评论置顶次数已用完（${usedCount}/${limits.commentPin}），升级会员获得更多次数`
+        });
+      }
     }
 
     // 检查积分是否足够
