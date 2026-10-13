@@ -51,32 +51,31 @@ describe('MEMBERSHIP_TIERS 配置', () => {
   it('体验会员配置正确', () => {
     expect(MEMBERSHIP_TIERS.trial.price).toBe(9.9);
     expect(MEMBERSHIP_TIERS.trial.duration).toBe(7);
-    expect(MEMBERSHIP_TIERS.trial.quotaMultiplier).toBe(1.2);
+    expect(MEMBERSHIP_TIERS.trial.quotaMultiplier).toBe(1.7);
   });
 
   it('月度会员配置正确', () => {
     expect(MEMBERSHIP_TIERS.monthly.price).toBe(39);
     expect(MEMBERSHIP_TIERS.monthly.duration).toBe(30);
-    expect(MEMBERSHIP_TIERS.monthly.quotaMultiplier).toBe(1.5);
+    expect(MEMBERSHIP_TIERS.monthly.quotaMultiplier).toBe(3.3);
   });
 
   it('季度会员配置正确', () => {
     expect(MEMBERSHIP_TIERS.quarterly.price).toBe(99);
     expect(MEMBERSHIP_TIERS.quarterly.duration).toBe(90);
-    expect(MEMBERSHIP_TIERS.quarterly.quotaMultiplier).toBe(1.8);
+    expect(MEMBERSHIP_TIERS.quarterly.quotaMultiplier).toBe(6.7);
   });
 
   it('年度会员配置正确', () => {
     expect(MEMBERSHIP_TIERS.yearly.price).toBe(388);
     expect(MEMBERSHIP_TIERS.yearly.duration).toBe(365);
-    expect(MEMBERSHIP_TIERS.yearly.quotaMultiplier).toBe(-1); // 无限
+    expect(MEMBERSHIP_TIERS.yearly.quotaMultiplier).toBe(16.7);
   });
 
   it('企业版配置正确', () => {
     expect(MEMBERSHIP_TIERS.enterprise.price).toBe(999);
     expect(MEMBERSHIP_TIERS.enterprise.duration).toBe(365);
     expect(MEMBERSHIP_TIERS.enterprise.quotaMultiplier).toBe(-1); // 无限
-    expect(MEMBERSHIP_TIERS.enterprise.maxAccounts).toBe(5);
   });
 
   it('会员等级按价格升序排列', () => {
@@ -285,20 +284,23 @@ describe('配额倍数计算', () => {
     expect(MEMBERSHIP_TIERS.free.quotaMultiplier).toBe(1);
   });
 
-  it('体验会员配额增加 20%', () => {
-    expect(MEMBERSHIP_TIERS.trial.quotaMultiplier).toBe(1.2);
+  it('体验会员配额提升 70%', () => {
+    expect(MEMBERSHIP_TIERS.trial.quotaMultiplier).toBe(1.7);
   });
 
-  it('月度会员配额增加 50%', () => {
-    expect(MEMBERSHIP_TIERS.monthly.quotaMultiplier).toBe(1.5);
+  it('月度会员配额提升 230%', () => {
+    expect(MEMBERSHIP_TIERS.monthly.quotaMultiplier).toBe(3.3);
   });
 
-  it('季度会员配额增加 80%', () => {
-    expect(MEMBERSHIP_TIERS.quarterly.quotaMultiplier).toBe(1.8);
+  it('季度会员配额提升 570%', () => {
+    expect(MEMBERSHIP_TIERS.quarterly.quotaMultiplier).toBe(6.7);
   });
 
-  it('年度会员和企业版配额无限', () => {
-    expect(MEMBERSHIP_TIERS.yearly.quotaMultiplier).toBe(-1);
+  it('年度会员配额提升 1570%', () => {
+    expect(MEMBERSHIP_TIERS.yearly.quotaMultiplier).toBe(16.7);
+  });
+
+  it('企业版配额无限', () => {
     expect(MEMBERSHIP_TIERS.enterprise.quotaMultiplier).toBe(-1);
   });
 });

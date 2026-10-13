@@ -52,68 +52,85 @@ router.post('/stories/:storyId/pin', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: '免费用户无法使用置顶功能，升级会员解锁' });
     }
 
-    if (limits.storyPin > 0) {
-      // 查询本月已使用的置顶次数
-      const now = new Date();
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const usedCount = await prisma.point_transactions.count({
-        where: {
-          user_id: userId,
-          type: 'story_pin',
-          created_at: { gte: firstDayOfMonth }
-        }
-      });
-
-      if (usedCount >= limits.storyPin) {
-        return res.status(403).json({
-          error: `本月置顶次数已用完（${usedCount}/${limits.storyPin}），升级会员获得更多次数`
-        });
-      }
-    }
-
     // 计算所需积分
     const pointsCost = POINTS_COST.STORY_PIN_PER_DAY * days;
 
-    // 检查积分是否足够
-    const user = await prisma.users.findUnique({
-      where: { id: userId },
-      select: { points: true }
-    });
-
-    if (!user || user.points < pointsCost) {
-      return res.status(400).json({ error: '积分不足' });
-    }
-
-    // 扣除积分
-    const deductResult = await deductPoints(
-      userId,
-      pointsCost,
-      'story_pin',
-      `故事置顶${days}天`
-    );
-
-    if (!deductResult.success) {
-      return res.status(400).json({ error: '积分扣除失败' });
-    }
-
-    // 更新故事置顶状态
+    // 在事务中原子执行：计数检查 + 扣费 + 状态更新，防止并发竞态
     const pinnedUntil = new Date();
     pinnedUntil.setDate(pinnedUntil.getDate() + days);
 
-    await prisma.stories.update({
-      where: { id: parseInt(storyId) },
-      data: {
-        pinned: true,
-        pinned_until: pinnedUntil,
-        pinned_at: new Date()
-      }
-    });
+    try {
+      await prisma.$transaction(async (tx) => {
+        // 检查本月置顶次数
+        if (limits.storyPin > 0) {
+          const now = new Date();
+          const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+          const usedCount = await tx.point_transactions.count({
+            where: {
+              user_id: userId,
+              type: 'story_pin',
+              created_at: { gte: firstDayOfMonth }
+            }
+          });
 
-    res.json({ 
-      success: true, 
-      message: `故事已置顶${days}天`,
-      pinnedUntil 
-    });
+          if (usedCount >= limits.storyPin) {
+            throw new Error(`PIN_LIMIT_EXCEEDED:${usedCount}/${limits.storyPin}`);
+          }
+        }
+
+        // 原子扣减积分
+        const updated = await tx.users.updateMany({
+          where: { id: userId, points: { gte: pointsCost } },
+          data: { points: { decrement: pointsCost } }
+        });
+
+        if (updated.count === 0) {
+          throw new Error('INSUFFICIENT_POINTS');
+        }
+
+        // 记录积分交易
+        const updatedUser = await tx.users.findUnique({ where: { id: userId }, select: { points: true } });
+        const { getUserLevel } = await import('../utils/points');
+        const levelInfo = getUserLevel(updatedUser!.points);
+        await tx.users.update({ where: { id: userId }, data: { level: levelInfo.level } });
+
+        await tx.point_transactions.create({
+          data: {
+            user_id: userId,
+            amount: -pointsCost,
+            type: 'story_pin',
+            description: `故事置顶${days}天`
+          }
+        });
+
+        // 更新故事置顶状态
+        await tx.stories.update({
+          where: { id: parseInt(storyId) },
+          data: {
+            pinned: true,
+            pinned_until: pinnedUntil,
+            pinned_at: new Date()
+          }
+        });
+      });
+
+      res.json({ 
+        success: true, 
+        message: `故事已置顶${days}天`,
+        pinnedUntil 
+      });
+    } catch (txError: any) {
+      if (txError.message?.startsWith('PIN_LIMIT_EXCEEDED:')) {
+        const info = txError.message.split(':')[1];
+        return res.status(403).json({
+          error: `本月置顶次数已用完（${info}），升级会员获得更多次数`
+        });
+      }
+      if (txError.message === 'INSUFFICIENT_POINTS') {
+        return res.status(400).json({ error: '积分不足' });
+      }
+      throw txError;
+    }
 
   } catch (error) {
     console.error('置顶故事失败:', error);
@@ -380,73 +397,90 @@ router.post('/comments/:commentId/pin', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: '免费用户无法使用评论置顶功能，升级会员解锁' });
     }
 
-    if (limits.commentPin > 0) {
-      // 查询本月已使用的评论置顶次数
-      const now = new Date();
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const usedCount = await prisma.point_transactions.count({
-        where: {
-          user_id: userId,
-          type: 'comment_pin',
-          created_at: { gte: firstDayOfMonth }
+    // 在事务中原子执行：计数检查 + 扣费 + 状态更新，防止并发竞态
+    try {
+      await prisma.$transaction(async (tx) => {
+        // 检查本月评论置顶次数
+        if (limits.commentPin > 0) {
+          const now = new Date();
+          const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+          const usedCount = await tx.point_transactions.count({
+            where: {
+              user_id: userId,
+              type: 'comment_pin',
+              created_at: { gte: firstDayOfMonth }
+            }
+          });
+
+          if (usedCount >= limits.commentPin) {
+            throw new Error(`PIN_LIMIT_EXCEEDED:${usedCount}/${limits.commentPin}`);
+          }
+        }
+
+        // 原子扣减积分
+        const updated = await tx.users.updateMany({
+          where: { id: userId, points: { gte: POINTS_COST.COMMENT_PIN } },
+          data: { points: { decrement: POINTS_COST.COMMENT_PIN } }
+        });
+
+        if (updated.count === 0) {
+          throw new Error('INSUFFICIENT_POINTS');
+        }
+
+        // 记录积分交易
+        const updatedUser = await tx.users.findUnique({ where: { id: userId }, select: { points: true } });
+        const { getUserLevel } = await import('../utils/points');
+        const levelInfo = getUserLevel(updatedUser!.points);
+        await tx.users.update({ where: { id: userId }, data: { level: levelInfo.level } });
+
+        await tx.point_transactions.create({
+          data: {
+            user_id: userId,
+            amount: -POINTS_COST.COMMENT_PIN,
+            type: 'comment_pin',
+            description: '置顶评论'
+          }
+        });
+
+        // 更新评论置顶状态
+        await tx.comments.update({
+          where: { id: parseInt(commentId) },
+          data: {
+            pinned: true,
+            pinned_at: new Date()
+          }
+        });
+
+        // 发送通知给评论作者
+        if (comment.user_id !== userId) {
+          await tx.notifications.create({
+            data: {
+              user_id: comment.user_id,
+              type: 'comment_pinned',
+              title: '📌 您的评论被置顶',
+              content: `@${(req as any).user?.username || '作者'} 置顶了您的评论`,
+              link: `/story?id=${comment.node.story_id}#comment-${commentId}`
+            }
+          });
         }
       });
 
-      if (usedCount >= limits.commentPin) {
+      res.json({ 
+        success: true, 
+        message: '评论已置顶'
+      });
+    } catch (txError: any) {
+      if (txError.message?.startsWith('PIN_LIMIT_EXCEEDED:')) {
+        const info = txError.message.split(':')[1];
         return res.status(403).json({
-          error: `本月评论置顶次数已用完（${usedCount}/${limits.commentPin}），升级会员获得更多次数`
+          error: `本月评论置顶次数已用完（${info}），升级会员获得更多次数`
         });
       }
-    }
-
-    // 检查积分是否足够
-    const user = await prisma.users.findUnique({
-      where: { id: userId },
-      select: { points: true }
-    });
-
-    if (!user || user.points < POINTS_COST.COMMENT_PIN) {
-      return res.status(400).json({ error: '积分不足' });
-    }
-
-    // 扣除积分
-    const deductResult = await deductPoints(
-      userId,
-      POINTS_COST.COMMENT_PIN,
-      'comment_pin',
-      '置顶评论'
-    );
-
-    if (!deductResult.success) {
-      return res.status(400).json({ error: '积分扣除失败' });
-    }
-
-    // 更新评论置顶状态
-    await prisma.comments.update({
-      where: { id: parseInt(commentId) },
-      data: {
-        pinned: true,
-        pinned_at: new Date()
+      if (txError.message === 'INSUFFICIENT_POINTS') {
+        return res.status(400).json({ error: '积分不足' });
       }
-    });
-
-    // 发送通知给评论作者
-    if (comment.user_id !== userId) {
-      await prisma.notifications.create({
-        data: {
-          user_id: comment.user_id,
-          type: 'comment_pinned',
-          title: '📌 您的评论被置顶',
-          content: `@${(req as any).user?.username || '作者'} 置顶了您的评论`,
-          link: `/story?id=${comment.node.story_id}#comment-${commentId}`
-        }
-      });
+      throw txError;
     }
-
-    res.json({ 
-      success: true, 
-      message: '评论已置顶'
-    });
 
   } catch (error) {
     console.error('置顶评论失败:', error);

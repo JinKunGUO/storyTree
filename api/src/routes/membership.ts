@@ -10,6 +10,7 @@ import {
   cancelAutoRenew,
   isValidMembership
 } from '../utils/membership';
+import { LEVEL_CONFIG } from '../utils/points';
 import crypto from 'crypto';
 import { JWT_SECRET } from '../utils/auth';
 import { getActiveUserIdFromReq } from '../utils/middleware';
@@ -32,10 +33,10 @@ router.get('/tiers', (req, res) => {
       } else if (config.quotaMultiplier === -1) {
         quotaDescription = '全部无限';
       } else {
-        const baseQuota = { continuation: 50, illustration: 10 }; // Lv4 配额
+        const baseQuota = LEVEL_CONFIG[4].quotas;
         quotaDescription = `Lv4 配额 × ${config.quotaMultiplier} 倍`;
         quotaDescription += `\n续写：${Math.floor(baseQuota.continuation * config.quotaMultiplier)} 次/月`;
-        quotaDescription += `\n润色：无限`;
+        quotaDescription += `\n润色：${Math.floor(baseQuota.polish * config.quotaMultiplier)} 次/月`;
         quotaDescription += `\n插图：${Math.floor(baseQuota.illustration * config.quotaMultiplier)} 张/月`;
       }
       
