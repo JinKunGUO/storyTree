@@ -1049,6 +1049,14 @@ router.put('/:id/settings', authenticateToken, checkEditPermission, async (req, 
   const { visibility, password, allow_branch, allow_comment, auto_approve_collaborators, tags } = req.body;
 
   try {
+    // team 可见性仅企业版可用
+    if (visibility === 'team') {
+      const membership = await getMembershipTier(userId!);
+      if (!membership.isActive || membership.tier !== 'enterprise') {
+        return res.status(403).json({ error: '团队私有故事仅企业版可用' });
+      }
+    }
+
     const updatedStory = await prisma.stories.update({
       where: { id: parseInt(id) },
       data: {

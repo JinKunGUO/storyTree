@@ -717,6 +717,23 @@ profileHeader.innerHTML = `
                             </div>
                         </div>
                         
+                        <!-- 会员积分倍数 -->
+                        <div style="margin-bottom: 25px;">
+                            <h3 style="color: var(--st-text-primary, #333); margin: 0 0 15px 0; font-size: 18px;">
+                                <i class="fas fa-crown" style="color: #ffd700;"></i> 
+                                会员积分加成
+                            </h3>
+                            <div style="background: var(--st-bg-elevated, #f3e5f5); padding: 15px; border-radius: 10px; border-left: 4px solid #9c27b0;">
+                                <p style="margin: 0 0 10px 0; color: var(--st-text-primary, #333);"><strong>会员签到可获得积分倍数加成：</strong></p>
+                                <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: var(--st-text-secondary, #666);">
+                                    <li>免费用户：1x（基础积分）</li>
+                                    <li>体验/月度会员：<strong style="color: #9c27b0;">2x 双倍积分</strong></li>
+                                    <li>季度/年度会员：<strong style="color: #9c27b0;">3x 三倍积分</strong></li>
+                                    <li>企业版：1x（AI 配额无限，无需积分）</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
                         <!-- 里程碑奖励 -->
                         <div style="margin-bottom: 25px;">
                             <h3 style="color: #333; margin: 0 0 15px 0; font-size: 18px;">
