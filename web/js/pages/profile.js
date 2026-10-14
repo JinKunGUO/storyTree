@@ -366,6 +366,7 @@
                 loadInvitationCodes(); // 加载邀请码
                 // loadEarningsStats(); // 加载收益统计（功能即将开放，暂时隐藏）
                 loadAiUsageStats(); // 加载 AI 使用统计
+                loadTeamPanel(); // 加载团队管理面板
                 loadUserStories(data.user.id);
                 loadFollowedStories(data.user.id);
                 loadFollowers(data.user.id);
@@ -3250,6 +3251,207 @@ if (codes.length === 0) {
                         <p>加载失败</p>
                     </div>
                 `;
+            }
+        }
+
+        // ========== 团队管理面板 ==========
+        async function loadTeamPanel() {
+            const container = document.getElementById('teamPanel');
+            if (!container) return;
+
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                const res = await fetch('/api/team/status', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!res.ok) { container.style.display = 'none'; return; }
+
+                const status = await res.json();
+                if (status.role === 'none') { container.style.display = 'none'; return; }
+
+                if (status.role === 'owner') {
+                    container.style.display = 'block';
+                    container.innerHTML = `
+                        <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px; padding: 24px; color: white; margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+                                <h3 style="margin: 0; font-size: 18px;"><i class="fas fa-users"></i> 团队管理</h3>
+                                <span style="background: rgba(255,255,255,0.15); padding: 4px 12px; border-radius: 20px; font-size: 13px;">
+                                    席位 ${status.activeMembers}/${status.totalSlots}
+                                </span>
+                            </div>
+                            <div id="teamMembersList" style="margin-bottom: 16px;"></div>
+                            <button onclick="generateTeamInvite()" style="
+                                background: linear-gradient(135deg, #667eea, #764ba2); color: white;
+                                border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer;
+                                font-size: 14px; width: 100%;
+                            "><i class="fas fa-link"></i> 生成邀请链接</button>
+                            <div id="teamInviteResult" style="margin-top: 12px; display: none;"></div>
+                        </div>
+                    `;
+                    loadTeamMembers();
+                } else if (status.role === 'member') {
+                    container.style.display = 'block';
+                    container.innerHTML = `
+                        <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px; padding: 24px; color: white; margin-bottom: 20px;">
+                            <h3 style="margin: 0 0 12px 0; font-size: 18px;"><i class="fas fa-users"></i> 我的团队</h3>
+                            <p style="margin: 0; opacity: 0.8;">
+                                团队主账号：<strong>${status.owner.username}</strong><br>
+                                您享有企业版全部权益（继承自主账号）
+                            </p>
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                console.error('加载团队状态失败:', e);
+                container.style.display = 'none';
+            }
+        }
+
+        async function loadTeamMembers() {
+            const list = document.getElementById('teamMembersList');
+            if (!list) return;
+
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                const res = await fetch('/api/team/members', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!res.ok) return;
+
+                const data = await res.json();
+                const activeMembers = data.members.filter(m => m.status === 'active');
+                const pendingMembers = data.members.filter(m => m.status === 'pending');
+
+                let html = '';
+                for (const m of activeMembers) {
+                    html += `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1); flex-wrap: wrap; gap: 8px;">
+                            <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                                <img src="${m.avatar || '/assets/default-avatar.svg'}" style="width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;">
+                                <div style="min-width: 0;">
+                                    <div style="font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${m.username}</div>
+                                    <div style="font-size: 11px; opacity: 0.6;">${m.email || '无邮箱'}</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 6px; flex-shrink: 0;">
+                                <button onclick="viewMemberStories(${m.userId}, '${m.username}')" style="
+                                    background: rgba(255,255,255,0.15); color: white; border: none;
+                                    padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 12px;
+                                "><i class="fas fa-book-open"></i></button>
+                                <button onclick="removeTeamMember(${m.id}, '${m.username}')" style="
+                                    background: rgba(239,68,68,0.3); color: #fca5a5; border: none;
+                                    padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 12px;
+                                "><i class="fas fa-user-minus"></i></button>
+                            </div>
+                        </div>
+                    `;
+                }
+                for (const m of pendingMembers) {
+                    html += `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1); opacity: 0.6;">
+                            <div style="font-size: 13px;"><i class="fas fa-clock"></i> 等待接受：${m.invitedEmail || '未知'}</div>
+                            <div style="font-size: 11px;">待加入</div>
+                        </div>
+                    `;
+                }
+                if (activeMembers.length === 0 && pendingMembers.length === 0) {
+                    html = '<div style="text-align: center; opacity: 0.6; padding: 16px 0; font-size: 13px;">暂无团队成员</div>';
+                }
+                list.innerHTML = html;
+            } catch (e) {
+                console.error('加载团队成员失败:', e);
+            }
+        }
+
+        async function generateTeamInvite() {
+            const resultDiv = document.getElementById('teamInviteResult');
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                const email = prompt('请输入被邀请人的邮箱（可选，留空则生成通用链接）：');
+                if (email === null) return; // 取消
+
+                const res = await fetch('/api/team/invite', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email || undefined })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    toast.error(data.error || '生成邀请链接失败');
+                    return;
+                }
+
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `
+                    <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; word-break: break-all;">
+                        <div style="font-size: 12px; opacity: 0.7; margin-bottom: 6px;">邀请链接（剩余 ${data.remainingSlots} 个席位）：</div>
+                        <div style="font-size: 13px; user-select: all;">${data.inviteLink}</div>
+                        <button onclick="navigator.clipboard.writeText('${data.inviteLink}').then(() => toast.success('已复制'))" style="
+                            margin-top: 8px; background: rgba(255,255,255,0.2); color: white; border: none;
+                            padding: 4px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;
+                        "><i class="fas fa-copy"></i> 复制</button>
+                    </div>
+                `;
+                loadTeamMembers(); // 刷新列表
+            } catch (e) {
+                toast.error('生成邀请链接失败');
+            }
+        }
+
+        async function removeTeamMember(memberId, username) {
+            if (!confirm(`确定要将 ${username} 移出团队吗？`)) return;
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                const res = await fetch(`/api/team/members/${memberId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!res.ok) {
+                    const data = await res.json();
+                    toast.error(data.error || '移除失败');
+                    return;
+                }
+                toast.success('已移除');
+                loadTeamMembers();
+            } catch (e) {
+                toast.error('移除失败');
+            }
+        }
+
+        async function viewMemberStories(memberUserId, username) {
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                const res = await fetch(`/api/team/member-stories/${memberUserId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!res.ok) {
+                    toast.error('无法查看该成员的故事');
+                    return;
+                }
+                const data = await res.json();
+                let html = `<h3 style="margin: 0 0 16px 0;">${username} 的故事（${data.stories.length}）</h3>`;
+                if (data.stories.length === 0) {
+                    html += '<p style="opacity: 0.6;">暂无故事</p>';
+                } else {
+                    for (const s of data.stories) {
+                        html += `
+                            <div style="padding: 10px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px;">
+                                <div style="min-width: 0;">
+                                    <a href="/story.html?id=${s.id}" style="color: var(--st-text-primary); text-decoration: none; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;">${s.title}</a>
+                                    <div style="font-size: 12px; color: #999;">${s._count.nodes} 章 · ${s.visibility === 'team' ? '🔒 团队' : s.visibility === 'private' ? '🔒 私密' : '🌐 公开'}</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+                // 简单弹窗展示
+                const overlay = document.createElement('div');
+                overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000;';
+                overlay.innerHTML = `<div style="background:var(--st-bg-primary, white);border-radius:16px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto;color:var(--st-text-primary, #333);">${html}<button onclick="this.closest('div[style]').remove()" style="margin-top:16px;padding:8px 20px;border:none;background:var(--st-bg-elevated, #eee);border-radius:8px;cursor:pointer;color:var(--st-text-primary, #333);">关闭</button></div>`;
+                overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+                document.body.appendChild(overlay);
+            } catch (e) {
+                toast.error('查看失败');
             }
         }
 
