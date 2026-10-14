@@ -65,7 +65,8 @@ export const MEMBERSHIP_TIERS = {
     benefits: [
       '会员徽章 (钻石)',
       '无限 AI 配额',
-      '每月赠送 500 积分',
+      '每月赠送 1000 积分',
+      '积分包 8 折优惠',
       '365 天有效期'
     ]
   }
@@ -379,21 +380,25 @@ export async function upgradeMembership(
       }
     });
 
-    // 如果是年度会员，赠送积分
-    if (tier === 'yearly') {
+    // 年度会员/企业版首次购买赠送积分（月度赠送由 worker 处理）
+    if (tier === 'yearly' || tier === 'enterprise') {
+      const bonusPoints = tier === 'enterprise' ? 1000 : 500;
+      const bonusDesc = tier === 'enterprise' ? '企业版赠送积分' : '年度会员赠送积分';
+
       await tx.point_transactions.create({
         data: {
           user_id: userId,
-          amount: 500,
+          amount: bonusPoints,
           type: 'membership_bonus',
-          description: '年度会员赠送积分'
+          description: bonusDesc
         }
       });
 
       await tx.users.update({
         where: { id: userId },
         data: {
-          points: { increment: 500 }
+          points: { increment: bonusPoints },
+          last_membership_bonus_at: now
         }
       });
     }

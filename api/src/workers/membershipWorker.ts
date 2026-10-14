@@ -236,6 +236,81 @@ function formatDate(date: Date): string {
 }
 
 /**
+ * 月度积分赠送
+ * 每月 1 日对年度会员赠送 500 积分，企业版主账号赠送 1000 积分
+ * 通过 last_membership_bonus_at 字段防止重复发放
+ */
+async function processMonthlyBonus() {
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  // 仅在每月 1-3 日执行（容错窗口），避免每天重复检查
+  if (now.getDate() > 3) {
+    return;
+  }
+
+  try {
+    // 查找年度会员和企业版用户，且本月未发放过
+    const bonusStartOfMonth = new Date(currentYear, currentMonth, 1);
+    const eligibleUsers = await prisma.users.findMany({
+      where: {
+        membership_tier: { in: ['yearly', 'enterprise'] },
+        membership_expires_at: { gt: now },
+        OR: [
+          { last_membership_bonus_at: null },
+          { last_membership_bonus_at: { lt: bonusStartOfMonth } }
+        ]
+      },
+      select: {
+        id: true,
+        username: true,
+        membership_tier: true
+      }
+    });
+
+    for (const user of eligibleUsers) {
+      const bonusPoints = user.membership_tier === 'enterprise' ? 1000 : 500;
+      const bonusDesc = user.membership_tier === 'enterprise'
+        ? '企业版月度赠送积分'
+        : '年度会员月度赠送积分';
+
+      await prisma.$transaction(async (tx) => {
+        await tx.point_transactions.create({
+          data: {
+            user_id: user.id,
+            amount: bonusPoints,
+            type: 'membership_bonus',
+            description: bonusDesc
+          }
+        });
+        await tx.users.update({
+          where: { id: user.id },
+          data: {
+            points: { increment: bonusPoints },
+            last_membership_bonus_at: now
+          }
+        });
+      });
+
+      await createNotification(
+        user.id,
+        'membership_bonus',
+        '月度积分已到账',
+        `您本月获得 ${bonusPoints} 积分奖励，快去创作吧！`,
+        '/points-mall.html'
+      );
+
+      console.log(`🎁 月度积分赠送：${user.username} +${bonusPoints}`);
+    }
+
+    console.log(`✅ 月度积分赠送完成，共 ${eligibleUsers.length} 人`);
+  } catch (error) {
+    console.error('月度积分赠送失败:', error);
+  }
+}
+
+/**
  * 清理过期的 pending 订单
  * 将已过期（expires_at < now）的 pending 订单标记为 expired
  */
@@ -269,6 +344,7 @@ async function runMembershipWorker() {
   await checkExpiringMemberships();
   await processExpiredMemberships();
   await processExpiredOrders();
+  await processMonthlyBonus();
   
   // 然后每天执行
   setInterval(async () => {
@@ -276,6 +352,7 @@ async function runMembershipWorker() {
     await checkExpiringMemberships();
     await processExpiredMemberships();
     await processExpiredOrders();
+    await processMonthlyBonus();
   }, CHECK_INTERVAL);
 }
 
