@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../index';
 import { addPoints } from '../utils/points';
 import crypto from 'crypto';
-import { upgradeMembership, MEMBERSHIP_TIERS, getMembershipTier } from '../utils/membership';
+import { upgradeMembership, MEMBERSHIP_TIERS } from '../utils/membership';
 import { wsServer } from '../utils/websocket';
 import { JWT_SECRET } from '../utils/auth';
 import { verifyNotify as verifyAlipayNotify, createPagePay } from '../utils/alipay';
@@ -237,21 +237,15 @@ router.post('/points/create', async (req, res) => {
     const pkg = POINTS_PACKAGES[packageId as keyof typeof POINTS_PACKAGES];
     const orderId = `PTS_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
 
-    // 企业版会员积分包 8 折
-    const membership = await getMembershipTier(userId);
-    const isEnterprise = membership.isActive && membership.tier === 'enterprise';
-    const finalAmount = isEnterprise ? Math.round(pkg.price * 0.8 * 100) / 100 : pkg.price;
-
     const order = await prisma.orders.create({
       data: {
         id: orderId,
         user_id: userId,
         type: 'points',
-        amount: finalAmount,
+        amount: pkg.price,
         points: pkg.points,
         status: 'pending',
         payment_method: null,
-        original_amount: isEnterprise ? pkg.price : undefined,
         expires_at: new Date(Date.now() + 30 * 60 * 1000)
       }
     });
@@ -259,8 +253,6 @@ router.post('/points/create', async (req, res) => {
     res.json({
       orderId: order.id,
       amount: order.amount,
-      originalAmount: isEnterprise ? pkg.price : undefined,
-      discount: isEnterprise ? 0.8 : undefined,
       points: pkg.points,
       packageName: pkg.name,
       paymentUrl: `/payment/mock?orderId=${orderId}`,

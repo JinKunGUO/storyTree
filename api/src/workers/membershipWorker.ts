@@ -251,11 +251,11 @@ async function processMonthlyBonus() {
   }
 
   try {
-    // 查找年度会员和企业版用户，且本月未发放过
+    // 查找年度会员用户，且本月未发放过（企业版不赠送积分）
     const bonusStartOfMonth = new Date(currentYear, currentMonth, 1);
     const eligibleUsers = await prisma.users.findMany({
       where: {
-        membership_tier: { in: ['yearly', 'enterprise'] },
+        membership_tier: 'yearly',
         membership_expires_at: { gt: now },
         OR: [
           { last_membership_bonus_at: null },
@@ -270,10 +270,8 @@ async function processMonthlyBonus() {
     });
 
     for (const user of eligibleUsers) {
-      const bonusPoints = user.membership_tier === 'enterprise' ? 1000 : 500;
-      const bonusDesc = user.membership_tier === 'enterprise'
-        ? '企业版月度赠送积分'
-        : '年度会员月度赠送积分';
+      const bonusPoints = 500;
+      const bonusDesc = '年度会员月度赠送积分';
 
       await prisma.$transaction(async (tx) => {
         await tx.point_transactions.create({
