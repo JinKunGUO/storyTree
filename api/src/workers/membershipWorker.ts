@@ -192,6 +192,73 @@ async function processExpiredMemberships() {
       });
       
       console.log(`⬇️ 会员已过期降级：${user.username}`);
+
+      // 如果是企业版过期，冻结所有子账号
+      if (user.membership_tier === 'enterprise') {
+        const frozenCount = await prisma.team_memberships.updateMany({
+          where: { owner_user_id: user.id, status: 'active' },
+          data: { status: 'frozen', frozen_at: new Date() }
+        });
+
+        if (frozenCount.count > 0) {
+          // 通知所有子账号
+          const frozenMembers = await prisma.team_memberships.findMany({
+            where: { owner_user_id: user.id, status: 'frozen' },
+            select: { member_user_id: true }
+          });
+
+          for (const member of frozenMembers) {
+            await createNotification(
+              member.member_user_id,
+              'team_frozen',
+              '团队权益已冻结',
+              '企业主账号会员已到期，您的企业版权益已冻结。数据保留，主账号续费后自动恢复。',
+              '/membership.html'
+            );
+          }
+
+          console.log(`🧊 企业版过期，冻结 ${frozenCount.count} 个子账号`);
+
+          // 检查冻结的子账号是否有 pending 个人会员，有则激活
+          const pendingMembers = await prisma.users.findMany({
+            where: {
+              id: { in: frozenMembers.map(m => m.member_user_id) },
+              pending_membership_tier: { not: null },
+              pending_membership_expires: { gt: new Date() }
+            },
+            select: { id: true, username: true, pending_membership_tier: true, pending_membership_expires: true }
+          });
+
+          for (const member of pendingMembers) {
+            await prisma.users.update({
+              where: { id: member.id },
+              data: {
+                membership_tier: member.pending_membership_tier!,
+                membership_started_at: new Date(),
+                membership_expires_at: member.pending_membership_expires,
+                pending_membership_tier: null,
+                pending_membership_expires: null
+              }
+            });
+
+            // 恢复为 active（个人会员生效，不再是 frozen）
+            await prisma.team_memberships.updateMany({
+              where: { member_user_id: member.id, status: 'frozen' },
+              data: { status: 'active', frozen_at: null }
+            });
+
+            await createNotification(
+              member.id,
+              'pending_membership_activated',
+              '个人会员已激活',
+              `您之前购买的${getMembershipName(member.pending_membership_tier!)}已自动激活`,
+              '/membership.html'
+            );
+
+            console.log(`✅ 子账号 ${member.username} pending 会员已激活：${member.pending_membership_tier}`);
+          }
+        }
+      }
       
       await createNotification(
         user.id,

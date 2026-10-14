@@ -231,6 +231,8 @@ model users {
   membership_auto_renew      Boolean                   @default(false)
   membership_payment_method  String?
   last_membership_bonus_at   DateTime?                 @map("last_membership_bonus_at")
+  pending_membership_tier    String?                   @map("pending_membership_tier")
+  pending_membership_expires DateTime?                 @map("pending_membership_expires")
   has_used_trial             Boolean                   @default(false)
   subscription_type          String?
   subscription_expires       DateTime?

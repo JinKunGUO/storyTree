@@ -110,6 +110,42 @@ export async function getMembershipTier(userId: number): Promise<{
   const expiresAt = user.membership_expires_at;
   const isActive = expiresAt ? new Date(expiresAt) > new Date() : false;
 
+  // 如果用户自身有有效会员，直接返回
+  if (isActive && tier !== 'free') {
+    return {
+      tier,
+      name: MEMBERSHIP_TIERS[tier as keyof typeof MEMBERSHIP_TIERS]?.name || '免费用户',
+      expiresAt,
+      isActive
+    };
+  }
+
+  // 检查是否是团队子账号（继承主账号的企业版权益）
+  const teamRecord = await prisma.team_memberships.findFirst({
+    where: { member_user_id: userId, status: 'active' },
+    select: { owner_user_id: true }
+  });
+
+  if (teamRecord) {
+    const ownerUser = await prisma.users.findUnique({
+      where: { id: teamRecord.owner_user_id },
+      select: { membership_tier: true, membership_expires_at: true }
+    });
+
+    if (ownerUser && ownerUser.membership_tier === 'enterprise') {
+      const ownerExpires = ownerUser.membership_expires_at;
+      const ownerActive = ownerExpires ? new Date(ownerExpires) > new Date() : false;
+      if (ownerActive) {
+        return {
+          tier: 'enterprise',
+          name: MEMBERSHIP_TIERS.enterprise.name,
+          expiresAt: ownerExpires,
+          isActive: true
+        };
+      }
+    }
+  }
+
   return {
     tier,
     name: MEMBERSHIP_TIERS[tier as keyof typeof MEMBERSHIP_TIERS]?.name || '免费用户',
@@ -330,6 +366,38 @@ export async function upgradeMembership(
     throw new Error('无效的会员等级');
   }
 
+  // 子账号购买个人会员 → 延后生效（记录 pending，企业版到期后自动激活）
+  const teamRecord = await prisma.team_memberships.findFirst({
+    where: { member_user_id: userId, status: 'active' },
+    select: { owner_user_id: true }
+  });
+
+  if (teamRecord) {
+    const ownerUser = await prisma.users.findUnique({
+      where: { id: teamRecord.owner_user_id },
+      select: { membership_tier: true, membership_expires_at: true }
+    });
+
+    const ownerActive = ownerUser?.membership_tier === 'enterprise'
+      && ownerUser?.membership_expires_at
+      && new Date(ownerUser.membership_expires_at) > new Date();
+
+    if (ownerActive) {
+      const pendingExpires = new Date(Date.now() + tierConfig.duration * 24 * 60 * 60 * 1000);
+
+      await prisma.users.update({
+        where: { id: userId },
+        data: {
+          pending_membership_tier: tier,
+          pending_membership_expires: pendingExpires
+        }
+      });
+
+      console.log(`⏳ 子账号 ${userId} 购买 ${tier} 会员，延后生效（主账号到期后激活）`);
+      return { success: true, expiresAt: pendingExpires };
+    }
+  }
+
   if (tier === 'trial') {
     // 检查是否已使用过体验会员
     const user = await prisma.users.findUnique({
@@ -401,6 +469,35 @@ export async function upgradeMembership(
           last_membership_bonus_at: now
         }
       });
+    }
+
+    // 企业版购买/续费时，恢复所有 frozen 子账号
+    if (tier === 'enterprise') {
+      const restored = await tx.team_memberships.updateMany({
+        where: { owner_user_id: userId, status: 'frozen' },
+        data: { status: 'active', frozen_at: null }
+      });
+
+      if (restored.count > 0) {
+        const restoredMembers = await tx.team_memberships.findMany({
+          where: { owner_user_id: userId, status: 'active' },
+          select: { member_user_id: true }
+        });
+
+        for (const member of restoredMembers) {
+          await tx.notifications.create({
+            data: {
+              user_id: member.member_user_id,
+              type: 'team_restored',
+              title: '团队权益已恢复',
+              content: '企业主账号已续费，您的企业版权益已恢复',
+              link: '/profile.html'
+            }
+          });
+        }
+
+        console.log(`✅ 企业版续费，恢复 ${restored.count} 个子账号`);
+      }
     }
   });
 

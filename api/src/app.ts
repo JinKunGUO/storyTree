@@ -34,6 +34,7 @@ import adminContentRoutes from './routes/admin-content';
 import adminPointsRoutes from './routes/admin-points';
 import adminDashboardRoutes from './routes/admin-dashboard';
 import analyticsRoutes from './routes/analytics';
+import teamRoutes from './routes/team';
 
 /**
  * 转义 HTML 特殊字符，防止注入
@@ -227,6 +228,7 @@ export function createApp() {
   app.use('/api/admin/points', adminPointsRoutes);
   app.use('/api/admin/dashboard', adminDashboardRoutes);
   app.use('/api/analytics', analyticsRoutes);
+  app.use('/api/team', teamRoutes);
 
   // 版本信息端点 - 读取 VERSION.json
   app.get('/api/version', (_req, res) => {
