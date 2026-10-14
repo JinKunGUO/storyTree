@@ -285,6 +285,8 @@ model users {
   user_subscriptions         user_subscriptions[]
   withdrawal_requests        withdrawal_requests[]
   login_logs                 login_logs[]
+  team_owner_of              team_memberships[]  @relation("TeamOwner")
+  team_member_of             team_memberships[]  @relation("TeamMember")
 }
 
 model ai_usage_logs {
@@ -669,4 +671,29 @@ model analytics_events {
   @@index([created_at])
   @@index([utm_source])
   @@index([user_id])
+}
+
+// ========== 企业版多账号共享（阶段 C 使用，阶段 B 预定义） ==========
+
+model team_memberships {
+  id             Int       @id @default(autoincrement())
+  owner_user_id  Int                            // 主账号
+  member_user_id Int                            // 子账号
+  status         String    @default("pending")  // pending/active/removed/frozen
+  invited_email  String?
+  invite_token   String?   @unique              // 邀请链接 token
+  invited_at     DateTime  @default(now())
+  accepted_at    DateTime?
+  frozen_at      DateTime?
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  owner          users     @relation("TeamOwner", fields: [owner_user_id], references: [id], onDelete: Cascade)
+  member         users     @relation("TeamMember", fields: [member_user_id], references: [id], onDelete: Cascade)
+
+  @@unique([owner_user_id, member_user_id])
+  @@index([owner_user_id])
+  @@index([member_user_id])
+  @@index([invite_token])
+  @@index([status])
 }

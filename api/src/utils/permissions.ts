@@ -116,11 +116,50 @@ export async function canViewStory(userId: number | null, storyId: number): Prom
       // 作者粉丝可见
       return await isFollowingAuthor(userId, storyId);
     
+    case 'team':
+      // 团队私有：仅企业版主账号和子账号可见
+      if (!userId) return false;
+      return await isTeamMember(userId, story.author_id);
+
     case 'public':
     default:
       // 所有人可见（包括未登录用户）
       // 对于未知的visibility值，也默认为public（向后兼容）
       return true;
+  }
+}
+
+/**
+ * 检查用户是否是团队成员（主账号或子账号）
+ * team_memberships 表在阶段 C 创建，此函数在此之前始终返回 false
+ */
+async function isTeamMember(userId: number, authorId: number): Promise<boolean> {
+  // 主账号看自己的团队故事
+  if (userId === authorId) return true;
+
+  try {
+    // 检查 userId 是否是 authorId 的子账号
+    const membership = await prisma.team_memberships.findFirst({
+      where: {
+        owner_user_id: authorId,
+        member_user_id: userId,
+        status: 'active'
+      }
+    });
+    if (membership) return true;
+
+    // 检查 userId 是否是主账号（authorId 是子账号的情况）
+    const reverseMembership = await prisma.team_memberships.findFirst({
+      where: {
+        owner_user_id: userId,
+        member_user_id: authorId,
+        status: 'active'
+      }
+    });
+    return !!reverseMembership;
+  } catch {
+    // team_memberships 表不存在时（阶段 C 未部署），返回 false
+    return false;
   }
 }
 

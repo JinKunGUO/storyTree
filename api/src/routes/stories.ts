@@ -69,6 +69,7 @@ router.get('/', optionalAuth, async (req, res) => {
     // tag 过滤：tags 字段是逗号分隔的字符串，用 contains 匹配
     const where: any = {
       nodes: { some: { parent_id: null } },
+      visibility: 'public',
     };
     if (tag) {
       where.tags = { contains: tag };
@@ -130,13 +131,25 @@ router.post('/', authenticateToken, async (req, res) => {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
-  const { title, description, cover_image, firstNodeTitle, firstNodeContent, project_brief, ai_assisted_created, ai_creation_method } = req.body;
+  const { title, description, cover_image, firstNodeTitle, firstNodeContent, project_brief, ai_assisted_created, ai_creation_method, visibility: reqVisibility } = req.body;
 
   if (!title || typeof title !== 'string' || title.trim().length === 0) {
     return res.status(400).json({ error: '故事标题不能为空' });
   }
 
   try {
+    // 校验 visibility 参数
+    const validVisibilities = ['public', 'private', 'author_only', 'collaborators', 'followers', 'team'];
+    const visibility = reqVisibility && validVisibilities.includes(reqVisibility) ? reqVisibility : 'public';
+
+    // team 可见性仅企业版可用
+    if (visibility === 'team') {
+      const membership = await getMembershipTier(userId);
+      if (!membership.isActive || membership.tier !== 'enterprise') {
+        return res.status(403).json({ error: '团队私有故事仅企业版可用' });
+      }
+    }
+
     // 如果提供了第一章内容，则创建故事和第一章
     if (firstNodeContent) {
       // 检查用户已发布节点数
@@ -157,6 +170,7 @@ router.post('/', authenticateToken, async (req, res) => {
           description,
           cover_image: cover_image || '/assets/default-cover.jpg',
           author_id: userId,
+          visibility,
           updated_at: new Date(),
           project_brief: project_brief || null,
           ai_assisted_created: ai_assisted_created || false,
@@ -199,6 +213,7 @@ router.post('/', authenticateToken, async (req, res) => {
           description,
           cover_image: cover_image || '/assets/default-cover.jpg',
           author_id: userId,
+          visibility,
           updated_at: new Date(),
           project_brief: project_brief || null,
           ai_assisted_created: ai_assisted_created || false,
