@@ -100,7 +100,66 @@ async function registerAndLogin(baseUrl: string, suffix: string): Promise<TestUs
         token: loginRes.token,
       };
     } catch {
-      // 登录失败（需要邮箱验证），返回 null
+      // 登录失败（需要邮箱验证），尝试从日志中提取验证 token
+      console.warn('[global-setup] Login failed, trying to extract verification token from logs...');
+      
+      // 读取 API 服务日志文件，查找验证链接
+      const logDir = path.join(process.env.HOME || '', '.codefuse', 'bash-log');
+      let verifyToken: string | null = null;
+      
+      try {
+        // 查找最新的日志文件
+        const logDirs = fs.readdirSync(logDir, { withFileTypes: true })
+          .filter(d => d.isDirectory())
+          .map(d => d.name)
+          .sort()
+          .reverse();
+        
+        for (const dir of logDirs) {
+          const dirPath = path.join(logDir, dir);
+          const files = fs.readdirSync(dirPath)
+            .filter(f => f.endsWith('.log'))
+            .map(f => ({ name: f, mtime: fs.statSync(path.join(dirPath, f)).mtime }))
+            .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
+          
+          for (const file of files) {
+            const content = fs.readFileSync(path.join(dirPath, file.name), 'utf-8');
+            const match = content.match(/验证链接: http:\/\/localhost:\d+\/verify-email\?token=([a-f0-9]+)/);
+            if (match && content.includes(email)) {
+              verifyToken = match[1];
+              break;
+            }
+          }
+          if (verifyToken) break;
+        }
+      } catch (e) {
+        console.warn('[global-setup] Failed to read logs:', (e as Error).message);
+      }
+      
+      if (verifyToken) {
+        try {
+          await apiRequest(baseUrl, '/api/auth/verify-email', {
+            method: 'POST',
+            body: JSON.stringify({ token: verifyToken }),
+          });
+          console.log('[global-setup] Email verified successfully');
+          
+          // 验证后重新登录
+          const loginRes = await apiRequest(baseUrl, '/api/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ email, password }),
+          });
+          return {
+            id: loginRes.user?.id,
+            username,
+            email,
+            token: loginRes.token,
+          };
+        } catch (e) {
+          console.warn('[global-setup] Email verification failed:', (e as Error).message);
+        }
+      }
+      
       console.warn('[global-setup] Registration requires email verification. Set E2E_TEST_EMAIL and E2E_TEST_PASSWORD env vars for production testing.');
       return null;
     }
