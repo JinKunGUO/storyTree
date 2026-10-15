@@ -338,8 +338,150 @@ async function main() {
   assert(membersRes.data.members.length >= 1, `团队成员数量正确 (${membersRes.data.members.length})`);
   assert(membersRes.data.usedSlots >= 1, `已用席位正确 (${membersRes.data.usedSlots})`);
 
-  // ========== 9. 错误场景测试 ==========
-  console.log('\n📋 步骤 9: 错误场景测试');
+  // ========== 9. 企业版到期→子账号 frozen→续费恢复测试 ==========
+  console.log('\n📋 步骤 9: 企业版到期→子账号 frozen→续费恢复测试');
+
+  // 手动将主账号企业版过期时间设为过去（模拟到期）
+  const { execSync: execSync3 } = await import('child_process');
+  const pastDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  execSync3(
+    `sqlite3 ${__dirname}/../api/prisma/dev.db "UPDATE users SET membership_expires_at='${pastDate}' WHERE email='paytest2@test.com'"`,
+    { encoding: 'utf-8' }
+  );
+
+  // 触发会员过期处理（调用 worker 中的函数）
+  // 由于 worker 是独立进程，这里直接调用 API 触发检查
+  // 验证子账号状态变为 frozen
+  const subMeAfterExpire = await api('/api/auth/me', { headers: subAuthHeaders });
+  assert(subMeAfterExpire.data.user.membership_tier === 'free', `子账号已降级为免费 (实际=${subMeAfterExpire.data.user.membership_tier})`);
+
+  // 主账号续费企业版
+  const renewOrder = await api('/api/membership/upgrade/create', {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify({ tier: 'enterprise' }),
+  });
+  assert(renewOrder.status === 200, '企业版续费订单创建成功');
+
+  // 支付续费订单
+  const renewAlipay = await api('/api/payment/alipay/create', {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify({ orderId: renewOrder.data.orderId }),
+  });
+
+  if (renewAlipay.data.splitPayment) {
+    for (const subOrder of renewAlipay.data.subOrders) {
+      await api('/api/payment/callback/mock', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ orderId: subOrder.orderId }),
+      });
+    }
+  }
+
+  // 验证子账号恢复企业版权益
+  const subMeAfterRenew = await api('/api/auth/me', { headers: subAuthHeaders });
+  assert(subMeAfterRenew.data.user.membership_tier === 'enterprise', `子账号恢复企业版 (实际=${subMeAfterRenew.data.user.membership_tier})`);
+
+  // ========== 10. 子账号购买个人会员延后生效测试 ==========
+  console.log('\n📋 步骤 10: 子账号购买个人会员延后生效测试');
+
+  // 子账号购买月度会员
+  const subMemberOrder = await api('/api/membership/upgrade/create', {
+    method: 'POST',
+    headers: subAuthHeaders,
+    body: JSON.stringify({ tier: 'monthly' }),
+  });
+  assert(subMemberOrder.status === 200, '子账号创建月度会员订单成功');
+
+  // 支付订单
+  await api('/api/payment/callback/mock', {
+    method: 'POST',
+    headers: subAuthHeaders,
+    body: JSON.stringify({ orderId: subMemberOrder.data.orderId }),
+  });
+
+  // 验证子账号仍是企业版（个人会员延后生效）
+  const subMeAfterPurchase = await api('/api/auth/me', { headers: subAuthHeaders });
+  assert(subMeAfterPurchase.data.user.membership_tier === 'enterprise', `子账号仍为企业版 (实际=${subMeAfterPurchase.data.user.membership_tier})`);
+
+  // 验证数据库中记录了 pending 会员
+  const pendingCheck = execSync3(
+    `sqlite3 ${__dirname}/../api/prisma/dev.db "SELECT pending_membership_tier FROM users WHERE email='${subEmail}'"`,
+    { encoding: 'utf-8' }
+  ).trim();
+  assert(pendingCheck === 'monthly', `pending 会员已记录 (实际=${pendingCheck})`);
+
+  // ========== 11. AI 配额限制测试 ==========
+  console.log('\n📋 步骤 11: AI 配额限制测试');
+
+  // 查询当前用户 AI 配额
+  const quotaRes = await api('/api/ai/v2/quota', { headers: authHeaders });
+  assert(quotaRes.status === 200, '获取 AI 配额成功');
+  const quota = quotaRes.data.quota || quotaRes.data;
+  assert(quota.continuation.unlimited === true, '企业版续写无限配额');
+  assert(quota.polish.unlimited === true, '企业版润色无限配额');
+  assert(quota.illustration.unlimited === true, '企业版插图无限配额');
+
+  // 子账号也应该是无限配额（继承企业版）
+  const subQuotaRes = await api('/api/ai/v2/quota', { headers: subAuthHeaders });
+  assert(subQuotaRes.status === 200, '子账号获取 AI 配额成功');
+  const subQuota = subQuotaRes.data.quota || subQuotaRes.data;
+  assert(subQuota.continuation.unlimited === true, '子账号续写无限配额');
+
+  // ========== 12. 评论置顶次数限制测试 ==========
+  console.log('\n📋 步骤 12: 评论置顶次数限制测试');
+
+  // 创建测试故事和章节
+  const storyRes2 = await api('/api/stories', {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify({
+      title: `评论置顶测试 ${Date.now()}`,
+      description: '用于测试评论置顶',
+    }),
+  });
+  const storyId2 = storyRes2.data.story?.id;
+
+  if (storyId2) {
+    // 创建章节
+    const nodeRes = await api('/api/nodes', {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({
+        story_id: storyId2,
+        title: '第一章',
+        content: '测试内容',
+      }),
+    });
+    const nodeId = nodeRes.data.node?.id;
+
+    if (nodeId) {
+      // 创建评论
+      const commentRes = await api('/api/comments', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          node_id: nodeId,
+          content: '测试评论',
+        }),
+      });
+      const commentId = commentRes.data.comment?.id;
+
+      if (commentId) {
+        // 企业版评论置顶无限
+        const pinCommentRes = await api(`/api/points-features/comments/${commentId}/pin`, {
+          method: 'POST',
+          headers: authHeaders,
+        });
+        assert(pinCommentRes.status === 200, '评论置顶成功（企业版无限）');
+      }
+    }
+  }
+
+  // ========== 13. 错误场景测试 ==========
+  console.log('\n📋 步骤 13: 错误场景测试');
 
   // 无效订单 ID
   const badCallback = await api('/api/payment/callback/mock', {

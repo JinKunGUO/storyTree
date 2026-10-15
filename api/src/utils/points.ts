@@ -305,8 +305,10 @@ export async function getUserMonthlyQuota(userId: number): Promise<{
     };
   }
 
-  // 使用会员系统获取配额（新方式）
-  if (user.membership_tier && user.membership_tier !== 'free') {
+  // 使用会员系统获取配额（新方式，含子账号继承）
+  const { getMembershipTier } = await import('./membership');
+  const membership = await getMembershipTier(userId);
+  if (membership.isActive && membership.tier !== 'free') {
     const { getMembershipQuota } = await import('./membership');
     try {
       const membershipQuota = await getMembershipQuota(userId);
