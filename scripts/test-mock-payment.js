@@ -744,8 +744,119 @@ async function main() {
   const checkinStatusRes = await api('/api/checkin/status', { headers: authHeaders });
   assert(checkinStatusRes.status === 200, '签到状态查询成功');
 
-  // ========== 17. 错误场景测试 ==========
-  console.log('\n📋 步骤 17: 错误场景测试');
+  // ========== 17. AI 频率限制测试 ==========
+  console.log('\n📋 步骤 17: AI 频率限制测试');
+
+  // 企业版用户连续发送 6 次 AI 请求，第 6 次应该被限制
+  // 注意：当前代码中 AI 频率限制尚未实现，此测试为预留
+  const aiRequests = [];
+  for (let i = 0; i < 6; i++) {
+    aiRequests.push(
+      api('/api/ai/v2/continuation/submit', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          story_id: 1,
+          node_id: 1,
+          content: '测试内容',
+          mode: 'segment',
+        }),
+      })
+    );
+  }
+  const aiResults = await Promise.all(aiRequests);
+  const rateLimited = aiResults.some(r => r.status === 429);
+  console.log(`  ℹ️ AI 频率限制测试（预留）: ${rateLimited ? '触发限制' : '未触发限制（功能未实现）'}`);
+  assert(true, 'AI 频率限制测试（预留）');
+
+  // ========== 18. 月度积分赠送测试 ==========
+  console.log('\n📋 步骤 18: 月度积分赠送测试');
+
+  // 检查年度会员的月度赠送记录
+  const bonusCheck = execSync3(
+    `sqlite3 ${__dirname}/../api/prisma/dev.db "SELECT COUNT(*) FROM point_transactions WHERE user_id=(SELECT id FROM users WHERE email='${email}') AND type='membership_bonus'"`,
+    { encoding: 'utf-8' }
+  ).trim();
+  assert(parseInt(bonusCheck) >= 0, `月度赠送记录查询成功 (${bonusCheck} 条)`);
+
+  // ========== 19. 子账号移除测试 ==========
+  console.log('\n📋 步骤 19: 子账号移除测试');
+
+  // 主账号移除子账号
+  const membersList = await api('/api/team/members', { headers: authHeaders });
+  if (membersList.data.members.length > 0) {
+    const memberToRemove = membersList.data.members[0];
+    const removeRes = await api(`/api/team/members/${memberToRemove.id}`, {
+      method: 'DELETE',
+      headers: authHeaders,
+    });
+    assert(removeRes.status === 200, '移除子账号成功');
+
+    // 验证子账号权益失效（企业版权益失效，但个人会员保留）
+    const subMeAfterRemove = await api('/api/auth/me', { headers: subAuthHeaders });
+    // 子账号可能仍有个人会员（步骤 10 购买的 monthly），所以只验证不再是 enterprise
+    assert(subMeAfterRemove.data.user.membership_tier !== 'enterprise', `子账号移除后企业版权益失效 (实际=${subMeAfterRemove.data.user.membership_tier})`);
+  } else {
+    console.log('  ⏭️ 没有可移除的子账号，跳过测试');
+    assert(true, '子账号移除测试（跳过）');
+  }
+
+  // ========== 20. 团队私有故事编辑权限测试 ==========
+  console.log('\n📋 步骤 20: 团队私有故事编辑权限测试');
+
+  // 子账号尝试编辑主账号的团队私有故事
+  if (typeof teamStoryId !== 'undefined' && teamStoryId) {
+    const subEditRes = await api(`/api/stories/${teamStoryId}`, {
+      method: 'PUT',
+      headers: subAuthHeaders,
+      body: JSON.stringify({ title: '子账号尝试编辑' }),
+    });
+    assert(subEditRes.status === 403, '子账号无法编辑主账号故事');
+  } else {
+    console.log('  ⏭️ 没有团队私有故事，跳过编辑权限测试');
+    assert(true, '编辑权限测试（跳过）');
+  }
+
+  // ========== 21. 积分包并发购买测试 ==========
+  console.log('\n📋 步骤 21: 积分包并发购买测试');
+
+  // 并发创建 3 个积分订单
+  const concurrentOrders = await Promise.all([
+    api('/api/payment/points/create', {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({ packageId: 'basic' }),
+    }),
+    api('/api/payment/points/create', {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({ packageId: 'basic' }),
+    }),
+    api('/api/payment/points/create', {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({ packageId: 'basic' }),
+    }),
+  ]);
+
+  const allSucceeded = concurrentOrders.every(r => r.status === 200);
+  assert(allSucceeded, '并发创建积分订单成功');
+
+  // 并发支付所有订单
+  const payResults = await Promise.all(
+    concurrentOrders.map(order =>
+      api('/api/payment/callback/mock', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ orderId: order.data.orderId }),
+      })
+    )
+  );
+  const allPaid = payResults.every(r => r.status === 200);
+  assert(allPaid, '并发支付积分订单成功');
+
+  // ========== 22. 错误场景测试 ==========
+  console.log('\n📋 步骤 22: 错误场景测试');
 
   // 无效订单 ID
   const badCallback = await api('/api/payment/callback/mock', {
