@@ -23,9 +23,12 @@ function assert(condition, name) {
 }
 
 async function api(endpoint, options = {}) {
+  // 添加延迟避免触发频率限制
+  await new Promise(r => setTimeout(r, 200));
+  const { headers: optHeaders, ...rest } = options;
   const res = await fetch(`${BASE_URL}${endpoint}`, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-    ...options,
+    ...rest,
+    headers: { 'Content-Type': 'application/json', ...optHeaders },
   });
   const data = await res.json().catch(() => ({}));
   return { status: res.status, data };
@@ -34,53 +37,19 @@ async function api(endpoint, options = {}) {
 async function main() {
   console.log(`\n🧪 Mock 支付流程测试 (${BASE_URL})\n`);
 
-  // ========== 1. 注册 + 验证 + 登录 ==========
-  console.log('📋 步骤 1: 注册 + 验证 + 登录');
+  // ========== 1. 登录已有测试账号 ==========
+  console.log('📋 步骤 1: 登录已有测试账号');
 
-  const ts = Date.now().toString(36).slice(-6);
-  const username = `paytest${ts}`;
-  const email = `paytest${ts}@test.local`;
+  // 使用已验证的测试账号（避免触发注册频率限制）
+  const email = 'paytest2@test.com';
   const password = 'TestPass123!';
 
-  const regRes = await api('/api/auth/register', {
-    method: 'POST',
-    body: JSON.stringify({ username, email, password }),
-  });
-  assert(regRes.status === 200 || regRes.status === 201, `注册成功 (status=${regRes.status})`);
-
-  // 需要邮箱验证时，直接从数据库读取验证 token
-  let token = regRes.data.token;
-  if (!token && regRes.data.requireVerification) {
-    console.log('  📧 需要邮箱验证，从数据库读取 token...');
-    try {
-      const { execSync } = await import('child_process');
-      const dbPath = new URLSearchParams(process.env.DATABASE_URL || 'file:./dev.db').get('file') || './dev.db';
-      const result = execSync(
-        `sqlite3 ${__dirname}/../api/prisma/dev.db "SELECT email_verification_token FROM users WHERE email='${email}'"`,
-        { encoding: 'utf-8' }
-      ).trim();
-
-      if (result) {
-        const verifyRes = await api('/api/auth/verify-email', {
-          method: 'POST',
-          body: JSON.stringify({ token: result }),
-        });
-        assert(verifyRes.status === 200, '邮箱验证成功');
-      } else {
-        console.log('  ⚠️ 数据库中未找到验证 token');
-      }
-    } catch (e) {
-      console.log(`  ⚠️ 数据库读取失败: ${e.message}`);
-    }
-  }
-
-  // 登录
   const loginRes = await api('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
   assert(loginRes.status === 200, `登录成功 (status=${loginRes.status})`);
-  token = loginRes.data.token;
+  const token = loginRes.data.token;
   assert(!!token, '获取到 token');
 
   const authHeaders = { Authorization: `Bearer ${token}` };
@@ -88,30 +57,47 @@ async function main() {
   // ========== 2. 会员购买 mock 支付 ==========
   console.log('\n📋 步骤 2: 会员购买 mock 支付');
 
-  const memberOrder = await api('/api/membership/upgrade/create', {
-    method: 'POST',
-    headers: authHeaders,
-    body: JSON.stringify({ tier: 'monthly' }),
-  });
-  assert(memberOrder.status === 200, `创建会员订单成功 (orderId=${memberOrder.data.orderId})`);
-  assert(memberOrder.data.tier === 'monthly', '订单类型为月度会员');
-  assert(memberOrder.data.finalPrice === 39, `订单金额正确 (¥${memberOrder.data.finalPrice})`);
+  // 先检查当前会员状态
+  const meBefore = await api('/api/auth/me', { headers: authHeaders });
+  const currentTier = meBefore.data.user.membership_tier;
+  console.log(`  ℹ️ 当前会员等级: ${currentTier}`);
 
-  const memberCallback = await api('/api/payment/callback/mock', {
-    method: 'POST',
-    headers: authHeaders,
-    body: JSON.stringify({ orderId: memberOrder.data.orderId }),
-  });
-  assert(memberCallback.status === 200, 'mock 支付回调成功');
-  assert(memberCallback.data.success === true, '支付状态为成功');
+  if (currentTier === 'free') {
+    // 免费用户：测试购买流程
+    const memberOrder = await api('/api/membership/upgrade/create', {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({ tier: 'monthly' }),
+    });
+    assert(memberOrder.status === 200, `创建会员订单成功 (orderId=${memberOrder.data.orderId})`);
+    assert(memberOrder.data.tier === 'monthly', '订单类型为月度会员');
+    assert(memberOrder.data.finalPrice === 39, `订单金额正确 (¥${memberOrder.data.finalPrice})`);
 
-  // 验证会员状态
-  const meAfterMember = await api('/api/auth/me', { headers: authHeaders });
-  assert(meAfterMember.data.user.membership_tier === 'monthly', `会员等级已更新为 monthly (实际=${meAfterMember.data.user.membership_tier})`);
-  assert(!!meAfterMember.data.user.membership_expires_at, '会员过期时间已设置');
+    const memberCallback = await api('/api/payment/callback/mock', {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({ orderId: memberOrder.data.orderId }),
+    });
+    assert(memberCallback.status === 200, 'mock 支付回调成功');
+    assert(memberCallback.data.success === true, '支付状态为成功');
+
+    // 验证会员状态
+    const meAfterMember = await api('/api/auth/me', { headers: authHeaders });
+    assert(meAfterMember.data.user.membership_tier === 'monthly', `会员等级已更新为 monthly (实际=${meAfterMember.data.user.membership_tier})`);
+    assert(!!meAfterMember.data.user.membership_expires_at, '会员过期时间已设置');
+  } else {
+    console.log(`  ⏭️ 用户已是 ${currentTier} 会员，跳过购买测试`);
+    // 验证会员状态正确
+    assert(['trial', 'monthly', 'quarterly', 'yearly', 'enterprise'].includes(currentTier), `会员状态有效 (${currentTier})`);
+    assert(!!meBefore.data.user.membership_expires_at, '会员过期时间已设置');
+  }
 
   // ========== 3. 积分充值 mock 支付 ==========
   console.log('\n📋 步骤 3: 积分充值 mock 支付');
+
+  // 记录充值前积分余额
+  const meBeforePoints = await api('/api/auth/me', { headers: authHeaders });
+  const pointsBefore = meBeforePoints.data.user.points;
 
   const pointsOrder = await api('/api/payment/points/create', {
     method: 'POST',
@@ -128,9 +114,10 @@ async function main() {
   });
   assert(pointsCallback.status === 200, '积分 mock 支付回调成功');
 
-  // 验证积分到账
+  // 验证积分到账（对比充值前后差值）
   const meAfterPoints = await api('/api/auth/me', { headers: authHeaders });
-  assert(meAfterPoints.data.user.points === 100, `积分已到账 (${meAfterPoints.data.user.points})`);
+  const pointsAfter = meAfterPoints.data.user.points;
+  assert(pointsAfter - pointsBefore === 100, `积分已到账 (+${pointsAfter - pointsBefore}, 余额=${pointsAfter})`);
 
   // ========== 4. 支付宝创建支付链接（mock 模式） ==========
   console.log('\n📋 步骤 4: 支付宝创建支付链接（mock 模式）');
@@ -151,8 +138,208 @@ async function main() {
   assert(!!alipayCreate.data.payUrl, '返回支付链接');
   assert(alipayCreate.data.payUrl.includes('mock=1'), 'mock 模式支付链接包含 mock=1');
 
-  // ========== 5. 错误场景测试 ==========
-  console.log('\n📋 步骤 5: 错误场景测试');
+  // ========== 5. 子订单拆分支付测试（>50元） ==========
+  console.log('\n📋 步骤 5: 子订单拆分支付测试（>50元）');
+
+  // 创建年度会员订单（¥388 > ¥50，触发拆分）
+  const yearlyOrder = await api('/api/membership/upgrade/create', {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify({ tier: 'yearly' }),
+  });
+  assert(yearlyOrder.status === 200, `创建年度会员订单成功 (¥${yearlyOrder.data.finalPrice})`);
+
+  const yearlyAlipay = await api('/api/payment/alipay/create', {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify({ orderId: yearlyOrder.data.orderId }),
+  });
+  assert(yearlyAlipay.status === 200, '支付宝创建支付链接成功');
+  assert(yearlyAlipay.data.splitPayment === true, `触发子订单拆分 (splitPayment=${yearlyAlipay.data.splitPayment})`);
+  assert(yearlyAlipay.data.totalSubOrders > 1, `子订单数量正确 (${yearlyAlipay.data.totalSubOrders})`);
+  assert(yearlyAlipay.data.subOrders.length > 1, `子订单列表长度正确 (${yearlyAlipay.data.subOrders.length})`);
+
+  // 验证子订单金额总和等于订单金额
+  const subOrderTotal = yearlyAlipay.data.subOrders.reduce((sum, sub) => sum + sub.amount, 0);
+  assert(Math.abs(subOrderTotal - yearlyOrder.data.finalPrice) < 0.01, `子订单金额总和正确 (¥${subOrderTotal})`);
+
+  // 模拟支付第一笔子订单
+  const firstSubOrder = yearlyAlipay.data.subOrders[0];
+  const subCallback = await api('/api/payment/callback/mock', {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify({ orderId: firstSubOrder.orderId }),
+  });
+  assert(subCallback.status === 200, '第一笔子订单支付成功');
+
+  // 检查是否需要支付下一笔
+  const nextSub = await api('/api/payment/alipay/next-sub', {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify({ parentOrderId: yearlyOrder.data.orderId }),
+  });
+  assert(nextSub.status === 200, '检查下一笔子订单成功');
+  assert(nextSub.data.allPaid === false, '还有未支付的子订单');
+  assert(nextSub.data.remainingSubOrders > 0, `剩余子订单数量正确 (${nextSub.data.remainingSubOrders})`);
+
+  // 模拟支付剩余子订单
+  for (let i = 1; i < yearlyAlipay.data.subOrders.length; i++) {
+    const subOrder = yearlyAlipay.data.subOrders[i];
+    await api('/api/payment/callback/mock', {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({ orderId: subOrder.orderId }),
+    });
+  }
+
+  // 验证所有子订单支付完成后父订单自动完成
+  const meAfterYearly = await api('/api/auth/me', { headers: authHeaders });
+  assert(meAfterYearly.data.user.membership_tier === 'yearly', `年度会员已激活 (实际=${meAfterYearly.data.user.membership_tier})`);
+
+  // ========== 6. 签到积分倍数测试 ==========
+  console.log('\n📋 步骤 6: 签到积分倍数测试');
+
+  // 当前用户是 yearly（3x 倍数）
+  const checkinRes = await api('/api/checkin/daily', {
+    method: 'POST',
+    headers: authHeaders,
+  });
+  if (checkinRes.status === 200) {
+    const checkinData = checkinRes.data.data || checkinRes.data;
+    assert(checkinData.pointsEarned > 0, `签到获得积分 (${checkinData.pointsEarned})`);
+    // 年度会员 3x，基础第1天 10 积分 → 30 积分
+    assert(checkinData.pointsEarned === 30, `年度会员 3x 签到积分正确 (${checkinData.pointsEarned})`);
+  } else if (checkinRes.data.error === '今天已经签到过了') {
+    console.log('  ⏭️ 今天已签到过，跳过签到测试');
+    // 验证签到状态接口
+    const checkinStatus = await api('/api/checkin/status', { headers: authHeaders });
+    assert(checkinStatus.status === 200, '签到状态查询成功');
+  } else {
+    assert(false, `签到失败 (status=${checkinRes.status}, error=${checkinRes.data.error})`);
+  }
+
+  // ========== 7. 置顶次数限制测试 ==========
+  console.log('\n📋 步骤 7: 置顶次数限制测试');
+
+  // 创建测试故事
+  const storyRes = await api('/api/stories', {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify({
+      title: `置顶测试故事 ${Date.now()}`,
+      description: '用于测试置顶功能',
+    }),
+  });
+  assert(storyRes.status === 200, `创建测试故事成功 (id=${storyRes.data.story?.id})`);
+
+  const storyId = storyRes.data.story?.id;
+  if (storyId) {
+    // 年度会员有 10 次/月置顶次数
+    const pinRes = await api(`/api/points-features/stories/${storyId}/pin`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({ days: 1 }),
+    });
+    assert(pinRes.status === 200, '故事置顶成功');
+  }
+
+  // ========== 8. 企业版团队邀请测试 ==========
+  console.log('\n📋 步骤 8: 企业版团队邀请测试');
+
+  // 先升级为企业版
+  const enterpriseOrder = await api('/api/membership/upgrade/create', {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify({ tier: 'enterprise' }),
+  });
+  assert(enterpriseOrder.status === 200, '创建企业版订单成功');
+
+  // 企业版 ¥999 > ¥50，会拆分，需要支付所有子订单
+  const enterpriseAlipay = await api('/api/payment/alipay/create', {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify({ orderId: enterpriseOrder.data.orderId }),
+  });
+
+  if (enterpriseAlipay.data.splitPayment) {
+    for (const subOrder of enterpriseAlipay.data.subOrders) {
+      await api('/api/payment/callback/mock', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ orderId: subOrder.orderId }),
+      });
+    }
+  }
+
+  // 验证企业版激活
+  const meAfterEnterprise = await api('/api/auth/me', { headers: authHeaders });
+  assert(meAfterEnterprise.data.user.membership_tier === 'enterprise', `企业版已激活 (实际=${meAfterEnterprise.data.user.membership_tier})`);
+
+  // 生成邀请链接
+  const inviteRes = await api('/api/team/invite', {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify({}),
+  });
+  assert(inviteRes.status === 200, '生成邀请链接成功');
+  assert(!!inviteRes.data.inviteLink, '返回邀请链接');
+  assert(!!inviteRes.data.inviteToken, '返回邀请 token');
+
+  // 注册子账号
+  const subTs = Date.now().toString(36).slice(-6);
+  const subUsername = `sub${subTs}`;
+  const subEmail = `sub${subTs}@test.local`;
+  const subPassword = 'SubTest123!';
+
+  const subRegRes = await api('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ username: subUsername, email: subEmail, password: subPassword }),
+  });
+  assert(subRegRes.status === 200 || subRegRes.status === 201, '子账号注册成功');
+
+  // 验证子账号邮箱
+  const { execSync: execSync2 } = await import('child_process');
+  const subVerifyToken = execSync2(
+    `sqlite3 ${__dirname}/../api/prisma/dev.db "SELECT email_verification_token FROM users WHERE email='${subEmail}'"`,
+    { encoding: 'utf-8' }
+  ).trim();
+
+  if (subVerifyToken) {
+    await api('/api/auth/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ token: subVerifyToken }),
+    });
+  }
+
+  // 子账号登录
+  const subLoginRes = await api('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email: subEmail, password: subPassword }),
+  });
+  assert(subLoginRes.status === 200, '子账号登录成功');
+  const subToken = subLoginRes.data.token;
+  const subAuthHeaders = { Authorization: `Bearer ${subToken}` };
+
+  // 子账号接受邀请
+  const acceptRes = await api('/api/team/accept-invite', {
+    method: 'POST',
+    headers: subAuthHeaders,
+    body: JSON.stringify({ inviteToken: inviteRes.data.inviteToken }),
+  });
+  assert(acceptRes.status === 200, '子账号接受邀请成功');
+
+  // 验证子账号继承企业版权益
+  const subMe = await api('/api/auth/me', { headers: subAuthHeaders });
+  assert(subMe.data.user.membership_tier === 'enterprise', `子账号继承企业版 (实际=${subMe.data.user.membership_tier})`);
+
+  // 主账号查看团队成员
+  const membersRes = await api('/api/team/members', { headers: authHeaders });
+  assert(membersRes.status === 200, '获取团队成员列表成功');
+  assert(membersRes.data.members.length >= 1, `团队成员数量正确 (${membersRes.data.members.length})`);
+  assert(membersRes.data.usedSlots >= 1, `已用席位正确 (${membersRes.data.usedSlots})`);
+
+  // ========== 9. 错误场景测试 ==========
+  console.log('\n📋 步骤 9: 错误场景测试');
 
   // 无效订单 ID
   const badCallback = await api('/api/payment/callback/mock', {

@@ -536,7 +536,18 @@ router.get('/me', async (req, res) => {
       return res.status(401).json({ error: '用户不存在' });
     }
 
-    res.json({ user });
+    // 获取实际生效的会员状态（包含子账号继承）
+    const { getMembershipTier } = await import('../utils/membership');
+    const effectiveMembership = await getMembershipTier(user.id);
+
+    res.json({
+      user: {
+        ...user,
+        membership_tier: effectiveMembership.tier,
+        membership_expires_at: effectiveMembership.expiresAt,
+        membership_is_active: effectiveMembership.isActive,
+      }
+    });
   } catch (error) {
     return res.status(401).json({ error: '无效的认证令牌' });
   }
