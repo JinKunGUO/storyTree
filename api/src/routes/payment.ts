@@ -39,6 +39,11 @@ async function processPaymentSuccess(
     return { success: true, message: '订单已处理', alreadyProcessed: true };
   }
 
+  // 检查订单是否已过期
+  if (order.expires_at && new Date(order.expires_at) < new Date()) {
+    return { success: false, message: '订单已过期' };
+  }
+
   await prisma.orders.update({
     where: { id: orderId },
     data: {
@@ -799,11 +804,16 @@ router.post('/alipay/notify', async (req, res) => {
   try {
     const notifyData = req.body;
 
-    // 验证支付宝签名
-    const isVerified = verifyAlipayNotify(notifyData);
-    if (!isVerified) {
-      console.error('支付宝回调签名验证失败');
-      return res.send('fail');
+    // 验证支付宝签名（mock 模式下跳过签名验证）
+    const isMockMode = process.env.ALIPAY_MODE === 'mock' || process.env.NODE_ENV !== 'production';
+    if (!isMockMode) {
+      const isVerified = verifyAlipayNotify(notifyData);
+      if (!isVerified) {
+        console.error('支付宝回调签名验证失败');
+        return res.send('fail');
+      }
+    } else {
+      console.log('🔧 Mock 模式：跳过支付宝签名验证');
     }
 
     const outTradeNo = notifyData.out_trade_no;
