@@ -570,7 +570,7 @@
         }
         @media (max-width: 767px) {
             .stories-grid { display: block !important; column-count: 2; column-gap: 10px; }
-            #loadMoreContainer { column-span: all; max-width: 100%; overflow: hidden; }
+            #loadMoreContainer { max-width: 100%; overflow: hidden; }
             #loadMoreContainer .btn { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         }
 
@@ -1143,6 +1143,7 @@
                         </div>
                     </div>
                 </div>
+                <div id="loadMoreContainer" style="text-align: center; padding: 20px; max-width: 100%; overflow: hidden; box-sizing: border-box;"></div>
             </section>
         </div>
     </main>
@@ -1383,13 +1384,8 @@
 
         // 加载更多按钮状态更新
         function updateLoadMoreButton() {
-            let loadMoreContainer = document.getElementById('loadMoreContainer');
-            if (!loadMoreContainer) {
-                loadMoreContainer = document.createElement('div');
-                loadMoreContainer.id = 'loadMoreContainer';
-                loadMoreContainer.style.cssText = 'text-align: center; padding: 20px; grid-column: 1 / -1; column-span: all; max-width: 100%; overflow: hidden; box-sizing: border-box;';
-                document.getElementById('storiesGrid').appendChild(loadMoreContainer);
-            }
+            const loadMoreContainer = document.getElementById('loadMoreContainer');
+            if (!loadMoreContainer) return;
             
             if (hasMore) {
                 loadMoreContainer.innerHTML = `
@@ -1770,6 +1766,10 @@
             }
 
             displayStories(filtered);
+            // 恢复加载更多按钮显示（搜索时可能被隐藏）
+            const loadMoreContainer = document.getElementById('loadMoreContainer');
+            if (loadMoreContainer) loadMoreContainer.style.display = '';
+            updateLoadMoreButton();
         }
 
         // ===== 空/错误状态 =====
