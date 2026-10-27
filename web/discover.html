@@ -1084,6 +1084,25 @@
                 </div>
             </section>
 
+            <!-- 创作排行榜 -->
+            <section id="creatorLeaderboardSection" style="margin-bottom: var(--st-space-8);" aria-labelledby="creatorLeaderboardTitle">
+                <div class="section-header" style="margin-bottom: var(--st-space-4);">
+                    <h2 class="section-title" id="creatorLeaderboardTitle">
+                        <i class="fas fa-users" style="color: var(--st-primary-500);" aria-hidden="true"></i>
+                        创作排行榜
+                    </h2>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="filter-tab active" onclick="switchLeaderboardPeriod('week')" id="weekTab">周榜</button>
+                        <button class="filter-tab" onclick="switchLeaderboardPeriod('month')" id="monthTab">月榜</button>
+                    </div>
+                </div>
+                <div class="ranking-list" id="creatorLeaderboardList">
+                    <div style="text-align: center; padding: 40px; color: var(--st-text-tertiary);">
+                        <i class="fas fa-spinner fa-spin"></i> 加载中...
+                    </div>
+                </div>
+            </section>
+
             <!-- 猜你喜欢 -->
             <section id="recommendSection" style="display: none; margin-bottom: var(--st-space-8);" aria-labelledby="recommendTitle">
                 <div class="section-header" style="margin-bottom: var(--st-space-4);">
@@ -1379,8 +1398,74 @@
             loadRecommend(recommendPage);
         }
 
-        // 页面加载时获取推荐
+        // ===== 创作排行榜 =====
+        let currentLeaderboardPeriod = 'week';
+
+        async function loadCreatorLeaderboard(period = 'week') {
+            try {
+                const res = await fetch(`/api/users/leaderboard?period=${period}`);
+                if (!res.ok) return;
+                const data = await res.json();
+
+                const list = document.getElementById('creatorLeaderboardList');
+                if (!list) return;
+
+                if (!data.leaderboard || data.leaderboard.length === 0) {
+                    list.innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: var(--st-text-tertiary);">
+                            <i class="fas fa-inbox"></i> 暂无数据
+                        </div>
+                    `;
+                    return;
+                }
+
+                list.innerHTML = data.leaderboard.map(user => {
+                    const rank = user.rank;
+                    const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
+                    const medalIcon = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
+                    
+                    return `
+                        <div class="ranking-item" onclick="window.location.href='/profile.html?id=${user.userId}'" tabindex="0" role="button" aria-label="查看 ${escapeHtml(user.username)} 的主页">
+                            <div class="rank-badge ${rankClass}" style="${rank <= 3 ? 'background: linear-gradient(135deg, #FFD700, #FFA500); color: white;' : ''}">
+                                ${medalIcon || rank}
+                            </div>
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-weight: 600; color: var(--st-text-primary); font-size: 15px; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    ${escapeHtml(user.username)}
+                                </div>
+                                <div style="display: flex; gap: 12px; font-size: 12px; color: var(--st-text-secondary);">
+                                    <span><i class="fas fa-book"></i> ${user.storyCount} 故事</span>
+                                    <span><i class="fas fa-file-alt"></i> ${user.nodeCount} 章节</span>
+                                    <span><i class="fas fa-heart"></i> ${user.likeCount} 获赞</span>
+                                    <span><i class="fas fa-users"></i> ${user.followerCount} 粉丝</span>
+                                </div>
+                            </div>
+                            <div style="text-align: right; flex-shrink: 0;">
+                                <div style="font-size: 18px; font-weight: 700; color: var(--st-primary-500);">
+                                    ${user.totalScore}
+                                </div>
+                                <div style="font-size: 11px; color: var(--st-text-tertiary);">
+                                    综合评分
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) {
+                console.error('加载创作排行榜失败:', e);
+            }
+        }
+
+        function switchLeaderboardPeriod(period) {
+            currentLeaderboardPeriod = period;
+            document.getElementById('weekTab').classList.toggle('active', period === 'week');
+            document.getElementById('monthTab').classList.toggle('active', period === 'month');
+            loadCreatorLeaderboard(period);
+        }
+
+        // 页面加载时获取推荐和排行榜
         loadRecommend(0);
+        loadCreatorLeaderboard('week');
 
         // 加载更多按钮状态更新
         function updateLoadMoreButton() {
