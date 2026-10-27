@@ -384,11 +384,12 @@
         /* 暗黑模式下的排行榜切换按钮优化 */
         @media (prefers-color-scheme: dark) {
             .filter-tab {
-                background: var(--st-gray-800);
+                background: var(--st-gray-700);
                 color: var(--st-text-secondary);
+                border-color: var(--st-gray-600);
             }
             .filter-tab:hover {
-                background: var(--st-primary-900);
+                background: var(--st-gray-600);
                 color: var(--st-primary-300);
                 border-color: var(--st-primary-700);
             }
@@ -396,7 +397,7 @@
                 background: var(--st-primary-500);
                 color: white;
                 border-color: var(--st-primary-400);
-                box-shadow: 0 0 0 2px var(--st-primary-800);
+                box-shadow: 0 0 0 2px var(--st-primary-800), 0 0 12px rgba(102, 126, 234, 0.5);
             }
         }
         @media (max-width: 640px) {
