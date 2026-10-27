@@ -467,12 +467,6 @@ profileHeader.innerHTML = `
                                 <!-- 徽章将通过 JavaScript 动态插入 -->
                             </span>
                         </div>
-                        <!-- 会员等级徽章 -->
-                        <div style="display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 4px 12px; background: ${membershipTier.bg}; border-radius: 20px; border: 1px solid ${membershipTier.color};">
-                            <i class="fas ${membershipTier.icon}" style="color: ${membershipTier.color}; font-size: 14px;"></i>
-                            <span style="color: ${membershipTier.textColor}; font-size: 13px; font-weight: 600;">${membershipTier.name}</span>
-                            ${membershipExpiresText ? `<span style="color: ${membershipTier.textColor}; font-size: 11px; opacity: 0.8;">${membershipExpiresText}</span>` : ''}
-                        </div>
                         <div class="profile-email">
                             <i class="fas fa-envelope"></i>
                             ${escapeHtml(user.email)}
@@ -483,7 +477,7 @@ profileHeader.innerHTML = `
                             <span><i class="fas fa-pen-fancy"></i> 码字：${wordCount.toLocaleString()}字</span>
                             <span><i class="fas fa-calendar-check"></i> 补签：${makeupChances}次</span>
                         </div>
-                        <!-- 用户等级信息卡片 -->
+                        <!-- 合并等级卡片：用户等级 + 会员等级 -->
                         <div id="userLevelCard" style="
                             margin-top: 15px;
                             padding: 15px 20px;
@@ -496,7 +490,8 @@ profileHeader.innerHTML = `
                             justify-content: space-between;
                             gap: 20px;
                         ">
-                            <div style="display: flex; align-items: center; gap: 15px; flex: 1;">
+                            <div style="display: flex; align-items: center; gap: 15px; flex: 1; flex-wrap: wrap;">
+                                <!-- 用户等级图标 -->
                                 <div id="userLevelIcon" style="
                                     width: 50px;
                                     height: 50px;
@@ -512,13 +507,19 @@ profileHeader.innerHTML = `
                                 ">
                                     Lv1
                                 </div>
-                                <div style="flex: 1;">
-                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
+                                <div style="flex: 1; min-width: 200px;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px; flex-wrap: wrap;">
                                         <span style="font-weight: 600; color: #333; font-size: 16px;" id="levelName">加载中...</span>
                                         <button class="help-hint-btn" onclick="showLevelInfo()" title="查看等级说明">?</button>
+                                        <!-- 会员等级徽章（合并到等级卡片中） -->
+                                        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; background: ${membershipTier.bg}; border-radius: 12px; border: 1px solid ${membershipTier.color}; font-size: 12px; font-weight: 600; color: ${membershipTier.textColor};">
+                                            <i class="fas ${membershipTier.icon}" style="color: ${membershipTier.color}; font-size: 11px;"></i>
+                                            ${membershipTier.name}
+                                        </span>
                                     </div>
                                     <div style="color: #666; font-size: 13px;" id="levelProgress">
                                         升级进度：<span id="levelProgressText">加载中...</span>
+                                        ${membershipExpiresText ? `<span style="margin-left: 10px; color: ${membershipTier.textColor};"><i class="fas fa-clock"></i> ${membershipExpiresText}</span>` : ''}
                                     </div>
                                     <div style="color: #999; font-size: 12px; margin-top: 3px;">
                                         <i class="fas fa-info-circle"></i> 等级影响 AI 配额基础值
@@ -962,115 +963,9 @@ profileHeader.innerHTML = `
             document.body.appendChild(overlay);
         }
         
-        // 显示里程碑说明弹窗
+        // 显示里程碑说明弹窗（已合并到成长体系弹窗）
         function showMilestoneInfo() {
-            const milestones = [
-                { words: '1万字', reward: '50积分', badge: '🌱 初出茅庐' },
-                { words: '5万字', reward: '200积分', badge: '📝 小有成就' },
-                { words: '10万字', reward: '500积分', badge: '✍️ 笔耕不辍' },
-                { words: '20万字', reward: '1200积分 + 邀请码权限', badge: '📚 专业作者' },
-                { words: '50万字', reward: '3500积分', badge: '🎖️ 签约作者' },
-                { words: '100万字', reward: '10000积分', badge: '👑 大神作者' },
-                { words: '200万字', reward: '25000积分', badge: '🏆 殿堂作者' }
-            ];
-            
-            const milestoneList = milestones.map(m => 
-                `<tr>
-                    <td style="padding: 8px; border-bottom: 1px solid #f0f0f0;">${m.badge}</td>
-                    <td style="padding: 8px; border-bottom: 1px solid #f0f0f0;">${m.words}</td>
-                    <td style="padding: 8px; border-bottom: 1px solid #f0f0f0; color: var(--st-primary-500); font-weight: 600;">${m.reward}</td>
-                </tr>`
-            ).join('');
-            
-            const overlay = document.createElement('div');
-            overlay.id = 'milestoneOverlay';
-            overlay.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.5);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 10000;
-                animation: fadeIn 0.3s;
-            `;
-            
-            overlay.innerHTML = `
-                <div style="
-                    background: white;
-                    border-radius: 20px;
-                    padding: 30px;
-                    max-width: 600px;
-                    width: 90%;
-                    max-height: 80vh;
-                    overflow-y: auto;
-                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-                    animation: slideUp 0.3s;
-                ">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h2 style="margin: 0; color: #333;">
-                            <i class="fas fa-trophy" style="color: #ffd700;"></i> 
-                            里程碑体系
-                        </h2>
-                        <button onclick="document.getElementById('milestoneOverlay').remove()" style="
-                            background: none;
-                            border: none;
-                            font-size: 24px;
-                            cursor: pointer;
-                            color: #999;
-                            padding: 0;
-                            width: 32px;
-                            height: 32px;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            border-radius: 50%;
-                            transition: all 0.3s;
-                        " onmouseover="this.style.background=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-gray-100)':'#f0f0f0'; this.style.color=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-text-primary)':'#333';" 
-                           onmouseout="this.style.background='none'; this.style.color=window.matchMedia('(prefers-color-scheme:dark)').matches?'var(--st-text-tertiary)':'#999';">
-                            ×
-                        </button>
-                    </div>
-                    
-                    <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 10px; border-left: 4px solid var(--st-primary-500);">
-                        <p style="margin: 0; color: #666; line-height: 1.6;">
-                            <i class="fas fa-info-circle" style="color: var(--st-primary-500);"></i>
-                            <strong>码字奖励：</strong>每码1000字获得10积分和1次补签机会
-                        </p>
-                    </div>
-                    
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead>
-                            <tr style="background: #f8f9fa;">
-                                <th style="padding: 12px 8px; text-align: left; font-weight: 600; color: #333;">徽章</th>
-                                <th style="padding: 12px 8px; text-align: left; font-weight: 600; color: #333;">达成条件</th>
-                                <th style="padding: 12px 8px; text-align: left; font-weight: 600; color: #333;">奖励</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${milestoneList}
-                        </tbody>
-                    </table>
-                    
-                    <div style="margin-top: 20px; padding: 15px; background: #fff3e0; border-radius: 10px; border-left: 4px solid #ff9800;">
-                        <p style="margin: 0; color: #666; line-height: 1.6;">
-                            <i class="fas fa-lightbulb" style="color: #ff9800;"></i>
-                            <strong>提示：</strong>只统计非AI生成的已发布章节字数
-                        </p>
-                    </div>
-                </div>
-            `;
-            
-            overlay.onclick = (e) => {
-                if (e.target === overlay) {
-                    overlay.remove();
-                }
-            };
-            
-            document.body.appendChild(overlay);
+            showLevelInfo(); // 直接调用合并后的成长体系弹窗
         }
         
         // ========== 用户等级相关函数 ==========
@@ -1230,7 +1125,7 @@ profileHeader.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <h2 style="margin: 0; color: #333;">
                             <i class="fas fa-layer-group" style="color: var(--st-primary-500);"></i> 
-                            用户等级体系
+                            成长体系
                         </h2>
                         <button onclick="document.getElementById('levelInfoOverlay').remove()" style="
                             background: none;
@@ -1291,6 +1186,50 @@ profileHeader.innerHTML = `
                                 <i class="fas fa-exclamation-triangle" style="color: #ff9800; margin-right: 8px;"></i>
                                 <strong>重要：</strong>用户等级决定 AI 配额的<strong>基础值</strong>。购买会员后，会员等级会在用户等级基础上提供配额倍数加成。
                             </p>
+                        </div>
+                        
+                        <!-- 里程碑奖励 -->
+                        <div style="margin-bottom: 25px;">
+                            <h3 style="color: #333; margin: 0 0 15px 0; font-size: 18px;">
+                                <i class="fas fa-trophy" style="color: #ffd700;"></i> 
+                                里程碑奖励
+                            </h3>
+                            <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; border-left: 4px solid #ffd700; margin-bottom: 15px;">
+                                <p style="margin: 0; color: #666; line-height: 1.6;">
+                                    <i class="fas fa-info-circle" style="color: var(--st-primary-500);"></i>
+                                    <strong>码字奖励：</strong>每码1000字获得10积分和1次补签机会
+                                </p>
+                            </div>
+                            <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                                <thead>
+                                    <tr style="background: linear-gradient(135deg, #ffd700, #ffed4e); color: #333;">
+                                        <th style="padding: 12px; text-align: left;">徽章</th>
+                                        <th style="padding: 12px; text-align: left;">达成条件</th>
+                                        <th style="padding: 12px; text-align: left;">奖励</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${[
+                                        { words: '1万字', reward: '50积分', badge: '🌱 初出茅庐' },
+                                        { words: '5万字', reward: '200积分', badge: '📝 小有成就' },
+                                        { words: '10万字', reward: '500积分', badge: '✍️ 笔耕不辍' },
+                                        { words: '20万字', reward: '1200积分 + 邀请码权限', badge: '📚 专业作者' },
+                                        { words: '50万字', reward: '3500积分', badge: '🎖️ 签约作者' },
+                                        { words: '100万字', reward: '10000积分', badge: '👑 大神作者' },
+                                        { words: '200万字', reward: '25000积分', badge: '🏆 殿堂作者' }
+                                    ].map(m => `
+                                        <tr>
+                                            <td style="padding: 10px; border-bottom: 1px solid #f0f0f0;">${m.badge}</td>
+                                            <td style="padding: 10px; border-bottom: 1px solid #f0f0f0;">${m.words}</td>
+                                            <td style="padding: 10px; border-bottom: 1px solid #f0f0f0; color: var(--st-primary-500); font-weight: 600;">${m.reward}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                            <div style="margin-top: 10px; padding: 10px; background: #fff3e0; border-radius: 8px; font-size: 12px; color: #666;">
+                                <i class="fas fa-lightbulb" style="color: #ff9800;"></i>
+                                <strong>提示：</strong>只统计非AI生成的已发布章节字数
+                            </div>
                         </div>
                         
                         <!-- 提升方式 -->
