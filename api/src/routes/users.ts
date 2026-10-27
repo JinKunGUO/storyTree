@@ -15,6 +15,84 @@ router.param('id', (req, res, next, value) => {
   next();
 });
 
+// 创作排行榜（周榜/月榜）
+router.get('/leaderboard', optionalAuth, async (req, res) => {
+  try {
+    const { period = 'week' } = req.query; // week 或 month
+    const now = new Date();
+    
+    // 计算时间范围
+    let startDate: Date;
+    if (period === 'week') {
+      // 本周一 00:00:00
+      const dayOfWeek = now.getDay();
+      const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 周日是 0，转换为 6
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diff);
+    } else {
+      // 本月 1 号 00:00:00
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+
+    // 查询用户创作统计
+    const leaderboard = await prisma.$queryRaw<Array<{
+      user_id: number;
+      username: string;
+      avatar: string | null;
+      level: number;
+      points: number;
+      story_count: bigint;
+      node_count: bigint;
+      like_count: bigint;
+      follower_count: bigint;
+      total_score: number;
+    }>>`
+      SELECT 
+        u.id as user_id,
+        u.username,
+        u.avatar,
+        u.level,
+        u.points,
+        COUNT(DISTINCT s.id) as story_count,
+        COUNT(DISTINCT n.id) as node_count,
+        COALESCE(SUM(n.like_count), 0) as like_count,
+        (SELECT COUNT(*) FROM follows f WHERE f.following_id = u.id) as follower_count,
+        (COUNT(DISTINCT s.id) * 10 + COUNT(DISTINCT n.id) * 5 + COALESCE(SUM(n.like_count), 0) * 2 + (SELECT COUNT(*) FROM follows f WHERE f.following_id = u.id) * 3) as total_score
+      FROM users u
+      LEFT JOIN stories s ON s.author_id = u.id AND s.created_at >= ${startDate}
+      LEFT JOIN nodes n ON n.author_id = u.id AND n.created_at >= ${startDate} AND n.review_status = 'APPROVED'
+      WHERE u.is_banned = 0 AND u.is_virtual = 0
+      GROUP BY u.id, u.username, u.avatar, u.level, u.points
+      HAVING story_count > 0 OR node_count > 0
+      ORDER BY total_score DESC
+      LIMIT 100
+    `;
+
+    // 转换 BigInt 为 Number
+    const formattedLeaderboard = leaderboard.map((user, index) => ({
+      rank: index + 1,
+      userId: user.user_id,
+      username: user.username,
+      avatar: user.avatar,
+      level: user.level,
+      points: user.points,
+      storyCount: Number(user.story_count),
+      nodeCount: Number(user.node_count),
+      likeCount: Number(user.like_count),
+      followerCount: Number(user.follower_count),
+      totalScore: user.total_score
+    }));
+
+    res.json({
+      period,
+      startDate,
+      leaderboard: formattedLeaderboard
+    });
+  } catch (error) {
+    console.error('获取创作排行榜失败:', error);
+    res.status(500).json({ error: '获取排行榜失败' });
+  }
+});
+
 // 获取动态流（必须在 /:id 之前注册，否则 "feed" 会被当作 :id 参数）
 router.get('/feed/me', authenticateToken, async (req, res) => {
   const userId = getUserId(req);
