@@ -1202,7 +1202,44 @@ profileHeader.innerHTML = `
                             </table>
                         </div>
                         
-                        <!-- 成长指南（集中在两个表格下方） -->
+                        <!-- 创作特权列表 -->
+                        <div style="margin-bottom: 25px;">
+                            <h3 style="color: var(--st-text-primary, #333); margin: 0 0 15px 0; font-size: 18px;">
+                                <i class="fas fa-crown" style="color: #ffd700;"></i> 
+                                创作特权
+                            </h3>
+                            <table style="width: 100%; border-collapse: collapse; background: var(--st-bg-primary, white); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                                <thead>
+                                    <tr style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                                        <th style="padding: 12px; text-align: left;">特权等级</th>
+                                        <th style="padding: 12px; text-align: left;">配额倍数</th>
+                                        <th style="padding: 12px; text-align: left;">有效期</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${[
+                                        { tier: '体验创作者', multiplier: '1.7x', duration: '7天', color: '#cd7f32' },
+                                        { tier: '月度创作者', multiplier: '3.3x', duration: '30天', color: '#c0c0c0' },
+                                        { tier: '季度创作者', multiplier: '6.7x', duration: '90天', color: '#c0c0c0' },
+                                        { tier: '年度创作者', multiplier: '16.7x', duration: '365天', color: '#ffd700' },
+                                        { tier: '企业创作者', multiplier: '无限', duration: '365天', color: '#b9f2ff' }
+                                    ].map(t => `
+                                        <tr>
+                                            <td style="padding: 10px; border-bottom: 1px solid var(--st-gray-100, #f0f0f0); color: var(--st-text-primary, #333); font-weight: 600;">
+                                                <span style="display: inline-flex; align-items: center; gap: 6px;">
+                                                    <i class="fas fa-crown" style="color: ${t.color};"></i>
+                                                    ${t.tier}
+                                                </span>
+                                            </td>
+                                            <td style="padding: 10px; border-bottom: 1px solid var(--st-gray-100, #f0f0f0); color: var(--st-primary-500); font-weight: 600;">${t.multiplier}</td>
+                                            <td style="padding: 10px; border-bottom: 1px solid var(--st-gray-100, #f0f0f0); color: var(--st-text-secondary, #666);">${t.duration}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- 成长指南（集中在三个表格下方） -->
                         <div style="background: var(--st-bg-elevated, #f8f9fa); padding: 15px; border-radius: 10px; border-left: 4px solid var(--st-primary-500); margin-bottom: 15px;">
                             <h4 style="margin: 0 0 10px 0; color: var(--st-text-primary, #333); font-size: 15px;">
                                 <i class="fas fa-info-circle" style="color: var(--st-primary-500);"></i> 
