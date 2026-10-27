@@ -1147,26 +1147,26 @@ profileHeader.innerHTML = `
                         </button>
                     </div>
                     
-                    <div style="color: #666; line-height: 1.8;">
+                    <div style="color: var(--st-text-secondary, #666); line-height: 1.8;">
                         <!-- 等级说明 -->
                         <div style="margin-bottom: 25px;">
-                            <h3 style="color: #333; margin: 0 0 15px 0; font-size: 18px;">
+                            <h3 style="color: var(--st-text-primary, #333); margin: 0 0 15px 0; font-size: 18px;">
                                 <i class="fas fa-info-circle" style="color: var(--st-primary-500);"></i> 
                                 等级说明
                             </h3>
-                            <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; border-left: 4px solid var(--st-primary-500);">
-                                <p style="margin: 0 0 10px 0;">用户等级基于<strong>累计积分</strong>自动提升，等级越高可享受的 AI 配额越多。</p>
-                                <p style="margin: 0;">积分可通过<strong>签到、码字、发布故事、社交互动</strong>等方式获得。</p>
+                            <div style="background: var(--st-bg-elevated, #f8f9fa); padding: 15px; border-radius: 10px; border-left: 4px solid var(--st-primary-500);">
+                                <p style="margin: 0 0 10px 0; color: var(--st-text-secondary, #666);">用户等级基于<strong>累计积分</strong>自动提升，等级越高可享受的 AI 配额越多。</p>
+                                <p style="margin: 0; color: var(--st-text-secondary, #666);">积分可通过<strong>签到、码字、发布故事、社交互动</strong>等方式获得。</p>
                             </div>
                         </div>
                         
                         <!-- 等级列表 -->
                         <div style="margin-bottom: 25px;">
-                            <h3 style="color: #333; margin: 0 0 15px 0; font-size: 18px;">
+                            <h3 style="color: var(--st-text-primary, #333); margin: 0 0 15px 0; font-size: 18px;">
                                 <i class="fas fa-list-ol" style="color: #ff9800;"></i> 
                                 等级列表
                             </h3>
-                            <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                            <table style="width: 100%; border-collapse: collapse; background: var(--st-bg-primary, white); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                                 <thead>
                                     <tr style="background: linear-gradient(135deg, var(--st-primary-500), var(--st-primary-700)); color: white;">
                                         <th style="padding: 12px; text-align: center;">等级</th>
@@ -1181,8 +1181,8 @@ profileHeader.innerHTML = `
                         </div>
                         
                         <!-- 重要提示 -->
-                        <div style="background: #fff3e0; padding: 15px; border-radius: 10px; border-left: 4px solid #ff9800; margin-bottom: 15px;">
-                            <p style="margin: 0; color: #666; font-size: 14px;">
+                        <div style="background: var(--st-bg-elevated, #fff3e0); padding: 15px; border-radius: 10px; border-left: 4px solid #ff9800; margin-bottom: 15px;">
+                            <p style="margin: 0; color: var(--st-text-secondary, #666); font-size: 14px;">
                                 <i class="fas fa-exclamation-triangle" style="color: #ff9800; margin-right: 8px;"></i>
                                 <strong>重要：</strong>用户等级决定 AI 配额的<strong>基础值</strong>。购买会员后，会员等级会在用户等级基础上提供配额倍数加成。
                             </p>
@@ -1190,17 +1190,17 @@ profileHeader.innerHTML = `
                         
                         <!-- 里程碑奖励 -->
                         <div style="margin-bottom: 25px;">
-                            <h3 style="color: #333; margin: 0 0 15px 0; font-size: 18px;">
+                            <h3 style="color: var(--st-text-primary, #333); margin: 0 0 15px 0; font-size: 18px;">
                                 <i class="fas fa-trophy" style="color: #ffd700;"></i> 
                                 里程碑奖励
                             </h3>
-                            <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; border-left: 4px solid #ffd700; margin-bottom: 15px;">
-                                <p style="margin: 0; color: #666; line-height: 1.6;">
+                            <div style="background: var(--st-bg-elevated, #f8f9fa); padding: 15px; border-radius: 10px; border-left: 4px solid #ffd700; margin-bottom: 15px;">
+                                <p style="margin: 0; color: var(--st-text-secondary, #666); line-height: 1.6;">
                                     <i class="fas fa-info-circle" style="color: var(--st-primary-500);"></i>
                                     <strong>码字奖励：</strong>每码1000字获得10积分和1次补签机会
                                 </p>
                             </div>
-                            <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                            <table style="width: 100%; border-collapse: collapse; background: var(--st-bg-primary, white); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                                 <thead>
                                     <tr style="background: linear-gradient(135deg, #ffd700, #ffed4e); color: #333;">
                                         <th style="padding: 12px; text-align: left;">徽章</th>
@@ -1219,26 +1219,26 @@ profileHeader.innerHTML = `
                                         { words: '200万字', reward: '25000积分', badge: '🏆 殿堂作者' }
                                     ].map(m => `
                                         <tr>
-                                            <td style="padding: 10px; border-bottom: 1px solid #f0f0f0;">${m.badge}</td>
-                                            <td style="padding: 10px; border-bottom: 1px solid #f0f0f0;">${m.words}</td>
-                                            <td style="padding: 10px; border-bottom: 1px solid #f0f0f0; color: var(--st-primary-500); font-weight: 600;">${m.reward}</td>
+                                            <td style="padding: 10px; border-bottom: 1px solid var(--st-gray-100, #f0f0f0); color: var(--st-text-primary, #333);">${m.badge}</td>
+                                            <td style="padding: 10px; border-bottom: 1px solid var(--st-gray-100, #f0f0f0); color: var(--st-text-secondary, #666);">${m.words}</td>
+                                            <td style="padding: 10px; border-bottom: 1px solid var(--st-gray-100, #f0f0f0); color: var(--st-primary-500); font-weight: 600;">${m.reward}</td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
                             </table>
-                            <div style="margin-top: 10px; padding: 10px; background: #fff3e0; border-radius: 8px; font-size: 12px; color: #666;">
+                            <div style="margin-top: 10px; padding: 10px; background: var(--st-bg-elevated, #fff3e0); border-radius: 8px; font-size: 12px; color: var(--st-text-secondary, #666);">
                                 <i class="fas fa-lightbulb" style="color: #ff9800;"></i>
                                 <strong>提示：</strong>只统计非AI生成的已发布章节字数
                             </div>
                         </div>
                         
                         <!-- 提升方式 -->
-                        <div style="background: #e8f5e9; padding: 15px; border-radius: 10px; border-left: 4px solid #4caf50;">
-                            <h4 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">
+                        <div style="background: var(--st-bg-elevated, #e8f5e9); padding: 15px; border-radius: 10px; border-left: 4px solid #4caf50;">
+                            <h4 style="margin: 0 0 10px 0; color: var(--st-text-primary, #333); font-size: 16px;">
                                 <i class="fas fa-arrow-up" style="color: #4caf50;"></i> 
                                 如何提升等级？
                             </h4>
-                            <ul style="margin: 0; padding-left: 20px; font-size: 14px;">
+                            <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: var(--st-text-secondary, #666);">
                                 <li>持续创作：每码字 1000 字获得 10 积分</li>
                                 <li>每日签到：连续签到可获得递增积分</li>
                                 <li>发布故事：每发布一个故事获得 20 积分</li>
