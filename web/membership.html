@@ -760,8 +760,32 @@
                 document.getElementById('expiresAt').textContent = formatDate(status.membership.expiresAt);
                 document.getElementById('autoRenew').textContent = status.membership.autoRenew ? '✓ 已开启' : '✗ 未开启';
                 
-                // 这里可以添加获取 AI 配额的逻辑
-                document.getElementById('aiQuota').textContent = '查看套餐详情';
+                // 获取 AI 配额使用情况并计算节省金额
+                try {
+                    const quotaData = await apiRequest('/ai/v2/quota');
+                    const quota = quotaData.quota;
+                    
+                    // 计算本月已使用的 AI 次数
+                    const totalUsed = (quota.continuation.used || 0) + (quota.polish.used || 0) + (quota.illustration.used || 0);
+                    
+                    // 计算相当于节省的积分（按市场价：续写10积分/次，润色3积分/次，插图20积分/次）
+                    const savedPoints = (quota.continuation.used || 0) * 10 + (quota.polish.used || 0) * 3 + (quota.illustration.used || 0) * 20;
+                    
+                    // 显示 AI 配额使用情况
+                    document.getElementById('aiQuota').innerHTML = `
+                        <div style="font-size: 12px; line-height: 1.6;">
+                            <div>续写：${quota.continuation.used || 0}/${quota.continuation.unlimited ? '∞' : quota.continuation.limit}</div>
+                            <div>润色：${quota.polish.used || 0}/${quota.polish.unlimited ? '∞' : quota.polish.limit}</div>
+                            <div>插图：${quota.illustration.used || 0}/${quota.illustration.unlimited ? '∞' : quota.illustration.limit}</div>
+                            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--st-gray-200, #e0e0e0); color: var(--st-primary-500); font-weight: 600;">
+                                本月已节省 ${savedPoints} 积分
+                            </div>
+                        </div>
+                    `;
+                } catch (quotaError) {
+                    console.error('获取 AI 配额失败:', quotaError);
+                    document.getElementById('aiQuota').textContent = '查看套餐详情';
+                }
                 
                 // 更新购买按钮状态
                 updateButtons(status.membership.tier);
