@@ -1147,104 +1147,90 @@ profileHeader.innerHTML = `
                         </button>
                     </div>
                     
-                    <div style="color: var(--st-text-secondary, #666); line-height: 1.8;">
-                        <!-- 成长说明 -->
+                    <div style="color: var(--st-text-secondary, #666); line-height: 1.6;">
+                        <!-- 创作等级列表（核心内容前置） -->
                         <div style="margin-bottom: 25px;">
-                            <h3 style="color: var(--st-text-primary, #333); margin: 0 0 15px 0; font-size: 18px;">
-                                <i class="fas fa-road" style="color: var(--st-primary-500);"></i> 
-                                创作者成长之路
+                            <h3 style="color: var(--st-text-primary, #333); margin: 0 0 15px 0; font-size: 18px; display: flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-layer-group" style="color: var(--st-primary-500);"></i> 
+                                创作等级
                             </h3>
-                            <div style="background: var(--st-bg-elevated, #f8f9fa); padding: 15px; border-radius: 10px; border-left: 4px solid var(--st-primary-500);">
-                                <p style="margin: 0 0 10px 0; color: var(--st-text-secondary, #666);">每一位创作者都有属于自己的成长之路。通过<strong>持续创作、积极互动、邀请好友</strong>，你可以不断提升自己的创作等级，解锁更多创作特权。</p>
-                                <p style="margin: 0; color: var(--st-text-secondary, #666);">创作等级代表你的创作经验积累，创作特权代表你的付费加速权益，创作成就代表你的荣誉认可。</p>
+                            <div style="display: grid; gap: 10px;">
+                                ${[
+                                    { level: 'Lv1', name: '新手作者', icon: '🌱', quota: '续写5次/润色10次/插图2张' },
+                                    { level: 'Lv2', name: '活跃作者', icon: '📝', quota: '续写15次/润色30次/插图5张' },
+                                    { level: 'Lv3', name: '专业作者', icon: '✍️', quota: '续写30次/润色60次/插图10张' },
+                                    { level: 'Lv4', name: '大师作者', icon: '👑', quota: '续写50次/润色100次/插图20张' }
+                                ].map(l => `
+                                    <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--st-bg-elevated, #f8f9fa); border-radius: 10px; border-left: 3px solid var(--st-primary-500);">
+                                        <span style="font-size: 24px;">${l.icon}</span>
+                                        <div style="flex: 1;">
+                                            <div style="font-weight: 600; color: var(--st-text-primary, #333); font-size: 14px;">${l.level} ${l.name}</div>
+                                            <div style="font-size: 12px; color: var(--st-text-secondary, #666); margin-top: 2px;">${l.quota}</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
                             </div>
                         </div>
                         
-                        <!-- 创作等级列表 -->
+                        <!-- 创作成就列表（核心内容前置） -->
                         <div style="margin-bottom: 25px;">
-                            <h3 style="color: var(--st-text-primary, #333); margin: 0 0 15px 0; font-size: 18px;">
-                                <i class="fas fa-list-ol" style="color: #ff9800;"></i> 
-                                创作等级列表
-                            </h3>
-                            <table style="width: 100%; border-collapse: collapse; background: var(--st-bg-primary, white); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                                <thead>
-                                    <tr style="background: linear-gradient(135deg, var(--st-primary-500), var(--st-primary-700)); color: white;">
-                                        <th style="padding: 12px; text-align: center;">等级</th>
-                                        <th style="padding: 12px; text-align: left;">称号</th>
-                                        <th style="padding: 12px; text-align: left;">AI 配额（基础）</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${levelList}
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <!-- 重要提示 -->
-                        <div style="background: var(--st-bg-elevated, #fff3e0); padding: 15px; border-radius: 10px; border-left: 4px solid #ff9800; margin-bottom: 15px;">
-                            <p style="margin: 0; color: var(--st-text-secondary, #666); font-size: 14px;">
-                                <i class="fas fa-exclamation-triangle" style="color: #ff9800; margin-right: 8px;"></i>
-                                <strong>重要：</strong>创作等级决定 AI 配额的<strong>基础值</strong>。购买创作特权后，特权等级会在创作等级基础上提供配额倍数加成。
-                            </p>
-                        </div>
-                        
-                        <!-- 里程碑奖励 -->
-                        <div style="margin-bottom: 25px;">
-                            <h3 style="color: var(--st-text-primary, #333); margin: 0 0 15px 0; font-size: 18px;">
+                            <h3 style="color: var(--st-text-primary, #333); margin: 0 0 15px 0; font-size: 18px; display: flex; align-items: center; gap: 8px;">
                                 <i class="fas fa-trophy" style="color: #ffd700;"></i> 
                                 创作成就
                             </h3>
-                            <div style="background: var(--st-bg-elevated, #f8f9fa); padding: 15px; border-radius: 10px; border-left: 4px solid #ffd700; margin-bottom: 15px;">
-                                <p style="margin: 0; color: var(--st-text-secondary, #666); line-height: 1.6;">
-                                    <i class="fas fa-info-circle" style="color: var(--st-primary-500);"></i>
-                                    <strong>创作成就奖励：</strong>每创作1000字获得10积分和1次补签机会，达成里程碑还可获得额外奖励
-                                </p>
-                            </div>
-                            <table style="width: 100%; border-collapse: collapse; background: var(--st-bg-primary, white); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                                <thead>
-                                    <tr style="background: linear-gradient(135deg, #ffd700, #ffed4e); color: #333;">
-                                        <th style="padding: 12px; text-align: left;">成就徽章</th>
-                                        <th style="padding: 12px; text-align: left;">创作字数</th>
-                                        <th style="padding: 12px; text-align: left;">奖励</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${[
-                                        { words: '1万字', reward: '50积分', badge: '🌱 初出茅庐' },
-                                        { words: '5万字', reward: '200积分', badge: '📝 小有成就' },
-                                        { words: '10万字', reward: '500积分', badge: '✍️ 笔耕不辍' },
-                                        { words: '20万字', reward: '1200积分 + 邀请码权限', badge: '📚 专业作者' },
-                                        { words: '50万字', reward: '3500积分', badge: '🎖️ 签约作者' },
-                                        { words: '100万字', reward: '10000积分', badge: '👑 大神作者' },
-                                        { words: '200万字', reward: '25000积分', badge: '🏆 殿堂作者' }
-                                    ].map(m => `
-                                        <tr>
-                                            <td style="padding: 10px; border-bottom: 1px solid var(--st-gray-100, #f0f0f0); color: var(--st-text-primary, #333);">${m.badge}</td>
-                                            <td style="padding: 10px; border-bottom: 1px solid var(--st-gray-100, #f0f0f0); color: var(--st-text-secondary, #666);">${m.words}</td>
-                                            <td style="padding: 10px; border-bottom: 1px solid var(--st-gray-100, #f0f0f0); color: var(--st-primary-500); font-weight: 600;">${m.reward}</td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                            <div style="margin-top: 10px; padding: 10px; background: var(--st-bg-elevated, #fff3e0); border-radius: 8px; font-size: 12px; color: var(--st-text-secondary, #666);">
-                                <i class="fas fa-lightbulb" style="color: #ff9800;"></i>
-                                <strong>提示：</strong>创作成就只统计非AI生成的已发布章节字数，这是你真实创作能力的证明
+                            <div style="display: grid; gap: 10px;">
+                                ${[
+                                    { words: '1万字', reward: '50积分', badge: '🌱 初出茅庐' },
+                                    { words: '5万字', reward: '200积分', badge: '📝 小有成就' },
+                                    { words: '10万字', reward: '500积分', badge: '✍️ 笔耕不辍' },
+                                    { words: '20万字', reward: '1200积分 + 邀请码权限', badge: '📚 专业作者' },
+                                    { words: '50万字', reward: '3500积分', badge: '🎖️ 签约作者' },
+                                    { words: '100万字', reward: '10000积分', badge: '👑 大神作者' },
+                                    { words: '200万字', reward: '25000积分', badge: '🏆 殿堂作者' }
+                                ].map(m => `
+                                    <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--st-bg-elevated, #fffbeb); border-radius: 10px; border-left: 3px solid #ffd700;">
+                                        <span style="font-size: 24px;">${m.badge.split(' ')[0]}</span>
+                                        <div style="flex: 1;">
+                                            <div style="font-weight: 600; color: var(--st-text-primary, #333); font-size: 14px;">${m.badge.split(' ')[1]}</div>
+                                            <div style="font-size: 12px; color: var(--st-text-secondary, #666); margin-top: 2px;">${m.words} → ${m.reward}</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
                             </div>
                         </div>
                         
-                        <!-- 提升创作等级 -->
-                        <div style="background: var(--st-bg-elevated, #e8f5e9); padding: 15px; border-radius: 10px; border-left: 4px solid #4caf50;">
-                            <h4 style="margin: 0 0 10px 0; color: var(--st-text-primary, #333); font-size: 16px;">
-                                <i class="fas fa-arrow-up" style="color: #4caf50;"></i> 
-                                如何提升创作等级？
+                        <!-- 创作说明（整合到最后，精简文字） -->
+                        <div style="background: var(--st-bg-elevated, #f8f9fa); padding: 15px; border-radius: 10px; border-left: 4px solid var(--st-primary-500);">
+                            <h4 style="margin: 0 0 10px 0; color: var(--st-text-primary, #333); font-size: 15px; display: flex; align-items: center; gap: 6px;">
+                                <i class="fas fa-info-circle" style="color: var(--st-primary-500);"></i> 
+                                成长指南
                             </h4>
-                            <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: var(--st-text-secondary, #666);">
-                                <li>持续创作：每码字 1000 字获得 10 积分</li>
-                                <li>每日签到：连续签到可获得递增积分</li>
-                                <li>发布故事：每发布一个故事获得 20 积分</li>
-                                <li>社交互动：获得收藏、评论可获得积分</li>
-                                <li>邀请好友：使用邀请码邀请好友注册</li>
-                            </ul>
+                            <div style="display: grid; gap: 8px; font-size: 13px; color: var(--st-text-secondary, #666);">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="fas fa-pen" style="color: var(--st-primary-500); width: 16px;"></i>
+                                    <span>持续创作：每码字 1000 字获得 10 积分</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="fas fa-calendar-check" style="color: #4caf50; width: 16px;"></i>
+                                    <span>每日签到：连续签到可获得递增积分</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="fas fa-book" style="color: #ff9800; width: 16px;"></i>
+                                    <span>发布故事：每发布一个故事获得 20 积分</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="fas fa-users" style="color: #9c27b0; width: 16px;"></i>
+                                    <span>社交互动：获得收藏、评论可获得积分</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="fas fa-gift" style="color: #f44336; width: 16px;"></i>
+                                    <span>邀请好友：使用邀请码邀请好友注册</span>
+                                </div>
+                            </div>
+                            <div style="margin-top: 12px; padding: 10px; background: var(--st-bg-primary, white); border-radius: 8px; font-size: 12px; color: var(--st-text-secondary, #666);">
+                                <i class="fas fa-lightbulb" style="color: #ff9800;"></i>
+                                <strong>提示：</strong>创作成就只统计非AI生成的已发布章节字数，这是你真实创作能力的证明。创作等级决定 AI 配额的基础值，购买创作特权后可在基础上获得倍数加成。
+                            </div>
                         </div>
                     </div>
                 </div>
