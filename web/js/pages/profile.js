@@ -475,7 +475,6 @@ profileHeader.innerHTML = `
                             <span><i class="fas fa-star"></i> 积分：${points.toLocaleString()}
                             <button class="help-hint-btn" onclick="showPointsHistory()" title="查看积分明细">?</button></span>
                             <span><i class="fas fa-pen-fancy"></i> 码字：${wordCount.toLocaleString()}字</span>
-                            <span><i class="fas fa-calendar-check"></i> 补签：${makeupChances}次</span>
                         </div>
                         <!-- 合并等级卡片：用户等级 + 会员等级 -->
                         <div id="userLevelCard" style="
@@ -786,20 +785,21 @@ profileHeader.innerHTML = `
                             </div>
                         </div>
                         
-                        <!-- 补签规则 -->
+                        <!-- 断签保护规则 -->
                         <div style="margin-bottom: 25px;">
                             <h3 style="color: #333; margin: 0 0 15px 0; font-size: 18px;">
-                                <i class="fas fa-undo" style="color: #4caf50;"></i> 
-                                补签规则
+                                <i class="fas fa-shield-alt" style="color: #4caf50;"></i> 
+                                断签保护
                             </h3>
                             <div style="background: #e8f5e9; padding: 15px; border-radius: 10px; border-left: 4px solid #4caf50;">
-                                <p style="margin: 0 0 10px 0;"><strong>补签机会：</strong>每连续签到 7 天可获得 1 次补签机会</p>
+                                <p style="margin: 0 0 10px 0;"><strong>自动保护：</strong>会员用户忘记签到时，系统自动使用补签机会保护连续记录</p>
                                 <ul style="margin: 0; padding-left: 20px; font-size: 14px;">
-                                    <li>可补签最近 7 天内的日期（不含今天）</li>
-                                    <li>每个日期只能补签一次</li>
-                                    <li style="color: #ff9800;"><strong>每月最多补签 3 次</strong>（自然月重置）</li>
-                                    <li>补签可恢复连续天数，可能触发里程碑奖励</li>
-                                    <li style="color: #f44336; margin-top: 8px;"><strong>智能计算：</strong>系统会自动从今天倒推检查，确保连续天数正确</li>
+                                    <li>体验会员：每月 1 次自动保护</li>
+                                    <li>月度会员：每月 3 次自动保护</li>
+                                    <li>季度会员：每月 5 次自动保护</li>
+                                    <li>年度会员：每月 10 次自动保护</li>
+                                    <li>企业版：无限次自动保护</li>
+                                    <li style="color: #ff9800;"><strong>免费用户无保护，断签即中断</strong></li>
                                 </ul>
                             </div>
                         </div>
@@ -808,7 +808,7 @@ profileHeader.innerHTML = `
                         <div style="background: #fff3e0; padding: 15px; border-radius: 10px; border-left: 4px solid #ff9800;">
                             <p style="margin: 0; color: #666; font-size: 14px;">
                                 <i class="fas fa-lightbulb" style="color: #ff9800; margin-right: 8px;"></i>
-                                <strong>温馨提示：</strong>签到数据永久保存，即使中断也可以通过补签恢复连续记录。建议每天定闹钟签到哦！
+                                <strong>温馨提示：</strong>会员用户享有断签保护，即使忘记签到也不会中断连续记录。建议每天定闹钟签到哦！
                             </p>
                         </div>
                     </div>
@@ -4089,11 +4089,6 @@ if (codes.length === 0) {
                     const diffTime = today - dayDate;
                     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
                     
-                    if (diffDays > 0 && diffDays <= 7 && checkinStatus?.makeupChances > 0 && getMonthMakeupUsed() < 3) {
-                        dayElement.classList.add('can-makeup');
-                        dayElement.title = '点击补签';
-                        dayElement.onclick = () => showMakeupDialog(dateStr);
-                    }
                 }
                 
                 gridElement.appendChild(dayElement);
@@ -4124,8 +4119,8 @@ if (codes.length === 0) {
             loadCheckinHistory(currentCalendarYear, currentCalendarMonth);
         }
 
-        // 显示补签对话框
-        function showMakeupDialog(date) {
+        // 补签功能已移除，改为自动断签保护系统
+        // 会员用户忘记签到时，系统自动使用补签机会保护连续记录
             // 前端预检：检查月度补签次数
             const monthUsed = getMonthMakeupUsed();
             if (monthUsed >= 3) {

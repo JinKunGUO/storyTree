@@ -376,6 +376,148 @@ async function processMonthlyBonus() {
 }
 
 /**
+ * 自动断签保护
+ * 会员用户忘记签到时，系统自动使用补签机会保护连续记录
+ * 每月自动补签次数：体验1次/月度3次/季度5次/年度10次/企业版无限
+ */
+async function processAutoCheckinProtection() {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  try {
+    // 查找所有有补签机会的会员用户
+    const usersWithChances = await prisma.users.findMany({
+      where: {
+        makeup_chances: { gt: 0 },
+        membership_tier: { not: 'free' },
+        membership_expires_at: { gt: now }
+      },
+      select: {
+        id: true,
+        username: true,
+        membership_tier: true,
+        makeup_chances: true,
+        consecutive_days: true,
+        last_checkin_date: true,
+        points: true
+      }
+    });
+
+    // 会员等级对应的每月自动补签次数
+    const autoMakeupLimits: Record<string, number> = {
+      trial: 1,
+      monthly: 3,
+      quarterly: 5,
+      yearly: 10,
+      enterprise: -1 // 无限
+    };
+
+    for (const user of usersWithChances) {
+      const tier = user.membership_tier;
+      const maxAutoMakeup = autoMakeupLimits[tier] || 0;
+
+      // 检查本月已使用的自动补签次数
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      const usedAutoMakeup = await prisma.checkin_records.count({
+        where: {
+          user_id: user.id,
+          is_makeup: true,
+          checkin_date: {
+            gte: monthStart,
+            lte: monthEnd,
+          }
+        }
+      });
+
+      // 如果已达到上限，跳过
+      if (maxAutoMakeup !== -1 && usedAutoMakeup >= maxAutoMakeup) {
+        continue;
+      }
+
+      // 检查昨天是否签到
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      const yesterdayCheckin = await prisma.checkin_records.findUnique({
+        where: {
+          user_id_checkin_date: {
+            user_id: user.id,
+            checkin_date: yesterday,
+          }
+        }
+      });
+
+      // 如果昨天已签到，跳过
+      if (yesterdayCheckin) {
+        continue;
+      }
+
+      // 检查最后签到日期是否是昨天之前
+      const lastCheckin = user.last_checkin_date ? new Date(user.last_checkin_date) : null;
+      if (lastCheckin && lastCheckin >= yesterday) {
+        continue; // 最后签到是昨天或今天，不需要保护
+      }
+
+      // 自动补签昨天
+      const newConsecutiveDays = (user.consecutive_days || 0) + 1;
+      const pointsEarned = Math.floor(10 * (newConsecutiveDays <= 7 ? newConsecutiveDays : 7)); // 简化计算
+
+      await prisma.$transaction(async (tx) => {
+        // 创建补签记录
+        await tx.checkin_records.create({
+          data: {
+            user_id: user.id,
+            checkin_date: yesterday,
+            consecutive_days: newConsecutiveDays,
+            points_earned: pointsEarned,
+            is_makeup: true,
+          }
+        });
+
+        // 更新用户信息
+        await tx.users.update({
+          where: { id: user.id },
+          data: {
+            makeup_chances: user.makeup_chances - 1,
+            consecutive_days: newConsecutiveDays,
+            last_checkin_date: today,
+            points: user.points + pointsEarned,
+          }
+        });
+
+        // 记录积分交易
+        await tx.point_transactions.create({
+          data: {
+            user_id: user.id,
+            amount: pointsEarned,
+            type: 'auto_makeup_checkin',
+            description: `自动断签保护补签（${tier}）`,
+          }
+        });
+
+        // 发送通知
+        await tx.notifications.create({
+          data: {
+            user_id: user.id,
+            type: 'auto_makeup',
+            title: '🛡️ 断签保护已触发',
+            content: `您昨天忘记签到，系统已自动为您补签。本月剩余保护次数：${maxAutoMakeup === -1 ? '无限' : maxAutoMakeup - usedAutoMakeup - 1}`,
+            link: '/profile.html',
+          }
+        });
+      });
+
+      console.log(`🛡️ 自动断签保护：${user.username} (${tier})`);
+    }
+
+    console.log(`✅ 自动断签保护检查完成，共处理 ${usersWithChances.length} 人`);
+  } catch (error) {
+    console.error('自动断签保护失败:', error);
+  }
+}
+
+/**
  * 清理过期的 pending 订单
  * 将已过期（expires_at < now）的 pending 订单标记为 expired
  */
@@ -410,6 +552,7 @@ async function runMembershipWorker() {
   await processExpiredMemberships();
   await processExpiredOrders();
   await processMonthlyBonus();
+  await processAutoCheckinProtection();
   
   // 然后每天执行
   setInterval(async () => {
@@ -418,6 +561,7 @@ async function runMembershipWorker() {
     await processExpiredMemberships();
     await processExpiredOrders();
     await processMonthlyBonus();
+    await processAutoCheckinProtection();
   }, CHECK_INTERVAL);
 }
 
