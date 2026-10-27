@@ -521,6 +521,10 @@ profileHeader.innerHTML = `
                                         升级进度：<span id="levelProgressText">加载中...</span>
                                         ${membershipExpiresText ? `<span style="margin-left: 10px; color: ${membershipTier.textColor};"><i class="fas fa-clock"></i> ${membershipExpiresText}</span>` : ''}
                                     </div>
+                                    <!-- 进度条 -->
+                                    <div style="margin-top: 8px; background: var(--st-gray-200, #e0e0e0); border-radius: 10px; height: 8px; overflow: hidden;">
+                                        <div id="levelProgressBar" style="background: linear-gradient(90deg, var(--st-primary-500), var(--st-primary-700)); height: 100%; width: 0%; transition: width 0.3s; border-radius: 10px;"></div>
+                                    </div>
                                     <div style="color: #999; font-size: 12px; margin-top: 3px;">
                                         <i class="fas fa-info-circle"></i> 等级影响 AI 配额基础值
                                     </div>
@@ -1053,6 +1057,12 @@ profileHeader.innerHTML = `
                 } else {
                     levelProgressTextEl.textContent = '🎉 已达最高等级';
                 }
+            }
+            
+            // 更新进度条
+            const levelProgressBarEl = document.getElementById('levelProgressBar');
+            if (levelProgressBarEl) {
+                levelProgressBarEl.style.width = `${levelInfo.progress}%`;
             }
         }
         
