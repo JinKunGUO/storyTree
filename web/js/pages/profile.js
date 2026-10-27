@@ -787,13 +787,13 @@ profileHeader.innerHTML = `
                         
                         <!-- 断签保护规则 -->
                         <div style="margin-bottom: 25px;">
-                            <h3 style="color: #333; margin: 0 0 15px 0; font-size: 18px;">
+                            <h3 style="color: var(--st-text-primary, #333); margin: 0 0 15px 0; font-size: 18px;">
                                 <i class="fas fa-shield-alt" style="color: #4caf50;"></i> 
                                 断签保护
                             </h3>
-                            <div style="background: #e8f5e9; padding: 15px; border-radius: 10px; border-left: 4px solid #4caf50;">
-                                <p style="margin: 0 0 10px 0;"><strong>自动保护：</strong>会员用户忘记签到时，系统自动使用补签机会保护连续记录</p>
-                                <ul style="margin: 0; padding-left: 20px; font-size: 14px;">
+                            <div style="background: var(--st-bg-elevated, #e8f5e9); padding: 15px; border-radius: 10px; border-left: 4px solid #4caf50;">
+                                <p style="margin: 0 0 10px 0; color: var(--st-text-primary, #333);"><strong>自动保护：</strong>会员用户忘记签到时，系统自动使用补签机会保护连续记录</p>
+                                <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: var(--st-text-secondary, #666);">
                                     <li>体验会员：每月 1 次自动保护</li>
                                     <li>月度会员：每月 3 次自动保护</li>
                                     <li>季度会员：每月 5 次自动保护</li>
@@ -805,8 +805,8 @@ profileHeader.innerHTML = `
                         </div>
                         
                         <!-- 温馨提示 -->
-                        <div style="background: #fff3e0; padding: 15px; border-radius: 10px; border-left: 4px solid #ff9800;">
-                            <p style="margin: 0; color: #666; font-size: 14px;">
+                        <div style="background: var(--st-bg-elevated, #fff3e0); padding: 15px; border-radius: 10px; border-left: 4px solid #ff9800;">
+                            <p style="margin: 0; color: var(--st-text-secondary, #666); font-size: 14px;">
                                 <i class="fas fa-lightbulb" style="color: #ff9800; margin-right: 8px;"></i>
                                 <strong>温馨提示：</strong>会员用户享有断签保护，即使忘记签到也不会中断连续记录。建议每天定闹钟签到哦！
                             </p>
