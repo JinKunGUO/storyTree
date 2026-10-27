@@ -438,88 +438,63 @@ const membershipExpiresText = membershipExpires && user.membership_tier !== 'fre
 
 profileHeader.innerHTML = `
                 <div class="profile-main-content">
-                    <!-- 第一层级：头像 + 用户名 + 会员徽章 -->
-                    <div style="display: flex; align-items: flex-start; gap: 20px; margin-bottom: 20px;">
-                        <div class="profile-avatar" style="background: none; overflow: hidden; position: relative; cursor: pointer; width: 80px; height: 80px; flex-shrink: 0;" onclick="triggerAvatarUpload()" title="点击更换头像">
-                            <img src="${avatarUrl}" alt="头像" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" id="profileAvatarImg">
-                            <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.6); color: white; font-size: 11px; text-align: center; padding: 4px 0; opacity: 0; transition: opacity 0.2s; border-radius: 0 0 40px 40px;" class="avatar-edit-hint">
-                                <i class="fas fa-camera"></i> 更换
-                            </div>
-                        </div>
-                        <input type="file" id="avatarFileInput" accept="image/*" style="display: none;" onchange="handleAvatarUpload(this)">
-                        
-                        <div style="flex: 1; min-width: 0;">
-                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;">
-                                <h1 style="margin: 0; font-size: 24px; font-weight: 700; color: var(--st-text-primary, #333);">
-                                    ${escapeHtml(user.username)}
-                                </h1>
-                                <button onclick="showEditProfileModal()" style="
-                                    background: none;
-                                    border: none;
-                                    color: var(--st-text-tertiary);
-                                    padding: 4px 8px;
-                                    font-size: 14px;
-                                    cursor: pointer;
-                                    transition: all 0.2s;
-                                    display: inline-flex;
-                                    align-items: center;
-                                    gap: 4px;
-                                    border-radius: 6px;
-                                " onmouseover="this.style.color='var(--st-primary-500)'; this.style.background='var(--st-bg-elevated, #f0f0f0)';"
-                                   onmouseout="this.style.color='var(--st-text-tertiary)'; this.style.background='none';">
-                                    <i class="fas fa-pen" style="font-size: 12px;"></i>
-                                </button>
-                                <span id="userBadgeContainer">
-                                    <!-- 徽章将通过 JavaScript 动态插入 -->
-                                </span>
-                            </div>
-                            
-                            <!-- 会员徽章（突出显示） -->
-                            <div style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: ${membershipTier.bg}; border-radius: 20px; border: 1px solid ${membershipTier.color}; margin-bottom: 8px;">
-                                <i class="fas ${membershipTier.icon}" style="color: ${membershipTier.color}; font-size: 16px;"></i>
-                                <span style="color: ${membershipTier.textColor}; font-size: 14px; font-weight: 600;">${membershipTier.name}</span>
-                                ${membershipExpiresText ? `<span style="color: ${membershipTier.textColor}; font-size: 12px; opacity: 0.8; margin-left: 4px;">${membershipExpiresText}</span>` : ''}
-                            </div>
-                            
-                            <div style="color: var(--st-text-secondary, #666); font-size: 14px; display: flex; align-items: center; gap: 6px;">
-                                <i class="fas fa-envelope" style="font-size: 12px;"></i>
-                                ${escapeHtml(user.email)}
-                            </div>
+                    <div class="profile-avatar" style="background: none; overflow: hidden; position: relative; cursor: pointer;" onclick="triggerAvatarUpload()" title="点击更换头像">
+                        <img src="${avatarUrl}" alt="头像" style="width: 100%; height: 100%; object-fit: cover;" id="profileAvatarImg">
+                        <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.5); color: white; font-size: 11px; text-align: center; padding: 4px 0; opacity: 0; transition: opacity 0.2s;" class="avatar-edit-hint">
+                            <i class="fas fa-camera"></i> 更换
                         </div>
                     </div>
-
-                    <!-- 第二层级：积分/码字/补签（次要信息，缩小字号） -->
-                    <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 20px; padding: 12px 16px; background: var(--st-bg-elevated, #f8f9fa); border-radius: 10px; flex-wrap: wrap;">
-                        <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--st-text-secondary, #666);">
-                            <i class="fas fa-star" style="color: #ffd700;"></i> 
-                            <strong style="color: var(--st-text-primary, #333);">${points.toLocaleString()}</strong> 积分
-                            <button class="help-hint-btn" onclick="showPointsHistory()" title="查看积分明细" style="padding: 2px 6px; font-size: 11px;">?</button>
-                        </span>
-                        <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--st-text-secondary, #666);">
-                            <i class="fas fa-pen-fancy" style="color: var(--st-primary-500);"></i> 
-                            <strong style="color: var(--st-text-primary, #333);">${wordCount.toLocaleString()}</strong> 字
-                        </span>
-                        <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--st-text-secondary, #666);">
-                            <i class="fas fa-calendar-check" style="color: #4caf50;"></i> 
-                            <strong style="color: var(--st-text-primary, #333);">${makeupChances}</strong> 次补签
-                        </span>
-                    </div>
-
-                    <!-- 第三层级：等级卡片（可折叠） -->
-                    <div id="userLevelCard" style="
-                        margin-bottom: 20px;
-                        padding: 16px 20px;
-                        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                        border-radius: 12px;
-                        border-left: 4px solid var(--st-primary-500);
-                        cursor: pointer;
-                        transition: all 0.3s;
-                    " onclick="toggleLevelCard()">
-                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px;">
-                            <div style="display: flex; align-items: center; gap: 15px; flex: 1; min-width: 0;">
+                    <input type="file" id="avatarFileInput" accept="image/*" style="display: none;" onchange="handleAvatarUpload(this)">
+                    <div class="profile-info">
+                        <div class="profile-name">
+                            ${escapeHtml(user.username)}
+                            <button onclick="showEditProfileModal()" style="
+                                background: none;
+                                border: none;
+                                color: var(--st-text-tertiary);
+                                padding: 2px 6px;
+                                font-size: 12px;
+                                cursor: pointer;
+                                transition: all 0.2s;
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 3px;
+                            " onmouseover="this.style.color='var(--st-primary-500)';"
+                               onmouseout="this.style.color='var(--st-text-tertiary)';">
+                                <i class="fas fa-pen" style="font-size: 10px;"></i>
+                            </button>
+                            <span id="userBadgeContainer">
+                                <!-- 徽章将通过 JavaScript 动态插入 -->
+                            </span>
+                        </div>
+                        <div class="profile-email">
+                            <i class="fas fa-envelope"></i>
+                            ${escapeHtml(user.email)}
+                        </div>
+                        <div class="profile-points">
+                            <span><i class="fas fa-star"></i> 积分：${points.toLocaleString()}
+                            <button class="help-hint-btn" onclick="showPointsHistory()" title="查看积分明细">?</button></span>
+                            <span><i class="fas fa-pen-fancy"></i> 码字：${wordCount.toLocaleString()}字</span>
+                            <span><i class="fas fa-calendar-check"></i> 补签：${makeupChances}次</span>
+                        </div>
+                        <!-- 合并等级卡片：用户等级 + 会员等级 -->
+                        <div id="userLevelCard" style="
+                            margin-top: 15px;
+                            padding: 15px 20px;
+                            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                            border-radius: 12px;
+                            border-left: 4px solid var(--st-primary-500);
+                            display: flex;
+                            flex-wrap: wrap;
+                            align-items: center;
+                            justify-content: space-between;
+                            gap: 20px;
+                        ">
+                            <div style="display: flex; align-items: center; gap: 15px; flex: 1; flex-wrap: wrap;">
+                                <!-- 用户等级图标 -->
                                 <div id="userLevelIcon" style="
-                                    width: 45px;
-                                    height: 45px;
+                                    width: 50px;
+                                    height: 50px;
                                     border-radius: 50%;
                                     background: linear-gradient(135deg, var(--st-primary-500), var(--st-primary-700));
                                     display: flex;
@@ -527,87 +502,73 @@ profileHeader.innerHTML = `
                                     justify-content: center;
                                     color: white;
                                     font-weight: 700;
-                                    font-size: 15px;
+                                    font-size: 16px;
                                     flex-shrink: 0;
                                 ">
                                     Lv1
                                 </div>
-                                <div style="flex: 1; min-width: 0;">
-                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap;">
-                                        <span style="font-weight: 600; color: var(--st-text-primary, #333); font-size: 15px;" id="levelName">加载中...</span>
-                                        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: ${membershipTier.bg}; border-radius: 10px; font-size: 11px; font-weight: 600; color: ${membershipTier.textColor};">
-                                            <i class="fas ${membershipTier.icon}" style="font-size: 10px;"></i>
+                                <div style="flex: 1; min-width: 200px;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px; flex-wrap: wrap;">
+                                        <span style="font-weight: 600; color: #333; font-size: 16px;" id="levelName">加载中...</span>
+                                        <button class="help-hint-btn" onclick="showLevelInfo()" title="查看等级说明">?</button>
+                                        <!-- 会员等级徽章（合并到等级卡片中） -->
+                                        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; background: ${membershipTier.bg}; border-radius: 12px; border: 1px solid ${membershipTier.color}; font-size: 12px; font-weight: 600; color: ${membershipTier.textColor};">
+                                            <i class="fas ${membershipTier.icon}" style="color: ${membershipTier.color}; font-size: 11px;"></i>
                                             ${membershipTier.name}
                                         </span>
                                     </div>
-                                    <div style="color: var(--st-text-secondary, #666); font-size: 12px;" id="levelProgress">
+                                    <div style="color: #666; font-size: 13px;" id="levelProgress">
                                         升级进度：<span id="levelProgressText">加载中...</span>
+                                        ${membershipExpiresText ? `<span style="margin-left: 10px; color: ${membershipTier.textColor};"><i class="fas fa-clock"></i> ${membershipExpiresText}</span>` : ''}
+                                    </div>
+                                    <div style="color: #999; font-size: 12px; margin-top: 3px;">
+                                        <i class="fas fa-info-circle"></i> 等级影响 AI 配额基础值
                                     </div>
                                 </div>
                             </div>
-                            <i class="fas fa-chevron-down" id="levelCardToggleIcon" style="color: var(--st-text-tertiary); transition: transform 0.3s; flex-shrink: 0;"></i>
+                            <!-- 会员按钮（根据会员状态显示不同文案） -->
+                            <a href="/membership.html" style="
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 8px;
+                                padding: 8px 16px;
+                                background: ${user.membership_tier && user.membership_tier !== 'free' ? 'linear-gradient(135deg, #10b981 0%, #34d399 100%)' : 'linear-gradient(135deg, #ffd700 0%, #ffed4e 100%)'};
+                                color: ${user.membership_tier && user.membership_tier !== 'free' ? 'white' : '#333'};
+                                border-radius: 20px;
+                                font-size: 14px;
+                                font-weight: 600;
+                                text-decoration: none;
+                                transition: all 0.3s;
+                                box-shadow: 0 2px 8px ${user.membership_tier && user.membership_tier !== 'free' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255, 215, 0, 0.3)'};
+                                flex-shrink: 0;
+                            " onmouseover="this.style.transform='translateY(-2px)';"
+                               onmouseout="this.style.transform='translateY(0)';">
+                                <i class="fas ${user.membership_tier && user.membership_tier !== 'free' ? 'fa-check-circle' : 'fa-crown'}"></i>
+                                <span>${user.membership_tier && user.membership_tier !== 'free' ? '会员中心' : '升级会员获得更多配额'}</span>
+                            </a>
                         </div>
-                        
-                        <!-- 展开的详细内容（默认隐藏） -->
-                        <div id="levelCardDetail" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--st-gray-200, #e0e0e0);">
-                            <div style="color: var(--st-text-secondary, #666); font-size: 13px; line-height: 1.8;">
-                                <p style="margin: 0 0 10px 0;"><i class="fas fa-info-circle" style="color: var(--st-primary-500);"></i> 等级影响 AI 配额基础值</p>
-                                ${membershipExpiresText ? `<p style="margin: 0 0 10px 0;"><i class="fas fa-clock" style="color: ${membershipTier.color};"></i> ${membershipExpiresText}</p>` : ''}
-                                <div style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
-                                    <button onclick="event.stopPropagation(); showLevelInfo()" style="
-                                        padding: 6px 14px;
-                                        background: var(--st-primary-500);
-                                        color: white;
-                                        border: none;
-                                        border-radius: 8px;
-                                        font-size: 13px;
-                                        cursor: pointer;
-                                        transition: all 0.2s;
-                                    " onmouseover="this.style.opacity='0.9';" onmouseout="this.style.opacity='1';">
-                                        <i class="fas fa-question-circle"></i> 查看成长体系
-                                    </button>
-                                    <a href="/membership.html" onclick="event.stopPropagation();" style="
-                                        display: inline-flex;
-                                        align-items: center;
-                                        gap: 6px;
-                                        padding: 6px 14px;
-                                        background: ${user.membership_tier && user.membership_tier !== 'free' ? 'linear-gradient(135deg, #10b981 0%, #34d399 100%)' : 'linear-gradient(135deg, #ffd700 0%, #ffed4e 100%)'};
-                                        color: ${user.membership_tier && user.membership_tier !== 'free' ? 'white' : '#333'};
-                                        border-radius: 8px;
-                                        font-size: 13px;
-                                        font-weight: 600;
-                                        text-decoration: none;
-                                        transition: all 0.3s;
-                                    ">
-                                        <i class="fas ${user.membership_tier && user.membership_tier !== 'free' ? 'fa-check-circle' : 'fa-crown'}"></i>
-                                        <span>${user.membership_tier && user.membership_tier !== 'free' ? '会员中心' : '升级会员'}</span>
-                                    </a>
-                                </div>
+                        <!-- 统计数据移到个人信息栏内 -->
+                        <div class="profile-stats-row">
+                            <div class="profile-stat-item">
+                                <div class="profile-stat-icon"><i class="fas fa-book"></i></div>
+                                <div class="profile-stat-value" id="storyCount">-</div>
+                                <div class="profile-stat-label">创作故事</div>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- 第四层级：统计数据（卡片式布局） -->
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px;">
-                        <div style="background: var(--st-bg-elevated, #f8f9fa); padding: 16px; border-radius: 10px; text-align: center; transition: transform 0.2s;">
-                            <div style="color: var(--st-primary-500); font-size: 20px; margin-bottom: 6px;"><i class="fas fa-book"></i></div>
-                            <div style="font-size: 20px; font-weight: 700; color: var(--st-text-primary, #333);" id="storyCount">-</div>
-                            <div style="font-size: 12px; color: var(--st-text-tertiary, #999); margin-top: 2px;">创作故事</div>
-                        </div>
-                        <div style="background: var(--st-bg-elevated, #f8f9fa); padding: 16px; border-radius: 10px; text-align: center; transition: transform 0.2s;">
-                            <div style="color: #4caf50; font-size: 20px; margin-bottom: 6px;"><i class="fas fa-file-alt"></i></div>
-                            <div style="font-size: 20px; font-weight: 700; color: var(--st-text-primary, #333);" id="nodeCount">-</div>
-                            <div style="font-size: 12px; color: var(--st-text-tertiary, #999); margin-top: 2px;">章节数量</div>
-                        </div>
-                        <div style="background: var(--st-bg-elevated, #f8f9fa); padding: 16px; border-radius: 10px; text-align: center; transition: transform 0.2s;">
-                            <div style="color: #f44336; font-size: 20px; margin-bottom: 6px;"><i class="fas fa-heart"></i></div>
-                            <div style="font-size: 20px; font-weight: 700; color: var(--st-text-primary, #333);" id="likeCount">-</div>
-                            <div style="font-size: 12px; color: var(--st-text-tertiary, #999); margin-top: 2px;">获得点赞</div>
-                        </div>
-                        <div style="background: var(--st-bg-elevated, #f8f9fa); padding: 16px; border-radius: 10px; text-align: center; transition: transform 0.2s;">
-                            <div style="color: #ff9800; font-size: 20px; margin-bottom: 6px;"><i class="fas fa-eye"></i></div>
-                            <div style="font-size: 20px; font-weight: 700; color: var(--st-text-primary, #333);" id="viewCount">-</div>
-                            <div style="font-size: 12px; color: var(--st-text-tertiary, #999); margin-top: 2px;">总浏览量</div>
+                            <div class="profile-stat-item">
+                                <div class="profile-stat-icon"><i class="fas fa-file-alt"></i></div>
+                                <div class="profile-stat-value" id="nodeCount">-</div>
+                                <div class="profile-stat-label">章节数量</div>
+                            </div>
+                            <div class="profile-stat-item">
+                                <div class="profile-stat-icon"><i class="fas fa-heart"></i></div>
+                                <div class="profile-stat-value" id="likeCount">-</div>
+                                <div class="profile-stat-label">获得点赞</div>
+                            </div>
+                            <div class="profile-stat-item">
+                                <div class="profile-stat-icon"><i class="fas fa-eye"></i></div>
+                                <div class="profile-stat-value" id="viewCount">-</div>
+                                <div class="profile-stat-label">总浏览量</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1095,19 +1056,6 @@ profileHeader.innerHTML = `
             }
         }
         
-        // 切换等级卡片折叠/展开
-        function toggleLevelCard() {
-            const detail = document.getElementById('levelCardDetail');
-            const icon = document.getElementById('levelCardToggleIcon');
-            if (detail.style.display === 'none') {
-                detail.style.display = 'block';
-                icon.style.transform = 'rotate(180deg)';
-            } else {
-                detail.style.display = 'none';
-                icon.style.transform = 'rotate(0deg)';
-            }
-        }
-
         // 显示等级说明弹窗
         function showLevelInfo() {
             const levels = [
