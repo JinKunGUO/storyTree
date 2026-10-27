@@ -420,11 +420,31 @@ const points = user.points || 0;
             }
 
 const avatarUrl = user.avatar || '/assets/default-avatar.svg?v=2';
+
+// 会员等级展示配置
+const membershipTierMap = {
+    free: { name: '免费用户', icon: 'fa-user', color: '#9ca3af', bg: 'linear-gradient(135deg, #f3f4f6, #e5e7eb)', textColor: '#4b5563' },
+    trial: { name: '体验会员', icon: 'fa-medal', color: '#cd7f32', bg: 'linear-gradient(135deg, #fdf0e0, #fae0c8)', textColor: '#8b5a2b' },
+    monthly: { name: '月度会员', icon: 'fa-crown', color: '#c0c0c0', bg: 'linear-gradient(135deg, #f8f9fa, #e9ecef)', textColor: '#495057' },
+    quarterly: { name: '季度会员', icon: 'fa-crown', color: '#c0c0c0', bg: 'linear-gradient(135deg, #e8f0fe, #d2e3fc)', textColor: '#1a56db' },
+    yearly: { name: '年度会员', icon: 'fa-crown', color: '#ffd700', bg: 'linear-gradient(135deg, #fffbeb, #fef3c7)', textColor: '#b45309' },
+    enterprise: { name: '企业版', icon: 'fa-gem', color: '#b9f2ff', bg: 'linear-gradient(135deg, #ecfeff, #cffafe)', textColor: '#0e7490' }
+};
+const membershipTier = membershipTierMap[user.membership_tier] || membershipTierMap.free;
+const membershipExpires = user.membership_expires_at ? new Date(user.membership_expires_at) : null;
+const membershipExpiresText = membershipExpires && user.membership_tier !== 'free'
+    ? `${membershipExpires.getFullYear()}-${String(membershipExpires.getMonth() + 1).padStart(2, '0')}-${String(membershipExpires.getDate()).padStart(2, '0')} 到期`
+    : '';
+
 profileHeader.innerHTML = `
                 <div class="profile-main-content">
-                    <div class="profile-avatar" style="background: none; overflow: hidden;">
-                        <img src="${avatarUrl}" alt="头像" style="width: 100%; height: 100%; object-fit: cover;">
+                    <div class="profile-avatar" style="background: none; overflow: hidden; position: relative; cursor: pointer;" onclick="triggerAvatarUpload()" title="点击更换头像">
+                        <img src="${avatarUrl}" alt="头像" style="width: 100%; height: 100%; object-fit: cover;" id="profileAvatarImg">
+                        <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.5); color: white; font-size: 11px; text-align: center; padding: 4px 0; opacity: 0; transition: opacity 0.2s;" class="avatar-edit-hint">
+                            <i class="fas fa-camera"></i> 更换
+                        </div>
                     </div>
+                    <input type="file" id="avatarFileInput" accept="image/*" style="display: none;" onchange="handleAvatarUpload(this)">
                     <div class="profile-info">
                         <div class="profile-name">
                             ${escapeHtml(user.username)}
@@ -446,6 +466,12 @@ profileHeader.innerHTML = `
                             <span id="userBadgeContainer">
                                 <!-- 徽章将通过 JavaScript 动态插入 -->
                             </span>
+                        </div>
+                        <!-- 会员等级徽章 -->
+                        <div style="display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 4px 12px; background: ${membershipTier.bg}; border-radius: 20px; border: 1px solid ${membershipTier.color};">
+                            <i class="fas ${membershipTier.icon}" style="color: ${membershipTier.color}; font-size: 14px;"></i>
+                            <span style="color: ${membershipTier.textColor}; font-size: 13px; font-weight: 600;">${membershipTier.name}</span>
+                            ${membershipExpiresText ? `<span style="color: ${membershipTier.textColor}; font-size: 11px; opacity: 0.8;">${membershipExpiresText}</span>` : ''}
                         </div>
                         <div class="profile-email">
                             <i class="fas fa-envelope"></i>
@@ -499,25 +525,25 @@ profileHeader.innerHTML = `
                                     </div>
                                 </div>
                             </div>
-                            <!-- 升级会员按钮 -->
+                            <!-- 会员按钮（根据会员状态显示不同文案） -->
                             <a href="/membership.html" style="
                                 display: inline-flex;
                                 align-items: center;
                                 gap: 8px;
                                 padding: 8px 16px;
-                                background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
-                                color: #333;
+                                background: ${user.membership_tier && user.membership_tier !== 'free' ? 'linear-gradient(135deg, #10b981 0%, #34d399 100%)' : 'linear-gradient(135deg, #ffd700 0%, #ffed4e 100%)'};
+                                color: ${user.membership_tier && user.membership_tier !== 'free' ? 'white' : '#333'};
                                 border-radius: 20px;
                                 font-size: 14px;
                                 font-weight: 600;
                                 text-decoration: none;
                                 transition: all 0.3s;
-                                box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+                                box-shadow: 0 2px 8px ${user.membership_tier && user.membership_tier !== 'free' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255, 215, 0, 0.3)'};
                                 flex-shrink: 0;
-                            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(255, 215, 0, 0.5)';" 
-                               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(255, 215, 0, 0.3)';">
-                                <i class="fas fa-crown"></i>
-                                <span>升级会员获得更多配额</span>
+                            " onmouseover="this.style.transform='translateY(-2px)';"
+                               onmouseout="this.style.transform='translateY(0)';">
+                                <i class="fas ${user.membership_tier && user.membership_tier !== 'free' ? 'fa-check-circle' : 'fa-crown'}"></i>
+                                <span>${user.membership_tier && user.membership_tier !== 'free' ? '会员中心' : '升级会员获得更多配额'}</span>
                             </a>
                         </div>
                         <!-- 统计数据移到个人信息栏内 -->
@@ -4252,6 +4278,56 @@ if (codes.length === 0) {
                 console.error('补签失败:', error);
                 showMessage('补签失败，请稍后重试', 'error');
             }
+        }
+
+        // ========== 头像上传 ==========
+        function triggerAvatarUpload() {
+            document.getElementById('avatarFileInput').click();
+        }
+
+        async function handleAvatarUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            // 验证文件类型
+            if (!file.type.startsWith('image/')) {
+                toast.error('请选择图片文件');
+                return;
+            }
+
+            // 验证文件大小（5MB）
+            if (file.size > 5 * 1024 * 1024) {
+                toast.error('图片大小不能超过 5MB');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('avatar', file);
+
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                const res = await fetch('/api/upload/avatar', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.error || '上传失败');
+                }
+
+                const data = await res.json();
+                // 更新头像显示
+                document.getElementById('profileAvatarImg').src = data.user.avatar;
+                toast.success('头像更新成功');
+            } catch (error) {
+                console.error('头像上传失败:', error);
+                toast.error('头像上传失败：' + error.message);
+            }
+
+            // 清空 input 以便重复选择同一文件
+            input.value = '';
         }
 
         // ========== 编辑资料弹窗 ==========
