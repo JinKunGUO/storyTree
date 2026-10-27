@@ -42,7 +42,7 @@ router.get('/leaderboard', optionalAuth, async (req, res) => {
       points: number;
       story_count: bigint;
       node_count: bigint;
-      like_count: bigint;
+      read_count: bigint;
       follower_count: bigint;
       total_score: number;
     }>>`
@@ -54,9 +54,9 @@ router.get('/leaderboard', optionalAuth, async (req, res) => {
         u.points,
         COUNT(DISTINCT s.id) as story_count,
         COUNT(DISTINCT n.id) as node_count,
-        COALESCE(SUM(n.like_count), 0) as like_count,
+        COALESCE(SUM(n.read_count), 0) as read_count,
         (SELECT COUNT(*) FROM follows f WHERE f.following_id = u.id) as follower_count,
-        (COUNT(DISTINCT s.id) * 10 + COUNT(DISTINCT n.id) * 5 + COALESCE(SUM(n.like_count), 0) * 2 + (SELECT COUNT(*) FROM follows f WHERE f.following_id = u.id) * 3) as total_score
+        (COUNT(DISTINCT s.id) * 10 + COUNT(DISTINCT n.id) * 5 + COALESCE(SUM(n.read_count), 0) * 2 + (SELECT COUNT(*) FROM follows f WHERE f.following_id = u.id) * 3) as total_score
       FROM users u
       LEFT JOIN stories s ON s.author_id = u.id AND s.created_at >= ${startDate}
       LEFT JOIN nodes n ON n.author_id = u.id AND n.created_at >= ${startDate} AND n.review_status = 'APPROVED'
@@ -70,16 +70,16 @@ router.get('/leaderboard', optionalAuth, async (req, res) => {
     // 转换 BigInt 为 Number
     const formattedLeaderboard = leaderboard.map((user, index) => ({
       rank: index + 1,
-      userId: user.user_id,
+      userId: Number(user.user_id),
       username: user.username,
       avatar: user.avatar,
-      level: user.level,
-      points: user.points,
+      level: Number(user.level),
+      points: Number(user.points),
       storyCount: Number(user.story_count),
       nodeCount: Number(user.node_count),
-      likeCount: Number(user.like_count),
+      readCount: Number(user.read_count),
       followerCount: Number(user.follower_count),
-      totalScore: user.total_score
+      totalScore: Number(user.total_score)
     }));
 
     res.json({
@@ -89,7 +89,12 @@ router.get('/leaderboard', optionalAuth, async (req, res) => {
     });
   } catch (error) {
     console.error('获取创作排行榜失败:', error);
-    res.status(500).json({ error: '获取排行榜失败' });
+    console.error('错误详情:', error instanceof Error ? error.message : String(error));
+    console.error('错误堆栈:', error instanceof Error ? error.stack : '无');
+    res.status(500).json({ 
+      error: '获取排行榜失败',
+      detail: error instanceof Error ? error.message : String(error)
+    });
   }
 });
 
