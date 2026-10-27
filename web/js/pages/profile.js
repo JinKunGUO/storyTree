@@ -421,14 +421,14 @@ const points = user.points || 0;
 
 const avatarUrl = user.avatar || '/assets/default-avatar.svg?v=2';
 
-// 会员等级展示配置
+// 创作特权展示配置（原会员等级）
 const membershipTierMap = {
-    free: { name: '免费用户', icon: 'fa-user', color: '#9ca3af', bg: 'linear-gradient(135deg, #f3f4f6, #e5e7eb)', textColor: '#4b5563' },
-    trial: { name: '体验会员', icon: 'fa-medal', color: '#cd7f32', bg: 'linear-gradient(135deg, #fdf0e0, #fae0c8)', textColor: '#8b5a2b' },
-    monthly: { name: '月度会员', icon: 'fa-crown', color: '#c0c0c0', bg: 'linear-gradient(135deg, #f8f9fa, #e9ecef)', textColor: '#495057' },
-    quarterly: { name: '季度会员', icon: 'fa-crown', color: '#c0c0c0', bg: 'linear-gradient(135deg, #e8f0fe, #d2e3fc)', textColor: '#1a56db' },
-    yearly: { name: '年度会员', icon: 'fa-crown', color: '#ffd700', bg: 'linear-gradient(135deg, #fffbeb, #fef3c7)', textColor: '#b45309' },
-    enterprise: { name: '企业版', icon: 'fa-gem', color: '#b9f2ff', bg: 'linear-gradient(135deg, #ecfeff, #cffafe)', textColor: '#0e7490' }
+    free: { name: '免费创作者', icon: 'fa-user', color: '#9ca3af', bg: 'linear-gradient(135deg, #f3f4f6, #e5e7eb)', textColor: '#4b5563' },
+    trial: { name: '体验创作者', icon: 'fa-medal', color: '#cd7f32', bg: 'linear-gradient(135deg, #fdf0e0, #fae0c8)', textColor: '#8b5a2b' },
+    monthly: { name: '月度创作者', icon: 'fa-crown', color: '#c0c0c0', bg: 'linear-gradient(135deg, #f8f9fa, #e9ecef)', textColor: '#495057' },
+    quarterly: { name: '季度创作者', icon: 'fa-crown', color: '#c0c0c0', bg: 'linear-gradient(135deg, #e8f0fe, #d2e3fc)', textColor: '#1a56db' },
+    yearly: { name: '年度创作者', icon: 'fa-crown', color: '#ffd700', bg: 'linear-gradient(135deg, #fffbeb, #fef3c7)', textColor: '#b45309' },
+    enterprise: { name: '企业创作者', icon: 'fa-gem', color: '#b9f2ff', bg: 'linear-gradient(135deg, #ecfeff, #cffafe)', textColor: '#0e7490' }
 };
 const membershipTier = membershipTierMap[user.membership_tier] || membershipTierMap.free;
 const membershipExpires = user.membership_expires_at ? new Date(user.membership_expires_at) : null;
@@ -1125,7 +1125,7 @@ profileHeader.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <h2 style="margin: 0; color: #333;">
                             <i class="fas fa-layer-group" style="color: var(--st-primary-500);"></i> 
-                            成长体系
+                            创作者成长之路
                         </h2>
                         <button onclick="document.getElementById('levelInfoOverlay').remove()" style="
                             background: none;
@@ -1148,23 +1148,23 @@ profileHeader.innerHTML = `
                     </div>
                     
                     <div style="color: var(--st-text-secondary, #666); line-height: 1.8;">
-                        <!-- 等级说明 -->
+                        <!-- 成长说明 -->
                         <div style="margin-bottom: 25px;">
                             <h3 style="color: var(--st-text-primary, #333); margin: 0 0 15px 0; font-size: 18px;">
-                                <i class="fas fa-info-circle" style="color: var(--st-primary-500);"></i> 
-                                等级说明
+                                <i class="fas fa-road" style="color: var(--st-primary-500);"></i> 
+                                创作者成长之路
                             </h3>
                             <div style="background: var(--st-bg-elevated, #f8f9fa); padding: 15px; border-radius: 10px; border-left: 4px solid var(--st-primary-500);">
-                                <p style="margin: 0 0 10px 0; color: var(--st-text-secondary, #666);">用户等级基于<strong>累计积分</strong>自动提升，等级越高可享受的 AI 配额越多。</p>
-                                <p style="margin: 0; color: var(--st-text-secondary, #666);">积分可通过<strong>签到、码字、发布故事、社交互动</strong>等方式获得。</p>
+                                <p style="margin: 0 0 10px 0; color: var(--st-text-secondary, #666);">每一位创作者都有属于自己的成长之路。通过<strong>持续创作、积极互动、邀请好友</strong>，你可以不断提升自己的创作等级，解锁更多创作特权。</p>
+                                <p style="margin: 0; color: var(--st-text-secondary, #666);">创作等级代表你的创作经验积累，创作特权代表你的付费加速权益，创作成就代表你的荣誉认可。</p>
                             </div>
                         </div>
                         
-                        <!-- 等级列表 -->
+                        <!-- 创作等级列表 -->
                         <div style="margin-bottom: 25px;">
                             <h3 style="color: var(--st-text-primary, #333); margin: 0 0 15px 0; font-size: 18px;">
                                 <i class="fas fa-list-ol" style="color: #ff9800;"></i> 
-                                等级列表
+                                创作等级列表
                             </h3>
                             <table style="width: 100%; border-collapse: collapse; background: var(--st-bg-primary, white); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                                 <thead>
@@ -1184,7 +1184,7 @@ profileHeader.innerHTML = `
                         <div style="background: var(--st-bg-elevated, #fff3e0); padding: 15px; border-radius: 10px; border-left: 4px solid #ff9800; margin-bottom: 15px;">
                             <p style="margin: 0; color: var(--st-text-secondary, #666); font-size: 14px;">
                                 <i class="fas fa-exclamation-triangle" style="color: #ff9800; margin-right: 8px;"></i>
-                                <strong>重要：</strong>用户等级决定 AI 配额的<strong>基础值</strong>。购买会员后，会员等级会在用户等级基础上提供配额倍数加成。
+                                <strong>重要：</strong>创作等级决定 AI 配额的<strong>基础值</strong>。购买创作特权后，特权等级会在创作等级基础上提供配额倍数加成。
                             </p>
                         </div>
                         
@@ -1192,19 +1192,19 @@ profileHeader.innerHTML = `
                         <div style="margin-bottom: 25px;">
                             <h3 style="color: var(--st-text-primary, #333); margin: 0 0 15px 0; font-size: 18px;">
                                 <i class="fas fa-trophy" style="color: #ffd700;"></i> 
-                                里程碑奖励
+                                创作成就
                             </h3>
                             <div style="background: var(--st-bg-elevated, #f8f9fa); padding: 15px; border-radius: 10px; border-left: 4px solid #ffd700; margin-bottom: 15px;">
                                 <p style="margin: 0; color: var(--st-text-secondary, #666); line-height: 1.6;">
                                     <i class="fas fa-info-circle" style="color: var(--st-primary-500);"></i>
-                                    <strong>码字奖励：</strong>每码1000字获得10积分和1次补签机会
+                                    <strong>创作成就奖励：</strong>每创作1000字获得10积分和1次补签机会，达成里程碑还可获得额外奖励
                                 </p>
                             </div>
                             <table style="width: 100%; border-collapse: collapse; background: var(--st-bg-primary, white); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                                 <thead>
                                     <tr style="background: linear-gradient(135deg, #ffd700, #ffed4e); color: #333;">
-                                        <th style="padding: 12px; text-align: left;">徽章</th>
-                                        <th style="padding: 12px; text-align: left;">达成条件</th>
+                                        <th style="padding: 12px; text-align: left;">成就徽章</th>
+                                        <th style="padding: 12px; text-align: left;">创作字数</th>
                                         <th style="padding: 12px; text-align: left;">奖励</th>
                                     </tr>
                                 </thead>
@@ -1228,15 +1228,15 @@ profileHeader.innerHTML = `
                             </table>
                             <div style="margin-top: 10px; padding: 10px; background: var(--st-bg-elevated, #fff3e0); border-radius: 8px; font-size: 12px; color: var(--st-text-secondary, #666);">
                                 <i class="fas fa-lightbulb" style="color: #ff9800;"></i>
-                                <strong>提示：</strong>只统计非AI生成的已发布章节字数
+                                <strong>提示：</strong>创作成就只统计非AI生成的已发布章节字数，这是你真实创作能力的证明
                             </div>
                         </div>
                         
-                        <!-- 提升方式 -->
+                        <!-- 提升创作等级 -->
                         <div style="background: var(--st-bg-elevated, #e8f5e9); padding: 15px; border-radius: 10px; border-left: 4px solid #4caf50;">
                             <h4 style="margin: 0 0 10px 0; color: var(--st-text-primary, #333); font-size: 16px;">
                                 <i class="fas fa-arrow-up" style="color: #4caf50;"></i> 
-                                如何提升等级？
+                                如何提升创作等级？
                             </h4>
                             <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: var(--st-text-secondary, #666);">
                                 <li>持续创作：每码字 1000 字获得 10 积分</li>
