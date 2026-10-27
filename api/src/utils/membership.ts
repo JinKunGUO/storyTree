@@ -96,12 +96,13 @@ export async function getMembershipTier(userId: number): Promise<{
     throw new Error('用户不存在');
   }
 
-  // 管理员用户视为企业版会员
+  // 管理员用户视为企业版会员（使用实际到期时间，而非 null）
   if (user.isAdmin) {
+    const expiresAt = user.membership_expires_at;
     return {
       tier: 'enterprise',
       name: MEMBERSHIP_TIERS.enterprise.name,
-      expiresAt: null,
+      expiresAt: expiresAt || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 默认 1 年后
       isActive: true
     };
   }
