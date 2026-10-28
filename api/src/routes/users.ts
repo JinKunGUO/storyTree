@@ -3,6 +3,7 @@ import { prisma } from '../index';
 import { createNotification } from './notifications';
 import { authenticateToken, optionalAuth, getUserId } from '../utils/middleware';
 import { hashPassword, verifyPassword, isValidUsername, isValidPassword } from '../utils/auth';
+import { getFanLevel, FAN_LEVELS } from '../utils/membership';
 
 const router = Router();
 
@@ -67,20 +68,40 @@ router.get('/leaderboard', optionalAuth, async (req, res) => {
       LIMIT 100
     `;
 
-    // 转换 BigInt 为 Number
-    const formattedLeaderboard = leaderboard.map((user, index) => ({
-      rank: index + 1,
-      userId: Number(user.user_id),
-      username: user.username,
-      avatar: user.avatar,
-      level: Number(user.level),
-      points: Number(user.points),
-      storyCount: Number(user.story_count),
-      nodeCount: Number(user.node_count),
-      readCount: Number(user.read_count),
-      followerCount: Number(user.follower_count),
-      totalScore: Number(user.total_score)
-    }));
+    // 转换 BigInt 为 Number，并计算粉丝等级
+    const formattedLeaderboard = leaderboard.map((user, index) => {
+      const followerCount = Number(user.follower_count);
+      
+      // 计算粉丝等级（基于粉丝数，避免额外数据库查询）
+      let fanLevel = 1;
+      for (let i = 7; i >= 1; i--) {
+        if (followerCount >= FAN_LEVELS[i as keyof typeof FAN_LEVELS].minFollowers) {
+          fanLevel = i;
+          break;
+        }
+      }
+      const fanLevelConfig = FAN_LEVELS[fanLevel as keyof typeof FAN_LEVELS];
+      
+      return {
+        rank: index + 1,
+        userId: Number(user.user_id),
+        username: user.username,
+        avatar: user.avatar,
+        level: Number(user.level),
+        points: Number(user.points),
+        storyCount: Number(user.story_count),
+        nodeCount: Number(user.node_count),
+        readCount: Number(user.read_count),
+        followerCount,
+        totalScore: Number(user.total_score),
+        fanLevel: {
+          level: fanLevel,
+          name: fanLevelConfig.name,
+          badge: fanLevelConfig.badge,
+          color: fanLevelConfig.color
+        }
+      };
+    });
 
     res.json({
       period,
@@ -185,6 +206,9 @@ router.get('/:id', optionalAuth, async (req, res) => {
       isFollowing = !!follow;
     }
 
+    // 计算粉丝等级
+    const fanLevelInfo = await getFanLevel(parseInt(id));
+
     res.json({
       user: {
         ...user,
@@ -192,6 +216,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
           ...user._count,
           followers: followersCount  // 使用手动计数覆盖
         },
+        fanLevel: fanLevelInfo,
         isFollowing,
         isSelf: currentUserId === parseInt(id)
       }

@@ -1451,8 +1451,9 @@
                                 ${medalIcon || rank}
                             </div>
                             <div style="flex: 1; min-width: 0;">
-                                <div style="font-weight: 600; color: var(--st-text-primary); font-size: 15px; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                <div style="font-weight: 600; color: var(--st-text-primary); font-size: 15px; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 6px;">
                                     ${escapeHtml(user.username)}
+                                    ${user.fanLevel ? `<span style="font-size: 12px; color: ${user.fanLevel.color}; font-weight: 500;" title="粉丝等级 Lv${user.fanLevel.level}: ${user.fanLevel.name}">${user.fanLevel.badge} Lv${user.fanLevel.level}</span>` : ''}
                                 </div>
                                 <div style="display: flex; gap: 12px; font-size: 12px; color: var(--st-text-secondary);">
                                     <span><i class="fas fa-book"></i> ${user.storyCount} 故事</span>

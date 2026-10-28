@@ -75,6 +75,65 @@ export const MEMBERSHIP_TIERS = {
 };
 
 /**
+ * 粉丝等级配置
+ */
+export const FAN_LEVELS = {
+  1: { name: '新芽', minFollowers: 0, badge: '🌱', color: '#95a5a6' },
+  2: { name: '初露头角', minFollowers: 10, badge: '🌿', color: '#2ecc71' },
+  3: { name: '小有名气', minFollowers: 50, badge: '🌳', color: '#3498db' },
+  4: { name: '崭露头角', minFollowers: 200, badge: '⭐', color: '#9b59b6' },
+  5: { name: '人气创作者', minFollowers: 1000, badge: '⭐', color: '#f39c12' },
+  6: { name: '知名创作者', minFollowers: 5000, badge: '💎', color: '#e74c3c' },
+  7: { name: '明星创作者', minFollowers: 20000, badge: '👑', color: '#f1c40f' }
+};
+
+/**
+ * 获取用户的粉丝等级
+ */
+export async function getFanLevel(userId: number): Promise<{
+  level: number;
+  name: string;
+  badge: string;
+  color: string;
+  followerCount: number;
+  nextLevelFollowers: number | null;
+}> {
+  // 获取粉丝数
+  const followerCount = await prisma.follows.count({
+    where: { following_id: userId }
+  });
+
+  // 计算等级
+  let level = 1;
+  let nextLevelFollowers: number | null = null;
+
+  for (let i = 7; i >= 1; i--) {
+    const config = FAN_LEVELS[i as keyof typeof FAN_LEVELS];
+    if (followerCount >= config.minFollowers) {
+      level = i;
+      break;
+    }
+  }
+
+  // 计算下一等级所需粉丝数
+  if (level < 7) {
+    const nextLevel = (level + 1) as keyof typeof FAN_LEVELS;
+    nextLevelFollowers = FAN_LEVELS[nextLevel].minFollowers;
+  }
+
+  const config = FAN_LEVELS[level as keyof typeof FAN_LEVELS];
+
+  return {
+    level,
+    name: config.name,
+    badge: config.badge,
+    color: config.color,
+    followerCount,
+    nextLevelFollowers
+  };
+}
+
+/**
  * 获取用户的会员等级
  */
 export async function getMembershipTier(userId: number): Promise<{

@@ -537,8 +537,9 @@ router.get('/me', async (req, res) => {
     }
 
     // 获取实际生效的会员状态（包含子账号继承）
-    const { getMembershipTier } = await import('../utils/membership');
+    const { getMembershipTier, getFanLevel } = await import('../utils/membership');
     const effectiveMembership = await getMembershipTier(user.id);
+    const fanLevelInfo = await getFanLevel(user.id);
 
     res.json({
       user: {
@@ -546,6 +547,7 @@ router.get('/me', async (req, res) => {
         membership_tier: effectiveMembership.tier,
         membership_expires_at: effectiveMembership.expiresAt,
         membership_is_active: effectiveMembership.isActive,
+        fanLevel: fanLevelInfo,
       }
     });
   } catch (error) {

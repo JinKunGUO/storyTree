@@ -531,6 +531,10 @@ profileHeader.innerHTML = `
                                             <i class="fas ${membershipTier.icon}" style="color: ${membershipTier.color}; font-size: 11px;"></i>
                                             ${membershipTier.name}
                                         </span>
+                                        <!-- 粉丝等级徽章 -->
+                                        ${user.fanLevel ? `<span style="display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; background: linear-gradient(135deg, #f5f5f5, #e8e8e8); border-radius: 10px; border: 1px solid ${user.fanLevel.color}; font-size: 11px; font-weight: 600; color: ${user.fanLevel.color};" title="粉丝等级 Lv${user.fanLevel.level}: ${user.fanLevel.name}（${user.fanLevel.followerCount} 粉丝）">
+                                            ${user.fanLevel.badge} Lv${user.fanLevel.level} ${user.fanLevel.name}
+                                        </span>` : ''}
                                     </div>
                                     <div style="color: #666; font-size: 13px;" id="levelProgress">
                                         升级进度：<span id="levelProgressText">加载中...</span>
