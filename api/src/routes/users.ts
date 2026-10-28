@@ -41,28 +41,31 @@ router.get('/leaderboard', optionalAuth, async (req, res) => {
       avatar: string | null;
       level: number;
       points: number;
+      is_virtual: number;
       story_count: bigint;
       node_count: bigint;
       read_count: bigint;
       follower_count: bigint;
       total_score: number;
     }>>`
-      SELECT 
+      SELECT
         u.id as user_id,
         u.username,
         u.avatar,
         u.level,
         u.points,
+        u.is_virtual,
         COUNT(DISTINCT s.id) as story_count,
         COUNT(DISTINCT n.id) as node_count,
         COALESCE(SUM(n.read_count), 0) as read_count,
         (SELECT COUNT(*) FROM follows f WHERE f.following_id = u.id) as follower_count,
         (COUNT(DISTINCT s.id) * 10 + COUNT(DISTINCT n.id) * 5 + COALESCE(SUM(n.read_count), 0) * 2 + (SELECT COUNT(*) FROM follows f WHERE f.following_id = u.id) * 3) as total_score
       FROM users u
-      LEFT JOIN stories s ON s.author_id = u.id AND s.created_at >= ${startDate}
-      LEFT JOIN nodes n ON n.author_id = u.id AND n.created_at >= ${startDate} AND n.review_status = 'APPROVED'
-      WHERE u.is_banned = 0 AND u.is_virtual = 0
-      GROUP BY u.id, u.username, u.avatar, u.level, u.points
+      LEFT JOIN stories s ON s.author_id = u.id
+      LEFT JOIN nodes n ON n.author_id = u.id AND n.review_status = 'APPROVED'
+      WHERE u.is_banned = 0
+        AND u.username NOT LIKE 'paytest%' AND u.username NOT LIKE 'test%'
+      GROUP BY u.id, u.username, u.avatar, u.level, u.points, u.is_virtual
       HAVING story_count > 0 OR node_count > 0
       ORDER BY total_score DESC
       LIMIT 100
@@ -89,6 +92,7 @@ router.get('/leaderboard', optionalAuth, async (req, res) => {
         avatar: user.avatar,
         level: Number(user.level),
         points: Number(user.points),
+        isVirtual: Number(user.is_virtual) === 1,
         storyCount: Number(user.story_count),
         nodeCount: Number(user.node_count),
         readCount: Number(user.read_count),

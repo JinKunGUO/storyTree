@@ -1453,6 +1453,7 @@
                             <div style="flex: 1; min-width: 0;">
                                 <div style="font-weight: 600; color: var(--st-text-primary); font-size: 15px; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 6px;">
                                     ${escapeHtml(user.username)}
+                                    ${user.isVirtual ? `<span style="font-size: 11px; padding: 1px 6px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 4px; font-weight: 500; flex-shrink: 0;">官方</span>` : ''}
                                     ${user.fanLevel ? `<span style="font-size: 12px; color: ${user.fanLevel.color}; font-weight: 500;" title="粉丝等级 Lv${user.fanLevel.level}: ${user.fanLevel.name}">${user.fanLevel.badge} Lv${user.fanLevel.level}</span>` : ''}
                                 </div>
                                 <div style="display: flex; gap: 12px; font-size: 12px; color: var(--st-text-secondary);">
