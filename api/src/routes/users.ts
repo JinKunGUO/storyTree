@@ -16,25 +16,21 @@ router.param('id', (req, res, next, value) => {
   next();
 });
 
+// 排行榜内存缓存（5分钟TTL）
+let leaderboardCache: { data: any; timestamp: number } | null = null;
+const LEADERBOARD_CACHE_TTL = 5 * 60 * 1000; // 5分钟
+
 // 创作排行榜（周榜/月榜）
 router.get('/leaderboard', optionalAuth, async (req, res) => {
   try {
-    const { period = 'week' } = req.query; // week 或 month
-    const now = new Date();
-    
-    // 计算时间范围
-    let startDate: Date;
-    if (period === 'week') {
-      // 本周一 00:00:00
-      const dayOfWeek = now.getDay();
-      const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 周日是 0，转换为 6
-      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diff);
-    } else {
-      // 本月 1 号 00:00:00
-      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    const { period = 'week' } = req.query;
+
+    // 检查缓存
+    if (leaderboardCache && Date.now() - leaderboardCache.timestamp < LEADERBOARD_CACHE_TTL) {
+      return res.json(leaderboardCache.data);
     }
 
-    // 查询用户创作统计
+    // 用子查询替代多表JOIN，避免笛卡尔积
     const leaderboard = await prisma.$queryRaw<Array<{
       user_id: number;
       username: string;
@@ -48,25 +44,26 @@ router.get('/leaderboard', optionalAuth, async (req, res) => {
       follower_count: bigint;
       total_score: number;
     }>>`
-      SELECT
-        u.id as user_id,
-        u.username,
-        u.avatar,
-        u.level,
-        u.points,
-        u.is_virtual,
-        COUNT(DISTINCT s.id) as story_count,
-        COUNT(DISTINCT n.id) as node_count,
-        COALESCE(SUM(n.read_count), 0) as read_count,
-        (SELECT COUNT(*) FROM follows f WHERE f.following_id = u.id) as follower_count,
-        (COUNT(DISTINCT s.id) * 10 + COUNT(DISTINCT n.id) * 5 + COALESCE(SUM(n.read_count), 0) * 2 + (SELECT COUNT(*) FROM follows f WHERE f.following_id = u.id) * 3) as total_score
-      FROM users u
-      LEFT JOIN stories s ON s.author_id = u.id
-      LEFT JOIN nodes n ON n.author_id = u.id AND n.review_status = 'APPROVED'
-      WHERE u.is_banned = 0
-        AND u.username NOT LIKE 'paytest%' AND u.username NOT LIKE 'test%'
-      GROUP BY u.id, u.username, u.avatar, u.level, u.points, u.is_virtual
-      HAVING story_count > 0 OR node_count > 0
+      SELECT * FROM (
+        SELECT
+          u.id as user_id,
+          u.username,
+          u.avatar,
+          u.level,
+          u.points,
+          u.is_virtual,
+          (SELECT COUNT(*) FROM stories s WHERE s.author_id = u.id) as story_count,
+          (SELECT COUNT(*) FROM nodes n WHERE n.author_id = u.id AND n.review_status = 'APPROVED') as node_count,
+          (SELECT COALESCE(SUM(n2.read_count), 0) FROM nodes n2 WHERE n2.author_id = u.id AND n2.review_status = 'APPROVED') as read_count,
+          (SELECT COUNT(*) FROM follows f WHERE f.following_id = u.id) as follower_count,
+          ((SELECT COUNT(*) FROM stories s WHERE s.author_id = u.id) * 10
+          + (SELECT COUNT(*) FROM nodes n WHERE n.author_id = u.id AND n.review_status = 'APPROVED') * 5
+          + (SELECT COALESCE(SUM(n2.read_count), 0) FROM nodes n2 WHERE n2.author_id = u.id AND n2.review_status = 'APPROVED') * 2
+          + (SELECT COUNT(*) FROM follows f WHERE f.following_id = u.id) * 3) as total_score
+        FROM users u
+        WHERE u.is_banned = 0
+          AND u.username NOT LIKE 'paytest%' AND u.username NOT LIKE 'test%'
+      ) WHERE story_count > 0 OR node_count > 0
       ORDER BY total_score DESC
       LIMIT 10
     `;
@@ -74,8 +71,7 @@ router.get('/leaderboard', optionalAuth, async (req, res) => {
     // 转换 BigInt 为 Number，并计算粉丝等级
     const formattedLeaderboard = leaderboard.map((user, index) => {
       const followerCount = Number(user.follower_count);
-      
-      // 计算粉丝等级（基于粉丝数，避免额外数据库查询）
+
       let fanLevel = 1;
       for (let i = 7; i >= 1; i--) {
         if (followerCount >= FAN_LEVELS[i as keyof typeof FAN_LEVELS].minFollowers) {
@@ -84,7 +80,7 @@ router.get('/leaderboard', optionalAuth, async (req, res) => {
         }
       }
       const fanLevelConfig = FAN_LEVELS[fanLevel as keyof typeof FAN_LEVELS];
-      
+
       return {
         rank: index + 1,
         userId: Number(user.user_id),
@@ -107,16 +103,18 @@ router.get('/leaderboard', optionalAuth, async (req, res) => {
       };
     });
 
-    res.json({
+    const responseData = {
       period,
-      startDate,
       leaderboard: formattedLeaderboard
-    });
+    };
+
+    // 写入缓存
+    leaderboardCache = { data: responseData, timestamp: Date.now() };
+
+    res.json(responseData);
   } catch (error) {
     console.error('获取创作排行榜失败:', error);
-    console.error('错误详情:', error instanceof Error ? error.message : String(error));
-    console.error('错误堆栈:', error instanceof Error ? error.stack : '无');
-    res.status(500).json({ 
+    res.status(500).json({
       error: '获取排行榜失败',
       detail: error instanceof Error ? error.message : String(error)
     });

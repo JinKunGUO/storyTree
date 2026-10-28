@@ -110,6 +110,7 @@ model nodes {
   @@index([parent_id])
   @@index([story_id])
   @@index([sort_order])
+  @@index([author_id])
 }
 
 model notifications {
@@ -205,6 +206,8 @@ model stories {
   followers                   story_followers[]
   outlines                    story_outlines[]
   characters                  characters[]
+
+  @@index([author_id])
 }
 
 model users {
