@@ -1845,7 +1845,8 @@
         // ===== 筛选 =====
         function applyFilter(filter) {
             currentFilter = filter;
-            document.querySelectorAll('.filter-tab').forEach(t => {
+            // 只更新故事筛选标签，不影响排行榜切换标签
+            document.querySelectorAll('.filter-tab[data-filter]').forEach(t => {
                 const isActive = t.dataset.filter === filter;
                 t.classList.toggle('active', isActive);
                 t.setAttribute('aria-selected', isActive);
