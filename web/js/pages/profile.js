@@ -339,12 +339,28 @@
                     return;
                 }
                 
-                console.log('请求 /api/auth/me...');
-                const response = await fetch('/api/auth/me', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
+                // 检查 URL 参数中的 id，如果有则查看其他用户的主页
+                const urlParams = new URLSearchParams(window.location.search);
+                const targetUserId = urlParams.get('id');
+                
+                let response;
+                if (targetUserId) {
+                    // 查看其他用户的主页
+                    console.log('请求 /api/users/' + targetUserId + '...');
+                    response = await fetch(`/api/users/${targetUserId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                } else {
+                    // 查看自己的主页
+                    console.log('请求 /api/auth/me...');
+                    response = await fetch('/api/auth/me', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                }
 
                 console.log('API响应状态:', response.status);
                 console.log('响应Content-Type:', response.headers.get('content-type'));
