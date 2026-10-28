@@ -1111,9 +1111,10 @@
                         <i class="fas fa-users" style="color: var(--st-primary-500);" aria-hidden="true"></i>
                         创作排行榜
                     </h2>
-                    <div style="display: flex; gap: 8px;">
+                    <div style="display: flex; gap: 8px; align-items: center;">
                         <button class="filter-tab active" onclick="switchLeaderboardPeriod('week')" id="weekTab">周榜</button>
                         <button class="filter-tab" onclick="switchLeaderboardPeriod('month')" id="monthTab">月榜</button>
+                        <button class="help-hint-btn" onclick="showLeaderboardScoreHelp()" title="查看综合评分计算规则" style="padding: 2px 6px; font-size: 12px; margin-left: 4px;">?</button>
                     </div>
                 </div>
                 <div class="ranking-list" id="creatorLeaderboardList">
@@ -1994,6 +1995,96 @@
             if (!e || e.target === e.currentTarget) {
                 document.getElementById('sortHelpOverlay').classList.remove('active');
             }
+        }
+
+        // 排行榜综合评分说明弹窗
+        function showLeaderboardScoreHelp() {
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                animation: fadeIn 0.3s;
+            `;
+            
+            overlay.innerHTML = `
+                <div style="
+                    background: var(--st-bg-primary, white);
+                    border-radius: 20px;
+                    padding: 30px;
+                    max-width: 500px;
+                    width: 90%;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                    animation: slideUp 0.3s;
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="margin: 0; color: var(--st-text-primary, #333); font-size: 18px;">
+                            <i class="fas fa-calculator" style="color: var(--st-primary-500);"></i> 
+                            综合评分计算规则
+                        </h3>
+                        <button onclick="this.closest('div').parentElement.remove()" style="
+                            background: none;
+                            border: none;
+                            font-size: 24px;
+                            cursor: pointer;
+                            color: var(--st-text-tertiary, #999);
+                            padding: 0;
+                            width: 32px;
+                            height: 32px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            border-radius: 50%;
+                            transition: all 0.3s;
+                        " onmouseover="this.style.background='var(--st-gray-100)'; this.style.color='var(--st-text-primary)';" 
+                           onmouseout="this.style.background='none'; this.style.color='var(--st-text-tertiary)';">
+                            ×
+                        </button>
+                    </div>
+                    
+                    <div style="color: var(--st-text-secondary, #666); line-height: 1.8;">
+                        <p style="margin: 0 0 15px 0;">综合评分基于以下维度计算：</p>
+                        
+                        <div style="background: var(--st-bg-elevated, #f8f9fa); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--st-gray-200, #e0e0e0);">
+                                <span style="font-weight: 600; color: var(--st-text-primary, #333);">创作故事</span>
+                                <span style="color: var(--st-primary-500); font-weight: 700;">×10 分/个</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--st-gray-200, #e0e0e0);">
+                                <span style="font-weight: 600; color: var(--st-text-primary, #333);">创作章节</span>
+                                <span style="color: var(--st-primary-500); font-weight: 700;">×5 分/章</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--st-gray-200, #e0e0e0);">
+                                <span style="font-weight: 600; color: var(--st-text-primary, #333);">获得阅读</span>
+                                <span style="color: var(--st-primary-500); font-weight: 700;">×2 分/次</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-weight: 600; color: var(--st-text-primary, #333);">获得粉丝</span>
+                                <span style="color: var(--st-primary-500); font-weight: 700;">×3 分/人</span>
+                            </div>
+                        </div>
+                        
+                        <div style="background: var(--st-bg-elevated, #fff3e0); padding: 15px; border-radius: 10px; border-left: 4px solid #ff9800;">
+                            <p style="margin: 0; font-size: 13px; color: var(--st-text-secondary, #666);">
+                                <i class="fas fa-lightbulb" style="color: #ff9800; margin-right: 8px;"></i>
+                                <strong>提示：</strong>周榜统计本周数据，月榜统计本月数据。持续创作优质内容可获得更高评分！
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            overlay.onclick = (e) => {
+                if (e.target === overlay) {
+                    overlay.remove();
+                }
+            };
+            
+            document.body.appendChild(overlay);
         }
 
         function toggleAdvancedFilter() {
