@@ -68,7 +68,7 @@ router.get('/leaderboard', optionalAuth, async (req, res) => {
       GROUP BY u.id, u.username, u.avatar, u.level, u.points, u.is_virtual
       HAVING story_count > 0 OR node_count > 0
       ORDER BY total_score DESC
-      LIMIT 100
+      LIMIT 10
     `;
 
     // 转换 BigInt 为 Number，并计算粉丝等级
