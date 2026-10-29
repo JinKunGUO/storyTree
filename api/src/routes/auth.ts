@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
 import { prisma } from '../index';
 import {
@@ -15,7 +16,7 @@ import {
   isValidUsername,
   JWT_SECRET,
 } from '../utils/auth';
-import { verifyActiveToken } from '../utils/middleware';
+import { verifyActiveToken, authenticateToken } from '../utils/middleware';
 
 const router = Router();
 
@@ -1372,6 +1373,165 @@ router.get('/wx-web-config', (req, res) => {
     wxWebAppId: appId,
     enabled: !!appId,
   });
+});
+
+// ============================================================
+// 网页端扫码登录（小程序码方案，复用个人小程序，无需开放平台资质）
+// 流程：网页生成带场景值的小程序码 → 用户微信扫码进小程序确认 → 网页轮询获取 JWT
+// ============================================================
+
+interface QrLoginTicket {
+  status: 'pending' | 'confirmed';
+  createdAt: number;
+  token?: string;
+  user?: any;
+}
+const qrLoginTickets = new Map<string, QrLoginTicket>();
+const QR_TICKET_TTL = 5 * 60 * 1000; // 票据 5 分钟有效
+
+// 定期清理过期票据
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, t] of qrLoginTickets) {
+    if (now - t.createdAt > QR_TICKET_TTL) qrLoginTickets.delete(id);
+  }
+}, 60 * 1000);
+
+// 小程序 access_token 缓存（微信侧有效期 7200s，提前 5 分钟刷新）
+let wxMpAccessToken: { token: string; expiresAt: number } | null = null;
+async function getWxMpAccessToken(): Promise<string> {
+  if (wxMpAccessToken && Date.now() < wxMpAccessToken.expiresAt) {
+    return wxMpAccessToken.token;
+  }
+  const appId = process.env.WX_APPID;
+  const appSecret = process.env.WX_APP_SECRET;
+  if (!appId || !appSecret) {
+    throw new Error('服务端未配置微信小程序 AppID/AppSecret');
+  }
+  const tokenRes = await fetch(
+    `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appId}&secret=${appSecret}`
+  );
+  const tokenData = await tokenRes.json() as any;
+  if (tokenData.errcode) {
+    throw new Error(`获取微信 access_token 失败: ${tokenData.errmsg}`);
+  }
+  wxMpAccessToken = {
+    token: tokenData.access_token,
+    expiresAt: Date.now() + (tokenData.expires_in - 300) * 1000,
+  };
+  return tokenData.access_token;
+}
+
+// POST /api/auth/wx-qr-ticket
+// 生成扫码登录票据 + 小程序码（网页端调用，无需登录）
+router.post('/wx-qr-ticket', async (req, res) => {
+  try {
+    const ticketId = crypto.randomBytes(8).toString('hex'); // 16 字符，scene 总长 24 ≤ 32 上限
+    qrLoginTickets.set(ticketId, { status: 'pending', createdAt: Date.now() });
+
+    const accessToken = await getWxMpAccessToken();
+    const codeRes = await fetch(
+      `https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=${accessToken}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scene: `qrlogin=${ticketId}`,
+          page: 'pages/login-confirm/login-confirm',
+          width: 280,
+          auto_color: false,
+          line_color: { r: 99, g: 102, b: 241 },
+          is_hyaline: true,
+        }),
+      }
+    );
+
+    const contentType = codeRes.headers.get('content-type') || '';
+    if (!contentType.includes('image')) {
+      const errData = await codeRes.json() as any;
+      qrLoginTickets.delete(ticketId);
+      return res.status(400).json({ error: `生成小程序码失败: ${errData.errmsg || '未知错误'}` });
+    }
+
+    const buffer = await codeRes.buffer();
+    res.json({
+      ticketId,
+      qrCode: `data:image/png;base64,${buffer.toString('base64')}`,
+      expiresIn: QR_TICKET_TTL / 1000,
+    });
+  } catch (error) {
+    console.error('生成扫码登录票据失败:', error);
+    res.status(500).json({ error: error instanceof Error ? error.message : '生成失败' });
+  }
+});
+
+// GET /api/auth/wx-qr-ticket/:ticketId
+// 网页端轮询票据状态；confirmed 时返回 token（一次性取出）
+router.get('/wx-qr-ticket/:ticketId', (req, res) => {
+  const ticketId = req.params.ticketId;
+  const ticket = qrLoginTickets.get(ticketId);
+  if (!ticket || Date.now() - ticket.createdAt > QR_TICKET_TTL) {
+    qrLoginTickets.delete(ticketId);
+    return res.json({ status: 'expired' });
+  }
+  if (ticket.status === 'confirmed' && ticket.token) {
+    const { token, user } = ticket;
+    qrLoginTickets.delete(ticketId); // token 一次性取出，取出即作废
+    return res.json({ status: 'confirmed', token, user });
+  }
+  res.json({ status: 'pending' });
+});
+
+// POST /api/auth/wx-qr-confirm
+// 小程序端确认登录（需小程序登录态 JWT）
+// body: { ticketId }
+router.post('/wx-qr-confirm', authenticateToken, async (req, res) => {
+  const { ticketId } = req.body;
+  if (!ticketId) {
+    return res.status(400).json({ error: '缺少票据 ID' });
+  }
+
+  const ticket = qrLoginTickets.get(ticketId);
+  if (!ticket || Date.now() - ticket.createdAt > QR_TICKET_TTL) {
+    qrLoginTickets.delete(ticketId);
+    return res.status(400).json({ error: '二维码已过期，请刷新网页重试' });
+  }
+  if (ticket.status === 'confirmed') {
+    return res.status(400).json({ error: '该二维码已被使用' });
+  }
+
+  try {
+    const userId = (req as any).userId;
+    const user = await prisma.users.findUnique({
+      where: { id: userId },
+      select: {
+        id: true, username: true, email: true, avatar: true, bio: true,
+        emailVerified: true, points: true, level: true,
+        membership_tier: true, membership_expires_at: true, createdAt: true,
+        isBanned: true, bannedReason: true,
+      }
+    });
+    if (!user) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+    if (user.isBanned) {
+      return res.status(403).json({ error: '账号已被封禁', reason: user.bannedReason || '违反社区规范' });
+    }
+
+    // 生成网页端 token 并写入 active_token（既定单端互踢设计：小程序端下次请求将自动重登）
+    const token = generateJWT(user.id, user.username, false, 'web');
+    await prisma.users.update({ where: { id: user.id }, data: { active_token: token } });
+
+    ticket.status = 'confirmed';
+    ticket.token = token;
+    const { isBanned: _b, bannedReason: _r, ...safeUser } = user;
+    ticket.user = safeUser;
+
+    res.json({ success: true, message: '已确认，网页端即将登录' });
+  } catch (error) {
+    console.error('扫码确认失败:', error);
+    res.status(500).json({ error: '确认失败，请稍后重试' });
+  }
 });
 
 export default router;

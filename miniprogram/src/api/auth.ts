@@ -85,3 +85,8 @@ export function resetPassword(token: string, newPassword: string) {
   return http.post<{ message: string }>('/api/auth/reset-password', { token, newPassword })
 }
 
+// 网页端扫码登录确认（小程序内调用，需登录态）
+export function confirmQrLogin(ticketId: string) {
+  return http.post<{ success: boolean; message: string }>('/api/auth/wx-qr-confirm', { ticketId })
+}
+

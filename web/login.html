@@ -788,6 +788,20 @@
                     微信扫码登录
                 </a>
 
+                <!-- 微信扫码登录弹层（小程序码方案） -->
+                <div id="wxQrModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9999; align-items:center; justify-content:center; padding:16px;">
+                    <div style="background:var(--st-bg-primary, #fff); border-radius:16px; padding:28px 24px; text-align:center; max-width:340px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+                        <h3 style="margin:0 0 8px; color:var(--st-text-primary, #1f2937);">微信扫码登录</h3>
+                        <p style="font-size:13px; color:var(--st-text-secondary, #6b7280); margin:0 0 16px;">用微信扫码，在小程序中确认即可登录</p>
+                        <img id="wxQrImage" src="" alt="登录小程序码" style="width:200px; height:200px; max-width:100%; margin:0 auto; display:block; border-radius:8px;">
+                        <p id="wxQrStatus" style="font-size:13px; color:var(--st-text-tertiary, #9ca3af); margin:14px 0 0;">正在生成小程序码...</p>
+                        <div style="margin-top:18px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+                            <button id="wxQrRefresh" style="display:none; padding:8px 16px; border:none; border-radius:8px; background:#6366F1; color:#fff; cursor:pointer;">刷新二维码</button>
+                            <button id="wxQrClose" style="padding:8px 16px; border:none; border-radius:8px; background:var(--st-gray-200, #e5e7eb); color:var(--st-text-secondary, #6b7280); cursor:pointer;">取消</button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="divider">或</div>
 
                 <!-- 注册引导 -->
@@ -871,41 +885,84 @@
             obs.observe(btn, { attributes: true, attributeFilter: ['disabled'] });
         })();
 
-        // 微信扫码登录跳转
+        // 微信扫码登录（小程序码方案：网页展示小程序码 → 微信扫码进小程序确认 → 网页轮询拿登录态）
         (function () {
             const wxBtn = document.getElementById('wxLoginBtn');
-            if (!wxBtn) return;
+            const modal = document.getElementById('wxQrModal');
+            const qrImage = document.getElementById('wxQrImage');
+            const statusText = document.getElementById('wxQrStatus');
+            const refreshBtn = document.getElementById('wxQrRefresh');
+            const closeBtn = document.getElementById('wxQrClose');
+            if (!wxBtn || !modal) return;
 
-            // 从后端获取微信配置，决定是否显示按钮
-            fetch('/api/auth/wx-web-config')
-                .then(r => r.json())
-                .then(function (cfg) {
-                    if (!cfg.enabled) {
-                        // AppID 未配置，隐藏按钮
-                        wxBtn.style.display = 'none';
-                        return;
+            let pollTimer = null;
+
+            function stopPolling() {
+                if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+            }
+            function closeModal() {
+                modal.style.display = 'none';
+                stopPolling();
+            }
+
+            async function loadQrCode() {
+                statusText.textContent = '正在生成小程序码...';
+                qrImage.style.opacity = '0.3';
+                refreshBtn.style.display = 'none';
+                stopPolling();
+                try {
+                    const res = await fetch('/api/auth/wx-qr-ticket', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || '生成失败');
+                    qrImage.src = data.qrCode;
+                    qrImage.style.opacity = '1';
+                    statusText.textContent = '请使用微信扫码，并在小程序中确认登录';
+                    startPolling(data.ticketId);
+                } catch (e) {
+                    statusText.textContent = e.message || '生成失败，请稍后重试';
+                    refreshBtn.style.display = 'inline-block';
+                }
+            }
+
+            function startPolling(ticketId) {
+                stopPolling();
+                pollTimer = setInterval(async function () {
+                    try {
+                        const res = await fetch('/api/auth/wx-qr-ticket/' + ticketId);
+                        const data = await res.json();
+                        if (data.status === 'confirmed') {
+                            stopPolling();
+                            statusText.textContent = '登录成功，正在跳转...';
+                            const rememberMe = document.getElementById('rememberMe');
+                            const storage = (rememberMe && rememberMe.checked) ? localStorage : sessionStorage;
+                            storage.setItem('token', data.token);
+                            storage.setItem('user', JSON.stringify(data.user));
+                            const redirect = new URLSearchParams(window.location.search).get('redirect') || '/';
+                            window.location.href = redirect;
+                        } else if (data.status === 'expired') {
+                            stopPolling();
+                            statusText.textContent = '二维码已过期，请点击刷新';
+                            qrImage.style.opacity = '0.3';
+                            refreshBtn.style.display = 'inline-block';
+                        }
+                    } catch (e) {
+                        // 网络波动忽略，下一轮继续轮询
                     }
-                    // 挂载 AppID 供点击时使用
-                    wxBtn._appId = cfg.wxWebAppId;
-                })
-                .catch(function () {
-                    // 接口异常时隐藏按钮，避免用户点击后报错
-                    wxBtn.style.display = 'none';
-                });
+                }, 2000);
+            }
 
             wxBtn.addEventListener('click', function (e) {
                 e.preventDefault();
-                const appId = wxBtn._appId;
-                if (!appId) {
-                    alert('微信扫码登录暂未配置，请使用邮箱登录');
-                    return;
-                }
-                const redirectUri = encodeURIComponent(window.location.origin + '/wx-callback.html');
-                const state = Math.random().toString(36).slice(2);
-                sessionStorage.setItem('wx_state', state);
-                sessionStorage.setItem('wx_redirect', new URLSearchParams(window.location.search).get('redirect') || '/');
-                const wxUrl = `https://open.weixin.qq.com/connect/qrconnect?appid=${appId}&redirect_uri=${redirectUri}&response_type=code&scope=snsapi_login&state=${state}#wechat_redirect`;
-                window.location.href = wxUrl;
+                modal.style.display = 'flex';
+                loadQrCode();
+            });
+            refreshBtn.addEventListener('click', loadQrCode);
+            closeBtn.addEventListener('click', closeModal);
+            modal.addEventListener('click', function (e) {
+                if (e.target === modal) closeModal();
             });
         })();
 

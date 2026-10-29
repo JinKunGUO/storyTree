@@ -48,6 +48,14 @@
         "navigationBarBackgroundColor": "#1a1a2e",
         "navigationBarTextStyle": "white"
       }
+    },
+    {
+      "path": "pages/login-confirm/login-confirm",
+      "style": {
+        "navigationBarTitleText": "登录确认",
+        "navigationBarBackgroundColor": "#1a1a2e",
+        "navigationBarTextStyle": "white"
+      }
     }
   ],
   "subPackages": [
