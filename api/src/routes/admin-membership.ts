@@ -340,6 +340,14 @@ router.post('/orders/:id/refund', async (req, res) => {
                   has_used_trial: order.tier === 'trial' ? false : undefined,
                 },
           });
+
+          // 企业版退款：立即冻结其所有子账号（不等 membershipWorker 定时任务，避免权益泄漏窗口）
+          if (order.tier === 'enterprise') {
+            await tx.team_memberships.updateMany({
+              where: { owner_user_id: order.user_id, status: 'active' },
+              data: { status: 'frozen', frozen_at: new Date() },
+            });
+          }
         }
 
         // 年度会员退款：扣回赠送的 500 积分（余额不足允许为负）

@@ -226,5 +226,63 @@ router.get('/rules', (req, res) => {
   });
 });
 
+// 兑换码换积分
+// POST /api/points/exchange-code
+// body: { code }
+router.post('/exchange-code', async (req, res) => {
+  const userId = await getActiveUserIdFromReq(req);
+  if (!userId) {
+    return res.status(401).json({ error: '未登录' });
+  }
+
+  const { code } = req.body;
+  if (!code || typeof code !== 'string') {
+    return res.status(400).json({ error: '请输入兑换码' });
+  }
+
+  const normalizedCode = code.trim().toUpperCase();
+
+  try {
+    const exchangeCode = await prisma.exchange_codes.findUnique({
+      where: { code: normalizedCode }
+    });
+
+    if (!exchangeCode || !exchangeCode.is_active) {
+      return res.status(400).json({ error: '兑换码无效' });
+    }
+    if (exchangeCode.expires_at && new Date(exchangeCode.expires_at) < new Date()) {
+      return res.status(400).json({ error: '兑换码已过期' });
+    }
+    if (exchangeCode.used_count >= exchangeCode.max_uses) {
+      return res.status(400).json({ error: '兑换码已被使用完' });
+    }
+
+    // 事务：核销记录（每人每码一次，唯一约束防重）+ 使用计数
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.exchange_code_redemptions.create({
+          data: { code_id: exchangeCode.id, user_id: userId }
+        });
+        await tx.exchange_codes.update({
+          where: { id: exchangeCode.id },
+          data: { used_count: { increment: 1 } }
+        });
+      });
+    } catch (e: any) {
+      if (e?.code === 'P2002') {
+        return res.status(400).json({ error: '你已兑换过该兑换码' });
+      }
+      throw e;
+    }
+
+    await addPoints(userId, exchangeCode.points, 'exchange_code', `兑换码 ${normalizedCode} 兑换`);
+
+    res.json({ success: true, points: exchangeCode.points });
+  } catch (error) {
+    console.error('兑换码兑换失败:', error);
+    res.status(500).json({ error: '兑换失败，请稍后重试' });
+  }
+});
+
 export default router;
 

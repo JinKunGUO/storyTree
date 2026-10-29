@@ -497,6 +497,31 @@ model invitation_records {
   @@index([invitation_code])
 }
 
+// 积分兑换码（运营活动/补偿发放）
+model exchange_codes {
+  id         Int       @id @default(autoincrement())
+  code       String    @unique @db.VarChar(50)
+  points     Int
+  max_uses   Int       @default(1)
+  used_count Int       @default(0)
+  expires_at DateTime?
+  is_active  Boolean   @default(true)
+  created_at DateTime  @default(now())
+
+  @@index([is_active])
+}
+
+// 兑换码核销记录（每人每码限一次）
+model exchange_code_redemptions {
+  id          Int      @id @default(autoincrement())
+  code_id     Int
+  user_id     Int
+  redeemed_at DateTime @default(now())
+
+  @@unique([code_id, user_id])
+  @@index([user_id])
+}
+
 model checkin_records {
   id               Int      @id @default(autoincrement())
   user_id          Int

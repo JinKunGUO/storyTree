@@ -473,5 +473,49 @@ router.get('/admin/stats', authenticateToken, requireAdmin, async (req: any, res
   }
 });
 
+// 查看指定用户收益详情（管理员）
+// GET /api/withdrawals/admin/user-earnings/:userId
+router.get('/admin/user-earnings/:userId', authenticateToken, requireAdmin, async (req: any, res: any) => {
+  const targetUserId = parseInt(req.params.userId);
+  if (isNaN(targetUserId)) {
+    return res.status(400).json({ error: '无效的用户 ID' });
+  }
+
+  try {
+    const user = await prisma.users.findUnique({
+      where: { id: targetUserId },
+      select: { id: true, username: true, earnings_balance: true }
+    });
+    if (!user) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+
+    const [withdrawn, pending] = await Promise.all([
+      prisma.withdrawal_requests.aggregate({
+        where: { user_id: targetUserId, status: 'approved' },
+        _sum: { amount: true }
+      }),
+      prisma.withdrawal_requests.aggregate({
+        where: { user_id: targetUserId, status: 'pending' },
+        _sum: { amount: true }
+      })
+    ]);
+
+    // 付费章节功能已移除，解锁相关数据不再存在，返回 0/空数组保持前端兼容
+    res.json({
+      user: { id: user.id, username: user.username },
+      earningsBalance: user.earnings_balance || 0,
+      totalEarnings: 0,
+      withdrawnAmount: withdrawn._sum.amount || 0,
+      pendingAmount: pending._sum.amount || 0,
+      unlockCount: 0,
+      recentUnlocks: []
+    });
+  } catch (error) {
+    console.error('获取用户收益详情失败:', error);
+    res.status(500).json({ error: '获取失败' });
+  }
+});
+
 export default router;
 
