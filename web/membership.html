@@ -575,7 +575,7 @@
                         <p id="expiresAt">-</p>
                     </div>
                     <div class="info-item">
-                        <h3>自动续费</h3>
+                        <h3>自动续费 <span style="font-size: 11px; color: #999; font-weight: normal;">（暂未开放）</span></h3>
                         <p id="autoRenew">-</p>
                     </div>
                     <div class="info-item">
@@ -758,7 +758,10 @@
                 
                 document.getElementById('membershipTier').textContent = status.membership.name;
                 document.getElementById('expiresAt').textContent = formatDate(status.membership.expiresAt);
-                document.getElementById('autoRenew').textContent = status.membership.autoRenew ? '✓ 已开启' : '✗ 未开启';
+                // 自动续费功能暂未实现，统一灰显提示，避免用户误解
+                const autoRenewEl = document.getElementById('autoRenew');
+                autoRenewEl.textContent = '暂未开放';
+                autoRenewEl.style.color = '#999';
                 
                 // 获取 AI 配额使用情况并计算节省金额
                 try {

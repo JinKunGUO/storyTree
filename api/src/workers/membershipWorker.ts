@@ -92,7 +92,7 @@ membership_tier: {
           user.id,
           'membership_expiring',
           '会员即将到期',
-          `您的${getMembershipName(user.membership_tier)}将在 7 天后到期${user.membership_auto_renew ? '，已为您开启自动续费' : '，请及时续费以继续享受会员权益'}`,
+          `您的${getMembershipName(user.membership_tier)}将在 7 天后到期，请及时续费以继续享受会员权益`,
           '/membership.html'
         );
         
@@ -107,7 +107,7 @@ membership_tier: {
           user.id,
           'membership_expiring',
           '会员即将到期',
-          `您的${getMembershipName(user.membership_tier)}将在 3 天后到期${user.membership_auto_renew ? '，已为您开启自动续费' : '，请尽快续费'}`,
+          `您的${getMembershipName(user.membership_tier)}将在 3 天后到期，请尽快续费`,
           '/membership.html'
         );
         
@@ -122,7 +122,7 @@ membership_tier: {
           user.id,
           'membership_expiring',
           '会员即将到期',
-          `您的${getMembershipName(user.membership_tier)}将在 24 小时后到期${user.membership_auto_renew ? '，系统将在到期时自动续费' : '，请立即续费以免失去会员权益'}`,
+          `您的${getMembershipName(user.membership_tier)}将在 24 小时后到期，请立即续费以免失去会员权益`,
           '/membership.html'
         );
         

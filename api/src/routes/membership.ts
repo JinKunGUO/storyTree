@@ -224,7 +224,7 @@ router.post('/upgrade/create', async (req, res) => {
                    tierConfig.duration === 90 ? '3 个月' :
                    tierConfig.duration === 365 ? '1 年' : `${tierConfig.duration}天`,
       benefits: tierConfig.benefits,
-      paymentUrl: `/payment/mock?orderId=${orderId}`,
+      paymentUrl: `/payment.html?orderId=${orderId}`,
       qrCode: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${orderId}`,
       expiresAt: order.expires_at
     });

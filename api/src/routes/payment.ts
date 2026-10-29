@@ -1,4 +1,4 @@
-import { Router, text as expressText } from 'express';
+import { Router, text as expressText, urlencoded as expressUrlencoded } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../index';
 import { addPoints } from '../utils/points';
@@ -6,7 +6,7 @@ import crypto from 'crypto';
 import { upgradeMembership, MEMBERSHIP_TIERS } from '../utils/membership';
 import { wsServer } from '../utils/websocket';
 import { JWT_SECRET } from '../utils/auth';
-import { verifyNotify as verifyAlipayNotify, createPagePay } from '../utils/alipay';
+import { verifyNotify as verifyAlipayNotify, createPagePay, queryOrderStatus, isMockMode } from '../utils/alipay';
 import { getActiveUserIdFromReq } from '../utils/middleware';
 
 // 个人支付宝电脑网站支付单笔限额（元）
@@ -54,7 +54,10 @@ async function processPaymentSuccess(
     },
   });
 
-  if (order.type === 'subscription' && order.tier) {
+  // 子订单（拆分支付）只标记支付状态，权益由父订单聚合完成时统一发放，避免重复发放
+  const isSubOrder = orderId.includes('_SUB');
+
+  if (!isSubOrder && order.type === 'subscription' && order.tier) {
     await upgradeMembership(
       order.user_id,
       order.tier,
@@ -63,7 +66,7 @@ async function processPaymentSuccess(
       order.original_amount || order.amount,
       order.discount_code || undefined,
     );
-  } else if (order.type === 'points' && order.points) {
+  } else if (!isSubOrder && order.type === 'points' && order.points) {
     await addPoints(
       order.user_id,
       order.points,
@@ -82,6 +85,47 @@ async function processPaymentSuccess(
   });
 
   return { success: true, message: '支付成功' };
+}
+
+/**
+ * 主动向支付宝查单补账：pending 订单查询真实支付状态，已支付则补入账
+ * 场景：本地开发 notify 回调不可达 localhost、生产环境 notify 丢失时的兜底
+ * 父订单会自动遍历其 pending 子订单逐个同步，全部支付后聚合完成父订单
+ */
+async function syncOrderFromAlipay(order: { id: string; status: string; amount: number; user_id: number }): Promise<void> {
+  if (order.status !== 'pending' || isMockMode()) return;
+
+  // 有子订单的父订单：递归同步子订单，全部 paid 后聚合完成父订单
+  const subOrders = await prisma.orders.findMany({
+    where: { id: { startsWith: `${order.id}_SUB` }, user_id: order.user_id },
+  });
+  if (subOrders.length > 0) {
+    for (const sub of subOrders) {
+      if (sub.status === 'pending') {
+        await syncOrderFromAlipay(sub);
+      }
+    }
+    const freshSubs = await prisma.orders.findMany({
+      where: { id: { startsWith: `${order.id}_SUB` }, user_id: order.user_id },
+    });
+    if (freshSubs.length > 0 && freshSubs.every(o => o.status === 'paid')) {
+      await processPaymentSuccess(order.id, 'alipay', `SPLIT_${freshSubs.length}`);
+    }
+    return;
+  }
+
+  const alipayOrder = await queryOrderStatus(order.id);
+  if (!alipayOrder) return;
+  if (alipayOrder.tradeStatus !== 'TRADE_SUCCESS' && alipayOrder.tradeStatus !== 'TRADE_FINISHED') return;
+  if (Math.abs(parseFloat(alipayOrder.totalAmount) - order.amount) > 0.01) {
+    console.error(`主动查单金额不匹配: 订单=${order.id} 实付=${alipayOrder.totalAmount} 期望=${order.amount}`);
+    return;
+  }
+
+  const result = await processPaymentSuccess(order.id, 'alipay', alipayOrder.tradeNo);
+  if (result.success && !result.alreadyProcessed) {
+    console.log(`✅ 主动查单补账成功: ${order.id}`);
+  }
 }
 
 /**
@@ -213,7 +257,7 @@ router.post('/membership/create', async (req, res) => {
                    plan.duration === 30 ? '1 个月' :
                    plan.duration === 90 ? '3 个月' :
                    plan.duration === 365 ? '1 年' : `${plan.duration}天`,
-      paymentUrl: `/payment/mock?orderId=${orderId}`,
+      paymentUrl: `/payment.html?orderId=${orderId}`,
       qrCode: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${orderId}`,
       expiresAt: order.expires_at
     });
@@ -260,7 +304,7 @@ router.post('/points/create', async (req, res) => {
       amount: order.amount,
       points: pkg.points,
       packageName: pkg.name,
-      paymentUrl: `/payment/mock?orderId=${orderId}`,
+      paymentUrl: `/payment.html?orderId=${orderId}`,
       qrCode: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${orderId}`,
       expiresAt: new Date(Date.now() + 30 * 60 * 1000)
     });
@@ -408,16 +452,31 @@ router.post('/alipay/next-sub', async (req, res) => {
     });
 
     if (subOrders.length === 0) {
-      return res.status(404).json({ error: '未找到子订单' });
+      // 订单未拆分（金额未超单笔限额）：无需继续支付，前端转入轮询订单状态即可
+      return res.json({ allPaid: true, hasSubOrders: false });
     }
 
+    // 先主动同步各子订单的真实支付状态（本地开发 notify 不可达、生产丢通知时的兜底）
+    for (const sub of subOrders) {
+      if (sub.status === 'pending') {
+        await syncOrderFromAlipay(sub);
+      }
+    }
+    const latestSubOrders = await prisma.orders.findMany({
+      where: {
+        id: { startsWith: `${parentOrderId}_SUB` },
+        user_id: userId,
+      },
+      orderBy: { id: 'asc' },
+    });
+
     // 找到第一笔未支付的子订单
-    const nextUnpaid = subOrders.find(o => o.status === 'pending');
+    const nextUnpaid = latestSubOrders.find(o => o.status === 'pending');
     if (!nextUnpaid) {
       // 所有子订单已支付，将父订单标记为已支付
       const parentOrder = await prisma.orders.findUnique({ where: { id: parentOrderId } });
       if (parentOrder && parentOrder.status === 'pending') {
-        await processPaymentSuccess(parentOrderId, 'alipay', `SPLIT_${subOrders.length}`);
+        await processPaymentSuccess(parentOrderId, 'alipay', `SPLIT_${latestSubOrders.length}`);
       }
       return res.json({ allPaid: true, message: '所有子订单已支付完成' });
     }
@@ -434,14 +493,14 @@ router.post('/alipay/next-sub', async (req, res) => {
       notifyUrl,
     });
 
-    const paidCount = subOrders.filter(o => o.status === 'paid').length;
+    const paidCount = latestSubOrders.filter(o => o.status === 'paid').length;
 
     res.json({
       payUrl,
       allPaid: false,
       currentSubOrder: paidCount + 1,
-      totalSubOrders: subOrders.length,
-      remainingSubOrders: subOrders.length - paidCount - 1,
+      totalSubOrders: latestSubOrders.length,
+      remainingSubOrders: latestSubOrders.length - paidCount - 1,
     });
   } catch (error) {
     console.error('获取下一笔子订单支付链接失败:', error);
@@ -471,6 +530,24 @@ router.get('/orders/:orderId', async (req, res) => {
 
     if (order.user_id !== userId) {
       return res.status(403).json({ error: '无权访问此订单' });
+    }
+
+    // pending 订单主动向支付宝查单补账（本地开发 notify 不可达、生产丢通知时的兜底）
+    if (order.status === 'pending') {
+      await syncOrderFromAlipay(order);
+      const fresh = await prisma.orders.findUnique({ where: { id: orderId } });
+      if (fresh) {
+        return res.json({
+          orderId: fresh.id,
+          type: fresh.type,
+          amount: fresh.amount,
+          points: fresh.points,
+          status: fresh.status,
+          paymentMethod: fresh.payment_method,
+          paidAt: fresh.paid_at,
+          createdAt: fresh.created_at
+        });
+      }
     }
 
     res.json({
@@ -799,8 +876,9 @@ router.post('/wxpay/callback', expressText({ type: ['text/xml', 'application/xml
  * 支付宝异步通知回调
  * POST /api/payment/alipay/notify
  * 由支付宝服务器主动调用，验签后处理订单
+ * 支付宝通知为 application/x-www-form-urlencoded，全局 express.json() 无法解析，需单独挂 urlencoded
  */
-router.post('/alipay/notify', async (req, res) => {
+router.post('/alipay/notify', expressUrlencoded({ extended: false }), async (req, res) => {
   try {
     const notifyData = req.body;
 

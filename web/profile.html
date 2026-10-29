@@ -129,9 +129,14 @@
         <div class="content-section" id="stories">
             <div class="section-header">
                 <h2 class="section-title"><i class="fas fa-book-open"></i> 我创建的</h2>
-                <a href="/create-ai.html" class="btn btn-primary">
-                    <i class="fas fa-plus"></i> 创建新故事
-                </a>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <button class="view-more-btn" id="viewMoreStories" style="display: none;" onclick="toggleStoriesView()">
+                        查看全部
+                    </button>
+                    <a href="/create-ai.html" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> 创建新故事
+                    </a>
+                </div>
             </div>
             <div class="stories-grid" id="storiesList">
                 <!-- 骨架屏：数据加载完成前显示 -->
@@ -169,6 +174,9 @@
         <div class="content-section">
             <div class="section-header">
                 <h2 class="section-title"><i class="fas fa-users"></i> 我协作的</h2>
+                <button class="view-more-btn" id="viewMoreFollowedStories" style="display: none;" onclick="toggleFollowedStoriesView()">
+                    查看全部
+                </button>
             </div>
             <div class="stories-grid" id="followedStoriesList">
                 <!-- 骨架屏：数据加载完成前显示 -->

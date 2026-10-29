@@ -296,6 +296,10 @@
         let allStoryFollowers = []; // 存储所有故事追更者数据
         let isFollowersExpanded = false; // 粉丝列表是否展开
         let isStoryFollowersExpanded = false; // 追更者列表是否展开
+        let allUserStories = []; // 我创建的完整数据
+        let allFollowedStories = []; // 我协作的完整数据
+        let isStoriesExpanded = false; // 我创建的是否展开
+        let isFollowedStoriesExpanded = false; // 我协作的是否展开
         const MAX_COMPACT_ITEMS = 5; // 紧凑模式最多显示5条
 
         // 检查登录状态
@@ -1720,8 +1724,12 @@ profileHeader.innerHTML = `
                 const data = await response.json();
                 console.log('故事API返回数据:', data);
                 console.log('故事数量:', data.stories?.length || 0);
-                
-                displayUserStories(data.stories);
+
+                // 按最近更新排序（最后使用的故事排前面）
+                const stories = (data.stories || []).sort((a, b) =>
+                    new Date(b.updated_at || b.createdAt) - new Date(a.updated_at || a.createdAt)
+                );
+                displayUserStories(stories);
             } catch (error) {
                 console.error('加载故事错误:', error);
                 showEmptyStories();
@@ -1779,25 +1787,35 @@ profileHeader.innerHTML = `
         // 显示用户故事（卡片网格布局）
         function displayUserStories(stories) {
             const storiesList = document.getElementById('storiesList');
+            const viewMoreBtn = document.getElementById('viewMoreStories');
 
             console.log('收到的故事数据:', stories);
 
             if (!stories || stories.length === 0) {
+                allUserStories = [];
                 showEmptyStories();
+                if (viewMoreBtn) viewMoreBtn.style.display = 'none';
                 return;
             }
 
-            // 计算总的点赞数和浏览量
+            // 存储完整数据
+            allUserStories = stories;
+
+            // 统计基于完整列表（不受展开/收起影响）
             let totalLikes = 0;
             let totalViews = 0;
+            allUserStories.forEach(story => {
+                totalLikes += story.likes || story._count?.bookmarks || 0;
+                totalViews += story.views || 0;
+            });
 
-            const storiesHTML = stories.map(story => {
+            // 根据展开状态决定显示数量
+            const displayItems = isStoriesExpanded ? allUserStories : allUserStories.slice(0, MAX_COMPACT_ITEMS);
+
+            const storiesHTML = displayItems.map(story => {
                 const nodeCount = story._count?.nodes || 0;
                 const likeCount = story.likes || story._count?.bookmarks || 0;
                 const viewCount = story.views || 0;
-
-                totalLikes += likeCount;
-                totalViews += viewCount;
 
                 return `
                     <div class="story-card" onclick="viewStory(${story.id})">
@@ -1838,19 +1856,35 @@ profileHeader.innerHTML = `
             }).join('');
 
             storiesList.innerHTML = storiesHTML;
-            
+
+            // 控制"查看全部"按钮显示
+            if (viewMoreBtn) {
+                if (allUserStories.length > MAX_COMPACT_ITEMS) {
+                    viewMoreBtn.style.display = 'block';
+                    viewMoreBtn.textContent = isStoriesExpanded ? '收起' : `查看全部 (${allUserStories.length})`;
+                } else {
+                    viewMoreBtn.style.display = 'none';
+                }
+            }
+
             // 更新统计卡片中的总点赞数和总浏览量
             const likeCountElement = document.getElementById('likeCount');
             if (likeCountElement) {
                 likeCountElement.textContent = totalLikes;
             }
-            
+
             const viewCountElement = document.getElementById('viewCount');
             if (viewCountElement) {
                 viewCountElement.textContent = totalViews;
             }
-            
+
             console.log('统计更新 - 总点赞:', totalLikes, '总浏览:', totalViews);
+        }
+
+        // 切换我创建的展开/收起
+        function toggleStoriesView() {
+            isStoriesExpanded = !isStoriesExpanded;
+            displayUserStories(allUserStories);
         }
 
         // 显示空状态
@@ -1930,13 +1964,22 @@ profileHeader.innerHTML = `
         // 显示协作的故事（卡片网格布局）
         function displayFollowedStories(stories) {
             const list = document.getElementById('followedStoriesList');
+            const viewMoreBtn = document.getElementById('viewMoreFollowedStories');
 
             if (!stories || stories.length === 0) {
+                allFollowedStories = [];
                 showEmptyFollowedStories();
+                if (viewMoreBtn) viewMoreBtn.style.display = 'none';
                 return;
             }
 
-            const storiesHTML = stories.map(story => {
+            // 存储完整数据（排序已在 loadFollowedStories 中完成）
+            allFollowedStories = stories;
+
+            // 根据展开状态决定显示数量
+            const displayItems = isFollowedStoriesExpanded ? allFollowedStories : allFollowedStories.slice(0, MAX_COMPACT_ITEMS);
+
+            const storiesHTML = displayItems.map(story => {
                 const nodeCount = story._count?.nodes || 0;
                 const viewCount = story.views || 0;
                 const likeCount = story.likes || story._count?.bookmarks || 0;
@@ -1978,8 +2021,24 @@ profileHeader.innerHTML = `
             }).join('');
 
             list.innerHTML = storiesHTML;
+
+            // 控制"查看全部"按钮显示
+            if (viewMoreBtn) {
+                if (allFollowedStories.length > MAX_COMPACT_ITEMS) {
+                    viewMoreBtn.style.display = 'block';
+                    viewMoreBtn.textContent = isFollowedStoriesExpanded ? '收起' : `查看全部 (${allFollowedStories.length})`;
+                } else {
+                    viewMoreBtn.style.display = 'none';
+                }
+            }
         }
-        
+
+        // 切换我协作的展开/收起
+        function toggleFollowedStoriesView() {
+            isFollowedStoriesExpanded = !isFollowedStoriesExpanded;
+            displayFollowedStories(allFollowedStories);
+        }
+
         // 显示消息提示
         function showMessage(message, type = 'info') {
             // 优先使用 toast 组件
