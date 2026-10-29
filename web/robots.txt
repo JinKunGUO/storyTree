@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /profile.html
+Disallow: /payment.html
+Disallow: /notifications.html
+Disallow: /ai-tasks.html
+Disallow: /preview-home-redesign.html
+
+Sitemap: https://storytree.online/sitemap.xml
