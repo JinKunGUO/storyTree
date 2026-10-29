@@ -202,7 +202,7 @@ router.post('/miniprogram-code', async (req, res) => {
 
     if (contentType.includes('image')) {
       // 成功，返回图片 buffer（base64）
-      const buffer = await codeRes.buffer();
+      const buffer = Buffer.from(await codeRes.arrayBuffer());
       const base64 = buffer.toString('base64');
 
       // 记录分享（如果关联了故事）

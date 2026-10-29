@@ -1453,7 +1453,7 @@ router.post('/wx-qr-ticket', async (req, res) => {
       return res.status(400).json({ error: `生成小程序码失败: ${errData.errmsg || '未知错误'}` });
     }
 
-    const buffer = await codeRes.buffer();
+    const buffer = Buffer.from(await codeRes.arrayBuffer());
     res.json({
       ticketId,
       qrCode: `data:image/png;base64,${buffer.toString('base64')}`,
