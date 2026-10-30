@@ -546,6 +546,35 @@
       </div>
       <div id="pointsTransactionsList"></div>
       <div id="pointsTransactionsPagination" style="margin-top: 20px; text-align: center;"></div>
+
+      <!-- 兑换码管理 -->
+      <div class="review-item" style="margin-top: 30px;">
+        <h3 style="margin-bottom: 15px;">兑换码管理</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
+          <div>
+            <label style="display: block; margin-bottom: 4px; font-size: 14px; color: var(--st-text-secondary);">生成数量（1-100）</label>
+            <input type="number" id="ecCount" value="10" min="1" max="100" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd;">
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 4px; font-size: 14px; color: var(--st-text-secondary);">每个兑换积分</label>
+            <input type="number" id="ecPoints" value="100" min="1" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd;">
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 4px; font-size: 14px; color: var(--st-text-secondary);">每码可用次数</label>
+            <input type="number" id="ecMaxUses" value="1" min="1" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd;">
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 4px; font-size: 14px; color: var(--st-text-secondary);">有效期（天，留空永久）</label>
+            <input type="number" id="ecExpiresDays" placeholder="如 30" min="1" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd;">
+          </div>
+        </div>
+        <div style="margin-top: 12px;">
+          <button class="btn btn-success" onclick="generateExchangeCodes()"><i class="fas fa-plus"></i> 批量生成</button>
+        </div>
+        <div id="exchangeCodesResult" style="margin-top: 12px; font-size: 13px; word-break: break-all;"></div>
+        <h3 style="margin: 20px 0 15px;">兑换码列表</h3>
+        <div id="exchangeCodesList"></div>
+      </div>
     </div>
 
     <!-- 数据仪表盘 -->
@@ -901,6 +930,7 @@
         loadStories();
       } else if (tab === 'points') {
         loadPointTransactions();
+        loadExchangeCodes();
       } else if (tab === 'dashboard') {
         loadDashboardOverview();
         loadUserGrowth();
@@ -1813,6 +1843,58 @@
     // ========== 积分管理功能 ==========
 
     let currentPointsTxPage = 1;
+
+    // ========== 兑换码管理 ==========
+    async function generateExchangeCodes() {
+      const count = parseInt(document.getElementById('ecCount').value, 10) || 10;
+      const points = parseInt(document.getElementById('ecPoints').value, 10);
+      const maxUses = parseInt(document.getElementById('ecMaxUses').value, 10) || 1;
+      const expiresRaw = document.getElementById('ecExpiresDays').value;
+      const expiresInDays = expiresRaw ? parseInt(expiresRaw, 10) : undefined;
+
+      if (!points || points < 1) {
+        window.toast ? toast.warning('请填写每个兑换码的积分数') : alert('请填写每个兑换码的积分数');
+        return;
+      }
+
+      try {
+        const data = await apiRequest('POST', '/admin/points/exchange-codes', { count, points, maxUses, expiresInDays });
+        const resultEl = document.getElementById('exchangeCodesResult');
+        resultEl.innerHTML = `<div style="padding:10px;background:#ecfdf5;border-radius:8px;">
+          <strong>${escapeHtml(data.message)}</strong><br>
+          <span style="font-family:monospace;">${escapeHtml((data.codes || []).join('、'))}</span>
+        </div>`;
+        window.toast ? toast.success(data.message) : null;
+        loadExchangeCodes();
+      } catch (e) {
+        window.toast ? toast.error('生成失败: ' + e.message) : alert('生成失败: ' + e.message);
+      }
+    }
+
+    async function loadExchangeCodes() {
+      const listEl = document.getElementById('exchangeCodesList');
+      if (!listEl) return;
+      listEl.innerHTML = '<div class="loading"></div>';
+      try {
+        const data = await apiRequest('GET', '/admin/points/exchange-codes?page=1&limit=20');
+        const codes = data.codes || [];
+        if (codes.length === 0) {
+          listEl.innerHTML = '<div class="empty">暂无兑换码</div>';
+          return;
+        }
+        listEl.innerHTML = `<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>兑换码</th><th>积分</th><th>已用/上限</th><th>状态</th><th>有效期</th><th>创建时间</th></tr></thead><tbody>${
+          codes.map(c => {
+            const expired = c.expires_at && new Date(c.expires_at) < new Date();
+            const exhausted = c.used_count >= c.max_uses;
+            const statusText = !c.is_active ? '已停用' : expired ? '已过期' : exhausted ? '已用完' : '可用';
+            return `<tr><td style="font-family:monospace;">${escapeHtml(c.code)}</td><td>${c.points}</td><td>${c.used_count}/${c.max_uses}</td><td>${statusText}</td><td>${c.expires_at ? new Date(c.expires_at).toLocaleDateString('zh-CN') : '永久'}</td><td>${new Date(c.created_at).toLocaleString('zh-CN')}</td></tr>`;
+          }).join('')
+        }</tbody></table></div>`;
+      } catch (e) {
+        console.error('加载兑换码失败:', e);
+        listEl.innerHTML = '<div class="empty">加载失败</div>';
+      }
+    }
 
     async function adjustPoints() {
       const userId = parseInt(document.getElementById('pointsUserId').value);

@@ -123,5 +123,106 @@ router.get('/transactions', async (req, res) => {
   }
 });
 
+/**
+ * 批量生成积分兑换码
+ * POST /api/admin/points/exchange-codes
+ * Body: { count, points, maxUses?, expiresInDays? }
+ */
+router.post('/exchange-codes', async (req, res) => {
+  try {
+    const { count = 1, points, maxUses = 1, expiresInDays } = req.body;
+
+    const numCount = parseInt(count, 10);
+    const numPoints = parseInt(points, 10);
+
+    if (isNaN(numCount) || numCount < 1 || numCount > 100) {
+      return res.status(400).json({ error: '生成数量需在 1-100 之间' });
+    }
+    if (isNaN(numPoints) || numPoints < 1 || numPoints > 100000) {
+      return res.status(400).json({ error: '单个兑换码积分需在 1-100000 之间' });
+    }
+
+    const numMaxUses = parseInt(maxUses, 10) || 1;
+    if (numMaxUses < 1 || numMaxUses > 1000) {
+      return res.status(400).json({ error: '使用次数上限需在 1-1000 之间' });
+    }
+
+    const expiresAt = expiresInDays
+      ? new Date(Date.now() + parseInt(expiresInDays, 10) * 24 * 60 * 60 * 1000)
+      : null;
+
+    // 排除易混淆字符（0/O/1/I/L）
+    const CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    const genCode = () => {
+      let s = '';
+      for (let i = 0; i < 12; i++) {
+        s += CHARS[Math.floor(Math.random() * CHARS.length)];
+      }
+      return s;
+    };
+
+    const codes: string[] = [];
+    for (let i = 0; i < numCount; i++) {
+      // 随机码碰撞概率极低，最多重试 5 次
+      let code = '';
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const candidate = genCode();
+        const exists = await prisma.exchange_codes.findUnique({ where: { code: candidate } });
+        if (!exists) {
+          code = candidate;
+          break;
+        }
+      }
+      if (!code) {
+        return res.status(500).json({ error: '生成兑换码失败，请重试' });
+      }
+
+      await prisma.exchange_codes.create({
+        data: {
+          code,
+          points: numPoints,
+          max_uses: numMaxUses,
+          expires_at: expiresAt,
+        },
+      });
+      codes.push(code);
+    }
+
+    res.json({ message: `成功生成 ${codes.length} 个兑换码`, codes });
+  } catch (error) {
+    console.error('生成兑换码失败:', error);
+    res.status(500).json({ error: '生成兑换码失败' });
+  }
+});
+
+/**
+ * 兑换码列表
+ * GET /api/admin/points/exchange-codes?page=1&limit=20
+ */
+router.get('/exchange-codes', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const skip = (page - 1) * limit;
+
+    const [codes, total] = await Promise.all([
+      prisma.exchange_codes.findMany({
+        orderBy: { created_at: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.exchange_codes.count(),
+    ]);
+
+    res.json({
+      codes,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
+  } catch (error) {
+    console.error('获取兑换码列表失败:', error);
+    res.status(500).json({ error: '获取兑换码列表失败' });
+  }
+});
+
 export default router;
 
