@@ -1786,7 +1786,7 @@ profileHeader.innerHTML = `
 
         // 注销账号（合规要求：密码验证 + 确认文本双重确认）
         async function showDeleteAccountFlow() {
-            const warningText = '注销账号将永久删除你的所有数据（故事、章节、评论、积分、会员权益），且不可恢复。';
+            const warningText = '注销账号将永久删除你的所有数据（故事、章节、评论、积分、会员权益）。你创建的故事被删除时，他人在其中的协作章节也会一并移除，且不可恢复。';
 
             const doDelete = async () => {
                 // 邮箱注册用户需密码验证；微信注册用户（email 为空）跳过

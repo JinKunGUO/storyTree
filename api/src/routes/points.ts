@@ -257,20 +257,26 @@ router.post('/exchange-code', async (req, res) => {
       return res.status(400).json({ error: '兑换码已被使用完' });
     }
 
-    // 事务：核销记录（每人每码一次，唯一约束防重）+ 使用计数
+    // 事务：原子占用名额（条件更新防超发）+ 核销记录（唯一约束防重复）
     try {
       await prisma.$transaction(async (tx) => {
+        const updated = await tx.exchange_codes.updateMany({
+          where: { id: exchangeCode.id, used_count: { lt: exchangeCode.max_uses }, is_active: true },
+          data: { used_count: { increment: 1 } }
+        });
+        if (updated.count === 0) {
+          throw new Error('EXCHANGE_CODE_EXHAUSTED');
+        }
         await tx.exchange_code_redemptions.create({
           data: { code_id: exchangeCode.id, user_id: userId }
-        });
-        await tx.exchange_codes.update({
-          where: { id: exchangeCode.id },
-          data: { used_count: { increment: 1 } }
         });
       });
     } catch (e: any) {
       if (e?.code === 'P2002') {
         return res.status(400).json({ error: '你已兑换过该兑换码' });
+      }
+      if (e?.message === 'EXCHANGE_CODE_EXHAUSTED') {
+        return res.status(400).json({ error: '兑换码已被使用完' });
       }
       throw e;
     }

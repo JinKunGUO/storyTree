@@ -87,6 +87,10 @@ async function processPaymentSuccess(
   return { success: true, message: '支付成功' };
 }
 
+// 主动查单节流：同一订单 10 秒内只向支付宝查询一次，避免前端轮询打爆支付宝 query 接口
+const lastAlipayQueryAt = new Map<string, number>();
+const ALIPAY_QUERY_INTERVAL = 10 * 1000;
+
 /**
  * 主动向支付宝查单补账：pending 订单查询真实支付状态，已支付则补入账
  * 场景：本地开发 notify 回调不可达 localhost、生产环境 notify 丢失时的兜底
@@ -114,6 +118,12 @@ async function syncOrderFromAlipay(order: { id: string; status: string; amount: 
     return;
   }
 
+  // 节流：同一订单 10 秒内只查询一次支付宝
+  const now = Date.now();
+  const lastAt = lastAlipayQueryAt.get(order.id) || 0;
+  if (now - lastAt < ALIPAY_QUERY_INTERVAL) return;
+  lastAlipayQueryAt.set(order.id, now);
+
   const alipayOrder = await queryOrderStatus(order.id);
   if (!alipayOrder) return;
   if (alipayOrder.tradeStatus !== 'TRADE_SUCCESS' && alipayOrder.tradeStatus !== 'TRADE_FINISHED') return;
@@ -124,6 +134,7 @@ async function syncOrderFromAlipay(order: { id: string; status: string; amount: 
 
   const result = await processPaymentSuccess(order.id, 'alipay', alipayOrder.tradeNo);
   if (result.success && !result.alreadyProcessed) {
+    lastAlipayQueryAt.delete(order.id);
     console.log(`✅ 主动查单补账成功: ${order.id}`);
   }
 }

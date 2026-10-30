@@ -105,7 +105,7 @@ model nodes {
   delete_requests delete_requests[]
   node_bookmarks  node_bookmarks[]
   story           stories           @relation(fields: [story_id], references: [id], onDelete: Cascade)
-  author          users             @relation("NodeAuthor", fields: [author_id], references: [id])
+  author          users             @relation("NodeAuthor", fields: [author_id], references: [id], onDelete: Cascade)
   nodes           nodes?            @relation("nodesTonodes", fields: [parent_id], references: [id])
   other_nodes     nodes[]           @relation("nodesTonodes")
   ratings         ratings[]
@@ -210,7 +210,7 @@ model stories {
   collaboration_requests      collaboration_requests[]
   nodes                       nodes[]
   shares                      shares[]
-  author                      users                    @relation("StoryAuthor", fields: [author_id], references: [id])
+  author                      users                    @relation("StoryAuthor", fields: [author_id], references: [id], onDelete: Cascade)
   collaborators               story_collaborators[]
   followers                   story_followers[]
   outlines                    story_outlines[]

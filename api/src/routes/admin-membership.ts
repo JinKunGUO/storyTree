@@ -280,6 +280,15 @@ router.post('/orders/:id/refund', async (req, res) => {
       return res.status(400).json({ error: `订单状态为 ${order.status}，仅已支付订单可退款` });
     }
 
+    // 并发保护：CAS 抢占（paid → refunding），防止重复点击导致重复退款
+    const claim = await prisma.orders.updateMany({
+      where: { id, status: 'paid' },
+      data: { status: 'refunding' },
+    });
+    if (claim.count === 0) {
+      return res.status(409).json({ error: '订单正在退款中或状态已变化，请刷新后重试' });
+    }
+
     // 拆分订单：逐笔对子订单退款；普通订单：直接退
     const subOrders = await prisma.orders.findMany({
       where: { id: { startsWith: `${id}_SUB` } },
@@ -390,6 +399,12 @@ router.post('/orders/:id/refund', async (req, res) => {
       mock: isMockMode(),
     });
   } catch (error) {
+    // 退款失败：若订单卡在 refunding，恢复为 paid 以便重试
+    try {
+      await prisma.orders.updateMany({ where: { id, status: 'refunding' }, data: { status: 'paid' } });
+    } catch (e) {
+      console.error('恢复订单状态失败:', e);
+    }
     console.error('订单退款失败:', error);
     res.status(500).json({ error: error instanceof Error ? error.message : '退款失败' });
   }
