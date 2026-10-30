@@ -443,7 +443,15 @@ export async function upgradeMembership(
       && new Date(ownerUser.membership_expires_at) > new Date();
 
     if (ownerActive) {
-      const pendingExpires = new Date(Date.now() + tierConfig.duration * 24 * 60 * 60 * 1000);
+      // 已有未过期 pending 时从原到期时间叠加，避免重复购买覆盖导致天数丢失
+      const currentUser = await prisma.users.findUnique({
+        where: { id: userId },
+        select: { pending_membership_expires: true }
+      });
+      const pendingBase = (currentUser?.pending_membership_expires && new Date(currentUser.pending_membership_expires) > new Date())
+        ? new Date(currentUser.pending_membership_expires)
+        : new Date();
+      const pendingExpires = new Date(pendingBase.getTime() + tierConfig.duration * 24 * 60 * 60 * 1000);
 
       await prisma.users.update({
         where: { id: userId },

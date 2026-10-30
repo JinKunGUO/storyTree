@@ -159,11 +159,52 @@ router.post('/accept-invite', authenticateToken, async (req: any, res) => {
       }
     });
 
+    // 入团即时享受企业权益：将子账号自身有效个人会员转为 pending（保留原到期时间，团队终止后激活）
+    const memberUser = await prisma.users.findUnique({
+      where: { id: userId },
+      select: {
+        membership_tier: true,
+        membership_expires_at: true,
+        pending_membership_tier: true,
+        pending_membership_expires: true,
+      },
+    });
+    if (
+      memberUser &&
+      memberUser.membership_tier !== 'free' &&
+      memberUser.membership_expires_at &&
+      new Date(memberUser.membership_expires_at) > new Date()
+    ) {
+      // 若已有 pending 且更晚，保留更长的那份
+      let pendingTier = memberUser.membership_tier;
+      let pendingExpires = new Date(memberUser.membership_expires_at);
+      if (
+        memberUser.pending_membership_tier &&
+        memberUser.pending_membership_expires &&
+        new Date(memberUser.pending_membership_expires) > pendingExpires
+      ) {
+        pendingTier = memberUser.pending_membership_tier;
+        pendingExpires = new Date(memberUser.pending_membership_expires);
+      }
+
+      await prisma.users.update({
+        where: { id: userId },
+        data: {
+          pending_membership_tier: pendingTier,
+          pending_membership_expires: pendingExpires,
+          membership_tier: 'free',
+          membership_expires_at: null,
+        },
+      });
+    }
+
     await createNotification(
       userId,
       'team_joined',
       '已加入团队',
-      '您已成功加入团队，享有企业版全部权益',
+      memberUser && memberUser.membership_tier !== 'free'
+        ? '您已加入团队，已立即享受企业版权益；您的个人会员剩余天数已保留，团队权益结束后自动恢复'
+        : '您已成功加入团队，享有企业版全部权益',
       '/profile.html'
     );
 
@@ -258,18 +299,106 @@ router.delete('/members/:memberId', authenticateToken, async (req: any, res) => 
       data: { status: 'removed' }
     });
 
+    // 激活子账号 pending 个人会员（入团时转入的剩余会员天数），避免权益丢失
+    const removedUser = await prisma.users.findUnique({
+      where: { id: record.member_user_id },
+      select: { pending_membership_tier: true, pending_membership_expires: true },
+    });
+    const hasPending =
+      removedUser?.pending_membership_tier &&
+      removedUser.pending_membership_expires &&
+      new Date(removedUser.pending_membership_expires) > new Date();
+
+    if (hasPending) {
+      await prisma.users.update({
+        where: { id: record.member_user_id },
+        data: {
+          membership_tier: removedUser!.pending_membership_tier!,
+          membership_started_at: new Date(),
+          membership_expires_at: removedUser!.pending_membership_expires,
+          pending_membership_tier: null,
+          pending_membership_expires: null,
+        },
+      });
+    }
+
     await createNotification(
       record.member_user_id,
       'team_removed',
       '已被移出团队',
-      '您已被移出团队，企业版权益已失效，降级为免费用户',
+      hasPending
+        ? '您已被移出团队，此前保留的个人会员已自动恢复'
+        : '您已被移出团队，企业版权益已失效，降级为免费用户',
       '/membership.html'
     );
 
-    res.json({ success: true });
+    res.json({ success: true, pendingActivated: !!hasPending });
   } catch (error) {
     console.error('移除成员失败:', error);
     res.status(500).json({ error: '移除成员失败' });
+  }
+});
+
+/**
+ * DELETE /api/team/leave
+ * 子账号主动退出团队（退出后恢复入团时保留的个人会员）
+ */
+router.delete('/leave', authenticateToken, async (req: any, res) => {
+  const userId = await getUserId(req);
+  if (!userId) return res.status(401).json({ error: '未登录' });
+
+  try {
+    const record = await prisma.team_memberships.findFirst({
+      where: { member_user_id: userId, status: 'active' }
+    });
+    if (!record) {
+      return res.status(404).json({ error: '您当前不在任何团队中' });
+    }
+
+    await prisma.team_memberships.update({
+      where: { id: record.id },
+      data: { status: 'removed' }
+    });
+
+    // 激活 pending 个人会员（入团时保留的剩余会员天数）
+    const user = await prisma.users.findUnique({
+      where: { id: userId },
+      select: { pending_membership_tier: true, pending_membership_expires: true },
+    });
+    const hasPending =
+      user?.pending_membership_tier &&
+      user.pending_membership_expires &&
+      new Date(user.pending_membership_expires) > new Date();
+
+    if (hasPending) {
+      await prisma.users.update({
+        where: { id: userId },
+        data: {
+          membership_tier: user!.pending_membership_tier!,
+          membership_started_at: new Date(),
+          membership_expires_at: user!.pending_membership_expires,
+          pending_membership_tier: null,
+          pending_membership_expires: null,
+        },
+      });
+    }
+
+    await createNotification(
+      record.owner_user_id,
+      'team_member_left',
+      '成员退出团队',
+      '有成员主动退出了您的团队',
+      '/profile.html'
+    );
+
+    res.json({
+      success: true,
+      pendingActivated: !!hasPending,
+      message: hasPending ? '已退出团队，个人会员已恢复' : '已退出团队'
+    });
+  } catch (error) {
+    console.error('退出团队失败:', error);
+    res.status(500).json({ error: '退出团队失败' });
   }
 });
 

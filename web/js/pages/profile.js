@@ -3445,16 +3445,38 @@ if (codes.length === 0) {
                     container.innerHTML = `
                         <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px; padding: 24px; color: white; margin-bottom: 20px;">
                             <h3 style="margin: 0 0 12px 0; font-size: 18px;"><i class="fas fa-users"></i> 我的团队</h3>
-                            <p style="margin: 0; opacity: 0.8;">
-                                团队主账号：<strong>${status.owner.username}</strong><br>
+                            <p style="margin: 0 0 16px 0; opacity: 0.8;">
+                                团队主账号：<strong>${escapeHtml(status.owner.username)}</strong><br>
                                 您享有企业版全部权益（继承自主账号）
                             </p>
+                            <button onclick="leaveTeam()" style="padding: 8px 16px; border: 1px solid rgba(255,255,255,0.4); border-radius: 8px; background: transparent; color: white; cursor: pointer; font-size: 13px;">
+                                <i class="fas fa-sign-out-alt"></i> 退出团队
+                            </button>
                         </div>
                     `;
                 }
             } catch (e) {
                 console.error('加载团队状态失败:', e);
                 container.style.display = 'none';
+            }
+        }
+
+        // 子账号主动退出团队（退出后恢复入团时保留的个人会员）
+        async function leaveTeam() {
+            if (!confirm('退出团队后将失去企业版权益；入团时保留的个人会员会自动恢复。确定退出吗？')) return;
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                const res = await fetch('/api/team/leave', {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || '退出失败');
+                showMessage(data.message || '已退出团队', 'success');
+                setTimeout(() => window.location.reload(), 1200);
+            } catch (e) {
+                console.error('退出团队失败:', e);
+                showMessage('退出失败：' + e.message, 'error');
             }
         }
 
