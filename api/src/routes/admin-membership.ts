@@ -464,6 +464,30 @@ router.post('/orders/:id/refund', async (req, res) => {
 });
 
 /**
+ * 查询订单退款流水（含拆分订单的子订单流水）
+ * GET /api/admin/membership/orders/:id/refunds
+ */
+router.get('/orders/:id/refunds', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const records = await prisma.refund_records.findMany({
+      where: {
+        OR: [
+          { order_id: id },
+          { parent_order_id: id },
+        ],
+      },
+      orderBy: { created_at: 'asc' },
+    });
+
+    res.json({ records });
+  } catch (error) {
+    console.error('查询退款流水失败:', error);
+    res.status(500).json({ error: '查询退款流水失败' });
+  }
+});
+
+/**
  * 手动调整会员状态（管理员特殊操作）
  */
 router.post('/members/:userId/adjust', async (req, res) => {

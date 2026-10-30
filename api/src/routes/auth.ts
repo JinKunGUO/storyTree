@@ -1347,7 +1347,30 @@ router.delete('/account', async (req, res) => {
     await prisma.$transaction(async (tx) => {
       // 记录注销日志（可选：保留注销记录用于审计）
       console.log(`用户注销: id=${user.id}, username=${user.username}, email=${user.email}`);
-      
+
+      // 清理团队关系（team_memberships 为纯标量字段，不随用户级联删除）
+      // 1. 作为企业主：解散团队并通知子账号
+      const ownedTeams = await tx.team_memberships.findMany({
+        where: { owner_user_id: user.id },
+        select: { member_user_id: true },
+      });
+      if (ownedTeams.length > 0) {
+        await tx.team_memberships.deleteMany({ where: { owner_user_id: user.id } });
+        for (const member of ownedTeams) {
+          await tx.notifications.create({
+            data: {
+              user_id: member.member_user_id,
+              type: 'team_disbanded',
+              title: '团队已解散',
+              content: '企业主账号已注销，你的企业版权益已失效',
+              link: '/membership.html',
+            },
+          }).catch(() => {}); // 通知失败不阻塞注销
+        }
+      }
+      // 2. 作为子账号：退出所有所属团队
+      await tx.team_memberships.deleteMany({ where: { member_user_id: user.id } });
+
       // 删除用户（级联删除会处理关联数据）
       await tx.users.delete({
         where: { id: user.id }

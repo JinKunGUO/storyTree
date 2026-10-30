@@ -1288,9 +1288,12 @@
               const statusMap = { pending: '待支付', paid: '已支付', refunding: '退款中', failed: '失败', refunded: '已退款' };
               // 拆分支付的子订单不单独提供退款入口（退款走父订单，自动逐笔退子订单）
               const isSubOrder = String(o.id).includes('_SUB');
-              const refundBtn = (o.status === 'paid' && !isSubOrder)
-                ? `<button class="btn" style="padding: 4px 8px; font-size: 12px; background: #ef4444; color: white;" onclick="window._refundOrder('${escapeHtml(String(o.id))}', ${userId})">退款</button>`
-                : '-';
+              let refundBtn = '-';
+              if (o.status === 'paid' && !isSubOrder) {
+                refundBtn = `<button class="btn" style="padding: 4px 8px; font-size: 12px; background: #ef4444; color: white;" onclick="window._refundOrder('${escapeHtml(String(o.id))}', ${userId})">退款</button>`;
+              } else if (o.status === 'refunded' || o.status === 'refunding') {
+                refundBtn = `<button class="btn" style="padding: 4px 8px; font-size: 12px;" onclick="window._viewRefundRecords('${escapeHtml(String(o.id))}')">退款记录</button>`;
+              }
               ordersHtml += `<tr><td>${escapeHtml(String(o.id))}</td><td>${escapeHtml(o.type || '-')}</td><td>¥${o.amount || 0}</td><td>${escapeHtml(statusMap[o.status] || o.status)}</td><td>${new Date(o.created_at).toLocaleString('zh-CN')}</td><td>${refundBtn}</td></tr>`;
             });
             ordersHtml += '</tbody></table></div>';
@@ -1320,6 +1323,33 @@
         }
       };
       window._refundOrder = refundOrder;
+
+      // 查看订单退款流水（含拆分订单逐笔记录）
+      const viewRefundRecords = async (orderId) => {
+        try {
+          const data = await apiRequest('GET', `/admin/membership/orders/${encodeURIComponent(orderId)}/refunds`);
+          const records = data.records || [];
+          if (records.length === 0) {
+            window.toast ? toast.info('暂无退款流水') : alert('暂无退款流水');
+            return;
+          }
+          const statusMap = { pending: '待退款', success: '已退款', failed: '失败' };
+          let html = '<div style="max-height:300px;overflow-y:auto;"><table class="data-table"><thead><tr><th>订单项</th><th>金额</th><th>状态</th><th>支付宝退款号</th><th>错误信息</th><th>时间</th></tr></thead><tbody>';
+          records.forEach(r => {
+            html += `<tr><td style="font-family:monospace;font-size:12px;">${escapeHtml(String(r.order_id))}</td><td>¥${r.amount}</td><td>${statusMap[r.status] || escapeHtml(String(r.status))}</td><td style="font-family:monospace;font-size:12px;">${escapeHtml(String(r.alipay_refund_no || '-'))}</td><td style="color:#ef4444;font-size:12px;">${escapeHtml(String(r.error_message || '-'))}</td><td>${new Date(r.created_at).toLocaleString('zh-CN')}</td></tr>`;
+          });
+          html += '</tbody></table></div>';
+
+          if (window.showModal) {
+            showModal({ title: '退款流水', content: html, showCancel: false, confirmText: '关闭' });
+          } else {
+            alert(html.replace(/<[^>]+>/g, ' '));
+          }
+        } catch (e) {
+          window.toast ? toast.error('加载退款流水失败: ' + e.message) : alert('加载退款流水失败: ' + e.message);
+        }
+      };
+      window._viewRefundRecords = viewRefundRecords;
 
       // 先获取会员信息
       apiRequest('GET', `/admin/membership/members?page=1&limit=100`).then(data => {
@@ -1882,17 +1912,30 @@
           listEl.innerHTML = '<div class="empty">暂无兑换码</div>';
           return;
         }
-        listEl.innerHTML = `<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>兑换码</th><th>积分</th><th>已用/上限</th><th>状态</th><th>有效期</th><th>创建时间</th></tr></thead><tbody>${
+        listEl.innerHTML = `<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>兑换码</th><th>积分</th><th>已用/上限</th><th>状态</th><th>有效期</th><th>创建时间</th><th>操作</th></tr></thead><tbody>${
           codes.map(c => {
             const expired = c.expires_at && new Date(c.expires_at) < new Date();
             const exhausted = c.used_count >= c.max_uses;
             const statusText = !c.is_active ? '已停用' : expired ? '已过期' : exhausted ? '已用完' : '可用';
-            return `<tr><td style="font-family:monospace;">${escapeHtml(c.code)}</td><td>${c.points}</td><td>${c.used_count}/${c.max_uses}</td><td>${statusText}</td><td>${c.expires_at ? new Date(c.expires_at).toLocaleDateString('zh-CN') : '永久'}</td><td>${new Date(c.created_at).toLocaleString('zh-CN')}</td></tr>`;
+            const toggleBtn = `<button class="btn" style="padding: 4px 8px; font-size: 12px;" onclick="toggleExchangeCode(${c.id}, ${c.is_active})">${c.is_active ? '停用' : '启用'}</button>`;
+            return `<tr><td style="font-family:monospace;">${escapeHtml(c.code)}</td><td>${c.points}</td><td>${c.used_count}/${c.max_uses}</td><td>${statusText}</td><td>${c.expires_at ? new Date(c.expires_at).toLocaleDateString('zh-CN') : '永久'}</td><td>${new Date(c.created_at).toLocaleString('zh-CN')}</td><td>${toggleBtn}</td></tr>`;
           }).join('')
         }</tbody></table></div>`;
       } catch (e) {
         console.error('加载兑换码失败:', e);
         listEl.innerHTML = '<div class="empty">加载失败</div>';
+      }
+    }
+
+    async function toggleExchangeCode(id, currentActive) {
+      const action = currentActive ? '停用' : '启用';
+      if (!confirm(`确定要${action}该兑换码吗？`)) return;
+      try {
+        const data = await apiRequest('PATCH', `/admin/points/exchange-codes/${id}`, { is_active: !currentActive });
+        window.toast ? toast.success(data.message) : null;
+        loadExchangeCodes();
+      } catch (e) {
+        window.toast ? toast.error(`${action}失败: ` + e.message) : alert(`${action}失败: ` + e.message);
       }
     }
 

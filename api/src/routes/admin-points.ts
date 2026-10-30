@@ -224,5 +224,42 @@ router.get('/exchange-codes', async (req, res) => {
   }
 });
 
+/**
+ * 停用/启用兑换码
+ * PATCH /api/admin/points/exchange-codes/:id
+ * Body: { is_active: boolean }
+ */
+router.patch('/exchange-codes/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: '无效的兑换码 ID' });
+    }
+
+    const { is_active } = req.body;
+    if (typeof is_active !== 'boolean') {
+      return res.status(400).json({ error: 'is_active 必须为布尔值' });
+    }
+
+    const code = await prisma.exchange_codes.findUnique({ where: { id } });
+    if (!code) {
+      return res.status(404).json({ error: '兑换码不存在' });
+    }
+
+    const updated = await prisma.exchange_codes.update({
+      where: { id },
+      data: { is_active },
+    });
+
+    res.json({
+      message: `兑换码 ${updated.code} 已${is_active ? '启用' : '停用'}`,
+      code: updated,
+    });
+  } catch (error) {
+    console.error('更新兑换码状态失败:', error);
+    res.status(500).json({ error: '更新兑换码状态失败' });
+  }
+});
+
 export default router;
 
