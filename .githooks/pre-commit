@@ -26,6 +26,18 @@ if [ -f "api/package.json" ]; then
   cd "$REPO_ROOT"
 fi
 
+# Prisma dual-schema consistency check (only when schema files are staged)
+STAGED_SCHEMA_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^api/prisma/schema(\.mysql)?\.prisma$' || true)
+if [ -n "$STAGED_SCHEMA_FILES" ]; then
+  echo "🗄️  Running schema consistency check..."
+  if ! bash scripts/check-schema-consistency.sh; then
+    echo ""
+    echo "❌ SQLite 与 MySQL 生产 schema 不一致，会导致部署后运行时报错（Unknown model/field）"
+    echo "   请将改动同步到两个 schema 文件后重新提交"
+    exit 1
+  fi
+fi
+
 # Dark mode compatibility check on staged web files
 STAGED_WEB_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^web/.*\.(js|html|css)$' || true)
 if [ -n "$STAGED_WEB_FILES" ]; then
