@@ -163,6 +163,34 @@ install_deps() {
 }
 
 # ===================================
+# 部署前备份（防止 schema 变更意外丢数据）
+# ===================================
+backup_before_deploy() {
+    log_info "部署前备份数据库与上传文件..."
+    BACKUP_SCRIPT="$APP_DIR/scripts/backup.sh"
+
+    if [ ! -f "$BACKUP_SCRIPT" ]; then
+        log_warn "备份脚本不存在：$BACKUP_SCRIPT，跳过备份"
+        return 0
+    fi
+
+    if bash "$BACKUP_SCRIPT"; then
+        log_success "部署前备份完成"
+    else
+        log_warn "部署前备份失败！"
+        if [ -t 0 ]; then
+            read -r -p "备份失败，是否仍要继续部署？(y/N) " answer
+            case "$answer" in
+                [yY]) log_warn "用户确认继续部署（本次变更无备份保护）" ;;
+                *) log_error "部署已中止。请修复备份问题后重试" ;;
+            esac
+        else
+            log_error "非交互环境且备份失败，部署中止（避免无备份变更数据库）"
+        fi
+    fi
+}
+
+# ===================================
 # 数据库迁移
 # ===================================
 run_migrations() {
@@ -403,6 +431,7 @@ main() {
 
     update_code
     install_deps
+    backup_before_deploy
     run_migrations
     check_prisma_client
     build_project
