@@ -160,7 +160,14 @@ main() {
     init_backup_dir
     load_db_config
     backup_database
-    backup_uploads
+
+    # --db-only：只备份数据库（部署前备份用，schema 变更不影响上传文件）
+    if [ "$1" = "--db-only" ]; then
+        log_info "（--db-only 模式：跳过 uploads 备份）"
+    else
+        backup_uploads
+    fi
+
     cleanup_old_backups
     show_stats
 

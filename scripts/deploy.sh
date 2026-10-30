@@ -90,6 +90,16 @@ init_server() {
     log_info "配置 PM2 开机自启..."
     pm2 startup | tail -1 | bash || true
     log_success "PM2 开机自启配置完成"
+
+    # 配置每日自动备份（凌晨 3 点，幂等：已存在则跳过）
+    log_info "配置每日自动备份任务..."
+    BACKUP_CRON="0 3 * * * /bin/bash $APP_DIR/scripts/backup.sh >> /var/log/storytree-backup.log 2>&1"
+    if crontab -l 2>/dev/null | grep -Fq "$APP_DIR/scripts/backup.sh"; then
+        log_success "备份定时任务已存在，跳过"
+    else
+        (crontab -l 2>/dev/null; echo "$BACKUP_CRON") | crontab -
+        log_success "已添加每日 3 点自动备份任务（保留最近 7 天）"
+    fi
 }
 
 # ===================================
@@ -174,7 +184,8 @@ backup_before_deploy() {
         return 0
     fi
 
-    if bash "$BACKUP_SCRIPT"; then
+    # 只备份数据库：schema 变更不影响 uploads，避免每次部署都全量打包文件
+    if bash "$BACKUP_SCRIPT" --db-only; then
         log_success "部署前备份完成"
     else
         log_warn "部署前备份失败！"
