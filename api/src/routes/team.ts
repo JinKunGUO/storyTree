@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 import { prisma } from '../index';
-import { getMembershipTier, MEMBERSHIP_TIERS, activatePendingMembership } from '../utils/membership';
+import { getMembershipTier, MEMBERSHIP_TIERS, activatePendingMembership, getHigherTier } from '../utils/membership';
 import { authenticateToken, getActiveUserIdFromReq } from '../utils/middleware';
 import { createNotification } from './notifications';
 
@@ -167,6 +167,7 @@ router.post('/accept-invite', authenticateToken, async (req: any, res) => {
         membership_expires_at: true,
         pending_membership_tier: true,
         pending_membership_days: true,
+        pending_membership_expires: true,
       },
     });
     if (
@@ -180,9 +181,15 @@ router.post('/accept-invite', authenticateToken, async (req: any, res) => {
         0,
         Math.ceil((new Date(memberUser.membership_expires_at).getTime() - Date.now()) / 86400000)
       );
-      // 已有 pending 天数时累加，等级保留已有的（通常为空）
-      const totalDays = remainingDays + (memberUser.pending_membership_days || 0);
-      const pendingTier = memberUser.pending_membership_tier || memberUser.membership_tier;
+      // 兼容旧数据：无 days 时按 pending_expires 折算剩余天数
+      const legacyPendingDays = (!memberUser.pending_membership_days && memberUser.pending_membership_expires && new Date(memberUser.pending_membership_expires) > new Date())
+        ? Math.ceil((new Date(memberUser.pending_membership_expires).getTime() - Date.now()) / 86400000)
+        : 0;
+      const totalDays = remainingDays + (memberUser.pending_membership_days || legacyPendingDays || 0);
+      // 等级取较高者，避免低等级覆盖高等级的剩余天数
+      const pendingTier = memberUser.pending_membership_tier
+        ? getHigherTier(memberUser.pending_membership_tier, memberUser.membership_tier)
+        : memberUser.membership_tier;
 
       await prisma.users.update({
         where: { id: userId },

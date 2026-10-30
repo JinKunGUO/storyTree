@@ -412,6 +412,20 @@ export function getMembershipBenefits(tier?: string): Array<{
 /**
  * 升级会员
  */
+// 会员等级排序（低 → 高）
+const TIER_ORDER = ['free', 'trial', 'monthly', 'quarterly', 'yearly', 'enterprise'];
+
+/**
+ * 返回两个等级中较高的一个（pending 累加时保留高价值等级，避免低等级覆盖高等级天数）
+ */
+export function getHigherTier(a: string, b: string): string {
+  const ia = TIER_ORDER.indexOf(a);
+  const ib = TIER_ORDER.indexOf(b);
+  if (ia === -1) return b;
+  if (ib === -1) return a;
+  return ia >= ib ? a : b;
+}
+
 /**
  * 激活用户的 pending 会员（按剩余天数从当下重新起算）
  * 团队期间不消耗个人会员天数：脱离团队/团队终止时调用，剩余天数从激活时刻重新计算
@@ -501,22 +515,30 @@ export async function upgradeMembership(
 
     if (ownerActive) {
       // 天数模型：已有 pending 天数时累加（团队期间不消耗天数，团队终止后从当下重新起算）
+      // 兼容旧数据：无 days 时按 pending_expires 折算剩余天数
       const currentUser = await prisma.users.findUnique({
         where: { id: userId },
-        select: { pending_membership_days: true }
+        select: { pending_membership_tier: true, pending_membership_days: true, pending_membership_expires: true }
       });
-      const totalDays = (currentUser?.pending_membership_days || 0) + tierConfig.duration;
+      const legacyPendingDays = (!currentUser?.pending_membership_days && currentUser?.pending_membership_expires && new Date(currentUser.pending_membership_expires) > new Date())
+        ? Math.ceil((new Date(currentUser.pending_membership_expires).getTime() - Date.now()) / 86400000)
+        : 0;
+      const totalDays = (currentUser?.pending_membership_days || legacyPendingDays || 0) + tierConfig.duration;
+      // 等级保留较高者，避免低等级覆盖高等级的剩余天数
+      const pendingTier = currentUser?.pending_membership_tier
+        ? getHigherTier(currentUser.pending_membership_tier, tier)
+        : tier;
 
       await prisma.users.update({
         where: { id: userId },
         data: {
-          pending_membership_tier: tier,
+          pending_membership_tier: pendingTier,
           pending_membership_days: totalDays,
           pending_membership_expires: null
         }
       });
 
-      console.log(`⏳ 子账号 ${userId} 购买 ${tier} 会员，延后生效（累计 ${totalDays} 天，团队终止后激活）`);
+      console.log(`⏳ 子账号 ${userId} 购买 ${tier} 会员，延后生效（累计 ${totalDays} 天 ${pendingTier}，团队终止后激活）`);
       return { success: true, expiresAt: new Date(Date.now() + totalDays * 24 * 60 * 60 * 1000) };
     }
   }
