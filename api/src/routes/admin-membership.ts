@@ -299,6 +299,12 @@ router.post('/orders/:id/refund', async (req, res) => {
       ? subOrders.filter(s => s.status === 'paid').map(s => ({ id: s.id, amount: s.amount }))
       : [{ id: order.id, amount: order.amount }];
 
+    // 防御：无任何可退款项（数据异常）时，避免未退款就回滚权益
+    if (refundTargets.length === 0) {
+      await prisma.orders.updateMany({ where: { id, status: 'refunding' }, data: { status: 'paid' } });
+      return res.status(500).json({ error: '未找到可退款的订单项，请检查订单数据' });
+    }
+
     // 逐笔退款：幂等（已有 success 流水则跳过，支持失败后重试）；单笔失败不中断，全部尝试后汇总
     const failures: { orderId: string; error: string }[] = [];
     for (const target of refundTargets) {

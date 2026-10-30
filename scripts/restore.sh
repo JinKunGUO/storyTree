@@ -152,7 +152,12 @@ case "$1" in
     --all)
         [ -z "$2" ] && log_error "请指定时间戳，如：--all 20261030_030000"
         restore_db "storytree_$2.sql.gz"
-        restore_uploads "uploads_$2.tar.gz"
+        # 部署前备份只含数据库，无同时间戳 uploads 时跳过而非中断（数据库此时已恢复）
+        if [ -f "$BACKUP_DIR/uploads/uploads_$2.tar.gz" ]; then
+            restore_uploads "uploads_$2.tar.gz"
+        else
+            log_warn "未找到同时间戳的 uploads 备份，跳过文件恢复（仅恢复了数据库）"
+        fi
         log_warn "建议重启服务：pm2 restart storytree-api"
         ;;
     *)
