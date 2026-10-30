@@ -412,6 +412,63 @@ export function getMembershipBenefits(tier?: string): Array<{
 /**
  * 升级会员
  */
+/**
+ * 激活用户的 pending 会员（按剩余天数从当下重新起算）
+ * 团队期间不消耗个人会员天数：脱离团队/团队终止时调用，剩余天数从激活时刻重新计算
+ * @param tx Prisma 客户端或事务客户端
+ */
+export async function activatePendingMembership(
+  tx: any,
+  userId: number
+): Promise<{ activated: boolean; tier?: string; expiresAt?: Date }> {
+  const user = await tx.users.findUnique({
+    where: { id: userId },
+    select: {
+      pending_membership_tier: true,
+      pending_membership_days: true,
+      pending_membership_expires: true,
+    },
+  });
+
+  if (!user?.pending_membership_tier) {
+    return { activated: false };
+  }
+
+  // 优先用剩余天数（团队期间不计入消耗）；兼容旧数据：按绝对到期时间折算剩余天数
+  const days = user.pending_membership_days
+    ?? (user.pending_membership_expires
+      ? Math.max(0, Math.ceil((new Date(user.pending_membership_expires).getTime() - Date.now()) / 86400000))
+      : 0);
+
+  if (days <= 0) {
+    // 剩余天数已耗尽：清理 pending，避免残留
+    await tx.users.update({
+      where: { id: userId },
+      data: {
+        pending_membership_tier: null,
+        pending_membership_expires: null,
+        pending_membership_days: null,
+      },
+    });
+    return { activated: false };
+  }
+
+  const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  await tx.users.update({
+    where: { id: userId },
+    data: {
+      membership_tier: user.pending_membership_tier,
+      membership_started_at: new Date(),
+      membership_expires_at: expiresAt,
+      pending_membership_tier: null,
+      pending_membership_expires: null,
+      pending_membership_days: null,
+    },
+  });
+
+  return { activated: true, tier: user.pending_membership_tier, expiresAt };
+}
+
 export async function upgradeMembership(
   userId: number,
   tier: string,
@@ -443,26 +500,24 @@ export async function upgradeMembership(
       && new Date(ownerUser.membership_expires_at) > new Date();
 
     if (ownerActive) {
-      // 已有未过期 pending 时从原到期时间叠加，避免重复购买覆盖导致天数丢失
+      // 天数模型：已有 pending 天数时累加（团队期间不消耗天数，团队终止后从当下重新起算）
       const currentUser = await prisma.users.findUnique({
         where: { id: userId },
-        select: { pending_membership_expires: true }
+        select: { pending_membership_days: true }
       });
-      const pendingBase = (currentUser?.pending_membership_expires && new Date(currentUser.pending_membership_expires) > new Date())
-        ? new Date(currentUser.pending_membership_expires)
-        : new Date();
-      const pendingExpires = new Date(pendingBase.getTime() + tierConfig.duration * 24 * 60 * 60 * 1000);
+      const totalDays = (currentUser?.pending_membership_days || 0) + tierConfig.duration;
 
       await prisma.users.update({
         where: { id: userId },
         data: {
           pending_membership_tier: tier,
-          pending_membership_expires: pendingExpires
+          pending_membership_days: totalDays,
+          pending_membership_expires: null
         }
       });
 
-      console.log(`⏳ 子账号 ${userId} 购买 ${tier} 会员，延后生效（主账号到期后激活）`);
-      return { success: true, expiresAt: pendingExpires };
+      console.log(`⏳ 子账号 ${userId} 购买 ${tier} 会员，延后生效（累计 ${totalDays} 天，团队终止后激活）`);
+      return { success: true, expiresAt: new Date(Date.now() + totalDays * 24 * 60 * 60 * 1000) };
     }
   }
 

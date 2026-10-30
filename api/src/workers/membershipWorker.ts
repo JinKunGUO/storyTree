@@ -1,5 +1,6 @@
 import { prisma } from '../db';
 import { createNotification } from '../routes/notifications';
+import { activatePendingMembership } from '../utils/membership';
 
 /**
  * 会员定时任务
@@ -219,43 +220,26 @@ async function processExpiredMemberships() {
 
           console.log(`🧊 企业版过期，冻结 ${frozenCount.count} 个子账号`);
 
-          // 检查冻结的子账号是否有 pending 个人会员，有则激活
-          const pendingMembers = await prisma.users.findMany({
-            where: {
-              id: { in: frozenMembers.map(m => m.member_user_id) },
-              pending_membership_tier: { not: null },
-              pending_membership_expires: { gt: new Date() }
-            },
-            select: { id: true, username: true, pending_membership_tier: true, pending_membership_expires: true }
-          });
-
-          for (const member of pendingMembers) {
-            await prisma.users.update({
-              where: { id: member.id },
-              data: {
-                membership_tier: member.pending_membership_tier!,
-                membership_started_at: new Date(),
-                membership_expires_at: member.pending_membership_expires,
-                pending_membership_tier: null,
-                pending_membership_expires: null
-              }
-            });
+          // 检查冻结的子账号是否有 pending 个人会员，有则按剩余天数重新起算激活
+          for (const member of frozenMembers) {
+            const { activated, tier } = await activatePendingMembership(prisma, member.member_user_id);
+            if (!activated) continue;
 
             // 恢复为 active（个人会员生效，不再是 frozen）
             await prisma.team_memberships.updateMany({
-              where: { member_user_id: member.id, status: 'frozen' },
+              where: { member_user_id: member.member_user_id, status: 'frozen' },
               data: { status: 'active', frozen_at: null }
             });
 
             await createNotification(
-              member.id,
+              member.member_user_id,
               'pending_membership_activated',
               '个人会员已激活',
-              `您之前购买的${getMembershipName(member.pending_membership_tier!)}已自动激活`,
+              `您之前购买的${getMembershipName(tier!)}已自动激活`,
               '/membership.html'
             );
 
-            console.log(`✅ 子账号 ${member.username} pending 会员已激活：${member.pending_membership_tier}`);
+            console.log(`✅ 子账号 ${member.member_user_id} pending 会员已激活：${tier}`);
           }
         }
       }

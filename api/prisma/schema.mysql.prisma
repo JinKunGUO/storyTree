@@ -241,6 +241,9 @@ model users {
   membership_auto_renew      Boolean                   @default(false)
   membership_payment_method  String?                   @db.VarChar(50)
   has_used_trial             Boolean                   @default(false)
+  pending_membership_tier    String?                   @map("pending_membership_tier") @db.VarChar(50)
+  pending_membership_expires DateTime?                 @map("pending_membership_expires")
+  pending_membership_days    Int?                      @map("pending_membership_days")
   subscription_type          String?                   @db.VarChar(50)
   subscription_expires       DateTime?
   wx_openid                  String?                   @unique @db.VarChar(100)

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 import { prisma } from '../index';
-import { getMembershipTier, MEMBERSHIP_TIERS } from '../utils/membership';
+import { getMembershipTier, MEMBERSHIP_TIERS, activatePendingMembership } from '../utils/membership';
 import { authenticateToken, getActiveUserIdFromReq } from '../utils/middleware';
 import { createNotification } from './notifications';
 
@@ -159,14 +159,14 @@ router.post('/accept-invite', authenticateToken, async (req: any, res) => {
       }
     });
 
-    // 入团即时享受企业权益：将子账号自身有效个人会员转为 pending（保留原到期时间，团队终止后激活）
+    // 入团即时享受企业权益：子账号自身有效个人会员转为「剩余天数」保留（团队期间不消耗天数）
     const memberUser = await prisma.users.findUnique({
       where: { id: userId },
       select: {
         membership_tier: true,
         membership_expires_at: true,
         pending_membership_tier: true,
-        pending_membership_expires: true,
+        pending_membership_days: true,
       },
     });
     if (
@@ -175,23 +175,21 @@ router.post('/accept-invite', authenticateToken, async (req: any, res) => {
       memberUser.membership_expires_at &&
       new Date(memberUser.membership_expires_at) > new Date()
     ) {
-      // 若已有 pending 且更晚，保留更长的那份
-      let pendingTier = memberUser.membership_tier;
-      let pendingExpires = new Date(memberUser.membership_expires_at);
-      if (
-        memberUser.pending_membership_tier &&
-        memberUser.pending_membership_expires &&
-        new Date(memberUser.pending_membership_expires) > pendingExpires
-      ) {
-        pendingTier = memberUser.pending_membership_tier;
-        pendingExpires = new Date(memberUser.pending_membership_expires);
-      }
+      // 计算自身会员剩余天数，脱离团队后从脱离时刻重新起算
+      const remainingDays = Math.max(
+        0,
+        Math.ceil((new Date(memberUser.membership_expires_at).getTime() - Date.now()) / 86400000)
+      );
+      // 已有 pending 天数时累加，等级保留已有的（通常为空）
+      const totalDays = remainingDays + (memberUser.pending_membership_days || 0);
+      const pendingTier = memberUser.pending_membership_tier || memberUser.membership_tier;
 
       await prisma.users.update({
         where: { id: userId },
         data: {
           pending_membership_tier: pendingTier,
-          pending_membership_expires: pendingExpires,
+          pending_membership_days: totalDays,
+          pending_membership_expires: null, // 天数模型不再使用绝对到期时间
           membership_tier: 'free',
           membership_expires_at: null,
         },
@@ -299,40 +297,20 @@ router.delete('/members/:memberId', authenticateToken, async (req: any, res) => 
       data: { status: 'removed' }
     });
 
-    // 激活子账号 pending 个人会员（入团时转入的剩余会员天数），避免权益丢失
-    const removedUser = await prisma.users.findUnique({
-      where: { id: record.member_user_id },
-      select: { pending_membership_tier: true, pending_membership_expires: true },
-    });
-    const hasPending =
-      removedUser?.pending_membership_tier &&
-      removedUser.pending_membership_expires &&
-      new Date(removedUser.pending_membership_expires) > new Date();
-
-    if (hasPending) {
-      await prisma.users.update({
-        where: { id: record.member_user_id },
-        data: {
-          membership_tier: removedUser!.pending_membership_tier!,
-          membership_started_at: new Date(),
-          membership_expires_at: removedUser!.pending_membership_expires,
-          pending_membership_tier: null,
-          pending_membership_expires: null,
-        },
-      });
-    }
+    // 激活子账号 pending 个人会员（剩余天数从当下重新起算），避免权益丢失
+    const { activated } = await activatePendingMembership(prisma, record.member_user_id);
 
     await createNotification(
       record.member_user_id,
       'team_removed',
       '已被移出团队',
-      hasPending
+      activated
         ? '您已被移出团队，此前保留的个人会员已自动恢复'
         : '您已被移出团队，企业版权益已失效，降级为免费用户',
       '/membership.html'
     );
 
-    res.json({ success: true, pendingActivated: !!hasPending });
+    res.json({ success: true, pendingActivated: activated });
   } catch (error) {
     console.error('移除成员失败:', error);
     res.status(500).json({ error: '移除成员失败' });
@@ -360,28 +338,8 @@ router.delete('/leave', authenticateToken, async (req: any, res) => {
       data: { status: 'removed' }
     });
 
-    // 激活 pending 个人会员（入团时保留的剩余会员天数）
-    const user = await prisma.users.findUnique({
-      where: { id: userId },
-      select: { pending_membership_tier: true, pending_membership_expires: true },
-    });
-    const hasPending =
-      user?.pending_membership_tier &&
-      user.pending_membership_expires &&
-      new Date(user.pending_membership_expires) > new Date();
-
-    if (hasPending) {
-      await prisma.users.update({
-        where: { id: userId },
-        data: {
-          membership_tier: user!.pending_membership_tier!,
-          membership_started_at: new Date(),
-          membership_expires_at: user!.pending_membership_expires,
-          pending_membership_tier: null,
-          pending_membership_expires: null,
-        },
-      });
-    }
+    // 激活 pending 个人会员（剩余天数从当下重新起算）
+    const { activated } = await activatePendingMembership(prisma, userId);
 
     await createNotification(
       record.owner_user_id,
@@ -393,8 +351,8 @@ router.delete('/leave', authenticateToken, async (req: any, res) => {
 
     res.json({
       success: true,
-      pendingActivated: !!hasPending,
-      message: hasPending ? '已退出团队，个人会员已恢复' : '已退出团队'
+      pendingActivated: activated,
+      message: activated ? '已退出团队，个人会员已恢复' : '已退出团队'
     });
   } catch (error) {
     console.error('退出团队失败:', error);

@@ -17,6 +17,7 @@ import {
   JWT_SECRET,
 } from '../utils/auth';
 import { verifyActiveToken, authenticateToken } from '../utils/middleware';
+import { activatePendingMembership } from '../utils/membership';
 
 const router = Router();
 
@@ -1355,36 +1356,21 @@ router.delete('/account', async (req, res) => {
         select: { member_user_id: true },
       });
       if (ownedTeams.length > 0) {
-        // 子账号此前购买的个人会员为「延后生效」，激活依赖主账号过期事件；
-        // 主账号注销不走过期流程，需在此手动激活，避免 pending 会员永久挂起
-        const pendingMembers = await tx.users.findMany({
-          where: {
-            id: { in: ownedTeams.map(m => m.member_user_id) },
-            pending_membership_tier: { not: null },
-            pending_membership_expires: { gt: new Date() },
-          },
-          select: { id: true, pending_membership_tier: true, pending_membership_expires: true },
-        });
-        for (const member of pendingMembers) {
-          await tx.users.update({
-            where: { id: member.id },
-            data: {
-              membership_tier: member.pending_membership_tier!,
-              membership_started_at: new Date(),
-              membership_expires_at: member.pending_membership_expires,
-              pending_membership_tier: null,
-              pending_membership_expires: null,
-            },
-          });
-          await tx.notifications.create({
-            data: {
-              user_id: member.id,
-              type: 'pending_membership_activated',
-              title: '个人会员已激活',
-              content: '企业主账号已注销，你之前购买的个人会员已自动激活',
-              link: '/membership.html',
-            },
-          }).catch(() => {});
+        // 子账号的 pending 个人会员在团队终止时按剩余天数重新起算激活
+        // （主账号注销不经过期流程，需在此处理，避免 pending 永久挂起）
+        for (const member of ownedTeams) {
+          const { activated } = await activatePendingMembership(tx, member.member_user_id);
+          if (activated) {
+            await tx.notifications.create({
+              data: {
+                user_id: member.member_user_id,
+                type: 'pending_membership_activated',
+                title: '个人会员已激活',
+                content: '企业主账号已注销，你之前购买的个人会员已自动激活',
+                link: '/membership.html',
+              },
+            }).catch(() => {});
+          }
         }
 
         await tx.team_memberships.deleteMany({ where: { owner_user_id: user.id } });
