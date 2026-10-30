@@ -214,6 +214,9 @@
                 // 检查是否是作者，显示编辑按钮
                 checkIfAuthor(story);
 
+                // 初始化打赏按钮（已登录且非作者本人时显示）
+                initTipButton();
+
                 // 开始阅读按钮
                 const startReadBtn = document.getElementById('startReadBtn');
                 // 移除旧的事件监听器
@@ -4366,4 +4369,104 @@ function getTreeOption(treeData, layout) {
             window.addEventListener('resize', () => {
                 statsChart && statsChart.resize();
             });
+        }
+
+        // ========== 打赏功能 ==========
+        let tipSelectedAmount = 20;
+
+        function initTipButton() {
+            const tipBtn = document.getElementById('tipBtn');
+            if (!tipBtn) return;
+            const story = window.currentStory;
+            const authorId = story && (story.authorId || story.author_id || (story.author && story.author.id));
+            if (window.currentUserId && authorId && window.currentUserId !== authorId) {
+                tipBtn.style.display = '';
+                tipBtn.onclick = openTipModal;
+            } else {
+                tipBtn.style.display = 'none';
+            }
+        }
+
+        function updateTipAmountButtons() {
+            document.querySelectorAll('.tip-amount-btn').forEach(btn => {
+                const isSelected = parseInt(btn.dataset.amount, 10) === tipSelectedAmount;
+                btn.style.borderColor = isSelected ? '#6366F1' : '#d1d5db';
+                btn.style.color = isSelected ? '#6366F1' : '';
+                btn.style.fontWeight = isSelected ? '600' : '';
+            });
+        }
+
+        function openTipModal() {
+            const modal = document.getElementById('tipModal');
+            if (!modal) return;
+            tipSelectedAmount = 20;
+            const statusEl = document.getElementById('tipStatus');
+            if (statusEl) statusEl.textContent = '';
+            const msgEl = document.getElementById('tipMessage');
+            if (msgEl) msgEl.value = '';
+            updateTipAmountButtons();
+            modal.style.display = 'flex';
+
+            // 事件只绑定一次
+            if (!modal.dataset.bound) {
+                modal.dataset.bound = '1';
+                document.querySelectorAll('.tip-amount-btn').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        tipSelectedAmount = parseInt(this.dataset.amount, 10) || 20;
+                        updateTipAmountButtons();
+                    });
+                });
+                document.getElementById('tipCancelBtn')?.addEventListener('click', closeTipModal);
+                document.getElementById('tipSubmitBtn')?.addEventListener('click', submitTip);
+                modal.addEventListener('click', function (e) {
+                    if (e.target === modal) closeTipModal();
+                });
+            }
+        }
+
+        function closeTipModal() {
+            const modal = document.getElementById('tipModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        async function submitTip() {
+            const story = window.currentStory;
+            const authorId = story && (story.authorId || story.author_id || (story.author && story.author.id));
+            if (!authorId) return;
+
+            const statusEl = document.getElementById('tipStatus');
+            const submitBtn = document.getElementById('tipSubmitBtn');
+            const message = (document.getElementById('tipMessage')?.value || '').trim();
+
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '提交中...'; }
+            if (statusEl) statusEl.textContent = '';
+
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                const response = await fetch('/api/points-features/tips', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        receiverId: authorId,
+                        amount: tipSelectedAmount,
+                        storyId: story.id,
+                        message: message || undefined
+                    })
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || '打赏失败');
+                }
+                closeTipModal();
+                if (window.toast) toast.success(`打赏成功！已送出 ${tipSelectedAmount} 积分`);
+                else alert(`打赏成功！已送出 ${tipSelectedAmount} 积分`);
+            } catch (error) {
+                console.error('打赏失败:', error);
+                if (statusEl) statusEl.textContent = error.message || '打赏失败，请稍后重试';
+            } finally {
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '确认打赏'; }
+            }
         }

@@ -411,6 +411,19 @@
     <script src="js/toast.js"></script>
     <script src="js/modal.js"></script>
     <script src="js/navbar.js"></script>
+    <!-- 账号管理（危险操作） -->
+    <div class="content-section" style="border: 1px solid #fca5a5;">
+        <div class="section-header">
+            <h2 class="section-title" style="color: #ef4444;"><i class="fas fa-exclamation-triangle"></i> 账号管理</h2>
+        </div>
+        <p style="font-size: 14px; color: var(--st-text-secondary, #6b7280); margin-bottom: 16px;">
+            注销账号将永久删除你的所有数据（故事、章节、评论、积分、会员权益），操作不可恢复。
+        </p>
+        <button class="btn" style="background: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;" onclick="showDeleteAccountFlow()">
+            <i class="fas fa-user-times"></i> 注销账号
+        </button>
+    </div>
+
     <!-- 页脚 -->
     <footer style="text-align: center; padding: 20px; margin-top: 40px; border-top: 1px solid var(--st-gray-200, #e5e7eb); color: var(--st-text-secondary, #6b7280); font-size: 14px;">
         <p>© 2026 StoryTree. 用心创作每一个故事。</p>

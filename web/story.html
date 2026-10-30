@@ -182,12 +182,37 @@
                                 <i class="fas fa-user-plus"></i>
                                 申请协作
                             </button>
+                            <button class="btn btn-secondary" id="tipBtn" style="display: none;">
+                                <i class="fas fa-gift"></i>
+                                打赏
+                            </button>
                             <button class="btn btn-secondary" id="shareBtn">
                                 <i class="fas fa-share-alt"></i>
                                 分享
                             </button>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- 打赏弹层 -->
+            <div id="tipModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9999; align-items:center; justify-content:center; padding:16px;">
+                <div style="background:var(--st-bg-primary, #fff); border-radius:16px; padding:28px 24px; max-width:360px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+                    <h3 style="margin:0 0 8px; color:var(--st-text-primary, #1f2937); text-align:center;">🎁 打赏作者</h3>
+                    <p style="font-size:13px; color:var(--st-text-secondary, #6b7280); text-align:center; margin:0 0 16px;">用积分支持你喜欢的创作者</p>
+                    <div id="tipAmounts" style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-bottom:16px;">
+                        <button class="tip-amount-btn" data-amount="5" style="padding:8px 16px; border:1px solid #d1d5db; border-radius:8px; background:var(--st-bg-primary,#fff); cursor:pointer;">5</button>
+                        <button class="tip-amount-btn" data-amount="20" style="padding:8px 16px; border:1px solid #d1d5db; border-radius:8px; background:var(--st-bg-primary,#fff); cursor:pointer;">20</button>
+                        <button class="tip-amount-btn" data-amount="52" style="padding:8px 16px; border:1px solid #d1d5db; border-radius:8px; background:var(--st-bg-primary,#fff); cursor:pointer;">52</button>
+                        <button class="tip-amount-btn" data-amount="100" style="padding:8px 16px; border:1px solid #d1d5db; border-radius:8px; background:var(--st-bg-primary,#fff); cursor:pointer;">100</button>
+                        <button class="tip-amount-btn" data-amount="520" style="padding:8px 16px; border:1px solid #d1d5db; border-radius:8px; background:var(--st-bg-primary,#fff); cursor:pointer;">520</button>
+                    </div>
+                    <input id="tipMessage" type="text" maxlength="50" placeholder="说点什么（可选）" style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px; margin-bottom:16px; box-sizing:border-box;">
+                    <div style="display:flex; gap:10px;">
+                        <button id="tipCancelBtn" style="flex:1; padding:10px; border:none; border-radius:8px; background:var(--st-gray-200,#e5e7eb); color:var(--st-text-secondary,#6b7280); cursor:pointer;">取消</button>
+                        <button id="tipSubmitBtn" style="flex:1; padding:10px; border:none; border-radius:8px; background:#6366F1; color:#fff; cursor:pointer;">确认打赏</button>
+                    </div>
+                    <p id="tipStatus" style="font-size:13px; color:#ef4444; text-align:center; margin:12px 0 0;"></p>
                 </div>
             </div>
 

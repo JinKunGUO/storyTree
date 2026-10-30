@@ -1784,6 +1784,58 @@ profileHeader.innerHTML = `
             }
         }
 
+        // 注销账号（合规要求：密码验证 + 确认文本双重确认）
+        async function showDeleteAccountFlow() {
+            const warningText = '注销账号将永久删除你的所有数据（故事、章节、评论、积分、会员权益），且不可恢复。';
+
+            const doDelete = async () => {
+                // 邮箱注册用户需密码验证；微信注册用户（email 为空）跳过
+                let password = '';
+                if (currentUser && currentUser.email) {
+                    password = prompt('请输入登录密码以确认身份：') || '';
+                    if (!password) return;
+                }
+
+                const confirmText = prompt('请输入「确认注销」四个字完成最终确认：');
+                if (confirmText === null) return;
+                if (confirmText !== '确认注销') {
+                    showMessage('确认文本输入不正确，注销已取消', 'error');
+                    return;
+                }
+
+                try {
+                    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                    const response = await fetch('/api/auth/account', {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ password, confirmText })
+                    });
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.error || '注销失败');
+                    }
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    sessionStorage.removeItem('token');
+                    sessionStorage.removeItem('user');
+                    alert('账号已注销，感谢你的使用。');
+                    window.location.href = '/';
+                } catch (error) {
+                    console.error('注销失败:', error);
+                    showMessage('注销失败：' + error.message, 'error');
+                }
+            };
+
+            if (window.showDangerConfirm) {
+                showDangerConfirm(warningText, doDelete, { title: '注销账号', confirmText: '继续注销' });
+            } else if (confirm(warningText + '\n\n确定继续吗？')) {
+                await doDelete();
+            }
+        }
+
         // 显示用户故事（卡片网格布局）
         function displayUserStories(stories) {
             const storiesList = document.getElementById('storiesList');
