@@ -1,4 +1,15 @@
-# 🧪 AI API 测试指南
+# 🧪 AI API 测试指南（已归档，v1 接口已移除）
+
+> ⚠️ **本文档已过时，仅作历史参考。**
+>
+> 文中的 `/api/ai/generate`、`/api/ai/accept`、`/api/ai/usage-stats` 三个 v1 同步接口已于 v1.0.455 版本整体移除（`api/src/routes/ai.ts` 已删除）。
+>
+> 当前 AI 能力请使用 v2 接口：
+> - 流式续写：`/api/ai/stream/*`（SSE）
+> - 异步任务（续写/润色/插图/创作章节）：`/api/ai/v2/*`（提交任务 + 轮询状态）
+> - 配额查询：`GET /api/ai/v2/quota`
+>
+> 接口实现参考：`api/src/routes/ai-v2.ts`、`api/src/routes/ai-stream.ts`；前端调用参考：`web/js/pages/*`、`miniprogram/src/api/ai.ts` 中的 v2 函数。
 
 ## 📋 测试前准备
 

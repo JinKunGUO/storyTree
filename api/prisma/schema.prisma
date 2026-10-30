@@ -379,6 +379,24 @@ model orders {
   @@index([type])
 }
 
+// 退款流水表 - 逐笔记录退款结果，支持幂等重试与部分失败恢复
+model refund_records {
+  id               Int      @id @default(autoincrement())
+  order_id         String   // 实际退款的订单号（父订单或子订单）
+  parent_order_id  String?  // 拆分支付场景的父订单号
+  amount           Float
+  reason           String?
+  status           String   @default("pending") // pending/success/failed
+  alipay_refund_no String?  // 支付宝退款交易号
+  error_message    String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@index([order_id])
+  @@index([parent_order_id])
+  @@index([status])
+}
+
 model story_collaborators {
   id         Int       @id @default(autoincrement())
   story_id   Int

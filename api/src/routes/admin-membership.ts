@@ -294,18 +294,65 @@ router.post('/orders/:id/refund', async (req, res) => {
       where: { id: { startsWith: `${id}_SUB` } },
     });
 
-    if (!isMockMode()) {
-      if (subOrders.length > 0) {
-        for (const sub of subOrders) {
-          if (sub.status === 'paid') {
-            await createRefund({ orderId: sub.id, refundAmount: sub.amount, refundReason });
-          }
-        }
-      } else {
-        await createRefund({ orderId: order.id, refundAmount: order.amount, refundReason });
+    // 确定退款目标（逐笔）
+    const refundTargets = subOrders.length > 0
+      ? subOrders.filter(s => s.status === 'paid').map(s => ({ id: s.id, amount: s.amount }))
+      : [{ id: order.id, amount: order.amount }];
+
+    // 逐笔退款：幂等（已有 success 流水则跳过，支持失败后重试）；单笔失败不中断，全部尝试后汇总
+    const failures: { orderId: string; error: string }[] = [];
+    for (const target of refundTargets) {
+      const succeeded = await prisma.refund_records.findFirst({
+        where: { order_id: target.id, status: 'success' },
+      });
+      if (succeeded) continue;
+
+      let record = await prisma.refund_records.findFirst({
+        where: { order_id: target.id, status: { in: ['pending', 'failed'] } },
+      });
+      if (!record) {
+        record = await prisma.refund_records.create({
+          data: {
+            order_id: target.id,
+            parent_order_id: subOrders.length > 0 ? id : null,
+            amount: target.amount,
+            reason: refundReason,
+            status: 'pending',
+          },
+        });
       }
-    } else {
-      console.log(`🔧 Mock 模式：跳过支付宝退款调用（订单 ${id}）`);
+
+      if (isMockMode()) {
+        await prisma.refund_records.update({
+          where: { id: record.id },
+          data: { status: 'success', alipay_refund_no: 'MOCK' },
+        });
+        continue;
+      }
+
+      try {
+        const result = await createRefund({ orderId: target.id, refundAmount: target.amount, refundReason });
+        await prisma.refund_records.update({
+          where: { id: record.id },
+          data: { status: 'success', alipay_refund_no: result.refundTradeNo },
+        });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        failures.push({ orderId: target.id, error: msg });
+        await prisma.refund_records.update({
+          where: { id: record.id },
+          data: { status: 'failed', error_message: msg },
+        });
+      }
+    }
+
+    // 存在失败：恢复订单状态，返回失败详情（重试时已成功的流水会跳过）
+    if (failures.length > 0) {
+      await prisma.orders.updateMany({ where: { id, status: 'refunding' }, data: { status: 'paid' } });
+      return res.status(500).json({
+        error: `部分退款失败（${failures.length}/${refundTargets.length}），可重试`,
+        failures,
+      });
     }
 
     // 标记退款 + 权益回滚（事务）
@@ -393,8 +440,8 @@ router.post('/orders/:id/refund', async (req, res) => {
 
     res.json({
       success: true,
-      message: subOrders.length > 0
-        ? `退款成功：已逐笔退回 ${subOrders.filter(s => s.status === 'paid').length} 笔子订单`
+      message: refundTargets.length > 1
+        ? `退款成功：已逐笔退回 ${refundTargets.length} 笔子订单`
         : '退款成功',
       mock: isMockMode(),
     });
