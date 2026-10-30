@@ -244,6 +244,7 @@ model users {
   pending_membership_tier    String?                   @map("pending_membership_tier") @db.VarChar(50)
   pending_membership_expires DateTime?                 @map("pending_membership_expires")
   pending_membership_days    Int?                      @map("pending_membership_days")
+  last_membership_bonus_at   DateTime?                 @map("last_membership_bonus_at")
   subscription_type          String?                   @db.VarChar(50)
   subscription_expires       DateTime?
   wx_openid                  String?                   @unique @db.VarChar(100)
@@ -294,6 +295,8 @@ model users {
   story_follows              story_followers[]
   received_tips              tips[]                    @relation("tip_receiver")
   sent_tips                  tips[]                    @relation("tip_sender")
+  team_member_of             team_memberships[]        @relation("TeamMember")
+  team_owner_of              team_memberships[]        @relation("TeamOwner")
   user_subscriptions         user_subscriptions[]
   withdrawal_requests        withdrawal_requests[]
   login_logs                 login_logs[]
@@ -723,5 +726,30 @@ model analytics_events {
   @@index([created_at])
   @@index([utm_source])
   @@index([user_id])
+}
+
+// ========== 企业版多账号共享 ==========
+
+model team_memberships {
+  id             Int       @id @default(autoincrement())
+  owner_user_id  Int                            // 主账号
+  member_user_id Int                            // 子账号
+  status         String    @default("pending") @db.VarChar(20) // pending/active/removed/frozen
+  invited_email  String?   @db.VarChar(255)
+  invite_token   String?   @unique @db.VarChar(100) // 邀请链接 token
+  invited_at     DateTime  @default(now())
+  accepted_at    DateTime?
+  frozen_at      DateTime?
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  owner          users     @relation("TeamOwner", fields: [owner_user_id], references: [id], onDelete: Cascade)
+  member         users     @relation("TeamMember", fields: [member_user_id], references: [id], onDelete: Cascade)
+
+  @@unique([owner_user_id, member_user_id])
+  @@index([owner_user_id])
+  @@index([member_user_id])
+  @@index([invite_token])
+  @@index([status])
 }
 
