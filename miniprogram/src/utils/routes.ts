@@ -19,7 +19,6 @@ export const ROUTES = {
   CHAPTER: '/pkgStory/pages/chapter/index',
 
   // pkgWrite
-  CREATE: '/pkgWrite/pages/create/index',
   EDITOR: '/pkgWrite/pages/write/editor',
 
   // pkgProfile
@@ -50,7 +49,6 @@ const SUBPACKAGE_PATH_MAP: Record<string, string> = {
   '/pages/story/create': ROUTES.STORY_CREATE,
   '/pages/story/manage': ROUTES.STORY_MANAGE,
   '/pages/chapter/index': ROUTES.CHAPTER,
-  '/pages/create/index': ROUTES.CREATE,
   '/pages/write/editor': ROUTES.EDITOR,
   '/pages/profile/stories': ROUTES.PROFILE_STORIES,
   '/pages/profile/nodes': ROUTES.PROFILE_NODES,

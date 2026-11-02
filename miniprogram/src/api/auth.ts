@@ -90,3 +90,8 @@ export function confirmQrLogin(ticketId: string) {
   return http.post<{ success: boolean; message: string }>('/api/auth/wx-qr-confirm', { ticketId })
 }
 
+// 注销账号（需登录态；微信用户无密码，传空字符串）
+export function deleteAccount(confirmText: string) {
+  return http.delete<{ message: string }>('/api/auth/account', { password: '', confirmText })
+}
+

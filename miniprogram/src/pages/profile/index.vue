@@ -136,6 +136,11 @@
               <text class="menu-label">通知设置</text>
               <text class="menu-arrow">›</text>
             </view>
+            <view class="menu-item" @tap="handleDeleteAccount">
+              <text class="menu-icon">⚠️</text>
+              <text class="menu-label" style="color: #ef4444;">注销账号</text>
+              <text class="menu-arrow">›</text>
+            </view>
           </view>
         </view>
 
@@ -177,6 +182,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/store/user'
 import { useAppStore } from '@/store/app'
 import { getCheckinStatus } from '@/api/checkin'
+import { deleteAccount } from '@/api/auth'
 import { MEMBERSHIP_LABELS } from '@/utils/constants'
 import { onShow } from '@dcloudio/uni-app'
 
@@ -213,6 +219,56 @@ async function checkCheckin() {
 
 function goLogin() {
   uni.navigateTo({ url: '/pkgAuth/pages/auth/login/index' })
+}
+
+// 注销账号（合规要求：警告确认 + 输入「确认注销」双重确认）
+async function handleDeleteAccount() {
+  const firstConfirm = await new Promise<boolean>((resolve) => {
+    uni.showModal({
+      title: '注销账号',
+      content: '注销后将永久删除你的所有数据（故事、章节、积分、会员权益），且不可恢复。确定继续吗？',
+      confirmText: '继续注销',
+      confirmColor: '#ef4444',
+      cancelText: '取消',
+      success: (res) => resolve(!!res.confirm),
+      fail: () => resolve(false),
+    })
+  })
+  if (!firstConfirm) return
+
+  const input = await new Promise<string | null>((resolve) => {
+    uni.showModal({
+      title: '最终确认',
+      content: '请输入「确认注销」四个字完成操作',
+      editable: true,
+      placeholderText: '确认注销',
+      confirmText: '确认注销',
+      confirmColor: '#ef4444',
+      success: (res) => resolve(res.confirm ? (res.content || '') : null),
+      fail: () => resolve(null),
+    })
+  })
+  if (input === null) return
+  if (input !== '确认注销') {
+    uni.showToast({ title: '输入不正确，注销已取消', icon: 'none' })
+    return
+  }
+
+  uni.showLoading({ title: '注销中...', mask: true })
+  try {
+    await deleteAccount('确认注销')
+    uni.hideLoading()
+    userStore.logout()
+    uni.showModal({
+      title: '账号已注销',
+      content: '感谢你的使用，期待再见。',
+      showCancel: false,
+      success: () => uni.reLaunch({ url: '/pages/index/index' }),
+    })
+  } catch (e: any) {
+    uni.hideLoading()
+    uni.showToast({ title: e?.message || '注销失败，请稍后重试', icon: 'none' })
+  }
 }
 
 function changeAvatar() {

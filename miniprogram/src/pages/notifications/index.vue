@@ -241,7 +241,6 @@ function convertLinkToMiniUrl(link: string): string | null {
     '/membership':      '/pkgMisc/pages/membership/index',
     '/notifications':   '/pages/notifications/index',
     '/write':           '/pages/write/index',
-    '/create':          '/pkgWrite/pages/create/index',
     '/discover':        '/pages/discover/index',
     '/invite':          '/pkgMisc/pages/invite/index',
     '/search':          '/pages/search/index',

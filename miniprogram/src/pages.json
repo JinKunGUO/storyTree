@@ -112,14 +112,6 @@
       "root": "pkgWrite",
       "pages": [
         {
-          "path": "pages/create/index",
-          "style": {
-            "navigationBarTitleText": "创作",
-            "navigationBarBackgroundColor": "#1a1a2e",
-            "navigationBarTextStyle": "white"
-          }
-        },
-        {
           "path": "pages/write/editor",
           "style": {
             "navigationBarTitleText": "写作",
