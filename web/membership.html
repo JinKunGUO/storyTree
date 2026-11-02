@@ -583,6 +583,10 @@
                         <p id="aiQuota">-</p>
                     </div>
                 </div>
+                <div id="pendingMembershipNotice" style="display: none; margin-top: 12px; padding: 12px 16px; background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 10px; font-size: 13px; color: var(--st-text-secondary, #6b7280);">
+                    <i class="fas fa-pause-circle" style="color: #6366F1; margin-right: 6px;"></i>
+                    <span id="pendingMembershipText"></span>
+                </div>
             </div>
 
             <!-- 会员套餐 -->
@@ -762,6 +766,17 @@
                 const autoRenewEl = document.getElementById('autoRenew');
                 autoRenewEl.textContent = '暂未开放';
                 autoRenewEl.style.color = '#999';
+
+                // 团队期间保留的个人会员提示
+                const pendingNotice = document.getElementById('pendingMembershipNotice');
+                const pendingText = document.getElementById('pendingMembershipText');
+                if (status.membership.pendingDays > 0 && status.membership.pendingTier) {
+                    const tierNames = { trial: '体验会员', monthly: '月度会员', quarterly: '季度会员', yearly: '年度会员' };
+                    pendingText.textContent = `已保留 ${status.membership.pendingDays} 天「${tierNames[status.membership.pendingTier] || '会员'}」：正在享受团队企业版权益，团队结束后自动恢复`;
+                    pendingNotice.style.display = 'block';
+                } else {
+                    pendingNotice.style.display = 'none';
+                }
                 
                 // 获取 AI 配额使用情况并计算节省金额
                 try {

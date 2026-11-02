@@ -80,7 +80,10 @@ router.get('/my', async (req, res) => {
       where: { id: userId },
       select: {
         has_used_trial: true,
-        membership_auto_renew: true
+        membership_auto_renew: true,
+        pending_membership_tier: true,
+        pending_membership_days: true,
+        pending_membership_expires: true
       }
     });
 
@@ -98,7 +101,15 @@ router.get('/my', async (req, res) => {
         isActive: membership.isActive,
         expiresAt: membership.expiresAt,
         autoRenew: user?.membership_auto_renew || false,
-        hasUsedTrial: user?.has_used_trial || false
+        hasUsedTrial: user?.has_used_trial || false,
+        // 团队期间保留的个人会员（剩余天数，团队结束后从当下重新起算恢复）
+        pendingTier: user?.pending_membership_tier || null,
+        pendingDays: user
+          ? (user.pending_membership_days
+            ?? (user.pending_membership_expires && new Date(user.pending_membership_expires) > new Date()
+              ? Math.ceil((new Date(user.pending_membership_expires).getTime() - Date.now()) / 86400000)
+              : 0))
+          : 0
       },
       subscriptionHistory: subscriptions.map(sub => ({
         id: sub.id,
