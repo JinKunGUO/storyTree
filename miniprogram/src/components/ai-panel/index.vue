@@ -67,7 +67,7 @@
           <textarea
             v-model="customPrompt"
             class="prompt-input"
-            placeholder="例如：&#10;• 希望加入一个神秘角色登场&#10;• 让主角发现一个重要线索&#10;• 增加更多对话和心理描写&#10;• 故事发生在雨夜的咖啡馆"
+            placeholder="例如：• 希望加入一个神秘角色登场 • 让主角发现一个重要线索 • 增加更多对话和心理描写 • 故事发生在雨夜的咖啡馆"
             :maxlength="200"
             auto-height
           />
