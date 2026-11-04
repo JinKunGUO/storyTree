@@ -1,7 +1,7 @@
 <template>
   <view class="index-page">
     <!-- 顶部导航栏 -->
-    <view class="navbar" :style="{ paddingTop: statusBarHeight + 'px', paddingRight: menuButtonWidth + 'px' }">
+    <view class="navbar" :style="{ paddingTop: menuButtonTop + 'px', paddingRight: menuButtonWidth + 'px' }">
       <view class="search-bar" @tap="goSearch">
         <text class="search-icon">🔍</text>
         <text class="search-placeholder">搜索故事、作者</text>
@@ -380,6 +380,7 @@ const userStore = useUserStore()
 
 const statusBarHeight = ref(20)
 const menuButtonWidth = ref(95) // 胶囊按钮占用宽度（右侧留位）
+const menuButtonTop = ref(20)   // 胶囊按钮顶部位置（用于导航栏内容垂直对齐胶囊）
 const checkedIn = ref(false)
 
 // ===== 主 Tab =====
@@ -420,10 +421,11 @@ onMounted(async () => {
   try {
     const info = uni.getSystemInfoSync()
     statusBarHeight.value = info.statusBarHeight || 20
-    // 获取右上角胶囊按钮位置，让导航栏内容避开
+    // 获取右上角胶囊按钮位置，让导航栏内容避开并垂直对齐
     const menuRect = uni.getMenuButtonBoundingClientRect()
     if (menuRect && menuRect.left) {
       menuButtonWidth.value = info.windowWidth - menuRect.left + 10
+      menuButtonTop.value = menuRect.top
     }
   } catch { /* ignore */ }
 
