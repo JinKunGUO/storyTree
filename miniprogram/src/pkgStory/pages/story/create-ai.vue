@@ -219,6 +219,17 @@
           <text class="loading-hint">这可能需要几秒钟时间</text>
         </view>
 
+        <!-- 失败状态：生成失败，提供重试和返回修改 -->
+        <view v-else-if="generateError" class="error-container">
+          <text class="error-icon">⚠️</text>
+          <text class="error-title">生成失败</text>
+          <text class="error-message">{{ generateError }}</text>
+          <view class="error-actions">
+            <button class="btn-back" @tap="handleBack">返回修改</button>
+            <button class="btn-confirm" @tap="handleGenerate">重新生成</button>
+          </view>
+        </view>
+
         <!-- 生成结果（可编辑） -->
         <view v-else-if="generatedData" class="result-container">
           <!-- 提示信息 -->
@@ -646,6 +657,7 @@ export default {
     const currentStep = ref(1);
     const selectedMethod = ref(null);
     const loading = ref(false);
+    const generateError = ref(''); // 生成失败原因（提交失败/任务失败/结果为空），非空时第3步显示错误态
     const sessionId = ref(null);
     const taskId = ref(null);
     const generatedData = ref(null);
@@ -722,6 +734,7 @@ export default {
 
       currentStep.value = 3;
       loading.value = true;
+      generateError.value = '';
 
       try {
         let result;
@@ -758,8 +771,8 @@ export default {
         // 监听任务状态（WebSocket 优先，降级轮询兜底）
         watchCreationTask(result.taskId, false);
       } catch (error) {
-        uni.showToast({ title: error.message || '生成失败', icon: 'none' });
         loading.value = false;
+        generateError.value = error.message || '生成请求提交失败，请重试';
       }
     };
 
@@ -803,6 +816,11 @@ export default {
             generatedData.value = data.result?.template || data.result;
           }
 
+          if (!generatedData.value) {
+            generateError.value = '生成结果为空，请重试';
+            return;
+          }
+
           chatMessages.value.push({
             type: 'assistant',
             content: isRevision ? '修改完成！请查看更新后的内容。' : '生成完成！如有不满意可以提出修改意见。'
@@ -816,8 +834,8 @@ export default {
         if (isRevision) {
           chatMessages.value.push({ type: 'assistant', content: '修改失败：' + msg });
         } else {
-          uni.showToast({ title: msg, icon: 'none' });
           loading.value = false;
+          generateError.value = msg;
         }
       }
 
@@ -1572,6 +1590,42 @@ export default {
   font-size: 12px;
   color: #9ca3af;
   margin-top: 8px;
+}
+
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60px 20px;
+}
+
+.error-icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.error-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.error-message {
+  font-size: 13px;
+  color: #6b7280;
+  text-align: center;
+  line-height: 1.6;
+  margin-bottom: 24px;
+  padding: 0 12px;
+  word-break: break-all;
+}
+
+.error-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .result-container {
