@@ -212,11 +212,12 @@
 
       <!-- 步骤 3：生成结果 -->
       <view v-if="currentStep === 3" class="step-content">
-        <!-- 加载状态：AI 正在生成中 -->
+        <!-- 加载状态：分阶段文案 + 排队提示 -->
         <view v-if="loading" class="loading-container">
           <view class="spinner"></view>
-          <text class="loading-text">AI 正在生成中，请稍候...</text>
-          <text class="loading-hint">这可能需要几秒钟时间</text>
+          <text class="loading-text">{{ loadingStageText }}</text>
+          <text v-if="queueHint" class="loading-hint">{{ queueHint }}</text>
+          <text v-else class="loading-hint">生成通常需要 10-60 秒，请耐心等待</text>
         </view>
 
         <!-- 失败状态：生成失败，提供重试和返回修改 -->
@@ -658,6 +659,9 @@ export default {
     const selectedMethod = ref(null);
     const loading = ref(false);
     const generateError = ref(''); // 生成失败原因（提交失败/任务失败/结果为空），非空时第3步显示错误态
+    // 分阶段加载文案：缓解长等待焦虑（按生成流程的真实阶段推进）
+    const loadingStageText = ref('🧠 正在理解你的创意...');
+    const queueHint = ref(''); // 排队提示（来自后端 queuePosition）
     const sessionId = ref(null);
     const taskId = ref(null);
     const generatedData = ref(null);
@@ -735,6 +739,7 @@ export default {
       currentStep.value = 3;
       loading.value = true;
       generateError.value = '';
+      startLoadingStages();
 
       try {
         let result;
@@ -890,6 +895,13 @@ export default {
           } else if (result.status === 'failed') {
             onTaskFailedOnce(result.errorMessage || '生成失败');
           } else {
+            // 排队/处理中提示
+            if (result.status === 'pending' && result.queuePosition) {
+              const waitText = result.estimatedWaitSeconds ? `，预计等待约 ${result.estimatedWaitSeconds} 秒` : '';
+              queueHint.value = `排队中，前方还有 ${result.queuePosition} 个任务${waitText}`;
+            } else if (result.status === 'processing') {
+              queueHint.value = 'AI 正在全力创作中...';
+            }
             // 继续轮询，指数退避
             currentInterval = Math.min(currentInterval * 1.2, maxInterval);
             activePollTimer = setTimeout(poll, currentInterval);
@@ -943,6 +955,40 @@ export default {
     }
 
     /** 清理所有监听器和定时器 */
+    // ========== 分阶段加载文案 ==========
+    // [起始秒数, 文案]，按生成流程的真实阶段推进
+    const LOADING_STAGES: Array<[number, string]> = [
+      [0, '🧠 正在理解你的创意...'],
+      [5, '🏗️ 正在构建故事框架...'],
+      [15, '👥 正在设计角色和世界观...'],
+      [30, '✨ 正在打磨细节，即将完成...']
+    ];
+    let stageTimer: ReturnType<typeof setInterval> | null = null;
+    let stageStartTime = 0;
+
+    function startLoadingStages() {
+      stopLoadingStages();
+      stageStartTime = Date.now();
+      loadingStageText.value = LOADING_STAGES[0][1];
+      queueHint.value = '';
+      stageTimer = setInterval(() => {
+        const elapsed = (Date.now() - stageStartTime) / 1000;
+        for (let i = LOADING_STAGES.length - 1; i >= 0; i--) {
+          if (elapsed >= LOADING_STAGES[i][0]) {
+            loadingStageText.value = LOADING_STAGES[i][1];
+            break;
+          }
+        }
+      }, 1000);
+    }
+
+    function stopLoadingStages() {
+      if (stageTimer) {
+        clearInterval(stageTimer);
+        stageTimer = null;
+      }
+    }
+
     function cleanupWatchers() {
       if (activeUnwatch) {
         activeUnwatch();
@@ -952,6 +998,7 @@ export default {
         clearTimeout(activePollTimer);
         activePollTimer = null;
       }
+      stopLoadingStages();
     }
 
     // 组件销毁时清理
@@ -1231,6 +1278,9 @@ export default {
       currentStep,
       selectedMethod,
       loading,
+      generateError,
+      loadingStageText,
+      queueHint,
       generatedData,
       feedbackInput,
       chatMessages,

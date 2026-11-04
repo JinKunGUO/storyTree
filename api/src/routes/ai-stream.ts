@@ -245,7 +245,7 @@ ${writingStyle ? `写作风格：${writingStyle}` : ''}
       maxTokens: 2500,
       temperature: 0.8,
       timeoutMs: 60000,
-      enableThinking: true,
+      enableThinking: false, // 结构化 JSON 生成关闭思考：reasoning 消耗 token 且可能导致正文截断
       expectedKeys: 9
     });
   } catch (error: any) {
@@ -320,7 +320,7 @@ ${briefInfo}
       maxTokens: 4500,
       temperature: 0.8,
       timeoutMs: 90000,
-      enableThinking: true,
+      enableThinking: false, // 结构化 JSON 生成关闭思考：reasoning 消耗 token 且可能导致正文截断
       expectedKeys: 3
     });
   } catch (error: any) {
@@ -425,7 +425,7 @@ router.post('/pastiche', async (req: Request, res: Response) => {
       maxTokens: 1500,
       temperature: 0.8,
       timeoutMs: 40000,
-      enableThinking: true,
+      enableThinking: false, // 结构化 JSON 生成关闭思考：reasoning 消耗 token 且可能导致正文截断
       expectedKeys: 2
     });
 
@@ -470,7 +470,7 @@ router.post('/pastiche', async (req: Request, res: Response) => {
       maxTokens: 2800,
       temperature: 0.8,
       timeoutMs: 50000,
-      enableThinking: true,
+      enableThinking: false, // 结构化 JSON 生成关闭思考：reasoning 消耗 token 且可能导致正文截断
       expectedKeys: 4
     });
 
@@ -544,7 +544,7 @@ ${protagonistName ? `主角：${protagonistName}` : ''}${coreConflict ? `\n冲�
       maxTokens: 1000,
       temperature: 0.8,
       timeoutMs: 35000,
-      enableThinking: true,
+      enableThinking: false, // 结构化 JSON 生成关闭思考：reasoning 消耗 token 且可能导致正文截断
       expectedKeys: 5
     });
 
@@ -581,7 +581,7 @@ ${protagonistName ? `主角：${protagonistName}` : ''}${coreConflict ? `\n冲�
       maxTokens: 2800,
       temperature: 0.8,
       timeoutMs: 50000,
-      enableThinking: true,
+      enableThinking: false, // 结构化 JSON 生成关闭思考：reasoning 消耗 token 且可能导致正文截断
       expectedKeys: 4
     });
 

@@ -141,6 +141,8 @@ export function getAiTaskStatus(taskId: number) {
     scheduledAt?: string
     startedAt?: string
     completedAt?: string
+    queuePosition?: number | null
+    estimatedWaitSeconds?: number | null
     result?: {
       options?: Array<{ title: string; content: string; style: string }>
       savedAsDraft?: boolean
