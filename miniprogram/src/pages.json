@@ -5,7 +5,8 @@
       "style": {
         "navigationBarTitleText": "StoryTree",
         "navigationBarBackgroundColor": "#1a1a2e",
-        "navigationBarTextStyle": "white"
+        "navigationBarTextStyle": "white",
+        "navigationStyle": "custom"
       }
     },
     {

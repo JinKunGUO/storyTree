@@ -1,19 +1,14 @@
 <template>
   <view class="index-page">
     <!-- 顶部导航栏 -->
-    <view class="navbar" :style="{ paddingTop: statusBarHeight + 'px' }">
-      <view class="navbar-left">
-        <image class="logo" src="/static/images/logo.png" mode="aspectFit" />
-        <text class="app-name">StoryTree</text>
+    <view class="navbar" :style="{ paddingTop: statusBarHeight + 'px', paddingRight: menuButtonWidth + 'px' }">
+      <view class="search-bar" @tap="goSearch">
+        <text class="search-icon">🔍</text>
+        <text class="search-placeholder">搜索故事、作者</text>
       </view>
-      <view class="navbar-right">
-        <view class="search-btn" @tap="goSearch">
-          <text class="icon">🔍</text>
-        </view>
-        <view class="checkin-btn" @tap="goCheckin">
-          <text class="icon">📅</text>
-          <text v-if="!checkedIn" class="badge-dot" />
-        </view>
+      <view class="checkin-btn" @tap="goCheckin">
+        <text class="icon">📅</text>
+        <text v-if="!checkedIn" class="badge-dot" />
       </view>
     </view>
 
@@ -384,6 +379,7 @@ import type { Story } from '@/api/stories'
 const userStore = useUserStore()
 
 const statusBarHeight = ref(20)
+const menuButtonWidth = ref(95) // 胶囊按钮占用宽度（右侧留位）
 const checkedIn = ref(false)
 
 // ===== 主 Tab =====
@@ -424,6 +420,11 @@ onMounted(async () => {
   try {
     const info = uni.getSystemInfoSync()
     statusBarHeight.value = info.statusBarHeight || 20
+    // 获取右上角胶囊按钮位置，让导航栏内容避开
+    const menuRect = uni.getMenuButtonBoundingClientRect()
+    if (menuRect && menuRect.left) {
+      menuButtonWidth.value = info.windowWidth - menuRect.left + 10
+    }
   } catch { /* ignore */ }
 
   await loadRecommend()
@@ -602,38 +603,42 @@ function goChapter(id: number) {
   overflow: hidden;
 }
 
-// ===== 导航栏 =====
+// ===== 导航栏（紧凑搜索框主导，避开右上角胶囊） =====
 .navbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 20rpx 32rpx;
+  gap: 16rpx;
+  padding: 20rpx 24rpx;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
 
-  .navbar-left {
+  .search-bar {
+    flex: 1;
     display: flex;
     align-items: center;
-    gap: 16rpx;
+    gap: 12rpx;
+    height: 64rpx;
+    padding: 0 24rpx;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 32rpx;
+    border: 1rpx solid rgba(255, 255, 255, 0.08);
 
-    .logo { width: 56rpx; height: 56rpx; border-radius: 12rpx; }
-    .app-name { font-size: 36rpx; font-weight: 700; color: #fff; }
+    .search-icon { font-size: 32rpx; }
+    .search-placeholder {
+      font-size: 26rpx;
+      color: rgba(255, 255, 255, 0.45);
+    }
   }
 
-  .navbar-right {
-    display: flex;
-    align-items: center;
-    gap: 24rpx;
-
-    .search-btn, .checkin-btn {
-      position: relative;
-      width: 64rpx; height: 64rpx;
-      display: flex; align-items: center; justify-content: center;
-      .icon { font-size: 40rpx; }
-      .badge-dot {
-        position: absolute; top: 8rpx; right: 8rpx;
-        width: 16rpx; height: 16rpx;
-        background: #ef4444; border-radius: 50%;
-      }
+  .checkin-btn {
+    position: relative;
+    flex-shrink: 0;
+    width: 64rpx; height: 64rpx;
+    display: flex; align-items: center; justify-content: center;
+    .icon { font-size: 40rpx; }
+    .badge-dot {
+      position: absolute; top: 8rpx; right: 8rpx;
+      width: 16rpx; height: 16rpx;
+      background: #ef4444; border-radius: 50%;
     }
   }
 }
