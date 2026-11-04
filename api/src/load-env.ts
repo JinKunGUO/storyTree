@@ -6,6 +6,9 @@ import dotenv from 'dotenv';
 // 这些模块会读到空值；生产环境（NODE_ENV=production）会直接在 auth.ts 抛错导致启动失败。
 // 另外 require('@prisma/client') 自带“自动加载 .env”的副作用且 dotenv 不覆盖已存在变量，
 // 只有本模块最先执行，.env.production 的值才能优先于 Prisma 注入的开发 .env 值生效。
+// override: 配置文件永远覆盖进程已有环境变量（如 shell export 的残留），
+// 保证 .env/.env.production 是唯一事实来源，改文件后重启即刻生效。
 dotenv.config({
   path: process.env.NODE_ENV === 'production' ? '.env.production' : '.env',
+  override: true,
 });
