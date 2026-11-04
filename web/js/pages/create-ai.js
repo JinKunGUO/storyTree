@@ -709,6 +709,12 @@ async function handleGenerateStreaming() {
         }
       }
 
+      // 解析彻底失败：明确提示并中止，不渲染空数据、不误报成功
+      if (!parsed) {
+        alert('生成失败：AI 返回内容格式异常，请重新生成');
+        return;
+      }
+
       // 生成 sessionId 供后续修改使用
       state.sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
