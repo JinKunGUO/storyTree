@@ -12,14 +12,9 @@ const QWEN_MODEL = process.env.QWEN_MODEL || 'qwen-plus';
 const QWEN_API_KEY = process.env.QWEN_API_KEY;
 const QWEN_WORKSPACE_ID = process.env.QWEN_WORKSPACE_ID || '';
 
-// 根据模型类型选择 API 端点
-// DeepSeek 模型需要使用业务空间专属域名，通义千问使用通用域名
+// 根据模型类型选择 API 端点：仅当配置了业务空间 ID 时 DeepSeek 走专属域名，否则统一用百炼通用域名
 function getApiUrl(model: string): string {
-  if (model.startsWith('deepseek-')) {
-    if (!QWEN_WORKSPACE_ID) {
-      console.warn('⚠️  使用 DeepSeek 模型但未配置 QWEN_WORKSPACE_ID，将使用通用域名（可能无法访问）');
-      return 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
-    }
+  if (model.startsWith('deepseek-') && QWEN_WORKSPACE_ID) {
     return `https://${QWEN_WORKSPACE_ID}.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/chat/completions`;
   }
   return 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
