@@ -595,10 +595,11 @@ function goChapter(id: number) {
 <style lang="scss" scoped>
 // ===== 基础布局 =====
 .index-page {
-  min-height: 100vh;
+  height: 100vh;
   background: #f0f2f5;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 // ===== 导航栏 =====
@@ -667,7 +668,6 @@ function goChapter(id: number) {
 // ===== 内容滚动区 =====
 .content {
   flex: 1;
-  height: 0;
   min-height: 0;
 }
 
