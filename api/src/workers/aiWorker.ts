@@ -11,6 +11,9 @@ import { wsServer } from '../utils/websocket';
 const USE_QWEN = !!process.env.QWEN_API_KEY;
 const QWEN_MODEL = process.env.QWEN_MODEL || 'qwen-plus';
 const QWEN_WORKSPACE_ID = process.env.QWEN_WORKSPACE_ID || '';
+// 推理模型思考开关：默认关闭（reasoning 会消耗 token 且污染 JSON 结构化输出）。
+// 换用任何推理模型（deepseek/qwen3 等）均生效；如需思考链可设 AI_ENABLE_THINKING=true
+const AI_ENABLE_THINKING = process.env.AI_ENABLE_THINKING === 'true';
 
 // 根据模型类型选择 API 端点
 function getQwenApiUrl(model: string): string {
@@ -293,8 +296,8 @@ async function callQwenAPI(prompt: string, maxTokens: number = 2000, temperature
           temperature: temperature,
           top_p: 0.9,
           stream: true,
-          // deepseek 推理模型默认开启思考，reasoning 会消耗 token 且污染 JSON 结构化输出，必须关闭
-          ...(QWEN_MODEL.startsWith('deepseek-') ? { enable_thinking: false } : {})
+          // 推理模型默认开启思考，reasoning 会消耗 token 且污染 JSON 结构化输出，默认关闭
+          ...(AI_ENABLE_THINKING ? {} : { enable_thinking: false })
         }),
         signal: controller.signal
       });
