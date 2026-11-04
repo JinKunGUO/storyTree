@@ -292,7 +292,9 @@ async function callQwenAPI(prompt: string, maxTokens: number = 2000, temperature
           max_tokens: maxTokens,
           temperature: temperature,
           top_p: 0.9,
-          stream: true
+          stream: true,
+          // deepseek 推理模型默认开启思考，reasoning 会消耗 token 且污染 JSON 结构化输出，必须关闭
+          ...(QWEN_MODEL.startsWith('deepseek-') ? { enable_thinking: false } : {})
         }),
         signal: controller.signal
       });
