@@ -1514,6 +1514,14 @@
                     const streamActions = document.getElementById('aiStreamActions');
                     streamActions.style.display = 'flex';
 
+                    // 首字节等待安抚：超过 10 秒未收到内容时提示，收到内容/完成/失败即清除
+                    const waitHintTimer = setTimeout(() => {
+                        const ind = optionsContainer.querySelector('.ai-streaming-indicator');
+                        if (ind && !streamContent.textContent.trim()) {
+                            ind.innerHTML = '<i class="fas fa-hourglass-half"></i> AI 正在努力创作，内容较长时请耐心等待...';
+                        }
+                    }, 10000);
+
                     // 启动流式请求
                     const currentStream = new SSEStream('/api/ai/stream/continuation', {
                         body: {
@@ -1526,11 +1534,13 @@
                             userPrompt: userPrompt || undefined
                         },
                         onChunk: (text, fullText) => {
+                            clearTimeout(waitHintTimer);
                             // 逐字渲染（将换行转为 <br>）
                             streamContent.innerHTML = fullText.replace(/\n/g, '<br>');
                             streamContent.scrollTop = streamContent.scrollHeight;
                         },
                         onDone: (result) => {
+                            clearTimeout(waitHintTimer);
                             const indicator = optionsContainer.querySelector('.ai-streaming-indicator');
                             const finalText = (result.fullText || '').trim();
 
@@ -1564,11 +1574,13 @@
                             };
                         },
                         onError: (message) => {
+                            clearTimeout(waitHintTimer);
                             streamContent.innerHTML = `<span style="color: var(--st-error-500);">${escapeHtml(message)}</span>`;
                             const indicator = optionsContainer.querySelector('.ai-streaming-indicator');
                             if (indicator) indicator.innerHTML = '<i class="fas fa-exclamation-circle"></i> 生成失败';
                         },
                         onAbort: (partialText) => {
+                            clearTimeout(waitHintTimer);
                             // 用户中断，保留已生成内容
                             if (partialText) {
                                 aiOptions = [{ title: 'AI续写(部分)', content: partialText, style: selectedAiStyle || '续写' }];

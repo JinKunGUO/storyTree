@@ -89,6 +89,16 @@
               {{ opt.label }}
             </view>
           </view>
+          <view v-if="selectedWordCount === 'custom'" class="custom-input-wrap">
+            <input
+              v-model.number="customWordCount"
+              class="custom-input"
+              type="number"
+              placeholder="输入字数（200-5000）"
+              :maxlength="4"
+            />
+            <text class="custom-input-hint">范围 200-5000 字，字数越多生成越慢</text>
+          </view>
         </view>
         <view class="section">
           <text class="section-label">完成时间</text>
@@ -102,6 +112,17 @@
             >
               {{ opt.label }}
             </view>
+          </view>
+          <view v-if="selectedSurpriseTime === 'custom'" class="custom-input-wrap">
+            <view class="custom-datetime-row">
+              <picker mode="date" :value="customDate" @change="customDate = $event.detail.value">
+                <view class="custom-picker">{{ customDate || '选择日期' }}</view>
+              </picker>
+              <picker mode="time" :value="customTime" @change="customTime = $event.detail.value">
+                <view class="custom-picker">{{ customTime || '选择时间' }}</view>
+              </picker>
+            </view>
+            <text class="custom-input-hint">选择一个未来的时间，届时自动生成</text>
           </view>
         </view>
       </view>
@@ -180,6 +201,11 @@
       <!-- 错误提示 -->
       <view v-if="error" class="error-tip">
         <text class="error-text">{{ error }}</text>
+      </view>
+
+      <!-- 等待安抚提示（生成超过 10 秒时显示） -->
+      <view v-if="generating && showWaitHint" class="wait-hint">
+        <text class="wait-hint-text">⏳ AI 正在努力创作中，内容较长时需要更多时间，请耐心等待...</text>
       </view>
 
       <!-- 操作按钮 -->
@@ -305,20 +331,25 @@ watch(
 // ——— 续写 ———
 const selectedStyle = ref('default')
 const customPrompt = ref('')
-// 续写字数与定时（对齐网页端功能）
-const selectedWordCount = ref(500)
+// 续写字数与定时（对齐网页端功能，支持自定义）
+const selectedWordCount = ref<number | string>(500)
+const customWordCount = ref<number | null>(null)
 const selectedSurpriseTime = ref('immediate')
+const customDate = ref('')   // 自定义日期 YYYY-MM-DD
+const customTime = ref('')   // 自定义时间 HH:mm
 
 const wordCountOptions = [
   { label: '500字', value: 500 },
   { label: '1000字', value: 1000 },
   { label: '2000字', value: 2000 },
+  { label: '自定义', value: 'custom' },
 ]
 const surpriseTimeOptions = [
   { label: '立即', value: 'immediate' },
   { label: '1小时后', value: '1hour' },
   { label: '今晚22点', value: 'tonight' },
   { label: '明早8点', value: 'tomorrow' },
+  { label: '自定义', value: 'custom' },
 ]
 
 const writingStyles = [
@@ -353,6 +384,24 @@ const polishContent = ref('')
 const generating = ref(false)
 const result = ref('')
 const error = ref('')
+// 等待安抚：生成超过 10 秒时显示提示，缓解等待焦虑
+const showWaitHint = ref(false)
+let waitHintTimer: ReturnType<typeof setTimeout> | null = null
+
+function startWaitHint() {
+  stopWaitHint()
+  showWaitHint.value = false
+  waitHintTimer = setTimeout(() => {
+    showWaitHint.value = true
+  }, 10000)
+}
+function stopWaitHint() {
+  if (waitHintTimer) {
+    clearTimeout(waitHintTimer)
+    waitHintTimer = null
+  }
+  showWaitHint.value = false
+}
 
 const canGenerate = computed(() => {
   if (activeTab.value === 'illustration') {
@@ -379,9 +428,34 @@ async function generate() {
   generating.value = true
   error.value = ''
   result.value = ''
+  startWaitHint()
 
   try {
     if (activeTab.value === 'continue') {
+      // 解析字数（含自定义，后端限制 200-5000）
+      if (selectedWordCount.value === 'custom') {
+        if (!customWordCount.value || customWordCount.value < 200 || customWordCount.value > 5000) {
+          error.value = '自定义字数需在 200-5000 之间'
+          return
+        }
+      }
+      const wordCount = selectedWordCount.value === 'custom' ? customWordCount.value! : selectedWordCount.value
+
+      // 解析定时（含自定义，必须是未来时间）
+      let surpriseTime: string | undefined = selectedSurpriseTime.value
+      if (selectedSurpriseTime.value === 'custom') {
+        if (!customDate.value || !customTime.value) {
+          error.value = '请选择自定义的日期和时间'
+          return
+        }
+        const dt = new Date(`${customDate.value}T${customTime.value}:00`)
+        if (isNaN(dt.getTime()) || dt.getTime() <= Date.now()) {
+          error.value = '自定义时间必须是未来时间'
+          return
+        }
+        surpriseTime = dt.toISOString()
+      }
+
       // 使用 v2 异步队列模式提交续写任务
       const submitRes = await http.post<{ taskId: number; status: string; message: string }>('/api/ai/v2/continuation/submit', {
         storyId: props.storyId,
@@ -390,8 +464,8 @@ async function generate() {
         style: selectedStyle.value !== 'default' ? selectedStyle.value : undefined,
         count: 1,
         mode: 'segment',
-        wordCount: selectedWordCount.value,
-        surpriseTime: selectedSurpriseTime.value,
+        wordCount,
+        surpriseTime,
         userPrompt: customPrompt.value.trim() || undefined,
       }, { showError: false })
 
@@ -409,7 +483,7 @@ async function generate() {
       }
 
       // WebSocket 优先监听任务状态，降级轮询兜底（超时按字数动态调整）
-      const timeoutMs = selectedWordCount.value <= 500 ? 120000 : selectedWordCount.value <= 1000 ? 180000 : 300000
+      const timeoutMs = Number(wordCount) <= 500 ? 120000 : Number(wordCount) <= 1000 ? 180000 : 300000
       const taskResult = await waitForTaskResult(taskId, timeoutMs)
       if (taskResult.status === 'completed') {
         const options = taskResult.result?.options || []
@@ -461,6 +535,7 @@ async function generate() {
     error.value = e?.message || 'AI 生成失败，请稍后重试'
   } finally {
     generating.value = false
+    stopWaitHint()
   }
 }
 
@@ -853,6 +928,53 @@ onUnmounted(() => {
           color: #7c6af7;
           background: rgba(124, 106, 247, 0.08);
         }
+      }
+    }
+
+    // 自定义输入区
+    .custom-input-wrap {
+      margin-top: 16rpx;
+    }
+    .custom-input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 16rpx 20rpx;
+      border: 1rpx solid #e2e8f0;
+      border-radius: 12rpx;
+      font-size: 26rpx;
+      background: #fff;
+    }
+    .custom-datetime-row {
+      display: flex;
+      gap: 16rpx;
+    }
+    .custom-picker {
+      flex: 1;
+      padding: 16rpx 20rpx;
+      border: 1rpx solid #e2e8f0;
+      border-radius: 12rpx;
+      font-size: 26rpx;
+      color: #475569;
+      background: #fff;
+      text-align: center;
+    }
+    .custom-input-hint {
+      display: block;
+      margin-top: 8rpx;
+      font-size: 22rpx;
+      color: #94a3b8;
+    }
+
+    // 等待安抚提示
+    .wait-hint {
+      margin: 16rpx 0;
+      padding: 16rpx 20rpx;
+      background: rgba(124, 106, 247, 0.06);
+      border-radius: 12rpx;
+      .wait-hint-text {
+        font-size: 24rpx;
+        color: #7c6af7;
+        line-height: 1.5;
       }
     }
 
