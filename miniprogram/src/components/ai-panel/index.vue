@@ -457,6 +457,7 @@ async function generate() {
       }
 
       // 使用 v2 异步队列模式提交续写任务
+      console.log('[AI续写] 提交任务: storyId=' + props.storyId + ', nodeId=' + props.nodeId + ', wordCount=' + wordCount + ', surpriseTime=' + surpriseTime)
       const submitRes = await http.post<{ taskId: number; status: string; message: string }>('/api/ai/v2/continuation/submit', {
         storyId: props.storyId,
         nodeId: props.nodeId,
@@ -469,6 +470,7 @@ async function generate() {
         userPrompt: customPrompt.value.trim() || undefined,
       }, { showError: false })
 
+      console.log('[AI续写] 提交响应:', JSON.stringify(submitRes))
       const taskId = submitRes.taskId
       if (!taskId) {
         error.value = 'AI 任务提交失败，请重试'
@@ -484,7 +486,9 @@ async function generate() {
 
       // WebSocket 优先监听任务状态，降级轮询兜底（超时按字数动态调整）
       const timeoutMs = Number(wordCount) <= 500 ? 120000 : Number(wordCount) <= 1000 ? 180000 : 300000
+      console.log('[AI续写] 开始等待任务结果: taskId=' + taskId + ', 超时=' + (timeoutMs / 1000) + 's, WS连接=' + mpWsClient.isConnected())
       const taskResult = await waitForTaskResult(taskId, timeoutMs)
+      console.log('[AI续写] 任务结果:', JSON.stringify(taskResult))
       if (taskResult.status === 'completed') {
         const options = taskResult.result?.options || []
         if (options.length > 0) {
@@ -619,6 +623,7 @@ function waitForTaskResult(taskId: number, timeoutMs = 120000): Promise<TaskResu
         }>(`/api/ai/v2/tasks/${taskId}`, undefined, { showError: false })
 
         if (resolved) return
+        console.log('[AI续写] 轮询任务 ' + taskId + ': status=' + taskRes.status)
         if (taskRes.status === 'completed') {
           wrappedResolve({ status: 'completed', result: taskRes.result })
         } else if (taskRes.status === 'failed') {

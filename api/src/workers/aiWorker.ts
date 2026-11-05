@@ -312,6 +312,7 @@ async function callQwenAPI(prompt: string, maxTokens: number = 2000, temperature
       let inputTokens = 0;
       let outputTokens = 0;
       const STREAM_IDLE_TIMEOUT = 60000;
+      console.log(`📡 [callQwenAPI] 已收到响应头 HTTP ${response.status}，开始读取流式内容 (model=${QWEN_MODEL})`);
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder('utf-8');
@@ -321,6 +322,9 @@ async function callQwenAPI(prompt: string, maxTokens: number = 2000, temperature
       }
 
       let buffer = '';
+      let chunkCount = 0;
+      let firstChunkLogged = false;
+      let lastProgressLog = Date.now();
 
       while (true) {
         const readPromise = reader.read();
@@ -332,6 +336,17 @@ async function callQwenAPI(prompt: string, maxTokens: number = 2000, temperature
 
         const { done, value } = await Promise.race([readPromise, idleTimeoutPromise]);
         if (done) break;
+
+        chunkCount++;
+        if (!firstChunkLogged) {
+          firstChunkLogged = true;
+          console.log(`📥 [callQwenAPI] 收到首个 chunk，流式输出正常开始`);
+        }
+        // 每 3 秒打印一次进度，确认流式持续推进
+        if (Date.now() - lastProgressLog > 3000) {
+          lastProgressLog = Date.now();
+          console.log(`📊 [callQwenAPI] 流式进行中: ${chunkCount} chunks, 已接收 ${fullText.length} 字`);
+        }
 
         // 收到首字节后，清除连接超时
         if (connectTimeoutId) {
@@ -381,6 +396,10 @@ async function callQwenAPI(prompt: string, maxTokens: number = 2000, temperature
         }
       }
 
+      console.log(`🏁 [callQwenAPI] 流式读取结束: 共 ${chunkCount} chunks, 输出 ${fullText.length} 字, tokens(in=${inputTokens}, out=${outputTokens})`);
+      if (fullText.length === 0) {
+        console.warn(`⚠️ [callQwenAPI] 警告：流式结束但输出为空！可能是模型未返回 content 或解析失败`);
+      }
       return {
         text: fullText,
         usage: {
@@ -716,7 +735,9 @@ XXX` : ''}`;
     const costUsd = (tokensUsed.input * 0.25 / 1000000) + (tokensUsed.output * 1.25 / 1000000);
 
     // 解析AI响应
+    console.log(`⏱️ [续写任务 ${taskId}] LLM 调用耗时 ${(responseTime / 1000).toFixed(1)}s，开始解析响应（${aiResponse.length} 字）`);
     const options = parseAiResponse(aiResponse);
+    console.log(`📋 [续写任务 ${taskId}] 解析出 ${options.length} 个续写选项`);
 
     // 保存 AI 生成结果（此时节点尚未创建，状态保持 processing）
     await prisma.ai_tasks.update({
