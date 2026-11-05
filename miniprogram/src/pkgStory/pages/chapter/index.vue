@@ -392,6 +392,7 @@
       :node-id="node?.id"
       :story-id="node?.story_id"
       :content="node?.content || ''"
+      :chapter-title="node?.title || ''"
       initial-tab="continue"
       @close="showAiPanel = false"
       @apply="handleAiApply"

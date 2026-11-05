@@ -577,10 +577,17 @@ aiContinuationQueue.process(3, async (job: Job<ContinuationJobData>) => {
       '脑洞': '跳出常规思路，走向出人意料的创意方向'
     };
 
+    // 英文风格别名归一化（小程序/网页端默认值可能传英文）
+    const styleAliases: Record<string, string> = {
+      mystery: '悬疑', suspense: '悬疑', romance: '浪漫', fantasy: '奇幻',
+      scifi: '科幻', wuxia: '武侠', realistic: '现实', warm: '温情', brainstorm: '脑洞'
+    };
+    const normalizedStyle = style ? (styleAliases[style] || style) : style;
+
     // 智能选择风格
     let selectedStyles: string[];
-    if (style && styleOptions[style]) {
-      selectedStyles = [style, style, style];
+    if (normalizedStyle && styleOptions[normalizedStyle]) {
+      selectedStyles = [normalizedStyle, normalizedStyle, normalizedStyle];
     } else {
       const allStyles = Object.keys(styleOptions);
       selectedStyles = allStyles.sort(() => Math.random() - 0.5).slice(0, count);
@@ -1102,7 +1109,9 @@ aiPolishQueue.process(3, async (job: Job<PolishJobData>) => {
       humorous: '加入幽默元素，轻松活泼',
       serious: '严肃正式，逻辑严谨',
       poetic: '诗意化表达，富有韵律感',
-      colloquial: '口语化，通俗易懂'
+      colloquial: '口语化，通俗易懂',
+      vivid: '生动形象，善用比喻和细节描写，增强画面感',
+      formal: '正式严谨，用词规范，逻辑清晰'
     };
 
     const styleDesc = polishStyles[style] || polishStyles.elegant;
