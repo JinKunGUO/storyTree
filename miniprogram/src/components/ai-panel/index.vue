@@ -316,7 +316,8 @@ const canGenerate = computed(() => {
     return !!(props.storyId && props.nodeId && props.chapterTitle)
   }
   if (activeTab.value === 'continue') {
-    return !!(props.storyId && props.nodeId)
+    // segment 模式仅用当前编辑器内容，后端 nodeId 可选，不强制要求
+    return !!props.storyId
   }
   // 润色只需要有内容（用可编辑的 polishContent）
   return !!(polishContent.value && polishContent.value.trim().length >= 10)

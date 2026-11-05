@@ -324,7 +324,7 @@
       v-if="showAiPanel"
       :visible="showAiPanel"
       :story-id="storyId || undefined"
-      :node-id="parentId || undefined"
+      :node-id="nodeId || parentId || undefined"
       :content="form.content"
       :chapter-title="form.title"
       :initial-tab="aiPanelInitialTab"
