@@ -1345,7 +1345,7 @@ async function createNewOutlineVersion() {
 
 <style lang="scss" scoped>
 .editor-page {
-  min-height: 100vh;
+  height: 100vh;
   background: #ffffff;
   display: flex;
   flex-direction: column;
@@ -1491,6 +1491,7 @@ async function createNewOutlineVersion() {
 
 .write-scroll {
   flex: 1;
+  min-height: 0;
 }
 
 .write-content {

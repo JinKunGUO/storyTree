@@ -256,7 +256,9 @@ function handlePurchase() {
 
 <style lang="scss" scoped>
 .membership-page {
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: #f0f2f5;
 }
 
@@ -329,7 +331,8 @@ function handlePurchase() {
 }
 
 .content-scroll {
-  height: calc(100vh - 340rpx);
+  flex: 1;
+  min-height: 0;
 }
 
 .beta-notice {

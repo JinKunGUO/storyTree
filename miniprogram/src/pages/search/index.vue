@@ -208,7 +208,9 @@ function goBack() {
 
 <style lang="scss" scoped>
 .search-page {
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: #f0f2f5;
 }
 
@@ -337,7 +339,8 @@ function goBack() {
 }
 
 .results-scroll {
-  height: calc(100vh - 160rpx);
+  flex: 1;
+  min-height: 0;
   padding: 16rpx 0;
 }
 

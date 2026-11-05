@@ -1312,7 +1312,9 @@ export default {
 
 <style scoped>
 .create-ai-page {
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: #f5f6f7;
   padding-top: var(--status-bar-height);
 }
@@ -1351,7 +1353,8 @@ export default {
 }
 
 .content-scroll {
-  height: calc(100vh - 44px);
+  flex: 1;
+  min-height: 0;
 }
 
 .steps-container {
@@ -2043,6 +2046,7 @@ input.editable-field {
   display: flex;
   gap: 12px;
   margin-top: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
 }
 
 .btn-back,

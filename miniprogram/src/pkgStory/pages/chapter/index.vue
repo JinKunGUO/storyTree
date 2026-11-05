@@ -1048,6 +1048,7 @@ function flattenReplies(
 
     .navbar-title {
       flex: 1;
+      min-width: 0;
       text-align: center;
       padding: 0 20rpx;
 
@@ -1074,7 +1075,8 @@ function flattenReplies(
 
 .reading-scroll {
   height: 100vh;
-  padding-top: 160rpx;
+  box-sizing: border-box;
+  padding-top: calc(var(--status-bar-height, 20px) + 92rpx);
 }
 
 .loading-wrap {

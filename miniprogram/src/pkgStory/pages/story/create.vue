@@ -146,7 +146,7 @@
     </view>
 
     <!-- 底部操作栏（固定在底部） -->
-    <view class="footer-bar" :style="{ height: footerBarHeight + 'px' }">
+    <view class="footer-bar">
       <button
         class="create-btn"
         :disabled="!canCreate || creating"
@@ -195,9 +195,8 @@ onLoad(() => {
   // 总高度 = 状态栏 + 导航栏内部
   navAndStatusBarHeight.value = statusBarHeight.value + navInner
 
-  // 底部栏高度 = padding(20) + button(48) + safe-area(~20)
-  // 固定值 88rpx 适配大部分设备
-  footerBarHeight.value = 88
+  // 底部栏高度 = padding(10+10) + button(48) + 真实安全区（与 CSS env(safe-area-inset-bottom) 同步）
+  footerBarHeight.value = 68 + (info.safeAreaInsets?.bottom || 0)
 
   // 加载时检查登录状态
   userStore.checkLoginStatus()
@@ -312,7 +311,7 @@ function goToAiCreate() {
 
 <style lang="scss" scoped>
 .create-story-page {
-  min-height: 100vh;
+  height: 100vh;
   background: #f0f2f5;
   display: flex;
   flex-direction: column;
@@ -367,6 +366,7 @@ function goToAiCreate() {
 /* ===== 主内容滚动区 ===== */
 .main-scroll {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   /* padding-top 和 padding-bottom 通过内联样式动态设置 */
@@ -381,7 +381,7 @@ function goToAiCreate() {
   z-index: 1000;
   background: #ffffff;
   box-shadow: 0 -2rpx 16rpx rgba(0, 0, 0, 0.06);
-  padding: 20rpx 24rpx;
+  padding: 20rpx 24rpx calc(20rpx + env(safe-area-inset-bottom));
   display: flex;
   align-items: center;
 

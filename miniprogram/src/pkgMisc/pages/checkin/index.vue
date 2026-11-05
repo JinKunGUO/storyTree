@@ -256,7 +256,9 @@ async function doMakeup(date: string) {
 
 <style lang="scss" scoped>
 .checkin-page {
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   overflow-x: hidden;
 }
@@ -281,7 +283,8 @@ async function doMakeup(date: string) {
 }
 
 .content {
-  height: calc(100vh - 200rpx);
+  flex: 1;
+  min-height: 0;
   width: 100%;
   padding: 0 24rpx;
   box-sizing: border-box;

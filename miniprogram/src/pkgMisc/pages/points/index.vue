@@ -192,7 +192,9 @@ function handleBuy() {
 
 <style lang="scss" scoped>
 .points-page {
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: #f0f2f5;
 }
 
@@ -297,7 +299,8 @@ function handleBuy() {
 }
 
 .records-scroll {
-  height: calc(100vh - 500rpx);
+  flex: 1;
+  min-height: 0;
   background: #ffffff;
   border-radius: 20rpx;
   overflow: hidden;

@@ -325,7 +325,7 @@ async function handleSave() {
 }
 
 .bottom-placeholder {
-  height: 120rpx;
+  height: calc(140rpx + env(safe-area-inset-bottom));
 }
 
 .footer-bar {

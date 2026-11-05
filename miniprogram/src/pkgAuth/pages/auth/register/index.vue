@@ -374,7 +374,9 @@ function viewPrivacy() {
 
 <style lang="scss" scoped>
 .register-page {
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
   position: relative;
   overflow: hidden;
@@ -442,7 +444,8 @@ function viewPrivacy() {
 }
 
 .form-scroll {
-  height: calc(100vh - 160rpx);
+  flex: 1;
+  min-height: 0;
 }
 
 .form-section {

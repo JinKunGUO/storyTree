@@ -373,7 +373,9 @@ function handleLogout() {
 
 <style lang="scss" scoped>
 .profile-page {
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: #f0f2f5;
 }
 
@@ -505,6 +507,7 @@ function handleLogout() {
 
     .user-info {
       flex: 1;
+      min-width: 0;
       padding-top: 8rpx;
 
       .username {
@@ -606,7 +609,8 @@ function handleLogout() {
 }
 
 .content-scroll {
-  height: calc(100vh - 360rpx);
+  flex: 1;
+  min-height: 0;
 }
 
 .quick-section {
