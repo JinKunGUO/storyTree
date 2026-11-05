@@ -25,7 +25,9 @@ async function checkUserTaskLimit(userId: number, taskType: string): Promise<str
     where: {
       user_id: userId,
       task_type: taskType,
-      status: { in: ['pending', 'processing'] }
+      status: { in: ['pending', 'processing'] },
+      // 只统计最近 15 分钟内的任务，进程重启遗留的卡死任务不占并发配额（与看门狗阈值一致）
+      created_at: { gte: new Date(Date.now() - 15 * 60 * 1000) }
     }
   });
   if (activeTasks >= maxActive) {
@@ -48,7 +50,9 @@ async function checkDuplicateTask(userId: number, taskType: string, nodeId?: num
   const where: any = {
     user_id: userId,
     task_type: taskType,
-    status: { in: ['pending', 'processing'] }
+    status: { in: ['pending', 'processing'] },
+    // 只拦截最近 15 分钟内的任务，进程重启遗留的卡死任务不拦截新提交（与看门狗阈值一致）
+    created_at: { gte: new Date(Date.now() - 15 * 60 * 1000) }
   };
   if (nodeId) where.node_id = nodeId;
   if (storyId) where.story_id = storyId;

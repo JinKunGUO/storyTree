@@ -1648,11 +1648,38 @@ async function notifyTaskDelay(userId: number, taskId: number, delayMinutes: num
   }
 }
 
+// 卡死任务看门狗：超过 15 分钟未完成的 pending/processing 任务标记为 failed。
+// 进程重启/崩溃后遗留的任务会永远占用去重和并发配额，导致新任务无法提交。
+// 服务启动时调度器立即执行一次（覆盖启动清理），之后每 60 秒执行（覆盖运行中卡死）。
+const STALE_TASK_TIMEOUT_MS = 15 * 60 * 1000;
+async function cleanupStaleTasks() {
+  try {
+    const cutoff = new Date(Date.now() - STALE_TASK_TIMEOUT_MS);
+    const result = await prisma.ai_tasks.updateMany({
+      where: {
+        status: { in: ['pending', 'processing'] },
+        created_at: { lt: cutoff }
+      },
+      data: {
+        status: 'failed',
+        error_message: '任务中断超时（系统看门狗清理）',
+        completed_at: new Date()
+      }
+    });
+    if (result.count > 0) {
+      console.log(`🧹 看门狗清理了 ${result.count} 个卡死的 AI 任务`);
+    }
+  } catch (error) {
+    console.error('❌ 看门狗清理卡死任务失败:', error);
+  }
+}
+
 /**
  * 定时任务调度器 - 检查并执行到期的AI任务（优化版）
  */
 async function checkScheduledTasks() {
   try {
+    await cleanupStaleTasks(); // 看门狗：先清理卡死任务，再调度新任务
     const now = new Date();
     
     // 1. 获取当前队列负载
