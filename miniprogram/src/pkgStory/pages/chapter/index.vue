@@ -11,7 +11,7 @@
   >
     <!-- 自定义导航栏 -->
     <view class="custom-navbar" :class="{ hidden: hideNav }">
-      <view class="navbar-inner">
+      <view class="navbar-inner" :style="{ paddingRight: menuRight + 'px' }">
         <view class="back-btn" @tap="goBack">
           <text class="back-icon" :style="{ color: textColors[settings.theme] }">←</text>
         </view>
@@ -450,6 +450,7 @@ const appStore = useAppStore()
 const loading = ref(true)
 const hideNav = ref(false)
 const statusBarHeight = ref(20) // 状态栏高度（px），动态获取避免与胶囊按钮重叠
+const menuRight = ref(100) // 胶囊按钮左缘到屏幕右缘的距离（px），用于导航栏右侧避让
 const showSettings = ref(false)
 const showCommentInput = ref(false)
 const showAiPanel = ref(false)
@@ -543,6 +544,11 @@ onMounted(() => {
   try {
     const sysInfo = uni.getSystemInfoSync()
     statusBarHeight.value = sysInfo.statusBarHeight || 20
+    // 胶囊避让：右侧按钮（Aa）不被胶囊遮挡
+    const menuRect = uni.getMenuButtonBoundingClientRect()
+    if (menuRect) {
+      menuRight.value = sysInfo.windowWidth - menuRect.left + 10
+    }
     // 计算分支图面板可用高度：面板总高 88vh，减去 header（约 90px）、工具栏（约 50px）、底部统计行（约 32px）
     // 这个高度用于限制 tree-chart 内 canvas 的物理尺寸，防止原生 canvas 超出面板边界
     const panelH = sysInfo.windowHeight * 0.88

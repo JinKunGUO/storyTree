@@ -474,7 +474,7 @@ onMounted(async () => {
     if (menuButton) {
       menuButtonInfo.value = {
         width: menuButton.width,
-        right: sysInfo.windowWidth - menuButton.right
+        right: sysInfo.windowWidth - menuButton.left
       }
       console.log('[onMounted] 胶囊按钮信息:', menuButtonInfo.value)
     }
