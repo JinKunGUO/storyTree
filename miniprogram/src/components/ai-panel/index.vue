@@ -76,6 +76,34 @@
             <text class="hint-text">可以指定故事走向、角色行为、场景细节等，最多 200 字</text>
           </view>
         </view>
+        <view class="section">
+          <text class="section-label">续写字数</text>
+          <view class="option-row">
+            <view
+              v-for="opt in wordCountOptions"
+              :key="opt.value"
+              class="option-tag"
+              :class="{ active: selectedWordCount === opt.value }"
+              @tap="selectedWordCount = opt.value"
+            >
+              {{ opt.label }}
+            </view>
+          </view>
+        </view>
+        <view class="section">
+          <text class="section-label">完成时间</text>
+          <view class="option-row">
+            <view
+              v-for="opt in surpriseTimeOptions"
+              :key="opt.value"
+              class="option-tag"
+              :class="{ active: selectedSurpriseTime === opt.value }"
+              @tap="selectedSurpriseTime = opt.value"
+            >
+              {{ opt.label }}
+            </view>
+          </view>
+        </view>
       </view>
 
       <!-- ===== 润色面板 ===== -->
@@ -277,6 +305,21 @@ watch(
 // ——— 续写 ———
 const selectedStyle = ref('default')
 const customPrompt = ref('')
+// 续写字数与定时（对齐网页端功能）
+const selectedWordCount = ref(500)
+const selectedSurpriseTime = ref('immediate')
+
+const wordCountOptions = [
+  { label: '500字', value: 500 },
+  { label: '1000字', value: 1000 },
+  { label: '2000字', value: 2000 },
+]
+const surpriseTimeOptions = [
+  { label: '立即', value: 'immediate' },
+  { label: '1小时后', value: '1hour' },
+  { label: '今晚22点', value: 'tonight' },
+  { label: '明早8点', value: 'tomorrow' },
+]
 
 const writingStyles = [
   { label: '默认', value: 'default' },
@@ -347,6 +390,8 @@ async function generate() {
         style: selectedStyle.value !== 'default' ? selectedStyle.value : undefined,
         count: 1,
         mode: 'segment',
+        wordCount: selectedWordCount.value,
+        surpriseTime: selectedSurpriseTime.value,
         userPrompt: customPrompt.value.trim() || undefined,
       }, { showError: false })
 
@@ -356,8 +401,16 @@ async function generate() {
         return
       }
 
-      // WebSocket 优先监听任务状态，降级轮询兜底
-      const taskResult = await waitForTaskResult(taskId)
+      // 定时任务（非立即）：提交成功即提示并关闭，不空等结果
+      if (selectedSurpriseTime.value !== 'immediate') {
+        uni.showToast({ title: submitRes.message || '定时任务已提交，届时自动生成', icon: 'none', duration: 3000 })
+        emit('close')
+        return
+      }
+
+      // WebSocket 优先监听任务状态，降级轮询兜底（超时按字数动态调整）
+      const timeoutMs = selectedWordCount.value <= 500 ? 120000 : selectedWordCount.value <= 1000 ? 180000 : 300000
+      const taskResult = await waitForTaskResult(taskId, timeoutMs)
       if (taskResult.status === 'completed') {
         const options = taskResult.result?.options || []
         if (options.length > 0) {
@@ -434,7 +487,7 @@ interface TaskResult {
   errorMessage?: string
 }
 
-function waitForTaskResult(taskId: number): Promise<TaskResult> {
+function waitForTaskResult(taskId: number, timeoutMs = 120000): Promise<TaskResult> {
   return new Promise((resolve) => {
     let resolved = false
     let pollTimer: ReturnType<typeof setInterval> | null = null
@@ -501,12 +554,12 @@ function waitForTaskResult(taskId: number): Promise<TaskResult> {
       }
     }, pollInterval)
 
-    // 4. 总超时：2 分钟
+    // 4. 总超时：按字数动态（默认 2 分钟）
     timeoutTimer = setTimeout(() => {
       if (resolved) return
       cleanup()
       resolve({ status: 'timeout' })
-    }, 120000)
+    }, timeoutMs)
   })
 }
 
@@ -776,6 +829,29 @@ onUnmounted(() => {
             color: #7c6af7;
             background: rgba(124, 106, 247, 0.08);
           }
+        }
+      }
+    }
+
+    // 字数/定时选项行
+    .option-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12rpx;
+
+      .option-tag {
+        padding: 10rpx 24rpx;
+        border-radius: 40rpx;
+        border: 1rpx solid #e2e8f0;
+        font-size: 26rpx;
+        color: #475569;
+        background: #f8fafc;
+        white-space: nowrap;
+
+        &.active {
+          border-color: #7c6af7;
+          color: #7c6af7;
+          background: rgba(124, 106, 247, 0.08);
         }
       }
     }
