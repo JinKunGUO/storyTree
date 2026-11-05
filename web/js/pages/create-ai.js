@@ -32,6 +32,22 @@ const GENRES = [
   '灵异', '同人', '短篇'
 ];
 
+// 思考面板折叠/展开（事件委托，单步骤与多步骤弹窗共用）
+document.addEventListener('click', (e) => {
+  const header = e.target.closest('.ai-thinking-header');
+  if (!header) return;
+  const panel = header.closest('.ai-thinking-panel');
+  if (panel) panel.classList.toggle('collapsed');
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const header = e.target.closest('.ai-thinking-header');
+  if (!header) return;
+  e.preventDefault();
+  const panel = header.closest('.ai-thinking-panel');
+  if (panel) panel.classList.toggle('collapsed');
+});
+
 // 故事模板
 const TEMPLATES = [
   { id: 1, name: '都市逆袭', description: '普通人逆袭人生，走向巅峰', genre: '都市' },
@@ -599,11 +615,19 @@ async function handleGenerateStreaming() {
   loadingContainer.innerHTML = `
     <div class="ai-skeleton-container">
       <div class="ai-thinking-panel" id="thinkingPanel" style="display:none;">
-        <div class="ai-thinking-header">
-          <span class="ai-thinking-icon"></span>
-          <span>AI 思考中...</span>
+        <div class="ai-thinking-header" id="thinkingHeader" role="button" tabindex="0" aria-label="展开或收起思考过程">
+          <span class="ai-thinking-header-left">
+            <span class="ai-thinking-icon"></span>
+            <span class="ai-thinking-title">AI 思考过程</span>
+          </span>
+          <span class="ai-thinking-chevron" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </span>
         </div>
-        <div class="ai-thinking-text" id="thinkingText"></div>
+        <div class="ai-thinking-body" id="thinkingBody">
+          <div class="ai-thinking-text" id="thinkingText"></div>
+          <div class="ai-thinking-fade" aria-hidden="true"></div>
+        </div>
       </div>
       <div class="ai-stream-header">
         <span class="ai-streaming-indicator"></span>
@@ -616,6 +640,7 @@ async function handleGenerateStreaming() {
   `;
 
   const thinkingPanel = document.getElementById('thinkingPanel');
+  const thinkingBody = document.getElementById('thinkingBody');
   const thinkingText = document.getElementById('thinkingText');
   const skeletonList = document.getElementById('skeletonList');
 
@@ -624,8 +649,8 @@ async function handleGenerateStreaming() {
   function startThinkingScroll() {
     if (thinkingScrollTimer) return;
     thinkingScrollTimer = setInterval(() => {
-      if (thinkingPanel && thinkingPanel.style.display === 'block') {
-        thinkingPanel.scrollTop = thinkingPanel.scrollHeight;
+      if (thinkingPanel && thinkingPanel.style.display === 'block' && thinkingBody) {
+        thinkingBody.scrollTop = thinkingBody.scrollHeight;
       }
     }, 200);
   }
@@ -797,11 +822,19 @@ async function handleGenerateMultiStep() {
         <span id="currentStepTitle">准备中...</span>
       </div>
       <div class="ai-thinking-panel" id="thinkingPanel" style="display:none;">
-        <div class="ai-thinking-header">
-          <span class="ai-thinking-icon"></span>
-          <span>AI 思考中...</span>
+        <div class="ai-thinking-header" id="thinkingHeader" role="button" tabindex="0" aria-label="展开或收起思考过程">
+          <span class="ai-thinking-header-left">
+            <span class="ai-thinking-icon"></span>
+            <span class="ai-thinking-title">AI 思考过程</span>
+          </span>
+          <span class="ai-thinking-chevron" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </span>
         </div>
-        <div class="ai-thinking-text" id="thinkingText"></div>
+        <div class="ai-thinking-body" id="thinkingBody">
+          <div class="ai-thinking-text" id="thinkingText"></div>
+          <div class="ai-thinking-fade" aria-hidden="true"></div>
+        </div>
       </div>
       <div class="ai-skeleton-list" id="skeletonList"></div>
       <p class="ai-loading-tip" id="loadingTip">${tips[0]}</p>
@@ -812,6 +845,7 @@ async function handleGenerateMultiStep() {
   const stepsProgress = document.getElementById('stepsProgress');
   const currentStepTitle = document.getElementById('currentStepTitle');
   const thinkingPanel = document.getElementById('thinkingPanel');
+  const thinkingBody = document.getElementById('thinkingBody');
   const thinkingText = document.getElementById('thinkingText');
   const skeletonList = document.getElementById('skeletonList');
   const loadingTip = document.getElementById('loadingTip');
@@ -822,8 +856,8 @@ async function handleGenerateMultiStep() {
   function startThinkingScroll() {
     if (thinkingScrollTimer) return;
     thinkingScrollTimer = setInterval(() => {
-      if (thinkingPanel && thinkingPanel.style.display === 'block') {
-        thinkingPanel.scrollTop = thinkingPanel.scrollHeight;
+      if (thinkingPanel && thinkingPanel.style.display === 'block' && thinkingBody) {
+        thinkingBody.scrollTop = thinkingBody.scrollHeight;
       }
     }, 200);
   }
